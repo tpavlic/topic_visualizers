@@ -7,7 +7,7 @@ covering a range of topics in science, mathematics, statistics, and engineering.
 **Live site:** <https://tpavlic.github.io/topic_visualizers/>
 
 Each visualization is a self-contained HTML page that works standalone or can be embedded
-in course management systems (e.g., Canvas LMS) as an IFRAME.
+in course management systems (e.g., Canvas LMS) as an iframe.
 
 ---
 
