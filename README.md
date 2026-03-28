@@ -1,8 +1,8 @@
 # Topic Visualizers
 
-Interactive web demonstrations built by
+Interactive web demonstrations and other visualizations built by
 [Theodore P. Pavlic](https://search.asu.edu/profile/1995237)
-covering a range of topics in science, mathematics, and engineering.
+covering a range of topics in science, mathematics, statistics, and engineering.
 
 **Live site:** <https://tpavlic.github.io/topic_visualizers/>
 

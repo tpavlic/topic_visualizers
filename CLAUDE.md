@@ -1,7 +1,7 @@
 # CLAUDE.md — conventions for this repository
 
-This repository hosts standalone interactive visualizations on topics in science, mathematics,
-and engineering, built by Theodore P. Pavlic. The live site is at
+This repository hosts standalone interactive web demonstrations and other visualizations on
+topics in science, mathematics, statistics, and engineering, built by Theodore P. Pavlic. The live site is at
 <https://tpavlic.github.io/topic_visualizers/>.
 
 ---
