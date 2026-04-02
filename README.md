@@ -13,7 +13,11 @@ in course management systems (e.g., Canvas LMS) as an iframe.
 
 ## Contents
 
-No visualizations yet — add entries here as demos are created.
+### Nonlinear Systems
+
+| Demo                                          | Description                                                                                                                          |
+|-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| [`lyapunov_functions/`](lyapunov_functions/)  | Explore Lyapunov functions and level-set curves for common nonlinear dynamical systems to build intuition about Lyapunov stability.  |
 
 ---
 
@@ -41,10 +45,12 @@ For a new `my_demo.html`, the checklist is:
 2. **Back-link footer** — add at the bottom of `<body>`:
 
    ```html
-   <footer style="margin-top:1.5rem;padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
-     <a href="../" style="color:#2e7d32;text-decoration:none;">&larr; All visualizations</a>
+   <footer id="back-link-footer" style="margin-top:1.5rem;padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+     <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
    </footer>
-   <script>if (window.self !== window.top) { var f = document.querySelector('footer'); if (f) f.style.display = 'none'; }</script>
+   <script>
+   if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
+   </script>
    ```
 
    The script hides the footer when the page is embedded in a Canvas iframe.

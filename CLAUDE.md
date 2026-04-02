@@ -78,10 +78,12 @@ Inside `<head>`, include all of the following, filling in the actual values:
 At the very bottom of `<body>`, before `</body>`, add:
 
 ```html
-<footer style="margin-top:1.5rem;padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+<footer id="back-link-footer" style="margin-top:1.5rem;padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
   <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
 </footer>
-<script>if (window.self !== window.top) { var f = document.querySelector('footer'); if (f) f.style.display = 'none'; }</script>
+<script>
+if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
+</script>
 ```
 
 The `<script>` hides the footer when the page is embedded in a Canvas LMS iframe.
@@ -138,7 +140,10 @@ Update the **Current demos** list below to include the new demo.
 
 ## Current demos
 
-None yet — update this list as demos are added.
+### Nonlinear Systems
+
+- **Lyapunov Level-Set Explorer** — `lyapunov_functions/lyapunov_explorer.html`
+  Interactive exploration of Lyapunov functions and level-set curves for common nonlinear dynamical systems.
 
 ---
 
