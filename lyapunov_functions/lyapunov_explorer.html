@@ -141,6 +141,7 @@
 
   /* range slider */
   input[type=range] {
+    appearance: none;
     -webkit-appearance: none;
     height: 4px;
     background: var(--border);
@@ -254,14 +255,17 @@
     flex-direction: column;
     padding: 16px;
     gap: 12px;
+    min-width: 0;   /* allow grid column to shrink below content size */
   }
   .canvas-wrap {
     position: relative;
-    width: 500px;
+    width: 100%;
+    max-width: 500px;
   }
   canvas#phaseCanvas {
-    width: 500px;
-    height: 500px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    height: auto;
     display: block;
     border-radius: 6px;
     border: 1px solid var(--border);
@@ -276,7 +280,8 @@
     font-size: 12px;
     color: var(--text-muted);
     align-items: center;
-    width: 500px;
+    width: 100%;
+    max-width: 500px;
   }
   .legend-item { display: flex; align-items: center; gap: 5px; }
   .legend-swatch {
@@ -310,7 +315,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     gap: 6px;
-    width: 500px;
+    width: 100%;
+    max-width: 500px;
   }
   .info-cell {
     background: var(--panel);
@@ -342,7 +348,8 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px 14px;
-    width: 500px;
+    width: 100%;
+    max-width: 500px;
   }
   .assessment-title {
     font-size: 0.7rem;
@@ -804,11 +811,14 @@ let dpr = 1; // device pixel ratio, updated in setupHiDPI()
 
 function setupHiDPI() {
   dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const cw = Math.round(W * dpr);
-  const ch = Math.round(H * dpr);
-  if (canvas.width !== cw || canvas.height !== ch) {
-    canvas.width  = cw;
-    canvas.height = ch;
+  // Use the canvas's actual CSS display size (may be < 500 on narrow screens)
+  const cssW = canvas.clientWidth  || W;
+  const cssH = canvas.clientHeight || H;
+  const phW = Math.round(cssW * dpr);
+  const phH = Math.round(cssH * dpr);
+  if (canvas.width !== phW || canvas.height !== phH) {
+    canvas.width  = phW;
+    canvas.height = phH;
   }
 }
 
@@ -817,8 +827,8 @@ function setupHiDPI() {
 // ═══════════════════════════════════════════════════════════════════
 function wx(x) { return (x + domain) / (2*domain) * W; }
 function wy(y) { return (1 - (y + domain) / (2*domain)) * H; }
-function cxToWorld(cx) { return cx / W * 2*domain - domain; }
-function cyToWorld(cy) { return -(cy / H * 2*domain - domain); }
+function cxToWorld(cx, displayW) { const w = displayW ?? (canvas.clientWidth || W); return cx / w * 2*domain - domain; }
+function cyToWorld(cy, displayH) { const h = displayH ?? (canvas.clientHeight || H); return -(cy / h * 2*domain - domain); }
 
 // ═══════════════════════════════════════════════════════════════════
 //  GRID COMPUTATION
@@ -1103,13 +1113,21 @@ function render() {
   computeGrids();
 
   const PW = canvas.width, PH = canvas.height; // physical pixels
+  // Logical size: actual CSS display pixels (may be < 500 on narrow screens)
+  const LW = PW / dpr, LH = PH / dpr;
 
-  // Set the transform so all ctx draw calls use logical [0,W]×[0,H] coords
+  // Override coordinate transform helpers to use current logical size
+  const _wx = x => (x + domain) / (2*domain) * LW;
+  const _wy = y => (1 - (y + domain) / (2*domain)) * LH;
+  // Shadow the module-level wx/wy for this render call
+  const wx = _wx, wy = _wy;
+
+  // Set the transform so all ctx draw calls use logical coords
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   // Background: cream
   ctx.fillStyle = '#f4f0e8';
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, LW, LH);
 
   // ── dV/dt color map ──
   // ImageData must be in PHYSICAL pixels; we bypass the dpr transform for putImageData
@@ -1221,7 +1239,7 @@ function render() {
       ctx.restore();
 
       // Label c* near the topmost visible point of the contour
-      let labelX = 0, labelY = H;
+      let labelX = 0, labelY = LH;
       for (const [[x1,y1]] of roaSegs) {
         const cy = wy(y1);
         if (cy < labelY) { labelY = cy; labelX = wx(x1); }
@@ -1249,17 +1267,17 @@ function render() {
     ctx.strokeStyle = 'rgba(201,125,53,0.7)';
     ctx.lineWidth = 2.5;
     ctx.setLineDash([9, 5]);
-    ctx.strokeRect(6, 6, W-12, H-12);
+    ctx.strokeRect(6, 6, LW-12, LH-12);
     ctx.font = "bold 11px 'IBM Plex Mono', monospace";
     const lbl = 'ROA \u2287 displayed domain';
     const tw2 = ctx.measureText(lbl).width;
     ctx.fillStyle = 'rgba(244,240,232,0.85)';
     ctx.beginPath();
-    ctx.roundRect(W/2 - tw2/2 - 4, 10, tw2 + 8, 16, 3);
+    ctx.roundRect(LW/2 - tw2/2 - 4, 10, tw2 + 8, 16, 3);
     ctx.fill();
     ctx.fillStyle = 'rgba(162,90,20,1)';
     ctx.textAlign = 'center';
-    ctx.fillText(lbl, W/2, 22);
+    ctx.fillText(lbl, LW/2, 22);
     ctx.restore();
   }
 
@@ -1313,9 +1331,9 @@ function render() {
   ctx.strokeStyle = 'rgba(28,56,40,0.25)';
   ctx.lineWidth = 1;
   // x-axis
-  ctx.beginPath(); ctx.moveTo(0,wy(0)); ctx.lineTo(W,wy(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,wy(0)); ctx.lineTo(LW,wy(0)); ctx.stroke();
   // y-axis
-  ctx.beginPath(); ctx.moveTo(wx(0),0); ctx.lineTo(wx(0),H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx(0),0); ctx.lineTo(wx(0),LH); ctx.stroke();
 
   // Tick labels
   ctx.fillStyle = 'rgba(28,56,40,0.5)';
@@ -1335,17 +1353,17 @@ function render() {
   if (showVectors) {
     const VN = 18;
     const sys = SYSTEMS[sysIdx];
-    const AL = Math.min(W/(VN*1.5), 11);
+    const AL = Math.min(LW/(VN*1.5), 11);
     ctx.save();
     ctx.strokeStyle = 'rgba(20,40,28,0.55)';
     ctx.fillStyle = 'rgba(20,40,28,0.55)';
     ctx.lineWidth = 0.9;
     for (let i=0; i<=VN; i++) {
       for (let j=0; j<=VN; j++) {
-        const wx_ = i/VN*W;
-        const wy_ = j/VN*H;
-        const x = cxToWorld(wx_);
-        const y = cyToWorld(wy_);
+        const x = -domain + i/VN * 2*domain;
+        const y =  domain - j/VN * 2*domain;
+        const wx_ = wx(x);
+        const wy_ = wy(y);
         let [fx, fy] = sys.f(x,y,params);
         const mag = Math.sqrt(fx*fx+fy*fy);
         if (mag < 1e-10) continue;
@@ -1557,12 +1575,10 @@ function updateAssessment() {
 // ═══════════════════════════════════════════════════════════════════
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = W / rect.width;
-  const scaleY = H / rect.height;
-  const px = (e.clientX - rect.left) * scaleX;
-  const py = (e.clientY - rect.top) * scaleY;
-  const x = cxToWorld(px);
-  const y = cyToWorld(py);
+  const px = e.clientX - rect.left;   // already in CSS pixels = logical pixels
+  const py = e.clientY - rect.top;
+  const x = cxToWorld(px, rect.width);
+  const y = cyToWorld(py, rect.height);
 
   const lyap = LYAPUNOV[lyapIdx];
   const sys = SYSTEMS[sysIdx];
@@ -1593,10 +1609,10 @@ canvas.addEventListener('mouseleave', () => {
 
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
-  const px = (e.clientX - rect.left) * W / rect.width;
-  const py = (e.clientY - rect.top)  * H / rect.height;
-  const x0 = cxToWorld(px);
-  const y0 = cyToWorld(py);
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  const x0 = cxToWorld(px, rect.width);
+  const y0 = cyToWorld(py, rect.height);
   const color = TRAJ_PALETTE[trajectories.length % TRAJ_PALETTE.length];
   const pts = integrateTrajectory(x0, y0);
   trajectories.push({ pts, x0, y0, color });
