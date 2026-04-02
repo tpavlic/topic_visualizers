@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lyapunov Level-Set Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f4f0e8;
+    --green: #1c3828;
+    --green-light: #2e5c40;
+    --green-mid: #3a7355;
+    --orange: #c97d35;
+    --orange-light: #e8943f;
+    --text: #1a2e1f;
+    --text-muted: #4a6353;
+    --border: #cac6b8;
+    --panel: #ede9e0;
+    --panel2: #e6e2d8;
+    --badge-ok: #2e7d32;
+    --badge-warn: #c97d35;
+    --badge-bad: #a02828;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #e0dbd2;   /* slightly darker than cream — frames the centered widget */
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  /* ── Page centering ── */
+  .page-inner {
+    max-width: 840px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .site-header .page-inner,
+  .site-footer .page-inner {
+    padding: 0 20px;
+  }
+  /* The standalone div.page-inner wrapping .app is the widget card */
+  body > div.page-inner {
+    padding: 0;
+    background: var(--cream);
+    box-shadow: 0 2px 28px rgba(0,0,0,0.12);
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: var(--green);
+    color: var(--cream);
+    padding: 14px 0 12px;
+  }
+  .site-header .page-inner {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .site-header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .site-header h1 span { color: var(--orange-light); }
+  .header-copy {
+    font-size: 0.72rem;
+    opacity: 0.65;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .header-copy a { color: inherit; }
+
+  /* ── Layout ── */
+  .app {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0;
+  }
+  @media (max-width: 720px) {
+    .app { grid-template-columns: 1fr; }
+    .page-inner { padding: 0 8px; }
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+  }
+  .sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+  .sidebar-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  select, input[type=range] { width: 100%; }
+  select {
+    appearance: none;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 28px 7px 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a6353'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+  select:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+
+  /* range slider */
+  input[type=range] {
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--green);
+    cursor: pointer;
+  }
+  .range-row { display: flex; justify-content: space-between; align-items: center; }
+  .range-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* formula box */
+  .formula-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-line;
+    min-height: 44px;
+  }
+  .formula-box.lyap { border-left: 3px solid var(--green-mid); }
+  .formula-box.system { border-left: 3px solid var(--orange); }
+
+  /* note */
+  .system-note {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-style: italic;
+    line-height: 1.4;
+  }
+  .traj-hint {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+  .clear-btn {
+    appearance: none;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .clear-btn:hover { background: var(--panel2); border-color: #aaa; color: var(--text); }
+
+  /* toggles */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .toggle-label { font-size: 13px; color: var(--text); }
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 34px; height: 18px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.2s;
+    pointer-events: none;
+  }
+  .toggle-switch input:checked + .toggle-track { background: var(--green); }
+  .toggle-switch input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+  /* dynamic params */
+  .param-row { display: flex; flex-direction: column; gap: 4px; }
+  .param-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ── Main canvas area ── */
+  .main-area {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+  }
+  .canvas-wrap {
+    position: relative;
+    width: 500px;
+  }
+  canvas#phaseCanvas {
+    width: 500px;
+    height: 500px;
+    display: block;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: crosshair;
+  }
+
+  /* legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    font-size: 12px;
+    color: var(--text-muted);
+    align-items: center;
+    width: 500px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch {
+    width: 16px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .legend-swatch.stable { background: rgba(46,92,64,0.55); }
+  .legend-swatch.unstable { background: rgba(201,125,53,0.6); }
+  .legend-dashed {
+    width: 22px; height: 0;
+    border-top: 2px dashed #fff;
+    border-radius: 1px;
+    background: none;
+    box-shadow: 0 0 0 1px #aaa;
+  }
+  .legend-level {
+    width: 16px; height: 3px;
+    background: var(--green);
+    border-radius: 1px;
+  }
+  .legend-roa {
+    width: 22px; height: 0;
+    border-top: 2.5px dashed #c97d35;
+    border-radius: 1px;
+    background: none;
+  }
+
+  /* hover info */
+  .hover-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 6px;
+    width: 500px;
+  }
+  .info-cell {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .info-cell-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+  }
+  .info-cell-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .info-cell-val.neg { color: var(--badge-ok); }
+  .info-cell-val.pos { color: var(--badge-bad); }
+
+  /* assessment */
+  .assessment {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    width: 500px;
+  }
+  .assessment-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+  .badge-icon { font-size: 10px; }
+  .badge.ok { background: #d4edda; color: var(--badge-ok); border: 1px solid #a8d5b0; }
+  .badge.warn { background: #fdecd8; color: #a06020; border: 1px solid #f0c890; }
+  .badge.bad { background: #fad6d6; color: var(--badge-bad); border: 1px solid #f0b0b0; }
+  .badge.info { background: #dce8f5; color: #1a4878; border: 1px solid #b0c8e8; }
+  .assessment-text {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* footer */
+  .site-footer {
+    background: var(--panel2);
+    border-top: 1px solid var(--border);
+    padding: 8px 0;
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .footer-copy {
+    font-size: 0.69rem;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .footer-copy a { color: var(--text-muted); }
+
+  /* spinner for initial load */
+  .loading-msg {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="page-inner">
+    <h1>Lyapunov <span>Level-Set</span> Explorer</h1>
+    <span class="header-copy">© 2026 Theodore P. Pavlic ·
+      <a href="https://opensource.org/licenses/MIT" target="_blank">MIT License</a>
+    </span>
+  </div>
+</header>
+
+<div class="page-inner">
+<div class="app">
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Dynamical System</div>
+      <select id="sysSelect"></select>
+      <div class="formula-box system" id="sysFormula"></div>
+      <div class="system-note" id="sysNote"></div>
+    </div>
+
+    <div class="sidebar-section" id="paramSection" style="display:none">
+      <div class="sidebar-label">System Parameter</div>
+      <div id="paramRows"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Lyapunov Candidate V(x,y)</div>
+      <select id="lyapSelect"></select>
+      <div class="formula-box lyap" id="lyapFormula"></div>
+      <div class="traj-hint">Try different candidates for each system to see which certify stability of the origin — and which fail.</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">View Domain</div>
+      <div class="range-row">
+        <input type="range" id="domainSlider" min="1" max="8" step="0.5" value="3">
+        <span class="range-val" id="domainVal">±3</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Level Curves</div>
+      <div class="range-row">
+        <input type="range" id="levelsSlider" min="4" max="14" step="1" value="8">
+        <span class="range-val" id="levelsVal">8</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Display Options</div>
+      <div class="toggle-row">
+        <span class="toggle-label">dV/dt color map</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togColor" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">V level curves</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togLevels" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Vector field</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togVectors" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Equilibria</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togEquil" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">ROA estimate (LaSalle)</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="togROA" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Trajectories</div>
+      <div class="traj-hint">Click the phase portrait to drop an initial condition and integrate forward.</div>
+      <button id="clearTrajBtn" class="clear-btn">Clear trajectories</button>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <main class="main-area">
+
+    <div class="canvas-wrap">
+      <canvas id="phaseCanvas" width="500" height="500"></canvas>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item"><div class="legend-swatch stable"></div> dV/dt &lt; 0 (stable)</div>
+      <div class="legend-item"><div class="legend-swatch unstable"></div> dV/dt &gt; 0 (unstable)</div>
+      <div class="legend-item"><div class="legend-dashed"></div> dV/dt = 0</div>
+      <div class="legend-item"><div class="legend-level"></div> V level curve</div>
+      <div class="legend-item"><div class="legend-roa"></div> ROA boundary (V&nbsp;=&nbsp;c*)</div>
+    </div>
+
+    <!-- Hover info -->
+    <div class="hover-info">
+      <div class="info-cell">
+        <div class="info-cell-label">x</div>
+        <div class="info-cell-val" id="hov-x">—</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">y</div>
+        <div class="info-cell-val" id="hov-y">—</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">V(x,y)</div>
+        <div class="info-cell-val" id="hov-V">—</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">dV/dt</div>
+        <div class="info-cell-val" id="hov-dV">—</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-label">|f(x,y)|</div>
+        <div class="info-cell-val" id="hov-f">—</div>
+      </div>
+    </div>
+
+    <!-- Assessment -->
+    <div class="assessment">
+      <div class="assessment-title">Stability Assessment</div>
+      <div class="badges" id="assessBadges"></div>
+      <div class="assessment-text" id="assessText"></div>
+    </div>
+
+  </main>
+</div><!-- .app -->
+</div><!-- .page-inner -->
+
+<footer class="site-footer">
+  <div class="page-inner footer-inner">
+    <span class="footer-copy">© 2026 Theodore P. Pavlic ·
+      <a href="https://opensource.org/licenses/MIT" target="_blank">MIT License</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  DATA DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════
+
+const SYSTEMS = [
+  {
+    id: 'stable_spiral',
+    name: 'Stable Spiral',
+    formula: 'ẋ = −x + y\nẏ = −x − y',
+    note: 'Eigenvalues −1±i. Globally asymptotically stable at origin.',
+    domain: 3,
+    f: (x,y,p) => [-x+y, -x-y],
+    equil: [[0,0,'stable_focus']],
+    params: []
+  },
+  {
+    id: 'stable_node',
+    name: 'Stable Node',
+    formula: 'ẋ = −2x\nẏ = −y',
+    note: 'Eigenvalues −2, −1. Globally asymptotically stable at origin.',
+    domain: 3,
+    f: (x,y,p) => [-2*x, -y],
+    equil: [[0,0,'stable_node']],
+    params: []
+  },
+  {
+    id: 'unstable_focus',
+    name: 'Unstable Focus',
+    formula: 'ẋ = x − y\nẏ = x + y',
+    note: 'Eigenvalues 1±i. Origin is unstable; trajectories spiral outward.',
+    domain: 3,
+    f: (x,y,p) => [x-y, x+y],
+    equil: [[0,0,'unstable_focus']],
+    params: []
+  },
+  {
+    id: 'saddle',
+    name: 'Saddle Point',
+    formula: 'ẋ = x\nẏ = −2y',
+    note: 'Eigenvalues +1, −2. Saddle at origin; stable/unstable manifolds are the axes.',
+    domain: 3,
+    f: (x,y,p) => [x, -2*y],
+    equil: [[0,0,'saddle']],
+    params: []
+  },
+  {
+    id: 'cubic_drain',
+    name: 'Cubic Drain',
+    formula: 'ẋ = −x³\nẏ = −y³',
+    note: 'Globally asymptotically stable at origin. Jacobian is zero at origin — linearization is uninformative; stability established by Lyapunov analysis.',
+    domain: 2,
+    f: (x,y,p) => [-x*x*x, -y*y*y],
+    equil: [[0,0,'stable']],
+    params: []
+  },
+  {
+    id: 'harmonic',
+    name: 'Simple Harmonic Oscillator',
+    formula: 'ẋ = y\nẏ = −x',
+    note: 'Eigenvalues ±i. Center: Lyapunov stable but NOT asymptotically stable — orbits stay bounded near origin but never converge to it.',
+    domain: 3,
+    f: (x,y,p) => [y, -x],
+    equil: [[0,0,'center']],
+    params: []
+  },
+  {
+    id: 'vanderpol',
+    name: 'Van der Pol (μ)',
+    formula: 'ẋ = y\nẏ = μ(1−x²)y − x',
+    note: 'μ > 0: origin unstable, stable limit cycle. μ < 0: origin stable spiral, no limit cycle. μ = 0: center.',
+    domain: 4,
+    f: (x,y,p) => [y, p.mu*(1-x*x)*y - x],
+    equil: (p) => {
+      const type = Math.abs(p.mu) < 1e-9 ? 'center'
+                 : p.mu < 0 ? (Math.abs(p.mu) < 2 ? 'stable_focus'   : 'stable_node')
+                             : (Math.abs(p.mu) < 2 ? 'unstable_focus' : 'unstable_node');
+      return [[0, 0, type]];
+    },
+    params: [{id:'mu', label:'μ', min:-2, max:2, step:0.1, default:1}]
+  },
+  {
+    id: 'pendulum',
+    name: 'Damped Pendulum (c)',
+    formula: 'ẋ = y\nẏ = −sin(x) − c·y',
+    note: 'For c > 0: stable foci at x=2kπ, saddles at x=(2k+1)π.',
+    domain: 5,
+    f: (x,y,p) => [y, -Math.sin(x) - p.c*y],
+    equil: (p) => {
+      // Eigenvalues at origin: (−c ± √(c²−4))/2; c<2 → focus, c>2 → node, c=0 → center
+      const oType = Math.abs(p.c) < 1e-9 ? 'center'
+                  : p.c < 2 ? 'stable_focus' : 'stable_node';
+      return [[0,0,oType],[Math.PI,0,'saddle'],[-Math.PI,0,'saddle']];
+    },
+    params: [{id:'c', label:'c', min:0, max:2, step:0.1, default:0.5}]
+  },
+  {
+    id: 'duffing',
+    name: 'Duffing Double-Well (c)',
+    formula: 'ẋ = y\nẏ = x − x³ − c·y',
+    note: 'Stable equilibria at (±1,0), saddle at (0,0). Damped double-well.',
+    domain: 3,
+    f: (x,y,p) => [y, x-x*x*x-p.c*y],
+    equil: (p) => {
+      // At (±1,0): eigenvalues (−c ± √(c²−8))/2; c<2√2 → focus, c>2√2 → node
+      const wType = p.c < 2*Math.SQRT2 ? 'stable_focus' : 'stable_node';
+      return [[0,0,'saddle'],[1,0,wType],[-1,0,wType]];
+    },
+    params: [{id:'c', label:'c', min:0, max:2, step:0.1, default:0.5}]
+  }
+];
+
+// Helper: equil can be a static array or a function of params
+function getEquil(sys) {
+  return typeof sys.equil === 'function' ? sys.equil(params) : sys.equil;
+}
+
+// Classify an equilibrium type into broad stability class
+const STABLE_TYPES   = new Set(['stable','stable_focus','stable_node','center']);
+const UNSTABLE_TYPES = new Set(['unstable','unstable_focus','unstable_node','saddle']);
+function isStableType(t)   { return STABLE_TYPES.has(t); }
+function isUnstableType(t) { return UNSTABLE_TYPES.has(t) && t !== 'center'; }
+
+// Human-readable label for an equilibrium type
+function equilLabel(t) {
+  return { stable:'stable', stable_focus:'stable focus', stable_node:'stable node',
+           unstable:'unstable', unstable_focus:'unstable focus', unstable_node:'unstable node',
+           saddle:'saddle', center:'center' }[t] ?? t;
+}
+
+const LYAPUNOV = [
+  {
+    id: 'quad',
+    name: 'V = x² + y²',
+    formula: 'V = x² + y²\n∇V = (2x, 2y)',
+    V: (x,y) => x*x + y*y,
+    dVdx: (x,y) => 2*x,
+    dVdy: (x,y) => 2*y
+  },
+  {
+    id: 'ellip_y',
+    name: 'V = x² + 2y²',
+    formula: 'V = x² + 2y²\n∇V = (2x, 4y)',
+    V: (x,y) => x*x + 2*y*y,
+    dVdx: (x,y) => 2*x,
+    dVdy: (x,y) => 4*y
+  },
+  {
+    id: 'ellip_x',
+    name: 'V = 2x² + y²',
+    formula: 'V = 2x² + y²\n∇V = (4x, 2y)',
+    V: (x,y) => 2*x*x + y*y,
+    dVdx: (x,y) => 4*x,
+    dVdy: (x,y) => 2*y
+  },
+  {
+    id: 'cross',
+    name: 'V = x² + xy + y²',
+    formula: 'V = x² + xy + y²\n∇V = (2x+y, x+2y)',
+    V: (x,y) => x*x + x*y + y*y,
+    dVdx: (x,y) => 2*x + y,
+    dVdy: (x,y) => x + 2*y
+  },
+  {
+    id: 'quartic',
+    name: 'V = x⁴ + y⁴',
+    formula: 'V = x⁴ + y⁴\n∇V = (4x³, 4y³)',
+    V: (x,y) => x*x*x*x + y*y*y*y,
+    dVdx: (x,y) => 4*x*x*x,
+    dVdy: (x,y) => 4*y*y*y
+  },
+  {
+    id: 'pendulum_E',
+    name: 'V = (1−cos x) + ½y²',
+    formula: 'V = (1−cos x) + ½y²\n∇V = (sin x, y)',
+    V: (x,y) => (1-Math.cos(x)) + 0.5*y*y,
+    dVdx: (x,y) => Math.sin(x),
+    dVdy: (x,y) => y
+  },
+  {
+    id: 'duffing_E',
+    name: 'V = ¼(1−x²)² + ½y²',
+    formula: 'V = ¼(1−x²)² + ½y²\n∇V = (−x(1−x²), y)',
+    V: (x,y) => 0.25*(1-x*x)*(1-x*x) + 0.5*y*y,
+    dVdx: (x,y) => -x*(1-x*x),
+    dVdy: (x,y) => y
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+let sysIdx = 0, lyapIdx = 0;
+let domain = 3, numLevels = 8;
+let showColor = true, showLevels = true, showVectors = true, showEquil = true, showROA = true;
+let params = {};
+
+// ── Trajectory state ──
+let trajectories = [];
+const TRAJ_PALETTE = ['#c0392b','#2471a3','#7d3c98','#1e8449','#d35400','#148f77','#b7950b'];
+
+function rk4Step(x, y, h) {
+  const sys = SYSTEMS[sysIdx];
+  const [k1x, k1y] = sys.f(x, y, params);
+  const [k2x, k2y] = sys.f(x + h/2*k1x, y + h/2*k1y, params);
+  const [k3x, k3y] = sys.f(x + h/2*k2x, y + h/2*k2y, params);
+  const [k4x, k4y] = sys.f(x + h*k3x,   y + h*k3y,   params);
+  return [
+    x + h/6*(k1x + 2*k2x + 2*k3x + k4x),
+    y + h/6*(k1y + 2*k2y + 2*k3y + k4y)
+  ];
+}
+
+function integrateTrajectory(x0, y0) {
+  const sys = SYSTEMS[sysIdx];
+  const h = 0.025;
+  const maxSteps = 5000;
+  const STOP_R2 = 0.015 * 0.015;
+  let x = x0, y = y0;
+  const pts = [[x, y]];
+  for (let i = 0; i < maxSteps; i++) {
+    [x, y] = rk4Step(x, y, h);
+    pts.push([x, y]);
+    // Stop near any equilibrium
+    if (getEquil(sys).some(([ex, ey]) => (x-ex)**2 + (y-ey)**2 < STOP_R2)) break;
+    // Stop if diverging off screen
+    if (x*x + y*y > (domain * 5)**2) break;
+  }
+  return pts;
+}
+
+function clearTrajectories() {
+  trajectories = [];
+  scheduleRender();
+}
+
+const canvas = document.getElementById('phaseCanvas');
+const ctx = canvas.getContext('2d');
+const W = 500, H = 500;
+let dpr = 1; // device pixel ratio, updated in setupHiDPI()
+
+function setupHiDPI() {
+  dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const cw = Math.round(W * dpr);
+  const ch = Math.round(H * dpr);
+  if (canvas.width !== cw || canvas.height !== ch) {
+    canvas.width  = cw;
+    canvas.height = ch;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  COORDINATE TRANSFORMS  (always in logical 500×500 space)
+// ═══════════════════════════════════════════════════════════════════
+function wx(x) { return (x + domain) / (2*domain) * W; }
+function wy(y) { return (1 - (y + domain) / (2*domain)) * H; }
+function cxToWorld(cx) { return cx / W * 2*domain - domain; }
+function cyToWorld(cy) { return -(cy / H * 2*domain - domain); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  GRID COMPUTATION
+// ═══════════════════════════════════════════════════════════════════
+const GN = 280;
+let Vg, dvdtg, fxg, fyg;
+let cStar = Infinity;   // ROA level: {V <= cStar} is positively invariant
+let roaType = "none";  // "full"|"bounded"|"conservative"|"unstable"|"none"
+
+function computeGrids() {
+  const sys = SYSTEMS[sysIdx];
+  const lyap = LYAPUNOV[lyapIdx];
+  Vg = new Float32Array((GN+1)*(GN+1));
+  dvdtg = new Float32Array((GN+1)*(GN+1));
+  fxg = new Float32Array((GN+1)*(GN+1));
+  fyg = new Float32Array((GN+1)*(GN+1));
+
+  for (let r = 0; r <= GN; r++) {
+    for (let c = 0; c <= GN; c++) {
+      const x = -domain + c / GN * 2*domain;
+      const y = domain - r / GN * 2*domain;
+      const idx = r*(GN+1)+c;
+      const v = lyap.V(x,y);
+      const gx = lyap.dVdx(x,y);
+      const gy = lyap.dVdy(x,y);
+      const [fx, fy] = sys.f(x,y,params);
+      Vg[idx] = isFinite(v) ? v : 0;
+      dvdtg[idx] = isFinite(gx*fx + gy*fy) ? gx*fx + gy*fy : 0;
+      fxg[idx] = fx;
+      fyg[idx] = fy;
+    }
+  }
+
+  // ── Compute c* for ROA estimate ──
+  // c* = inf{ V(x) : dV/dt(x) >= 0, x != 0 }
+  // {V <= c*} is the largest sublevel set fully contained in {dV/dt < 0},
+  // which LaSalle's invariance principle certifies as a positively invariant ROA.
+  let dvMax = 0;
+  for (let i=0; i<dvdtg.length; i++) {
+    const a = Math.abs(dvdtg[i]);
+    if (a > dvMax) dvMax = a;
+  }
+  const roaEps = dvMax * 1e-4;
+
+  cStar = Infinity;
+  let anyPos = false, anyNeg = false, allZero = true;
+  const skipR2 = (domain * 0.025) * (domain * 0.025);
+  const dStep = 2 * domain / GN;
+
+  // Pass 1: classify sign across grid (using roaEps noise floor)
+  for (let r = 0; r <= GN; r++) {
+    for (let c = 0; c <= GN; c++) {
+      const x = -domain + c * dStep;
+      const y =  domain - r * dStep;
+      if (x*x + y*y < skipR2) continue;
+      const dv = dvdtg[r*(GN+1)+c];
+      if (dv >  roaEps) { anyPos = true; allZero = false; }
+      if (dv < -roaEps) { anyNeg = true; allZero = false; }
+    }
+  }
+
+  // Pass 2: find c* by linear interpolation at ACTUAL zero crossings of dV/dt.
+  // We interpolate to dv = 0 (not roaEps) so the crossing is on the exact boundary
+  // {dV/dt=0}. This ensures the V=c* contour is tangent to {dV/dt=0}, not inside it.
+  for (let r = 0; r <= GN; r++) {
+    for (let c = 0; c <= GN; c++) {
+      const x0 = -domain + c * dStep;
+      const y0 =  domain - r * dStep;
+      const idx = r*(GN+1)+c;
+      const dv0 = dvdtg[idx];
+      const v0  = Vg[idx];
+      const aPos = dv0 > 0;
+
+      // Right neighbor
+      if (c < GN) {
+        const idxR = idx + 1;
+        const dvR = dvdtg[idxR];
+        if (aPos !== (dvR > 0) && dv0 !== dvR) {   // genuine sign change
+          const t  = Math.min(1, Math.max(0, dv0 / (dv0 - dvR)));
+          const xC = x0 + t * dStep;
+          if (xC*xC + y0*y0 > skipR2) {
+            const vC = v0 + t * (Vg[idxR] - v0);
+            if (isFinite(vC) && vC > 1e-6 && vC < cStar) cStar = vC;
+          }
+        }
+      }
+
+      // Bottom neighbor (lower y)
+      if (r < GN) {
+        const idxB = idx + (GN+1);
+        const dvB = dvdtg[idxB];
+        if (aPos !== (dvB > 0) && dv0 !== dvB) {
+          const t  = Math.min(1, Math.max(0, dv0 / (dv0 - dvB)));
+          const yC = y0 - t * dStep;
+          if (x0*x0 + yC*yC > skipR2) {
+            const vC = v0 + t * (Vg[idxB] - v0);
+            if (isFinite(vC) && vC > 1e-6 && vC < cStar) cStar = vC;
+          }
+        }
+      }
+    }
+  }
+
+  // Classify the ROA situation
+  const lyapOK = lyap.V(0,0) < 1e-4;
+  if (!lyapOK) {
+    roaType = 'none';          // V not positive definite — can't certify anything
+  } else if (allZero) {
+    roaType = 'conservative';  // dV/dt = 0 everywhere — Lyapunov stable only
+  } else if (!anyPos && anyNeg) {
+    // dV/dt < 0 everywhere in the grid — but the ROA may still be bounded by
+    // saddle equilibria (e.g. damped pendulum: dV/dt=-cy²≤0, but saddles at ±π
+    // bound the basin). Check V at non-origin saddle equilibria.
+    roaType = 'full';
+    cStar = Infinity;
+    for (const [ex, ey, etype] of getEquil(sys)) {
+      if (Math.abs(ex) < 0.15 && Math.abs(ey) < 0.15) continue; // skip origin
+      if (etype === 'saddle' || etype === 'unstable') {
+        const sv = lyap.V(ex, ey);
+        if (isFinite(sv) && sv > 1e-6 && sv < cStar) cStar = sv;
+      }
+    }
+    if (isFinite(cStar)) roaType = 'bounded';
+  } else if (anyPos && anyNeg) {
+    roaType = 'bounded';       // mixed sign: finite ROA estimate exists
+  } else {
+    roaType = 'unstable';      // dV/dt >= 0 everywhere — not a Lyapunov function
+    cStar = Infinity;
+  }
+
+  // Guard: if the origin is not stable/center, an ROA cert is invalid.
+  const originEquil = getEquil(sys).find(e => Math.abs(e[0]) < 0.15 && Math.abs(e[1]) < 0.15);
+  const originType  = originEquil ? originEquil[2] : 'unknown';
+  if (roaType === 'full' || roaType === 'bounded') {
+    if (isUnstableType(originType)) {
+      roaType = 'saddle_origin';
+      cStar = Infinity;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MARCHING SQUARES (all 16 cases)
+// ═══════════════════════════════════════════════════════════════════
+// Corners: BL=bit0, BR=bit1, TR=bit2, TL=bit3 (above threshold)
+// Edges: 0=bottom, 1=right, 2=top, 3=left
+const MS_TABLE = [
+  [], [[0,3]], [[0,1]], [[1,3]],
+  [[1,2]], [[0,3],[1,2]], [[0,2]], [[2,3]],
+  [[2,3]], [[0,2]], [[0,1],[2,3]], [[1,2]],
+  [[1,3]], [[0,1]], [[0,3]], []
+];
+
+function lerp(a, b, t) { return a + t*(b-a); }
+
+// Chain disconnected marching-squares segments into continuous polylines so that
+// ctx.setLineDash() flows properly across the whole contour (not resetting per segment).
+function chainSegments(segs) {
+  if (!segs.length) return [];
+  // Key a 2-D point to a string for O(1) lookup
+  const key = ([x, y]) => `${x.toFixed(7)},${y.toFixed(7)}`;
+
+  // Build endpoint → [{segIndex, endIndex}] adjacency
+  const adj = new Map();
+  const push = (k, v) => { if (!adj.has(k)) adj.set(k, []); adj.get(k).push(v); };
+  segs.forEach(([a, b], i) => { push(key(a), [i, 0]); push(key(b), [i, 1]); });
+
+  const used = new Set();
+  const chains = [];
+
+  segs.forEach((_, si) => {
+    if (used.has(si)) return;
+    used.add(si);
+    const pts = [segs[si][0], segs[si][1]];
+
+    // Grow forward from the "b" end
+    for (let tip = pts[pts.length - 1];;) {
+      const nbrs = (adj.get(key(tip)) || []).filter(([i]) => !used.has(i));
+      if (!nbrs.length) break;
+      const [ni, ei] = nbrs[0];
+      used.add(ni);
+      const next = ei === 0 ? segs[ni][1] : segs[ni][0];
+      pts.push(next);
+      tip = next;
+    }
+
+    // Grow backward from the "a" end
+    for (let tip = pts[0];;) {
+      const nbrs = (adj.get(key(tip)) || []).filter(([i]) => !used.has(i));
+      if (!nbrs.length) break;
+      const [ni, ei] = nbrs[0];
+      used.add(ni);
+      const next = ei === 0 ? segs[ni][1] : segs[ni][0];
+      pts.unshift(next);
+      tip = next;
+    }
+
+    chains.push(pts);
+  });
+
+  return chains;
+}
+
+function marchingSquares(grid, level) {
+  const segs = [];
+  for (let r = 0; r < GN; r++) {
+    for (let c = 0; c < GN; c++) {
+      const iBL = (r+1)*(GN+1)+c;
+      const iBR = (r+1)*(GN+1)+c+1;
+      const iTR = r*(GN+1)+c+1;
+      const iTL = r*(GN+1)+c;
+      const vBL = grid[iBL], vBR = grid[iBR];
+      const vTR = grid[iTR], vTL = grid[iTL];
+      const mask = (vBL>level?1:0)|(vBR>level?2:0)|(vTR>level?4:0)|(vTL>level?8:0);
+      const pairs = MS_TABLE[mask];
+      if (!pairs.length) continue;
+
+      // World coords of corners
+      const xL = -domain + c/GN*2*domain;
+      const xR = -domain + (c+1)/GN*2*domain;
+      const yB = domain - (r+1)/GN*2*domain;
+      const yT = domain - r/GN*2*domain;
+
+      // Edge midpoint interpolation: [x, y]
+      function edgePt(e) {
+        if (e===0) { // bottom BL->BR
+          const t = (level-vBL)/(vBR-vBL)||0;
+          return [lerp(xL,xR,t), yB];
+        } else if (e===1) { // right BR->TR
+          const t = (level-vBR)/(vTR-vBR)||0;
+          return [xR, lerp(yB,yT,t)];
+        } else if (e===2) { // top TR->TL
+          const t = (level-vTR)/(vTL-vTR)||0;
+          return [lerp(xR,xL,t), yT];
+        } else { // left TL->BL
+          const t = (level-vTL)/(vBL-vTL)||0;
+          return [xL, lerp(yT,yB,t)];
+        }
+      }
+      for (const [e1,e2] of pairs) {
+        segs.push([edgePt(e1), edgePt(e2)]);
+      }
+    }
+  }
+  return segs;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  COLOR BLEND
+// ═══════════════════════════════════════════════════════════════════
+// cream #f4f0e8 = (244,240,232)
+// stable green (46,92,64)
+// unstable orange (201,125,53)
+function blendColor(t, sign) {
+  // t in [0,1] encodes log-scaled magnitude; sign < 0 = stable, > 0 = unstable
+  // Floor of 0.30 ensures any non-zero point always shows color (fixes white-blob artifact)
+  const cr=244,cg=240,cb=232;
+  let r,g,b;
+  if (sign < 0) { r=46; g=92; b=64; }
+  else          { r=201; g=125; b=53; }
+  const s = 0.30 + 0.45 * t;   // range [0.30 … 0.75]
+  return [
+    Math.round(lerp(cr,r,s)),
+    Math.round(lerp(cg,g,s)),
+    Math.round(lerp(cb,b,s))
+  ];
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════════
+let renderScheduled = false;
+function scheduleRender() {
+  if (!renderScheduled) {
+    renderScheduled = true;
+    requestAnimationFrame(() => { renderScheduled = false; render(); });
+  }
+}
+
+function render() {
+  setupHiDPI();
+  computeGrids();
+
+  const PW = canvas.width, PH = canvas.height; // physical pixels
+
+  // Set the transform so all ctx draw calls use logical [0,W]×[0,H] coords
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Background: cream
+  ctx.fillStyle = '#f4f0e8';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── dV/dt color map ──
+  // ImageData must be in PHYSICAL pixels; we bypass the dpr transform for putImageData
+  if (showColor) {
+    if (roaType === 'conservative') {
+      // dV/dt ≡ 0 everywhere — canvas stays cream, nothing meaningful to color
+    } else {
+      let maxAbs = 1e-9;
+      for (let i=0; i<dvdtg.length; i++) {
+        const a = Math.abs(dvdtg[i]);
+        if (a > maxAbs) maxAbs = a;
+      }
+      const scale = maxAbs;
+      // Use a tiny ABSOLUTE threshold — just to suppress true float64 noise (< 1e-12).
+      // For quartic Lyapunov functions (e.g. x⁴+y⁴) dV/dt is genuinely O(r⁴) near
+      // origin and should be colored, not suppressed.
+      const threshold = 1e-12;
+      const imgData = ctx.createImageData(PW, PH);
+      const d = imgData.data;
+      for (let py=0; py<PH; py++) {
+        for (let px=0; px<PW; px++) {
+          const gc = Math.round(px/(PW-1)*GN);
+          const gr = Math.round(py/(PH-1)*GN);
+          const idx = gr*(GN+1)+gc;
+          const val = dvdtg[idx];
+          const pi = (py*PW+px)*4;
+          if (Math.abs(val) < threshold) {
+            d[pi]=244; d[pi+1]=240; d[pi+2]=232; d[pi+3]=255;
+            continue;
+          }
+          const logT = Math.log1p(Math.abs(val) / scale * 20) / Math.log1p(20);
+          const t = Math.min(logT, 1);
+          const [r,g,b] = blendColor(t, val);
+          d[pi]=r; d[pi+1]=g; d[pi+2]=b; d[pi+3]=255;
+        }
+      }
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.putImageData(imgData, 0, 0);
+      ctx.restore();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+  }
+
+  // ── V level curves ──
+  if (showLevels) {
+    // Determine V range (exclude 0, focus on positive definite region)
+    let vMin = Infinity, vMax = -Infinity;
+    for (let i=0; i<Vg.length; i++) {
+      if (Vg[i] < vMin) vMin = Vg[i];
+      if (Vg[i] > vMax) vMax = Vg[i];
+    }
+    vMin = Math.max(vMin, 0);
+    vMax = Math.min(vMax, 1e6);
+    const vRange = vMax - vMin;
+    if (vRange > 1e-10) {
+      for (let k=1; k<=numLevels; k++) {
+        const t = k/(numLevels+1);
+        const level = vMin + t*vRange;
+        const alpha = 0.35 + 0.55*(k/numLevels);
+        const segs = marchingSquares(Vg, level);
+        ctx.save();
+        ctx.strokeStyle = `rgba(28,56,40,${alpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (const [[x1,y1],[x2,y2]] of segs) {
+          ctx.moveTo(wx(x1), wy(y1));
+          ctx.lineTo(wx(x2), wy(y2));
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // dV/dt = 0 boundary
+    const segs0 = marchingSquares(dvdtg, 0);
+    if (segs0.length) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      for (const chain of chainSegments(segs0)) {
+        ctx.beginPath();
+        ctx.moveTo(wx(chain[0][0]), wy(chain[0][1]));
+        for (let i = 1; i < chain.length; i++)
+          ctx.lineTo(wx(chain[i][0]), wy(chain[i][1]));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // ── ROA estimate boundary V = c* ──
+  if (showROA && roaType === 'bounded' && isFinite(cStar)) {
+    const roaSegs = marchingSquares(Vg, cStar);
+    if (roaSegs.length) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(201,125,53,0.95)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([7, 5]);
+      // Chain segments so the dash pattern flows continuously across the whole contour
+      for (const chain of chainSegments(roaSegs)) {
+        ctx.beginPath();
+        ctx.moveTo(wx(chain[0][0]), wy(chain[0][1]));
+        for (let i = 1; i < chain.length; i++)
+          ctx.lineTo(wx(chain[i][0]), wy(chain[i][1]));
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Label c* near the topmost visible point of the contour
+      let labelX = 0, labelY = H;
+      for (const [[x1,y1]] of roaSegs) {
+        const cy = wy(y1);
+        if (cy < labelY) { labelY = cy; labelX = wx(x1); }
+      }
+      ctx.save();
+      ctx.font = "bold 11px 'IBM Plex Mono', monospace";
+      ctx.fillStyle = 'rgba(201,125,53,1)';
+      ctx.textAlign = 'center';
+      const label = `V = c* ≈ ${cStar.toFixed(3)}`;
+      const tw = ctx.measureText(label).width;
+      // small pill background for readability
+      ctx.fillStyle = 'rgba(244,240,232,0.82)';
+      ctx.beginPath();
+      ctx.roundRect(labelX - tw/2 - 4, labelY - 17, tw + 8, 16, 3);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(162,90,20,1)';
+      ctx.fillText(label, labelX, labelY - 5);
+      ctx.restore();
+    }
+  }
+
+  // If ROA covers the full displayed domain, annotate that
+  if (showROA && roaType === 'full') {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(201,125,53,0.7)';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([9, 5]);
+    ctx.strokeRect(6, 6, W-12, H-12);
+    ctx.font = "bold 11px 'IBM Plex Mono', monospace";
+    const lbl = 'ROA \u2287 displayed domain';
+    const tw2 = ctx.measureText(lbl).width;
+    ctx.fillStyle = 'rgba(244,240,232,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(W/2 - tw2/2 - 4, 10, tw2 + 8, 16, 3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(162,90,20,1)';
+    ctx.textAlign = 'center';
+    ctx.fillText(lbl, W/2, 22);
+    ctx.restore();
+  }
+
+  // ── Trajectories ──
+  for (const traj of trajectories) {
+    ctx.save();
+    ctx.strokeStyle = traj.color;
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([]);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    let penDown = false;
+    for (const [x, y] of traj.pts) {
+      const inView = x >= -domain*1.15 && x <= domain*1.15
+                  && y >= -domain*1.15 && y <= domain*1.15;
+      if (!inView) { penDown = false; continue; }
+      if (!penDown) { ctx.moveTo(wx(x), wy(y)); penDown = true; }
+      else          { ctx.lineTo(wx(x), wy(y)); }
+    }
+    ctx.stroke();
+    // Arrowhead at final visible point to show direction
+    const vispts = traj.pts.filter(([x,y]) =>
+      Math.abs(x) <= domain*1.15 && Math.abs(y) <= domain*1.15);
+    if (vispts.length >= 2) {
+      const [ax, ay] = vispts[vispts.length - 1];
+      const [bx, by] = vispts[Math.max(0, vispts.length - 4)];
+      const dx = ax-bx, dy = ay-by, len = Math.sqrt(dx*dx+dy*dy);
+      if (len > 1e-6) {
+        const nx = dx/len, ny = dy/len;  // canvas direction
+        const px2 = wx(ax), py2 = wy(ay);
+        const sz = 7;
+        const perp = [-ny, nx]; // perpendicular in canvas space (ny already flipped by wy)
+        ctx.fillStyle = traj.color;
+        ctx.beginPath();
+        ctx.moveTo(px2, py2);
+        ctx.lineTo(px2 - nx*sz + perp[0]*sz*0.45, py2 + ny*sz + perp[1]*sz*0.45);
+        ctx.lineTo(px2 - nx*sz - perp[0]*sz*0.45, py2 + ny*sz - perp[1]*sz*0.45);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    // Initial condition marker: filled ring
+    ctx.fillStyle = traj.color;
+    ctx.beginPath(); ctx.arc(wx(traj.x0), wy(traj.y0), 5, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = '#f4f0e8';
+    ctx.beginPath(); ctx.arc(wx(traj.x0), wy(traj.y0), 2.5, 0, 2*Math.PI); ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Axes ──
+  ctx.save();
+  ctx.strokeStyle = 'rgba(28,56,40,0.25)';
+  ctx.lineWidth = 1;
+  // x-axis
+  ctx.beginPath(); ctx.moveTo(0,wy(0)); ctx.lineTo(W,wy(0)); ctx.stroke();
+  // y-axis
+  ctx.beginPath(); ctx.moveTo(wx(0),0); ctx.lineTo(wx(0),H); ctx.stroke();
+
+  // Tick labels
+  ctx.fillStyle = 'rgba(28,56,40,0.5)';
+  ctx.font = "10px 'IBM Plex Mono', monospace";
+  ctx.textAlign = 'center';
+  const step = domain <= 2 ? 1 : domain <= 4 ? 1 : 2;
+  for (let v = -Math.floor(domain); v <= Math.floor(domain); v += step) {
+    if (v === 0) continue;
+    ctx.fillText(v, wx(v), wy(0)+12);
+    ctx.textAlign = 'right';
+    ctx.fillText(v, wx(0)-4, wy(v)+3.5);
+    ctx.textAlign = 'center';
+  }
+  ctx.restore();
+
+  // ── Vector field ──
+  if (showVectors) {
+    const VN = 18;
+    const sys = SYSTEMS[sysIdx];
+    const AL = Math.min(W/(VN*1.5), 11);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(20,40,28,0.55)';
+    ctx.fillStyle = 'rgba(20,40,28,0.55)';
+    ctx.lineWidth = 0.9;
+    for (let i=0; i<=VN; i++) {
+      for (let j=0; j<=VN; j++) {
+        const wx_ = i/VN*W;
+        const wy_ = j/VN*H;
+        const x = cxToWorld(wx_);
+        const y = cyToWorld(wy_);
+        let [fx, fy] = sys.f(x,y,params);
+        const mag = Math.sqrt(fx*fx+fy*fy);
+        if (mag < 1e-10) continue;
+        // canvas direction: nx=fx, ny=-fy (y flipped)
+        const nx = fx/mag, ny = -fy/mag;
+        const bx = wx_ - nx*AL*0.4;
+        const by = wy_ - ny*AL*0.4;
+        const tx = wx_ + nx*AL*0.6;
+        const ty = wy_ + ny*AL*0.6;
+        // line
+        ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(tx,ty); ctx.stroke();
+        // arrowhead
+        const pw = ny, ph = -nx; // perpendicular
+        const sz = AL*0.3;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx - nx*sz + pw*sz*0.5, ty - ny*sz + ph*sz*0.5);
+        ctx.lineTo(tx - nx*sz - pw*sz*0.5, ty - ny*sz - ph*sz*0.5);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // ── Equilibria ──
+  if (showEquil) {
+    const sys = SYSTEMS[sysIdx];
+    for (const [ex,ey,type] of getEquil(sys)) {
+      if (Math.abs(ex) > domain || Math.abs(ey) > domain) continue;
+      const px = wx(ex), py = wy(ey);
+      ctx.save();
+      if (type === 'stable' || type === 'stable_focus' || type === 'stable_node') {
+        ctx.fillStyle = '#1c3828';
+        ctx.beginPath(); ctx.arc(px,py,5,0,2*Math.PI); ctx.fill();
+        ctx.strokeStyle = '#f4f0e8'; ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else if (type === 'unstable_focus' || type === 'unstable_node' || type === 'unstable') {
+        // ⊗ — open circle with × inside
+        ctx.strokeStyle = '#a02828'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(px, py, 5, 0, 2*Math.PI); ctx.stroke();
+        const s = 3;
+        ctx.beginPath();
+        ctx.moveTo(px-s, py-s); ctx.lineTo(px+s, py+s);
+        ctx.moveTo(px+s, py-s); ctx.lineTo(px-s, py+s);
+        ctx.stroke();
+      } else if (type === 'saddle') {
+        ctx.strokeStyle = '#c97d35'; ctx.lineWidth = 2;
+        const s = 5;
+        ctx.beginPath();
+        ctx.moveTo(px-s,py-s); ctx.lineTo(px+s,py+s);
+        ctx.moveTo(px+s,py-s); ctx.lineTo(px-s,py+s);
+        ctx.stroke();
+      } else { // center
+        ctx.strokeStyle = '#1c3828'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(px,py,5,0,2*Math.PI); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // Assessment
+  updateAssessment();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ASSESSMENT
+// ═══════════════════════════════════════════════════════════════════
+function updateAssessment() {
+  // Count grid points
+  let negCount=0, posCount=0, zeroCount=0, total=0;
+  let dvdtMax = 0;
+  for (let i=0; i<dvdtg.length; i++) {
+    const a = Math.abs(dvdtg[i]);
+    if (a > dvdtMax) dvdtMax = a;
+  }
+  const countEps = dvdtMax * 1e-4; // consistent with color-map threshold
+  for (let i=0; i<dvdtg.length; i++) {
+    const v = dvdtg[i];
+    total++;
+    if (v < -countEps) negCount++;
+    else if (v > countEps) posCount++;
+    else zeroCount++;
+  }
+  const pctNeg = (negCount/total*100).toFixed(1);
+  const pctPos = (posCount/total*100).toFixed(1);
+
+  // Check if V is "positive definite"-ish (min near 0 at origin)
+  const lyap = LYAPUNOV[lyapIdx];
+  const vAtOrigin = lyap.V(0,0);
+  const vPos = vAtOrigin < 1e-4;
+
+  const badges = document.getElementById('assessBadges');
+  const text = document.getElementById('assessText');
+  badges.innerHTML = '';
+
+  function mkBadge(cls, icon, label) {
+    const b = document.createElement('div');
+    b.className = `badge ${cls}`;
+    b.innerHTML = (icon ? `<span class="badge-icon">${icon}</span>` : '') + label;
+    badges.appendChild(b);
+  }
+
+  // PD badge
+  if (vPos) {
+    mkBadge('ok', '✓', 'V(0)=0');
+  } else {
+    mkBadge('warn', '~', `V(0)=${vAtOrigin.toFixed(3)}`);
+  }
+
+  // Classify: is dV/dt essentially zero everywhere?
+  // "essentially zero" = > 99% of points are in the zero bucket
+  const fracZero = zeroCount / total;
+  const isConservative = fracZero > 0.98;
+
+  // dV/dt sign badge
+  if (isConservative) {
+    mkBadge('info', '≡', 'dV/dt = 0 everywhere');
+  } else if (posCount === 0) {
+    mkBadge('ok', '✓', 'dV/dt ≤ 0 everywhere');
+  } else if (negCount === 0) {
+    mkBadge('bad', '✗', 'dV/dt ≥ 0 everywhere');
+  } else {
+    mkBadge('ok',   '', `dV/dt<0: ${pctNeg}%`);
+    mkBadge('warn', '', `dV/dt>0: ${pctPos}%`);
+  }
+
+  // Conclusion — driven by roaType computed during grid evaluation
+  let msg = '';
+
+  // Show origin type badge for stable cases
+  const sys2 = SYSTEMS[sysIdx];
+  const originEquilA = getEquil(sys2).find(e => Math.abs(e[0]) < 0.15 && Math.abs(e[1]) < 0.15);
+  const originTypeA  = originEquilA ? originEquilA[2] : null;
+
+  if (roaType === 'conservative') {
+    // dV/dt = 0 identically — V is a first integral; center is Lyapunov stable only
+    mkBadge('info', '', 'Origin: center');
+    msg = 'V is a <strong>first integral</strong> (conserved quantity): dV/dt&nbsp;=&nbsp;0 everywhere, '
+        + 'so V level curves are exactly the system\'s orbits. '
+        + 'This certifies <strong>Lyapunov stability</strong> of the origin — trajectories stay close '
+        + 'to it — but <em>not asymptotic stability</em>: orbits never converge to the equilibrium. '
+        + '<strong>LaSalle\'s invariance principle</strong> cannot strengthen this conclusion: '
+        + 'the entire phase plane is one big invariant set contained in {dV/dt&nbsp;=&nbsp;0}, '
+        + 'so the principle only tells us trajectories stay in the plane — which we already knew.';
+
+  } else if (roaType === 'full') {
+    // dV/dt < 0 everywhere — strict Lyapunov, ROA ⊇ domain
+    if (originTypeA) mkBadge('ok', '✓', `Origin: ${equilLabel(originTypeA)}`);
+    mkBadge('ok', '✓', 'ROA ⊇ displayed domain');
+    msg = 'V is a <strong>strict Lyapunov function</strong>: dV/dt&nbsp;&lt;&nbsp;0 everywhere '
+        + 'except the origin. Every sublevel set {V&nbsp;≤&nbsp;c} is positively invariant '
+        + 'and trajectories converge to the origin from anywhere in the displayed domain. '
+        + '<strong>LaSalle\'s invariance principle</strong> is not needed here — strict negativity '
+        + 'of dV/dt already gives global asymptotic stability directly.';
+
+  } else if (roaType === 'bounded') {
+    // Finite ROA estimate exists
+    if (originTypeA) mkBadge('ok', '✓', `Origin: ${equilLabel(originTypeA)}`);
+    const cStr = isFinite(cStar) ? cStar.toFixed(4) : '∞';
+    mkBadge('ok', '✓', `c* ≈ ${cStr}`);
+    mkBadge('ok', '◉', 'ROA certified');
+    msg = '<strong>LaSalle\'s invariance principle</strong> gives a certified region of attraction (ROA). '
+        + 'The key steps: '
+        + '(1) find c*&nbsp;=&nbsp;' + cStr + ', the smallest value of V on the boundary {dV/dt&nbsp;=&nbsp;0} '
+        + '(shown as a white dashed curve); '
+        + '(2) the sublevel set Ω&nbsp;=&nbsp;{V&nbsp;≤&nbsp;c*} is positively invariant because '
+        + 'dV/dt&nbsp;&lt;&nbsp;0 points inward everywhere on ∂Ω; '
+        + '(3) by LaSalle, every trajectory in Ω converges to the largest invariant set '
+        + 'inside {dV/dt&nbsp;=&nbsp;0}∩Ω — if that set is just {0}, the origin is asymptotically stable '
+        + 'for all initial conditions inside the <strong>orange dashed boundary</strong> (V&nbsp;=&nbsp;c*). '
+        + 'Expanding the domain or trying a different V may reveal a larger ROA.';
+
+  } else if (roaType === 'saddle_origin') {
+    const sys = SYSTEMS[sysIdx];
+    const originEquil2 = getEquil(sys).find(e => Math.abs(e[0]) < 0.15 && Math.abs(e[1]) < 0.15);
+    const oType = originEquil2 ? originEquil2[2] : 'unstable';
+    const oLabel = equilLabel(oType);
+    mkBadge('bad', '✗', `Origin: ${oLabel}`);
+    const stableEquil = getEquil(sys).filter(e => isStableType(e[2]) && e[2] !== 'center')
+                          .map(e=>`(${e[0]},${e[1]})`).join(', ');
+    msg = `The origin is a <strong>${oLabel}</strong> — no Lyapunov function can certify it stable. `
+        + 'Even though dV/dt&nbsp;&lt;&nbsp;0 in some neighborhood of the origin, '
+        + 'there exist trajectories that escape that neighborhood. '
+        + (stableEquil
+          ? 'The system does have stable equilibria at ' + stableEquil + '. '
+            + 'Try a Lyapunov candidate centered on one of those points — '
+            + 'e.g. the Duffing energy V&nbsp;=&nbsp;¼(1−x²)²&nbsp;+&nbsp;½y² — '
+            + 'and LaSalle\'s principle will give a meaningful ROA around each.'
+          : 'Try adjusting the system parameter or selecting a different system.');
+
+  } else if (roaType === 'unstable') {
+    if (originTypeA) mkBadge('bad', '✗', `Origin: ${equilLabel(originTypeA)}`);
+    msg = 'dV/dt&nbsp;≥&nbsp;0 throughout the domain — V grows (or stays constant) along trajectories. '
+        + 'This candidate cannot certify stability. Try a different V, or check whether '
+        + 'the equilibrium is actually unstable for this system.';
+
+  } else {
+    // roaType === 'none': V not positive definite
+    msg = 'V(0)&nbsp;≠&nbsp;0; V is not positive definite at the origin and cannot serve as a '
+        + 'Lyapunov function. Try a different candidate.';
+  }
+
+  mkBadge('info', 'ℹ', SYSTEMS[sysIdx].name);
+  text.innerHTML = msg;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  HOVER
+// ═══════════════════════════════════════════════════════════════════
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  const px = (e.clientX - rect.left) * scaleX;
+  const py = (e.clientY - rect.top) * scaleY;
+  const x = cxToWorld(px);
+  const y = cyToWorld(py);
+
+  const lyap = LYAPUNOV[lyapIdx];
+  const sys = SYSTEMS[sysIdx];
+  const Vval = lyap.V(x,y);
+  const gx = lyap.dVdx(x,y);
+  const gy = lyap.dVdy(x,y);
+  const [fx, fy] = sys.f(x, y, params);
+  const dvdt = gx*fx + gy*fy;
+  const fmag = Math.sqrt(fx*fx+fy*fy);
+
+  const fmt = v => isFinite(v) ? v.toFixed(4) : 'n/a';
+  document.getElementById('hov-x').textContent = fmt(x);
+  document.getElementById('hov-y').textContent = fmt(y);
+  document.getElementById('hov-V').textContent = fmt(Vval);
+  const dvel = document.getElementById('hov-dV');
+  dvel.textContent = fmt(dvdt);
+  dvel.className = 'info-cell-val' + (dvdt < -1e-9 ? ' neg' : dvdt > 1e-9 ? ' pos' : '');
+  document.getElementById('hov-f').textContent = fmt(fmag);
+});
+
+canvas.addEventListener('mouseleave', () => {
+  ['hov-x','hov-y','hov-V','hov-dV','hov-f'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = '—';
+    el.className = 'info-cell-val';
+  });
+});
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const px = (e.clientX - rect.left) * W / rect.width;
+  const py = (e.clientY - rect.top)  * H / rect.height;
+  const x0 = cxToWorld(px);
+  const y0 = cyToWorld(py);
+  const color = TRAJ_PALETTE[trajectories.length % TRAJ_PALETTE.length];
+  const pts = integrateTrajectory(x0, y0);
+  trajectories.push({ pts, x0, y0, color });
+  scheduleRender();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  UI INIT
+// ═══════════════════════════════════════════════════════════════════
+function populateSelects() {
+  const ss = document.getElementById('sysSelect');
+  SYSTEMS.forEach((s,i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = s.name;
+    ss.appendChild(o);
+  });
+  const ls = document.getElementById('lyapSelect');
+  LYAPUNOV.forEach((l,i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = l.name;
+    ls.appendChild(o);
+  });
+}
+
+function updateSysUI() {
+  const sys = SYSTEMS[sysIdx];
+  document.getElementById('sysFormula').textContent = sys.formula;
+  document.getElementById('sysNote').textContent = sys.note;
+  document.getElementById('domainSlider').value = sys.domain;
+  domain = sys.domain;
+  document.getElementById('domainVal').textContent = `±${domain}`;
+
+  // Params
+  params = {};
+  const sec = document.getElementById('paramSection');
+  const rows = document.getElementById('paramRows');
+  rows.innerHTML = '';
+  if (sys.params.length) {
+    sec.style.display = '';
+    sys.params.forEach(p => {
+      params[p.id] = p.default;
+      const div = document.createElement('div');
+      div.className = 'param-row';
+      div.innerHTML = `
+        <div class="range-row">
+          <span class="param-label">${p.label} = <span id="pval-${p.id}">${p.default}</span></span>
+        </div>
+        <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.default}" id="pslider-${p.id}">
+      `;
+      rows.appendChild(div);
+      div.querySelector(`#pslider-${p.id}`).addEventListener('input', ev => {
+        params[p.id] = parseFloat(ev.target.value);
+        document.getElementById(`pval-${p.id}`).textContent = params[p.id].toFixed(1);
+        trajectories = [];
+        scheduleRender();
+      });
+    });
+  } else {
+    sec.style.display = 'none';
+  }
+}
+
+function updateLyapUI() {
+  const l = LYAPUNOV[lyapIdx];
+  document.getElementById('lyapFormula').textContent = l.formula;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EVENTS
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('sysSelect').addEventListener('change', e => {
+  sysIdx = +e.target.value;
+  clearTrajectories();
+  updateSysUI();
+  scheduleRender();
+});
+
+document.getElementById('lyapSelect').addEventListener('change', e => {
+  lyapIdx = +e.target.value;
+  clearTrajectories();
+  updateLyapUI();
+  scheduleRender();
+});
+
+document.getElementById('domainSlider').addEventListener('input', e => {
+  domain = parseFloat(e.target.value);
+  document.getElementById('domainVal').textContent = `±${domain}`;
+  scheduleRender();
+});
+
+document.getElementById('levelsSlider').addEventListener('input', e => {
+  numLevels = parseInt(e.target.value);
+  document.getElementById('levelsVal').textContent = numLevels;
+  scheduleRender();
+});
+
+document.getElementById('togColor').addEventListener('change', e => { showColor=e.target.checked; scheduleRender(); });
+document.getElementById('togLevels').addEventListener('change', e => { showLevels=e.target.checked; scheduleRender(); });
+document.getElementById('togVectors').addEventListener('change', e => { showVectors=e.target.checked; scheduleRender(); });
+document.getElementById('togEquil').addEventListener('change', e => { showEquil=e.target.checked; scheduleRender(); });
+document.getElementById('togROA').addEventListener('change', e => { showROA=e.target.checked; scheduleRender(); });
+document.getElementById('clearTrajBtn').addEventListener('click', clearTrajectories);
+
+// ═══════════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════════
+setupHiDPI();
+populateSelects();
+updateSysUI();
+updateLyapUI();
+scheduleRender();
+
+// Re-render if window moves to a screen with different DPR
+window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      .addEventListener('change', () => scheduleRender());
+window.addEventListener('resize', () => scheduleRender());
+</script>
+</body>
+</html>
