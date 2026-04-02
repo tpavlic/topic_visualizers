@@ -837,6 +837,7 @@ const GN = 280;
 let Vg, dvdtg, fxg, fyg;
 let cStar = Infinity;   // ROA level: {V <= cStar} is positively invariant
 let roaType = "none";  // "full"|"bounded"|"conservative"|"unstable"|"none"
+let cStarSource = ""; // "saddle" | "signchange" — how c* was computed
 
 function computeGrids() {
   const sys = SYSTEMS[sysIdx];
@@ -935,28 +936,31 @@ function computeGrids() {
   // Classify the ROA situation
   const lyapOK = lyap.V(0,0) < 1e-4;
   if (!lyapOK) {
-    roaType = 'none';          // V not positive definite — can't certify anything
+    roaType = 'none';
+    cStarSource = '';
   } else if (allZero) {
-    roaType = 'conservative';  // dV/dt = 0 everywhere — Lyapunov stable only
+    roaType = 'conservative';
+    cStarSource = '';
   } else if (!anyPos && anyNeg) {
-    // dV/dt < 0 everywhere in the grid — but the ROA may still be bounded by
-    // saddle equilibria (e.g. damped pendulum: dV/dt=-cy²≤0, but saddles at ±π
-    // bound the basin). Check V at non-origin saddle equilibria.
+    // dV/dt < 0 everywhere — ROA may still be bounded by saddle equilibria
     roaType = 'full';
     cStar = Infinity;
+    cStarSource = '';
     for (const [ex, ey, etype] of getEquil(sys)) {
-      if (Math.abs(ex) < 0.15 && Math.abs(ey) < 0.15) continue; // skip origin
+      if (Math.abs(ex) < 0.15 && Math.abs(ey) < 0.15) continue;
       if (etype === 'saddle' || etype === 'unstable') {
         const sv = lyap.V(ex, ey);
         if (isFinite(sv) && sv > 1e-6 && sv < cStar) cStar = sv;
       }
     }
-    if (isFinite(cStar)) roaType = 'bounded';
+    if (isFinite(cStar)) { roaType = 'bounded'; cStarSource = 'saddle'; }
   } else if (anyPos && anyNeg) {
-    roaType = 'bounded';       // mixed sign: finite ROA estimate exists
+    roaType = 'bounded';
+    cStarSource = 'signchange';
   } else {
-    roaType = 'unstable';      // dV/dt >= 0 everywhere — not a Lyapunov function
+    roaType = 'unstable';
     cStar = Infinity;
+    cStarSource = '';
   }
 
   // Guard: if the origin is not stable/center, an ROA cert is invalid.
@@ -1520,21 +1524,43 @@ function updateAssessment() {
         + 'of dV/dt already gives global asymptotic stability directly.';
 
   } else if (roaType === 'bounded') {
-    // Finite ROA estimate exists
     if (originTypeA) mkBadge('ok', '✓', `Origin: ${equilLabel(originTypeA)}`);
     const cStr = isFinite(cStar) ? cStar.toFixed(4) : '∞';
     mkBadge('ok', '✓', `c* ≈ ${cStr}`);
     mkBadge('ok', '◉', 'ROA certified');
-    msg = '<strong>LaSalle\'s invariance principle</strong> gives a certified region of attraction (ROA). '
-        + 'The key steps: '
-        + '(1) find c*&nbsp;=&nbsp;' + cStr + ', the smallest value of V on the boundary {dV/dt&nbsp;=&nbsp;0} '
-        + '(shown as a white dashed curve); '
-        + '(2) the sublevel set Ω&nbsp;=&nbsp;{V&nbsp;≤&nbsp;c*} is positively invariant because '
-        + 'dV/dt&nbsp;&lt;&nbsp;0 points inward everywhere on ∂Ω; '
-        + '(3) by LaSalle, every trajectory in Ω converges to the largest invariant set '
-        + 'inside {dV/dt&nbsp;=&nbsp;0}∩Ω — if that set is just {0}, the origin is asymptotically stable '
-        + 'for all initial conditions inside the <strong>orange dashed boundary</strong> (V&nbsp;=&nbsp;c*). '
-        + 'Expanding the domain or trying a different V may reveal a larger ROA.';
+
+    if (cStarSource === 'saddle') {
+      // dV/dt ≤ 0 everywhere; c* set by saddle equilibria, not a sign-change boundary
+      const saddlePts = getEquil(SYSTEMS[sysIdx])
+        .filter(e => (e[2]==='saddle'||e[2]==='unstable') && !(Math.abs(e[0])<0.15&&Math.abs(e[1])<0.15))
+        .map(e => `(${Number(e[0].toFixed(3))}, ${Number(e[1].toFixed(3))})`).join(', ');
+      msg = '<strong>LaSalle\'s invariance principle</strong> gives a certified region of attraction (ROA). '
+          + 'Here dV/dt&nbsp;≤&nbsp;0 <em>everywhere</em> — V never increases along trajectories — '
+          + 'so the question is not where dV/dt changes sign, but where V equals the energy of the nearest saddle point. '
+          + (saddlePts ? `The saddle equilibri${saddlePts.includes(',') ? 'a' : 'um'} at ${saddlePts} `
+                       : 'The nearest saddle ')
+          + `ha${saddlePts.includes(',') ? 've' : 's'} V&nbsp;=&nbsp;c*&nbsp;=&nbsp;${cStr}. `
+          + 'The key steps: '
+          + '(1) Ω&nbsp;=&nbsp;{V&nbsp;≤&nbsp;c*} is a compact set whose boundary does not contain any saddle — '
+          + 'trajectories starting in Ω cannot escape because V is non-increasing and cannot reach c* from below; '
+          + '(2) the set where dV/dt&nbsp;=&nbsp;0 (the white curve) is typically a line or axis, not an isolated point — '
+          + 'LaSalle requires finding the largest <em>invariant</em> subset of {dV/dt&nbsp;=&nbsp;0}∩Ω; '
+          + '(3) on that set ẋ and ẏ must both stay on it, which forces the trajectory to an equilibrium — '
+          + 'and the only equilibrium strictly inside Ω is the origin. '
+          + 'Therefore every trajectory starting inside the <strong>orange dashed boundary</strong> (V&nbsp;=&nbsp;c*) '
+          + 'converges asymptotically to the origin.';
+    } else {
+      // Standard mixed-sign case: c* from edge interpolation
+      msg = '<strong>LaSalle\'s invariance principle</strong> gives a certified region of attraction (ROA). '
+          + 'The key steps: '
+          + `(1) find c*&nbsp;=&nbsp;${cStr}, the smallest value of V on the white curve {dV/dt&nbsp;=&nbsp;0} where dV/dt changes sign; `
+          + '(2) the sublevel set Ω&nbsp;=&nbsp;{V&nbsp;≤&nbsp;c*} is positively invariant because '
+          + 'dV/dt&nbsp;&lt;&nbsp;0 points inward everywhere on ∂Ω; '
+          + '(3) by LaSalle, every trajectory in Ω converges to the largest invariant set '
+          + 'inside {dV/dt&nbsp;=&nbsp;0}∩Ω — if that set is just {0}, the origin is asymptotically stable '
+          + 'for all initial conditions inside the <strong>orange dashed boundary</strong> (V&nbsp;=&nbsp;c*). '
+          + 'Expanding the domain or trying a different V may reveal a larger ROA.';
+    }
 
   } else if (roaType === 'saddle_origin') {
     const sys = SYSTEMS[sysIdx];
