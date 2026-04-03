@@ -597,10 +597,12 @@
     <button class="tab-btn active" data-tab="explorer">Explorer</button>
     <button class="tab-btn" data-tab="systems">Systems Reference</button>
     <button class="tab-btn" data-tab="candidates">Lyapunov Reference</button>
+    <button class="tab-btn" data-tab="terms">Key Terms</button>
     <select class="tab-select" id="tabSelect">
       <option value="explorer">Explorer</option>
       <option value="systems">Systems Reference</option>
       <option value="candidates">Lyapunov Reference</option>
+      <option value="terms">Key Terms</option>
     </select>
   </div>
 
@@ -768,9 +770,9 @@
       <span class="ref-entry-name">Stable Spiral (Stable Focus)</span>
       <span class="ref-entry-tag stable">asymptotically stable</span>
     </div>
-    <div class="ref-formula">ẋ = −x + y,  ẏ = −x − y
-Eigenvalues: −1 ± i   (complex, Re &lt; 0)</div>
+    <div class="ref-formula">ẋ = −x + y,  ẏ = −x − y</div>
     <div class="ref-body">
+      <p><strong>Eigenvalues:</strong> −1 ± i (complex, Re &lt; 0)</p>
       <p>Trajectories spiral inward toward the origin. The rate of convergence is set by Re(λ) = −1; the frequency of rotation is Im(λ) = 1.</p>
       <p><strong>Lyapunov:</strong> Any positive definite quadratic V = x&#7488;Px works. The isotropic V = x²+y² gives dV/dt = −2(x²+y²) &lt; 0 everywhere: a strict global Lyapunov function.</p>
       <p><strong>Key insight:</strong> The symmetric part of A is ½(A+A&#7488;) = −I, which is negative definite — a sufficient condition for V=x&#7488;x to be a Lyapunov function with no calculation required.</p>
@@ -782,9 +784,9 @@ Eigenvalues: −1 ± i   (complex, Re &lt; 0)</div>
       <span class="ref-entry-name">Stable Node</span>
       <span class="ref-entry-tag stable">asymptotically stable</span>
     </div>
-    <div class="ref-formula">ẋ = −2x,  ẏ = −y
-Eigenvalues: −2, −1   (real, distinct, negative)</div>
+    <div class="ref-formula">ẋ = −2x,  ẏ = −y</div>
     <div class="ref-body">
+      <p><strong>Eigenvalues:</strong> −2, −1 (real, distinct, negative)</p>
       <p>Trajectories approach the origin tangent to the slow eigenvector (y-axis, eigenvalue −1). Unlike a focus, there is no rotation.</p>
       <p><strong>Lyapunov:</strong> V = x²+y² works but gives non-circular level curves relative to the flow. The "natural" candidate from solving A&#7488;P+PA = −I is an ellipse aligned with the eigenvectors.</p>
       <p><strong>Key insight:</strong> The cross-term candidate V = x²+bxy+y² (b ≠ 0) can give a tighter ROA estimate than the isotropic one because it better matches the geometry of the flow.</p>
@@ -796,9 +798,9 @@ Eigenvalues: −2, −1   (real, distinct, negative)</div>
       <span class="ref-entry-name">Unstable Focus</span>
       <span class="ref-entry-tag unstable">unstable</span>
     </div>
-    <div class="ref-formula">ẋ = x − y,  ẏ = x + y
-Eigenvalues: 1 ± i   (complex, Re &gt; 0)</div>
+    <div class="ref-formula">ẋ = x − y,  ẏ = x + y</div>
     <div class="ref-body">
+      <p><strong>Eigenvalues:</strong> 1 ± i (complex, Re &gt; 0)</p>
       <p>Trajectories spiral outward. The time-reverse of the stable spiral.</p>
       <p><strong>Lyapunov:</strong> No Lyapunov function can certify stability. dV/dt will be positive somewhere near the origin for any positive definite V.</p>
     </div>
@@ -809,9 +811,9 @@ Eigenvalues: 1 ± i   (complex, Re &gt; 0)</div>
       <span class="ref-entry-name">Saddle Point</span>
       <span class="ref-entry-tag unstable">unstable</span>
     </div>
-    <div class="ref-formula">ẋ = x,  ẏ = −2y
-Eigenvalues: +1, −2   (real, opposite sign)</div>
+    <div class="ref-formula">ẋ = x,  ẏ = −2y</div>
     <div class="ref-body">
+      <p><strong>Eigenvalues:</strong> +1, −2 (real, opposite sign)</p>
       <p>The y-axis is the stable manifold; the x-axis is the unstable manifold. Trajectories on the stable manifold converge to the origin; all others eventually escape.</p>
       <p><strong>Lyapunov:</strong> Not certifiable. Even though some trajectories approach the origin, the unstable manifold always provides an escape route.</p>
     </div>
@@ -824,10 +826,9 @@ Eigenvalues: +1, −2   (real, opposite sign)</div>
       <span class="ref-entry-name">Cubic Drain</span>
       <span class="ref-entry-tag stable">asymptotically stable</span>
     </div>
-    <div class="ref-formula">ẋ = −x³,  ẏ = −y³
-Jacobian at origin: zero matrix</div>
+    <div class="ref-formula">ẋ = −x³,  ẏ = −y³</div>
     <div class="ref-body">
-      <p>The Jacobian at the origin is identically zero — linearization predicts nothing. Stability must be established by nonlinear Lyapunov analysis.</p>
+      <p><strong>Jacobian at origin:</strong> zero matrix — linearization predicts nothing. Stability must be established by nonlinear Lyapunov analysis.</p>
       <p><strong>Lyapunov:</strong> V = x²+y² gives dV/dt = −2(x⁴+y⁴) &lt; 0 everywhere except the origin. The quartic candidate V = x⁴+y⁴ also works and gives dV/dt = −4(x⁶+y⁶). Convergence is slower than exponential (polynomial rate).</p>
       <p><strong>Key insight:</strong> This system illustrates why Lyapunov theory extends beyond linearization — it is the primary tool when linearization gives no information.</p>
     </div>
@@ -838,9 +839,9 @@ Jacobian at origin: zero matrix</div>
       <span class="ref-entry-name">Simple Harmonic Oscillator</span>
       <span class="ref-entry-tag conservative">Lyapunov stable (not asymptotic)</span>
     </div>
-    <div class="ref-formula">ẋ = y,  ẏ = −x
-Eigenvalues: ±i   (purely imaginary)</div>
+    <div class="ref-formula">ẋ = y,  ẏ = −x</div>
     <div class="ref-body">
+      <p><strong>Eigenvalues:</strong> ±i (purely imaginary — center)</p>
       <p>A conservative system. Trajectories are perfect circles; V = x²+y² = r² is constant along every orbit. The origin is <em>Lyapunov stable</em> (trajectories stay close) but <em>not asymptotically stable</em> (they never converge).</p>
       <p><strong>Connection to Hamiltonian mechanics:</strong> H = ½(x²+y²) = ½p² + ½q² is the total energy (T = ½p², U = ½q²). dH/dt = 0 identically — energy is exactly conserved.</p>
       <p><strong>LaSalle:</strong> Cannot strengthen the conclusion here because {dV/dt = 0} = entire phase plane. The largest invariant set is everything, not just the origin.</p>
@@ -852,9 +853,9 @@ Eigenvalues: ±i   (purely imaginary)</div>
       <span class="ref-entry-name">Van der Pol Oscillator (μ)</span>
       <span class="ref-entry-tag unstable">μ &gt; 0: unstable / μ &lt; 0: stable</span>
     </div>
-    <div class="ref-formula">ẋ = y,  ẏ = μ(1−x²)y − x
-Eigenvalues at origin: μ/2 ± i√(1−μ²/4)</div>
+    <div class="ref-formula">ẋ = y,  ẏ = μ(1−x²)y − x</div>
     <div class="ref-body">
+      <p><strong>Eigenvalues of linearization at origin:</strong> μ/2 ± i√(1−μ²/4) — stable focus for μ &lt; 0, unstable focus for μ &gt; 0, center for μ = 0.</p>
       <p>The damping term μ(1−x²)y is negative (dissipative) for |x| &lt; 1 and positive (pumping energy in) for |x| &gt; 1. This nonlinear balance creates a stable limit cycle for μ &gt; 0.</p>
       <p><strong>μ &lt; 0:</strong> Stable focus. V = x²+y² gives dV/dt = 2μ(1−x²)y², which is negative inside |x| &lt; 1. The ROA is the unit disk (c* = 1).</p>
       <p><strong>μ &gt; 0:</strong> Unstable focus; energy pumped into small oscillations. Limit cycle at r ≈ 2. No Lyapunov certificate for the origin.</p>
@@ -868,9 +869,9 @@ Eigenvalues at origin: μ/2 ± i√(1−μ²/4)</div>
       <span class="ref-entry-tag unstable">μ &gt; 0: limit cycle / μ ≤ 0: stable</span>
     </div>
     <div class="ref-formula">ẋ = μx − y − x(x²+y²)
-ẏ = x + μy − y(x²+y²)
-In polar:  ṙ = r(μ − r²),  θ̇ = 1</div>
+ẏ = x + μy − y(x²+y²)</div>
     <div class="ref-body">
+      <p><strong>In polar:</strong> ṙ = r(μ − r²), θ̇ = 1. <strong>Eigenvalues of linearization at origin:</strong> μ ± i — stable focus for μ &lt; 0, unstable for μ &gt; 0.</p>
       <p>The <em>canonical</em> form for a supercritical Hopf bifurcation. As μ increases through zero, the stable focus loses stability and a stable limit cycle is born at r = √μ.</p>
       <p><strong>Lyapunov:</strong> V = x²+y² = r² gives dV/dt = 2r²(μ−r²). For μ &lt; 0: dV/dt &lt; 0 everywhere → global stability. For μ &gt; 0: dV/dt &lt; 0 for r &lt; √μ → c* = μ exactly (the ROA is the interior of the limit cycle).</p>
       <p><strong>Key insight:</strong> This is one of the rare cases where the Lyapunov analysis gives the <em>exact</em> ROA boundary (the limit cycle itself).</p>
@@ -884,13 +885,12 @@ In polar:  ṙ = r(μ − r²),  θ̇ = 1</div>
       <span class="ref-entry-name">Damped Pendulum (c)</span>
       <span class="ref-entry-tag stable">stable foci at x = 2kπ</span>
     </div>
-    <div class="ref-formula">ẋ = y,  ẏ = −sin(x) − c·y
-Equilibria: stable at x=2kπ, saddles at x=(2k+1)π</div>
+    <div class="ref-formula">ẋ = y,  ẏ = −sin(x) − c·y</div>
     <div class="ref-body">
+      <p><strong>Equilibria:</strong> stable at x = 2kπ (eigenvalues (−c ± √(c²−4))/2), saddles at x = (2k+1)π. c &lt; 2: stable focus; c = 2: critically damped node; c &gt; 2: overdamped node.</p>
       <p>A mechanical system (unit mass, unit length pendulum) with viscous damping c. State: x = angle, y = angular velocity.</p>
       <p><strong>Hamiltonian:</strong> H = (1−cos x) + ½y² = potential energy + kinetic energy. With damping: dH/dt = −cy² ≤ 0. The cross-terms cancel exactly due to the antisymmetry of Hamilton's equations — energy dissipation is the only survivor.</p>
       <p><strong>ROA via LaSalle:</strong> c* = H(±π, 0) = 2. The level curve H = 2 is the separatrix of the undamped pendulum; the ROA of the origin is the basin inside it.</p>
-      <p><strong>c &lt; 2:</strong> stable focus; <strong>c = 2:</strong> critically damped (stable node); <strong>c &gt; 2:</strong> overdamped (stable node, no oscillations).</p>
     </div>
   </div>
 
@@ -899,12 +899,14 @@ Equilibria: stable at x=2kπ, saddles at x=(2k+1)π</div>
       <span class="ref-entry-name">Duffing Double-Well (c)</span>
       <span class="ref-entry-tag stable">stable at (±1, 0); saddle at origin</span>
     </div>
-    <div class="ref-formula">ẋ = y,  ẏ = x − x³ − c·y
-Potential: U(x) = −½x² + ¼x⁴</div>
+    <div class="ref-formula">ẋ = y,  ẏ = x − x³ − c·y</div>
     <div class="ref-body">
-      <p>A damped particle in a double-well potential with wells at x = ±1. The origin is a saddle (local potential maximum). Used in structural mechanics to model snap-through buckling.</p>
+      <p><strong>Potential:</strong> U(x) = −½x² + ¼x⁴, with wells at x = ±1 and a local maximum at x = 0.</p>
+      <p><strong>Eigenvalues of linearization at origin:</strong> (−c ± √(c²+4))/2 — always real with opposite signs, confirming a saddle for all c ≥ 0.</p>
+      <p><strong>Eigenvalues of linearization at (±1, 0):</strong> (−c ± √(c²−8))/2 — stable focus for c &lt; 2√2 ≈ 2.83, stable node for c &gt; 2√2.</p>
+      <p>A damped particle in a double-well potential. Used in structural mechanics to model snap-through buckling.</p>
       <p><strong>Hamiltonian:</strong> H = ¼(1−x²)² + ½y². Level curves of H are closed around each well for H &lt; ¼ (inside the homoclinic orbit through the saddle at origin).</p>
-      <p><strong>Multiple basins:</strong> initial conditions above and below the x-axis may converge to different wells, depending on which side of the stable/unstable manifold of the origin they start on.</p>
+      <p><strong>Multiple basins:</strong> initial conditions may converge to different wells depending on which side of the stable/unstable manifold of the origin they start on.</p>
     </div>
   </div>
 
@@ -915,11 +917,9 @@ Potential: U(x) = −½x² + ¼x⁴</div>
       <span class="ref-entry-name">Predator-Prey Undamped</span>
       <span class="ref-entry-tag conservative">conservative center</span>
     </div>
-    <div class="ref-formula">ẋ = −y − xy,  ẏ = x + xy
-(Lotka-Volterra centered at coexistence equilibrium)
-Eigenvalues at origin: ±i</div>
+    <div class="ref-formula">ẋ = −y − xy,  ẏ = x + xy</div>
     <div class="ref-body">
-      <p>Standard Lotka-Volterra prey-predator dynamics, translated so the coexistence equilibrium is at the origin (x = prey deviation, y = predator deviation from equilibrium).</p>
+      <p>Lotka-Volterra prey-predator dynamics, translated so the coexistence equilibrium is at the origin (x = prey deviation, y = predator deviation). <strong>Eigenvalues of linearization at origin:</strong> ±i — a center in the linear approximation.</p>
       <p><strong>Conserved quantity:</strong> V = (x − ln(1+x)) + (y − ln(1+y)) satisfies dV/dt = 0 identically — it is a <em>first integral</em>, playing the same role as the Hamiltonian in a mechanical system. Level curves of V are the closed orbits (population cycles).</p>
       <p><strong>Interpretation:</strong> This is a non-mechanical example of a Hamiltonian-like conserved quantity arising from ecology. The "energy" here is an information-theoretic quantity (related to Kullback-Leibler divergence from equilibrium populations).</p>
     </div>
@@ -930,10 +930,9 @@ Eigenvalues at origin: ±i</div>
       <span class="ref-entry-name">Predator-Prey Damped (c)</span>
       <span class="ref-entry-tag stable">stable focus at origin</span>
     </div>
-    <div class="ref-formula">ẋ = −y − xy − c·x,  ẏ = x + xy − c·y
-(adds proportional mortality to both populations)</div>
+    <div class="ref-formula">ẋ = −y − xy − c·x,  ẏ = x + xy − c·y</div>
     <div class="ref-body">
-      <p>Adding a mortality term −c·x, −c·y (constant per-capita death rate for both species) breaks the conservation law and drives the system toward the coexistence equilibrium.</p>
+      <p>Adds proportional mortality c (constant per-capita death rate) to both species. <strong>Eigenvalues of linearization at origin:</strong> −c ± i — stable focus for all c &gt; 0.</p>
       <p><strong>Lyapunov:</strong> The same V = (x−ln(1+x)) + (y−ln(1+y)) now gives dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0. This mirrors the mechanical case: adding dissipation to a conservative system turns a first integral into a Lyapunov function.</p>
       <p><strong>LaSalle:</strong> {dV/dt = 0} only at origin → origin is asymptotically stable. The ROA is bounded by the nearest point where V becomes undefined (x = −1 or y = −1, i.e., population extinction).</p>
     </div>
@@ -1046,9 +1045,9 @@ With damping c:  dV/dt = −cy²</div>
       <span class="ref-entry-name">V = ¼(1 − x²)² + ½y²</span>
       <span class="ref-entry-tag conservative">Duffing Hamiltonian</span>
     </div>
-    <div class="ref-formula">V = ¼(1−x²)² + ½y²,  ∇V = (−x(1−x²), y)
-Potential: U = ¼(1−x²)² — double well with minima at x = ±1</div>
+    <div class="ref-formula">V = ¼(1−x²)² + ½y²,  ∇V = (−x(1−x²), y)</div>
     <div class="ref-body">
+      <p><strong>Potential:</strong> U = ¼(1−x²)² — double well with minima at x = ±1.</p>
       <p>Total energy for the Duffing oscillator. The potential U has minima at x = ±1 (the stable equilibria) and a local maximum at x = 0 (the saddle). V = 0 at (±1, 0), not the origin — so V is not positive definite <em>at the origin</em>, but is centered on each well.</p>
       <p><strong>Note:</strong> Pairing this candidate with the Duffing system correctly certifies the ROA around each well. Pairing it with the origin-centered view reveals why no certificate exists there.</p>
     </div>
@@ -1081,6 +1080,191 @@ Potential: U = ¼(1−x²)² — double well with minima at x = ±1</div>
 
 </div><!-- .ref-panel -->
 </div><!-- #panel-candidates -->
+
+<!-- ═══ KEY TERMS PANEL ═══ -->
+<div id="panel-terms" class="tab-panel">
+<div class="ref-panel">
+  <div class="ref-intro">
+    Core vocabulary for a first course in nonlinear dynamical systems. Terms are grouped by concept; those marked with (★) have direct illustrations in the Explorer.
+  </div>
+
+  <div class="ref-group-title">Stability</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Lyapunov Stable</span><span class="ref-entry-tag conservative">neutral</span></div>
+    <div class="ref-body">
+      <p>An equilibrium x* is <strong>Lyapunov stable</strong> if trajectories that start close to x* stay close for all future time. Formally: for every ε &gt; 0 there exists δ &gt; 0 such that ‖x(0)−x*‖ &lt; δ ⟹ ‖x(t)−x*‖ &lt; ε for all t ≥ 0.</p>
+      <p>This is a <em>boundedness</em> condition — it rules out trajectories that drift away, but does not require convergence. A center (e.g. the SHO ★) is Lyapunov stable but not asymptotically stable.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Asymptotically Stable</span><span class="ref-entry-tag stable">convergent</span></div>
+    <div class="ref-body">
+      <p>An equilibrium x* is <strong>asymptotically stable</strong> if it is Lyapunov stable <em>and</em> trajectories starting sufficiently close to x* converge to x* as t → ∞. The set of initial conditions from which convergence occurs is the <strong>region of attraction</strong> (ROA).</p>
+      <p>Asymptotic stability is strictly stronger than Lyapunov stability. All the stable spirals, nodes, and foci in the Explorer ★ are asymptotically stable.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Globally Asymptotically Stable (GAS)</span><span class="ref-entry-tag stable">global</span></div>
+    <div class="ref-body">
+      <p>An equilibrium is <strong>globally asymptotically stable</strong> if it is asymptotically stable and its region of attraction is the entire state space. The Cubic Drain ★ and Stable Spiral ★ are GAS; the Damped Pendulum ★ is only locally asymptotically stable (the ROA is bounded by the separatrix).</p>
+      <p>For a GAS equilibrium, a strict Lyapunov function with dV/dt &lt; 0 everywhere certifies global convergence directly, without needing to compute the ROA boundary.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Exponentially Stable</span><span class="ref-entry-tag stable">strongest</span></div>
+    <div class="ref-body">
+      <p>An equilibrium x* is <strong>exponentially stable</strong> if ‖x(t)−x*‖ ≤ ke<sup>−αt</sup>‖x(0)−x*‖ for positive constants k, α. This is the strongest form: it specifies an <em>exponential rate</em> of convergence.</p>
+      <p>Asymptotic stability does not imply exponential stability in general — the Cubic Drain ★ is GAS but converges at a polynomial rate (not exponential) because its Jacobian at the origin is zero.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Unstable</span><span class="ref-entry-tag unstable">divergent</span></div>
+    <div class="ref-body">
+      <p>An equilibrium that is not Lyapunov stable. Trajectories starting arbitrarily close can escape to any distance. Unstable foci ★, saddle points ★, and the origin of the Duffing system ★ are all unstable.</p>
+      <p>Note the distinction between a <em>saddle</em> (some trajectories approach, some escape — along the stable/unstable manifolds) and an <em>unstable focus</em> (all nearby trajectories spiral away).</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Local vs. Global</span></div>
+    <div class="ref-body">
+      <p>Stability is <strong>local</strong> if it is guaranteed only for initial conditions within some neighborhood of the equilibrium; <strong>global</strong> if it holds from the entire state space. A Lyapunov function certifies local stability when its sublevel set is bounded; global stability when dV/dt &lt; 0 everywhere with V → ∞ as ‖x‖ → ∞ (a <em>radially unbounded</em> V).</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Phase Portrait Structure</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Equilibrium (Fixed Point)</span></div>
+    <div class="ref-body">
+      <p>A point x* where f(x*) = 0 — the system is stationary there. Linearization around x* via the <strong>Jacobian</strong> J = ∂f/∂x|<sub>x*</sub> classifies the local behavior by the eigenvalues of J.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Node, Focus, Center, Saddle</span></div>
+    <div class="ref-body">
+      <p>Classification of a 2D equilibrium by the eigenvalues λ₁, λ₂ of its Jacobian:</p>
+      <p><strong>Node:</strong> both eigenvalues real, same sign. Stable node (Re &lt; 0 ★), unstable node (Re &gt; 0). Trajectories approach/leave tangent to the slow eigenvector.</p>
+      <p><strong>Focus (Spiral):</strong> complex conjugate eigenvalues (λ = α ± βi). Stable focus (α &lt; 0 ★), unstable focus (α &gt; 0 ★). Trajectories spiral in or out.</p>
+      <p><strong>Center:</strong> purely imaginary eigenvalues (λ = ±βi). Closed orbits, Lyapunov stable only. SHO ★, undamped predator-prey ★.</p>
+      <p><strong>Saddle:</strong> real eigenvalues of opposite sign ★. Has a stable manifold (trajectories converging to it) and an unstable manifold (trajectories leaving). Always unstable.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Limit Cycle</span></div>
+    <div class="ref-body">
+      <p>An isolated closed orbit — one that nearby trajectories spiral toward (stable limit cycle) or away from (unstable). Unlike the closed orbits of a center, a limit cycle is an isolated trajectory that attracts (or repels) nearby ones.</p>
+      <p>The Van der Pol oscillator ★ (μ &gt; 0) and Hopf Normal Form ★ (μ &gt; 0) both have stable limit cycles. No quadratic Lyapunov function can certify stability of the limit cycle itself, though one can certify the ROA around the unstable origin.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Hopf Bifurcation</span></div>
+    <div class="ref-body">
+      <p>A bifurcation in which a stable equilibrium loses stability as a parameter crosses a critical value, with a limit cycle being born simultaneously. In a <strong>supercritical</strong> Hopf bifurcation the born limit cycle is stable; in a <strong>subcritical</strong> one it is unstable.</p>
+      <p>The Hopf Normal Form ★ is the canonical example: at μ = 0 the origin changes from stable focus to unstable focus, and a stable limit cycle grows from it for μ &gt; 0 with radius r = √μ.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Invariant Sets &amp; Orbit Vocabulary</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Invariant Set</span></div>
+    <div class="ref-body">
+      <p>A set S is <strong>positively invariant</strong> if every trajectory that starts in S stays in S for all t ≥ 0. It is <strong>invariant</strong> (two-sided) if this holds for t ∈ ℝ. A sublevel set {V ≤ c} where dV/dt ≤ 0 on its boundary is positively invariant — this is the key mechanism behind LaSalle's principle ★.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Stable &amp; Unstable Manifolds</span></div>
+    <div class="ref-body">
+      <p>For a saddle point x*, the <strong>stable manifold</strong> W<sup>s</sup> is the set of all initial conditions whose trajectories converge to x* as t → +∞; the <strong>unstable manifold</strong> W<sup>u</sup> is the set converging to x* as t → −∞ (i.e. diverging forward in time).</p>
+      <p>For a linear saddle, W<sup>s</sup> and W<sup>u</sup> are the eigenspaces of the negative and positive eigenvalues respectively. Nonlinearly, they are smooth curves tangent to those eigenspaces at x*.</p>
+      <p>The stable manifold of the saddle at (±π, 0) in the Damped Pendulum ★ forms the separatrix bounding the ROA of the origin.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Separatrix</span></div>
+    <div class="ref-body">
+      <p>A curve (or surface) in phase space that divides regions of qualitatively different long-term behavior. In 2D, a separatrix is typically the stable manifold of a saddle point.</p>
+      <p>In the Damped Pendulum ★, the separatrix separates initial conditions that converge to the origin (pendulum coming to rest upright) from those that wrap around to adjacent equilibria (pendulum going over the top). The Lyapunov analysis correctly identifies V = 2 as the energy level of this separatrix.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Homoclinic &amp; Heteroclinic Orbits</span></div>
+    <div class="ref-body">
+      <p>A <strong>homoclinic orbit</strong> is a trajectory that connects a saddle point to itself — it lies in both the stable and unstable manifold of the same equilibrium. It forms a loop enclosing one basin of attraction.</p>
+      <p>A <strong>heteroclinic orbit</strong> (or <em>heteroclinic connection</em>) connects two different saddle points — it lies in the unstable manifold of one and the stable manifold of the other.</p>
+      <p>The Duffing Double-Well ★ has a pair of homoclinic orbits through the origin (the figure-eight shaped separatrix visible at c = 0). The undamped pendulum ★ has homoclinic orbits through each saddle at x = ±π.</p>
+      <p>With damping (c &gt; 0), these become the separatrices bounding the ROA of each well: trajectories starting inside converge to the well, those outside escape to another equilibrium.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Lyapunov Theory</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Positive Definite / Semi-Definite</span></div>
+    <div class="ref-body">
+      <p>A function V : ℝⁿ → ℝ is <strong>positive definite</strong> (PD) on a neighborhood of the origin if V(0) = 0 and V(x) &gt; 0 for all x ≠ 0 in that neighborhood. It is <strong>positive semi-definite</strong> (PSD) if V(x) ≥ 0 (allowing V to be zero away from the origin).</p>
+      <p>For a Lyapunov function, PD is required for V. The condition on dV/dt allows PSD (dV/dt ≤ 0) — this is the setting for LaSalle's principle. Strict negativity (dV/dt &lt; 0 except at origin) directly gives asymptotic stability without LaSalle.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Lyapunov Function</span></div>
+    <div class="ref-body">
+      <p>A continuously differentiable function V : ℝⁿ → ℝ that is positive definite and has dV/dt = ∇V · f(x) ≤ 0 along trajectories. If such a V exists, x* = 0 is at minimum Lyapunov stable.</p>
+      <p><strong>Lyapunov's theorem:</strong> if V is PD and dV/dt is negative definite (ND), then x* = 0 is asymptotically stable. If additionally V is radially unbounded (V → ∞ as ‖x‖ → ∞), then x* = 0 is GAS.</p>
+      <p>There is no systematic method for finding V — construction remains an art, though sum-of-squares (SOS) programming and neural-network methods automate the search for certain problem classes.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">First Integral (Conserved Quantity)</span></div>
+    <div class="ref-body">
+      <p>A function V with dV/dt = 0 identically along all trajectories. Level curves of V are exactly the system's orbits. A first integral proves Lyapunov stability but cannot prove asymptotic stability — the largest invariant set in {dV/dt = 0} is the entire phase space.</p>
+      <p>The Hamiltonian H of an undamped mechanical system is a first integral ★ (SHO, undamped pendulum, undamped predator-prey). Adding dissipation breaks the conservation: dV/dt = −D ≤ 0, turning a first integral into a Lyapunov function.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Region of Attraction (ROA)</span></div>
+    <div class="ref-body">
+      <p>The set of all initial conditions x(0) from which the trajectory converges to the equilibrium: ROA = {x : x(t) → x* as t → ∞}. For a GAS equilibrium the ROA is all of ℝⁿ; for a locally stable one it is some proper subset.</p>
+      <p>Lyapunov analysis gives <em>certified inner approximations</em> of the ROA: any sublevel set {V ≤ c} that lies entirely in {dV/dt &lt; 0} is positively invariant and contained in the true ROA. The orange dashed boundary in the Explorer ★ marks the largest such set certifiable with the chosen V.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">LaSalle's Invariance Principle</span></div>
+    <div class="ref-body">
+      <p>Extends asymptotic stability conclusions to cases where dV/dt ≤ 0 (semi-definite) rather than dV/dt &lt; 0 (definite).</p>
+      <p><strong>Statement:</strong> Let Ω be a compact positively invariant set. Let E = {x ∈ Ω : dV/dt(x) = 0}. Let M be the largest invariant set contained in E. Then every trajectory starting in Ω converges to M as t → ∞.</p>
+      <p><strong>How it's applied:</strong> if M = {0} (the only invariant trajectory in {dV/dt = 0} is the equilibrium itself), then the origin is asymptotically stable for all initial conditions in Ω. This handles, e.g., the Damped Pendulum ★ where dV/dt = −cy² is zero on the entire y = 0 axis, but no trajectory other than the equilibrium can stay on that axis.</p>
+      <p>LaSalle's principle strictly generalizes Lyapunov's theorem: whenever dV/dt is ND, the set E = {0} trivially and LaSalle recovers the same conclusion.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Lyapunov Matrix Equation &amp; Quadratic Lyapunov Functions</span></div>
+    <div class="ref-body">
+      <p>For a linear system ẋ = Ax, the quadratic V = x&#7488;Px (P symmetric positive definite) has dV/dt = x&#7488;(A&#7488;P + PA)x. For dV/dt to be ND we need A&#7488;P + PA = −Q for some PD matrix Q — this is the <strong>Lyapunov matrix equation</strong>.</p>
+      <p>The equation always has a unique PD solution P for any PD Q if and only if A is Hurwitz (all eigenvalues have negative real part). Solving it for Q = I gives the "natural" Lyapunov function for the linear system. For nonlinear systems, this solution at the linearization gives a local Lyapunov function valid in a neighborhood of the origin.</p>
+      <p>The cross-term candidate V = x² + bxy + y² in the Explorer ★ represents exactly this structure: it is the general 2×2 symmetric positive definite quadratic, with b encoding the off-diagonal entry of P.</p>
+    </div>
+  </div>
+
+</div><!-- .ref-panel -->
+</div><!-- #panel-terms -->
 
 </div><!-- .page-inner -->
 
@@ -1181,7 +1365,7 @@ const SYSTEMS = [
     domain: 5,
     f: (x,y,p) => [y, -Math.sin(x) - p.c*y],
     equil: (p) => {
-      // Eigenvalues at origin: (−c ± √(c²−4))/2; c<2 → focus, c>2 → node, c=0 → center
+      // Eigenvalues of linearization at origin: (−c ± √(c²−4))/2; c<2 → focus, c>2 → node, c=0 → center
       const oType = Math.abs(p.c) < 1e-9 ? 'center'
                   : p.c < 2 ? 'stable_focus' : 'stable_node';
       return [[0,0,oType],[Math.PI,0,'saddle'],[-Math.PI,0,'saddle']];
