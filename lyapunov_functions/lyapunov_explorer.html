@@ -1263,6 +1263,48 @@ With damping c:  dV/dt = −cy²</div>
     </div>
   </div>
 
+  <div class="ref-group-title">Passivity &amp; Energy Methods</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Hamiltonian System</span><span class="ref-entry-tag conservative">energy-conserving</span></div>
+    <div class="ref-body">
+      <p>A dynamical system is <strong>Hamiltonian</strong> if it can be written as ẋ = ∂H/∂p, ṗ = −∂H/∂x for a scalar function H(x, p) called the <strong>Hamiltonian</strong> (usually total energy: H = T + U = kinetic + potential).</p>
+      <p>The defining property is exact conservation: dH/dt = (∂H/∂x)ẋ + (∂H/∂p)ṗ = (∂H/∂x)(∂H/∂p) + (∂H/∂p)(−∂H/∂x) = 0. The two terms cancel identically — a consequence of the antisymmetric (symplectic) structure of Hamilton's equations.</p>
+      <p>This means H is always a first integral ★. Adding dissipation breaks the cancellation and leaves dH/dt = −D ≤ 0 (where D ≥ 0 is the dissipation), turning the Hamiltonian into a Lyapunov function for the damped system.</p>
+      <p><strong>Examples in the Explorer ★:</strong> SHO (H = ½x² + ½y²), undamped pendulum (H = (1−cos x) + ½y²), undamped predator-prey (H = (x−ln(1+x)) + (y−ln(1+y))), Duffing (H = ¼(1−x²)² + ½y²). Each becomes a Lyapunov function when its corresponding damped version is selected.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Passive System / Passivity</span></div>
+    <div class="ref-body">
+      <p>A system with input u and output y is <strong>passive</strong> if there exists a non-negative storage function V(x) ≥ 0 such that the energy balance inequality holds: dV/dt ≤ u&#7488;y. In words: the rate of change of stored energy is at most the externally supplied power u&#7488;y — the system cannot generate energy internally.</p>
+      <p>When u = 0 (autonomous), this reduces to dV/dt ≤ 0 — the storage function V is a Lyapunov function. All the Hamiltonian-based Lyapunov functions in the Explorer ★ are storage functions for passive systems.</p>
+      <p><strong>Passivity and Lyapunov stability are deeply linked:</strong> a passive system with a positive definite storage function and zero-state observability (the output y = 0 implies x → 0) is asymptotically stable. This is essentially LaSalle's principle in input-output language.</p>
+      <p><strong>Key benefit:</strong> passivity is preserved under <em>negative feedback interconnection</em> — connecting two passive systems in feedback gives a passive composite system. This makes passivity a powerful framework for stability analysis of complex networked systems (power grids, multi-robot systems, biomechanical models).</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Passivity-Based Control (PBC)</span></div>
+    <div class="ref-body">
+      <p><strong>Passivity-based control</strong> designs a controller by shaping the system's energy function rather than canceling its natural dynamics. The two key steps are:</p>
+      <p><strong>1. Energy shaping:</strong> find a control law that makes the closed-loop system behave as if its Hamiltonian were a modified H<sub>d</sub>(x) with a minimum at the desired equilibrium x*. This modifies the potential energy landscape so the system "wants" to rest at x*.</p>
+      <p><strong>2. Damping injection:</strong> add a dissipative term so that dH<sub>d</sub>/dt ≤ 0 with equality only at x*. This ensures convergence via LaSalle's principle.</p>
+      <p><strong>Concrete example (pendulum ★):</strong> The uncontrolled pendulum with damping c already satisfies dH/dt = −cy² ≤ 0, with H = (1−cos x) + ½y². LaSalle certifies that the only invariant set in {y = 0} is the origin x = 0 (the hanging equilibrium). To instead stabilize the inverted position (x = π), one would reshape H<sub>d</sub> to have a minimum there — this is the "swing-up and balance" problem in robotics.</p>
+      <p><strong>Why PBC instead of feedback linearization?</strong> Feedback linearization cancels the system's nonlinearities exactly, requiring precise knowledge of the model and often demanding large control effort. PBC works <em>with</em> the system's natural dynamics; it is inherently robust and often requires less energy.</p>
+      <div class="ref-further" style="margin-top:10px">
+        <div class="ref-further-title">Further Reading</div>
+        <ul>
+          <li>Ortega et al. (2002) — Interconnection and damping assignment passivity-based control, <em>Automatica</em> 38(4)</li>
+          <li>van der Schaft (2000) — <em>L₂-Gain and Passivity Techniques in Nonlinear Control</em>, Springer</li>
+          <li>Khalil (2002) — <em>Nonlinear Systems</em>, Ch. 6 (passivity) &amp; Ch. 14 (feedback design)</li>
+          <li>Spong, Hutchinson &amp; Vidyasagar (2006) — <em>Robot Modeling and Control</em>, Ch. 9 (PBC for robot manipulators)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
 </div><!-- .ref-panel -->
 </div><!-- #panel-terms -->
 
