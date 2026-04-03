@@ -141,7 +141,6 @@
 
   /* range slider */
   input[type=range] {
-    appearance: none;
     -webkit-appearance: none;
     height: 4px;
     background: var(--border);
@@ -309,6 +308,16 @@
     border-radius: 1px;
     background: none;
   }
+  .legend-ood {
+    width: 16px; height: 10px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+      -45deg,
+      #b4b0a8 0px, #b4b0a8 2px,
+      #c8c4bc 2px, #c8c4bc 6px
+    );
+    flex-shrink: 0;
+  }
 
   /* hover info */
   .hover-info {
@@ -404,6 +413,144 @@
     text-align: center;
     padding: 8px;
   }
+
+  /* ── Tab navigation ── */
+  .tab-bar {
+    display: flex;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 10px 18px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-bottom: 2.5px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--green); border-bottom-color: var(--green); background: var(--cream); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Reference panels ── */
+  .ref-panel {
+    padding: 24px 28px 36px;
+    max-width: 840px;
+    overflow-y: auto;
+  }
+  .ref-intro {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ref-group-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 28px 0 10px;
+  }
+  .ref-group-title:first-of-type { margin-top: 0; }
+  .ref-entry {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .ref-entry-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .ref-entry-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .ref-entry-tag {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 1px 7px;
+    border-radius: 8px;
+    background: #dce8f5;
+    color: #1a4878;
+    border: 1px solid #b0c8e8;
+    white-space: nowrap;
+  }
+  .ref-entry-tag.stable { background: #d4edda; color: var(--badge-ok); border-color: #a8d5b0; }
+  .ref-entry-tag.unstable { background: #fad6d6; color: var(--badge-bad); border-color: #f0b0b0; }
+  .ref-entry-tag.conservative { background: #f0e8d5; color: #7a5a20; border-color: #d8c090; }
+  .ref-formula {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--green);
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 10px;
+    margin: 6px 0;
+    white-space: pre;
+    line-height: 1.5;
+  }
+  .ref-body {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin-top: 6px;
+  }
+  .ref-body p { margin-bottom: 4px; }
+  .ref-body strong { color: var(--text); }
+  .ref-body em { font-style: italic; }
+  .ref-callout {
+    background: #f0efe6;
+    border-left: 3px solid var(--orange);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    margin: 16px 0 8px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+  .ref-callout strong { color: var(--text); }
+  .ref-further {
+    margin-top: 20px;
+    padding: 12px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .ref-further-title {
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .ref-further ul { margin: 0; padding-left: 18px; }
+  .ref-further li {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    font-family: 'IBM Plex Mono', monospace;
+  }
 </style>
 </head>
 <body>
@@ -418,7 +565,17 @@
 </header>
 
 <div class="page-inner">
-<div class="app">
+
+  <!-- ═══ TAB BAR ═══ -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="explorer">Explorer</button>
+    <button class="tab-btn" data-tab="systems">Systems Reference</button>
+    <button class="tab-btn" data-tab="candidates">Lyapunov Reference</button>
+  </div>
+
+  <!-- ═══ EXPLORER PANEL ═══ -->
+  <div id="panel-explorer" class="tab-panel active">
+  <div class="app">
   <!-- ═══════════ SIDEBAR ═══════════ -->
   <aside class="sidebar">
 
@@ -439,6 +596,11 @@
       <select id="lyapSelect"></select>
       <div class="formula-box lyap" id="lyapFormula"></div>
       <div class="traj-hint">Try different candidates for each system to see which certify stability of the origin — and which fail.</div>
+    </div>
+
+    <div class="sidebar-section" id="lyapParamSection" style="display:none">
+      <div class="sidebar-label">Candidate Parameter</div>
+      <div id="lyapParamRows"></div>
     </div>
 
     <div class="sidebar-section">
@@ -518,11 +680,12 @@
 
     <!-- Legend -->
     <div class="legend">
-      <div class="legend-item"><div class="legend-swatch stable"></div> dV/dt &lt; 0 (stable)</div>
-      <div class="legend-item"><div class="legend-swatch unstable"></div> dV/dt &gt; 0 (unstable)</div>
+      <div class="legend-item"><div class="legend-swatch stable"></div> dV/dt &lt; 0 (V decreasing)</div>
+      <div class="legend-item"><div class="legend-swatch unstable"></div> dV/dt &gt; 0 (V increasing)</div>
       <div class="legend-item"><div class="legend-dashed"></div> dV/dt = 0</div>
       <div class="legend-item"><div class="legend-level"></div> V level curve</div>
       <div class="legend-item"><div class="legend-roa"></div> ROA boundary (V&nbsp;=&nbsp;c*)</div>
+      <div class="legend-item" id="legend-ood" style="display:none"><div class="legend-ood"></div> V undefined</div>
     </div>
 
     <!-- Hover info -->
@@ -558,6 +721,336 @@
 
   </main>
 </div><!-- .app -->
+</div><!-- #panel-explorer -->
+
+<!-- ═══ SYSTEMS REFERENCE PANEL ═══ -->
+<div id="panel-systems" class="tab-panel">
+<div class="ref-panel">
+  <div class="ref-intro">
+    A catalog of the dynamical systems available in the Explorer, grouped by family. For each system the linearization, equilibrium type, physical interpretation (where applicable), and suggested Lyapunov candidates are noted.
+  </div>
+
+  <div class="ref-group-title">Linear Systems — behavior fully determined by eigenvalues of A</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Stable Spiral (Stable Focus)</span>
+      <span class="ref-entry-tag stable">asymptotically stable</span>
+    </div>
+    <div class="ref-formula">ẋ = −x + y,  ẏ = −x − y
+Eigenvalues: −1 ± i   (complex, Re &lt; 0)</div>
+    <div class="ref-body">
+      <p>Trajectories spiral inward toward the origin. The rate of convergence is set by Re(λ) = −1; the frequency of rotation is Im(λ) = 1.</p>
+      <p><strong>Lyapunov:</strong> Any positive definite quadratic V = x&#7488;Px works. The isotropic V = x²+y² gives dV/dt = −2(x²+y²) &lt; 0 everywhere: a strict global Lyapunov function.</p>
+      <p><strong>Key insight:</strong> The symmetric part of A is ½(A+A&#7488;) = −I, which is negative definite — a sufficient condition for V=x&#7488;x to be a Lyapunov function with no calculation required.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Stable Node</span>
+      <span class="ref-entry-tag stable">asymptotically stable</span>
+    </div>
+    <div class="ref-formula">ẋ = −2x,  ẏ = −y
+Eigenvalues: −2, −1   (real, distinct, negative)</div>
+    <div class="ref-body">
+      <p>Trajectories approach the origin tangent to the slow eigenvector (y-axis, eigenvalue −1). Unlike a focus, there is no rotation.</p>
+      <p><strong>Lyapunov:</strong> V = x²+y² works but gives non-circular level curves relative to the flow. The "natural" candidate from solving A&#7488;P+PA = −I is an ellipse aligned with the eigenvectors.</p>
+      <p><strong>Key insight:</strong> The cross-term candidate V = x²+bxy+y² (b ≠ 0) can give a tighter ROA estimate than the isotropic one because it better matches the geometry of the flow.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Unstable Focus</span>
+      <span class="ref-entry-tag unstable">unstable</span>
+    </div>
+    <div class="ref-formula">ẋ = x − y,  ẏ = x + y
+Eigenvalues: 1 ± i   (complex, Re &gt; 0)</div>
+    <div class="ref-body">
+      <p>Trajectories spiral outward. The time-reverse of the stable spiral.</p>
+      <p><strong>Lyapunov:</strong> No Lyapunov function can certify stability. dV/dt will be positive somewhere near the origin for any positive definite V.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Saddle Point</span>
+      <span class="ref-entry-tag unstable">unstable</span>
+    </div>
+    <div class="ref-formula">ẋ = x,  ẏ = −2y
+Eigenvalues: +1, −2   (real, opposite sign)</div>
+    <div class="ref-body">
+      <p>The y-axis is the stable manifold; the x-axis is the unstable manifold. Trajectories on the stable manifold converge to the origin; all others eventually escape.</p>
+      <p><strong>Lyapunov:</strong> Not certifiable. Even though some trajectories approach the origin, the unstable manifold always provides an escape route.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Nonlinear Systems</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Cubic Drain</span>
+      <span class="ref-entry-tag stable">asymptotically stable</span>
+    </div>
+    <div class="ref-formula">ẋ = −x³,  ẏ = −y³
+Jacobian at origin: zero matrix</div>
+    <div class="ref-body">
+      <p>The Jacobian at the origin is identically zero — linearization predicts nothing. Stability must be established by nonlinear Lyapunov analysis.</p>
+      <p><strong>Lyapunov:</strong> V = x²+y² gives dV/dt = −2(x⁴+y⁴) &lt; 0 everywhere except the origin. The quartic candidate V = x⁴+y⁴ also works and gives dV/dt = −4(x⁶+y⁶). Convergence is slower than exponential (polynomial rate).</p>
+      <p><strong>Key insight:</strong> This system illustrates why Lyapunov theory extends beyond linearization — it is the primary tool when linearization gives no information.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Simple Harmonic Oscillator</span>
+      <span class="ref-entry-tag conservative">Lyapunov stable (not asymptotic)</span>
+    </div>
+    <div class="ref-formula">ẋ = y,  ẏ = −x
+Eigenvalues: ±i   (purely imaginary)</div>
+    <div class="ref-body">
+      <p>A conservative system. Trajectories are perfect circles; V = x²+y² = r² is constant along every orbit. The origin is <em>Lyapunov stable</em> (trajectories stay close) but <em>not asymptotically stable</em> (they never converge).</p>
+      <p><strong>Connection to Hamiltonian mechanics:</strong> H = ½(x²+y²) = ½p² + ½q² is the total energy (T = ½p², U = ½q²). dH/dt = 0 identically — energy is exactly conserved.</p>
+      <p><strong>LaSalle:</strong> Cannot strengthen the conclusion here because {dV/dt = 0} = entire phase plane. The largest invariant set is everything, not just the origin.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Van der Pol Oscillator (μ)</span>
+      <span class="ref-entry-tag unstable">μ &gt; 0: unstable / μ &lt; 0: stable</span>
+    </div>
+    <div class="ref-formula">ẋ = y,  ẏ = μ(1−x²)y − x
+Eigenvalues at origin: μ/2 ± i√(1−μ²/4)</div>
+    <div class="ref-body">
+      <p>The damping term μ(1−x²)y is negative (dissipative) for |x| &lt; 1 and positive (pumping energy in) for |x| &gt; 1. This nonlinear balance creates a stable limit cycle for μ &gt; 0.</p>
+      <p><strong>μ &lt; 0:</strong> Stable focus. V = x²+y² gives dV/dt = 2μ(1−x²)y², which is negative inside |x| &lt; 1. The ROA is the unit disk (c* = 1).</p>
+      <p><strong>μ &gt; 0:</strong> Unstable focus; energy pumped into small oscillations. Limit cycle at r ≈ 2. No Lyapunov certificate for the origin.</p>
+      <p><strong>Historical note:</strong> Originally derived by Balthazar van der Pol (1926) to model oscillations in vacuum tube circuits.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Hopf Normal Form (μ)</span>
+      <span class="ref-entry-tag unstable">μ &gt; 0: limit cycle / μ ≤ 0: stable</span>
+    </div>
+    <div class="ref-formula">ẋ = μx − y − x(x²+y²)
+ẏ = x + μy − y(x²+y²)
+In polar:  ṙ = r(μ − r²),  θ̇ = 1</div>
+    <div class="ref-body">
+      <p>The <em>canonical</em> form for a supercritical Hopf bifurcation. As μ increases through zero, the stable focus loses stability and a stable limit cycle is born at r = √μ.</p>
+      <p><strong>Lyapunov:</strong> V = x²+y² = r² gives dV/dt = 2r²(μ−r²). For μ &lt; 0: dV/dt &lt; 0 everywhere → global stability. For μ &gt; 0: dV/dt &lt; 0 for r &lt; √μ → c* = μ exactly (the ROA is the interior of the limit cycle).</p>
+      <p><strong>Key insight:</strong> This is one of the rare cases where the Lyapunov analysis gives the <em>exact</em> ROA boundary (the limit cycle itself).</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Mechanical / Physical Systems</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Damped Pendulum (c)</span>
+      <span class="ref-entry-tag stable">stable foci at x = 2kπ</span>
+    </div>
+    <div class="ref-formula">ẋ = y,  ẏ = −sin(x) − c·y
+Equilibria: stable at x=2kπ, saddles at x=(2k+1)π</div>
+    <div class="ref-body">
+      <p>A mechanical system (unit mass, unit length pendulum) with viscous damping c. State: x = angle, y = angular velocity.</p>
+      <p><strong>Hamiltonian:</strong> H = (1−cos x) + ½y² = potential energy + kinetic energy. With damping: dH/dt = −cy² ≤ 0. The cross-terms cancel exactly due to the antisymmetry of Hamilton's equations — energy dissipation is the only survivor.</p>
+      <p><strong>ROA via LaSalle:</strong> c* = H(±π, 0) = 2. The level curve H = 2 is the separatrix of the undamped pendulum; the ROA of the origin is the basin inside it.</p>
+      <p><strong>c &lt; 2:</strong> stable focus; <strong>c = 2:</strong> critically damped (stable node); <strong>c &gt; 2:</strong> overdamped (stable node, no oscillations).</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Duffing Double-Well (c)</span>
+      <span class="ref-entry-tag stable">stable at (±1, 0); saddle at origin</span>
+    </div>
+    <div class="ref-formula">ẋ = y,  ẏ = x − x³ − c·y
+Potential: U(x) = −½x² + ¼x⁴</div>
+    <div class="ref-body">
+      <p>A damped particle in a double-well potential with wells at x = ±1. The origin is a saddle (local potential maximum). Used in structural mechanics to model snap-through buckling.</p>
+      <p><strong>Hamiltonian:</strong> H = ¼(1−x²)² + ½y². Level curves of H are closed around each well for H &lt; ¼ (inside the homoclinic orbit through the saddle at origin).</p>
+      <p><strong>Multiple basins:</strong> initial conditions above and below the x-axis may converge to different wells, depending on which side of the stable/unstable manifold of the origin they start on.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Ecological / Population Dynamics</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Predator-Prey Undamped</span>
+      <span class="ref-entry-tag conservative">conservative center</span>
+    </div>
+    <div class="ref-formula">ẋ = −y − xy,  ẏ = x + xy
+(Lotka-Volterra centered at coexistence equilibrium)
+Eigenvalues at origin: ±i</div>
+    <div class="ref-body">
+      <p>Standard Lotka-Volterra prey-predator dynamics, translated so the coexistence equilibrium is at the origin (x = prey deviation, y = predator deviation from equilibrium).</p>
+      <p><strong>Conserved quantity:</strong> V = (x − ln(1+x)) + (y − ln(1+y)) satisfies dV/dt = 0 identically — it is a <em>first integral</em>, playing the same role as the Hamiltonian in a mechanical system. Level curves of V are the closed orbits (population cycles).</p>
+      <p><strong>Interpretation:</strong> This is a non-mechanical example of a Hamiltonian-like conserved quantity arising from ecology. The "energy" here is an information-theoretic quantity (related to Kullback-Leibler divergence from equilibrium populations).</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">Predator-Prey Damped (c)</span>
+      <span class="ref-entry-tag stable">stable focus at origin</span>
+    </div>
+    <div class="ref-formula">ẋ = −y − xy − c·x,  ẏ = x + xy − c·y
+(adds proportional mortality to both populations)</div>
+    <div class="ref-body">
+      <p>Adding a mortality term −c·x, −c·y (constant per-capita death rate for both species) breaks the conservation law and drives the system toward the coexistence equilibrium.</p>
+      <p><strong>Lyapunov:</strong> The same V = (x−ln(1+x)) + (y−ln(1+y)) now gives dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0. This mirrors the mechanical case: adding dissipation to a conservative system turns a first integral into a Lyapunov function.</p>
+      <p><strong>LaSalle:</strong> {dV/dt = 0} only at origin → origin is asymptotically stable. The ROA is bounded by the nearest point where V becomes undefined (x = −1 or y = −1, i.e., population extinction).</p>
+    </div>
+  </div>
+
+</div><!-- .ref-panel -->
+</div><!-- #panel-systems -->
+
+<!-- ═══ LYAPUNOV CANDIDATES REFERENCE PANEL ═══ -->
+<div id="panel-candidates" class="tab-panel">
+<div class="ref-panel">
+  <div class="ref-intro">
+    A catalog of Lyapunov function candidates available in the Explorer. A <em>Lyapunov function</em> for the origin must be positive definite (V(0)=0, V&gt;0 elsewhere) and have V̇=∇V·f ≤ 0 along trajectories. The choice of candidate profoundly affects what stability information can be extracted.
+  </div>
+
+  <div class="ref-group-title">Quadratic Forms — V = x&#7488;Px, level curves are ellipses</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = x² + y² (isotropic)</span>
+      <span class="ref-entry-tag">P = I</span>
+    </div>
+    <div class="ref-formula">V = x² + y²,  ∇V = (2x, 2y)</div>
+    <div class="ref-body">
+      <p>The simplest choice: level curves are circles. A good first guess for any system. Works well when the Jacobian's symmetric part is negative definite.</p>
+      <p><strong>From the Lyapunov equation:</strong> This is the solution P to A&#7488;P + PA = −2I when A = −I (identity system). For a general stable A, the "correct" P that solves A&#7488;P+PA = −I will typically be non-diagonal.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = x² + 2y²  and  V = 2x² + y²</span>
+      <span class="ref-entry-tag">diagonal P, stretched ellipse</span>
+    </div>
+    <div class="ref-formula">V = x²+2y²:  ∇V = (2x, 4y)   [more weight on y]
+V = 2x²+y²:  ∇V = (4x, 2y)   [more weight on x]</div>
+    <div class="ref-body">
+      <p>Diagonal quadratics with different weights. Stretching the ellipse in one direction can give a tighter (larger) or looser (smaller) ROA estimate depending on the system geometry.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = x² + ay²  (parameterized)</span>
+      <span class="ref-entry-tag">slider: a ∈ [0.25, 4]</span>
+    </div>
+    <div class="ref-formula">V = x² + ay²,  ∇V = (2x, 2ay)
+a = 1 → circle;  a &gt; 1 → y-stretched ellipse;  a &lt; 1 → x-stretched</div>
+    <div class="ref-body">
+      <p>Continuously varies the aspect ratio of the elliptic level curves. Exploring the slider reveals how much the certified ROA depends on this seemingly minor choice.</p>
+      <p><strong>Pedagogical use:</strong> For the stable node (eigenvalues −2, −1), different values of a give dramatically different ROA shapes, showing that the "right" P in the Lyapunov equation is not arbitrary.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = x² + bxy + y²  (cross-term)</span>
+      <span class="ref-entry-tag">slider: b ∈ (−2, 2)</span>
+    </div>
+    <div class="ref-formula">V = x² + bxy + y²,  ∇V = (2x+by, bx+2y)
+Positive definite iff |b| &lt; 2  (det P = 1 − b²/4 &gt; 0)</div>
+    <div class="ref-body">
+      <p>The cross-term bxy rotates the ellipse relative to the coordinate axes. As |b| → 2 the ellipse degenerates and V is no longer positive definite.</p>
+      <p><strong>Connection to Lyapunov matrix equation:</strong> For a system with A = [[a,b],[c,d]], solving A&#7488;P+PA = −I typically yields P with non-zero off-diagonal entries. This candidate represents exactly such a solution.</p>
+      <p><strong>Key insight:</strong> The cross-term candidate often gives a tighter ROA for systems whose eigenvectors are not aligned with the coordinate axes — e.g. the stable spiral.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Polynomial (Non-Quadratic)</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = x⁴ + y⁴</span>
+      <span class="ref-entry-tag">quartic, "squircle" level curves</span>
+    </div>
+    <div class="ref-formula">V = x⁴ + y⁴,  ∇V = (4x³, 4y³)</div>
+    <div class="ref-body">
+      <p>Higher-degree candidate. Necessary for systems like the Cubic Drain where the Jacobian at the origin is zero and quadratic candidates may give uninformative dV/dt = 0 at the origin.</p>
+      <p><strong>Trade-off:</strong> The gradient vanishes to second order at the origin, making the level curves "flat" near zero. This means dV/dt is very small near the origin even when negative — the color map may appear nearly uniform there.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Energy Functions — connection to Hamiltonians and passivity</div>
+
+  <div class="ref-callout">
+    <strong>The Hamiltonian Connection.</strong> For a mechanical system with Hamiltonian H = T(ẋ) + U(x) (kinetic + potential energy), Hamilton's equations are ẋ = ∂H/∂p, ṗ = −∂H/∂x. Computing dH/dt along these:
+    <br><br>
+    dH/dt = (∂H/∂x)ẋ + (∂H/∂p)ṗ = (∂H/∂x)(∂H/∂p) + (∂H/∂p)(−∂H/∂x) = 0
+    <br><br>
+    The terms cancel exactly — an antisymmetry built into Hamilton's equations. So H is conserved in the undamped case (V = H is a first integral), and adding dissipation simply leaves dH/dt = −D|ṗ|² ≤ 0. The Hamiltonian automatically becomes a Lyapunov function for the damped system.
+    <br><br>
+    <strong>This generalizes beyond mechanics.</strong> Any system that can be written as a conservative core plus dissipation — including electrical circuits, chemical reaction networks, and ecological models — has this structure. Exploiting it is the basis of <strong>passivity-based control</strong>.
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = (1 − cos x) + ½y²</span>
+      <span class="ref-entry-tag conservative">pendulum Hamiltonian</span>
+    </div>
+    <div class="ref-formula">V = (1−cos x) + ½y²,  ∇V = (sin x, y)
+With damping c:  dV/dt = −cy²</div>
+    <div class="ref-body">
+      <p>The total mechanical energy of the pendulum: potential U = 1−cos x (= mgl(1−cosθ) in physical units) plus kinetic T = ½y² (= ½mℓ²ω²). The ½ coefficient on y² is not arbitrary — it is the unique coefficient that produces exact cancellation of cross-terms.</p>
+      <p><strong>ROA boundary:</strong> V(±π, 0) = 2. The level curve V = 2 is the separatrix — the boundary between the basin of attraction of the origin and the "over-the-top" trajectories that converge to x = ±2π.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = ¼(1 − x²)² + ½y²</span>
+      <span class="ref-entry-tag conservative">Duffing Hamiltonian</span>
+    </div>
+    <div class="ref-formula">V = ¼(1−x²)² + ½y²,  ∇V = (−x(1−x²), y)
+Potential: U = ¼(1−x²)² — double well with minima at x = ±1</div>
+    <div class="ref-body">
+      <p>Total energy for the Duffing oscillator. The potential U has minima at x = ±1 (the stable equilibria) and a local maximum at x = 0 (the saddle). V = 0 at (±1, 0), not the origin — so V is not positive definite <em>at the origin</em>, but is centered on each well.</p>
+      <p><strong>Note:</strong> Pairing this candidate with the Duffing system correctly certifies the ROA around each well. Pairing it with the origin-centered view reveals why no certificate exists there.</p>
+    </div>
+  </div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head">
+      <span class="ref-entry-name">V = (x − ln(1+x)) + (y − ln(1+y))</span>
+      <span class="ref-entry-tag conservative">predator-prey energy</span>
+    </div>
+    <div class="ref-formula">V = (x−ln(1+x)) + (y−ln(1+y)),  valid for x,y &gt; −1
+∇V = (x/(1+x),  y/(1+y))</div>
+    <div class="ref-body">
+      <p>The natural Lyapunov function for the centered Lotka-Volterra system. Note that t − ln(1+t) ≥ 0 for all t &gt; −1 with equality only at t = 0 — so V is positive definite near the origin.</p>
+      <p><strong>Undamped:</strong> dV/dt = 0 everywhere — V is a first integral (conserved quantity). Level curves = population cycles.</p>
+      <p><strong>With damping c:</strong> dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0. Exactly mirrors the mechanical case: damping extracts the ecologically conserved quantity, driving populations to equilibrium.</p>
+      <p><strong>Information-theoretic interpretation:</strong> V is related to the Kullback-Leibler divergence between the current population state and the equilibrium — a measure of "surprise" or distance from equilibrium in an information sense.</p>
+    </div>
+  </div>
+
+  <div class="ref-further">
+    <div class="ref-further-title">Further Reading</div>
+    <ul>
+      <li>Khalil (2002) — <em>Nonlinear Systems</em>, Ch. 4: Lyapunov Stability</li>
+      <li>Ortega et al. (2002) — Interconnection and damping assignment passivity-based control, <em>Automatica</em></li>
+      <li>van der Schaft (2000) — <em>L₂-Gain and Passivity Techniques in Nonlinear Control</em></li>
+      <li>Arnold (1989) — <em>Mathematical Methods of Classical Mechanics</em>, Ch. 8: Symplectic Geometry</li>
+    </ul>
+  </div>
+
+</div><!-- .ref-panel -->
+</div><!-- #panel-candidates -->
+
 </div><!-- .page-inner -->
 
 <footer class="site-footer">
@@ -668,7 +1161,7 @@ const SYSTEMS = [
     id: 'duffing',
     name: 'Duffing Double-Well (c)',
     formula: 'ẋ = y\nẏ = x − x³ − c·y',
-    note: 'Stable equilibria at (±1,0), saddle at (0,0). Damped double-well.',
+    note: 'Saddle at origin; stable foci/nodes at (±1,0). Damped double-well.',
     domain: 3,
     f: (x,y,p) => [y, x-x*x*x-p.c*y],
     equil: (p) => {
@@ -677,6 +1170,46 @@ const SYSTEMS = [
       return [[0,0,'saddle'],[1,0,wType],[-1,0,wType]];
     },
     params: [{id:'c', label:'c', min:0, max:2, step:0.1, default:0.5}]
+  },
+  {
+    id: 'hopf',
+    name: 'Hopf Normal Form (μ)',
+    formula: 'ẋ = μx − y − x(x²+y²)\nẏ = x + μy − y(x²+y²)',
+    note: 'Supercritical Hopf: μ<0 stable focus, μ>0 stable limit cycle at r=√μ, μ=0 weakly stable. In polar: ṙ=r(μ−r²), θ̇=1.',
+    domain: 3,
+    f: (x,y,p) => {
+      const r2 = x*x + y*y;
+      return [p.mu*x - y - x*r2, x + p.mu*y - y*r2];
+    },
+    equil: (p) => {
+      const type = Math.abs(p.mu) < 1e-9 ? 'center'
+                 : p.mu < 0 ? 'stable_focus' : 'unstable_focus';
+      return [[0, 0, type]];
+    },
+    params: [{id:'mu', label:'μ', min:-2, max:2, step:0.1, default:-0.5}]
+  },
+  {
+    id: 'predprey_undamped',
+    name: 'Predator-Prey Undamped',
+    formula: 'ẋ = −y − xy\nẏ = x + xy',
+    note: 'Lotka-Volterra centered at coexistence equilibrium. Conservative: V=(x−ln(1+x))+(y−ln(1+y)) is a first integral. Eigenvalues ±i.',
+    domain: 2.5,
+    f: (x,y,p) => [-y - x*y, x + x*y],
+    equil: [[0, 0, 'center']],
+    params: []
+  },
+  {
+    id: 'predprey_damped',
+    name: 'Predator-Prey Damped (c)',
+    formula: 'ẋ = −y − xy − c·x\nẏ = x + xy − c·y',
+    note: 'Adds proportional mortality c to both species. With V = (x−ln(1+x)) + (y−ln(1+y)) (the conserved quantity of the undamped model), dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0.',
+    domain: 2.5,
+    f: (x,y,p) => [-y - x*y - p.c*x, x + x*y - p.c*y],
+    equil: (p) => {
+      const type = Math.abs(p.c) < 1e-9 ? 'center' : 'stable_focus';
+      return [[0, 0, type]];
+    },
+    params: [{id:'c', label:'c', min:0, max:1, step:0.05, default:0.3}]
   }
 ];
 
@@ -703,57 +1236,97 @@ const LYAPUNOV = [
     id: 'quad',
     name: 'V = x² + y²',
     formula: 'V = x² + y²\n∇V = (2x, 2y)',
-    V: (x,y) => x*x + y*y,
-    dVdx: (x,y) => 2*x,
-    dVdy: (x,y) => 2*y
+    V: (x,y,lp) => x*x + y*y,
+    dVdx: (x,y,lp) => 2*x,
+    dVdy: (x,y,lp) => 2*y,
+    params: []
   },
   {
     id: 'ellip_y',
     name: 'V = x² + 2y²',
     formula: 'V = x² + 2y²\n∇V = (2x, 4y)',
-    V: (x,y) => x*x + 2*y*y,
-    dVdx: (x,y) => 2*x,
-    dVdy: (x,y) => 4*y
+    V: (x,y,lp) => x*x + 2*y*y,
+    dVdx: (x,y,lp) => 2*x,
+    dVdy: (x,y,lp) => 4*y,
+    params: []
   },
   {
     id: 'ellip_x',
     name: 'V = 2x² + y²',
     formula: 'V = 2x² + y²\n∇V = (4x, 2y)',
-    V: (x,y) => 2*x*x + y*y,
-    dVdx: (x,y) => 4*x,
-    dVdy: (x,y) => 2*y
+    V: (x,y,lp) => 2*x*x + y*y,
+    dVdx: (x,y,lp) => 4*x,
+    dVdy: (x,y,lp) => 2*y,
+    params: []
+  },
+  {
+    id: 'weighted',
+    name: 'V = x² + ay²  (weighted)',
+    formula: 'V = x² + ay²\n∇V = (2x, 2ay)',
+    V: (x,y,lp) => x*x + lp.a*y*y,
+    dVdx: (x,y,lp) => 2*x,
+    dVdy: (x,y,lp) => 2*lp.a*y,
+    params: [{id:'a', label:'a', min:0.25, max:4, step:0.25, default:1}]
   },
   {
     id: 'cross',
     name: 'V = x² + xy + y²',
     formula: 'V = x² + xy + y²\n∇V = (2x+y, x+2y)',
-    V: (x,y) => x*x + x*y + y*y,
-    dVdx: (x,y) => 2*x + y,
-    dVdy: (x,y) => x + 2*y
+    V: (x,y,lp) => x*x + x*y + y*y,
+    dVdx: (x,y,lp) => 2*x + y,
+    dVdy: (x,y,lp) => x + 2*y,
+    params: []
+  },
+  {
+    id: 'cross_b',
+    name: 'V = x² + bxy + y²  (cross-term)',
+    formula: 'V = x² + bxy + y²\n∇V = (2x+by, bx+2y)\n(positive definite iff |b| < 2)',
+    V: (x,y,lp) => {
+      const b = lp.b; const d = 1 - b*b/4;
+      return d > 0 ? x*x + b*x*y + y*y : Infinity;
+    },
+    dVdx: (x,y,lp) => 2*x + lp.b*y,
+    dVdy: (x,y,lp) => lp.b*x + 2*y,
+    params: [{id:'b', label:'b', min:-1.8, max:1.8, step:0.1, default:0}]
   },
   {
     id: 'quartic',
     name: 'V = x⁴ + y⁴',
     formula: 'V = x⁴ + y⁴\n∇V = (4x³, 4y³)',
-    V: (x,y) => x*x*x*x + y*y*y*y,
-    dVdx: (x,y) => 4*x*x*x,
-    dVdy: (x,y) => 4*y*y*y
+    V: (x,y,lp) => x*x*x*x + y*y*y*y,
+    dVdx: (x,y,lp) => 4*x*x*x,
+    dVdy: (x,y,lp) => 4*y*y*y,
+    params: []
   },
   {
     id: 'pendulum_E',
     name: 'V = (1−cos x) + ½y²',
     formula: 'V = (1−cos x) + ½y²\n∇V = (sin x, y)',
-    V: (x,y) => (1-Math.cos(x)) + 0.5*y*y,
-    dVdx: (x,y) => Math.sin(x),
-    dVdy: (x,y) => y
+    V: (x,y,lp) => (1-Math.cos(x)) + 0.5*y*y,
+    dVdx: (x,y,lp) => Math.sin(x),
+    dVdy: (x,y,lp) => y,
+    params: []
   },
   {
     id: 'duffing_E',
     name: 'V = ¼(1−x²)² + ½y²',
     formula: 'V = ¼(1−x²)² + ½y²\n∇V = (−x(1−x²), y)',
-    V: (x,y) => 0.25*(1-x*x)*(1-x*x) + 0.5*y*y,
-    dVdx: (x,y) => -x*(1-x*x),
-    dVdy: (x,y) => y
+    V: (x,y,lp) => 0.25*(1-x*x)*(1-x*x) + 0.5*y*y,
+    dVdx: (x,y,lp) => -x*(1-x*x),
+    dVdy: (x,y,lp) => y,
+    params: []
+  },
+  {
+    id: 'predprey_E',
+    name: 'V = (x−ln(1+x)) + (y−ln(1+y))',
+    formula: 'V = (x−ln(1+x)) + (y−ln(1+y))\n∇V = (x/(1+x),  y/(1+y))\n(valid for x,y > −1)',
+    V: (x,y,lp) => {
+      if (x <= -1 || y <= -1) return Infinity;
+      return (x - Math.log(1+x)) + (y - Math.log(1+y));
+    },
+    dVdx: (x,y,lp) => x > -1 ? x/(1+x) : NaN,
+    dVdy: (x,y,lp) => y > -1 ? y/(1+y) : NaN,
+    params: []
   }
 ];
 
@@ -764,6 +1337,7 @@ let sysIdx = 0, lyapIdx = 0;
 let domain = 3, numLevels = 8;
 let showColor = true, showLevels = true, showVectors = true, showEquil = true, showROA = true;
 let params = {};
+let lyapParams = {};
 
 // ── Trajectory state ──
 let trajectories = [];
@@ -835,33 +1409,41 @@ function cyToWorld(cy, displayH) { const h = displayH ?? (canvas.clientHeight ||
 // ═══════════════════════════════════════════════════════════════════
 const GN = 280;
 let Vg, dvdtg, fxg, fyg;
-let cStar = Infinity;   // ROA level: {V <= cStar} is positively invariant
-let roaType = "none";  // "full"|"bounded"|"conservative"|"unstable"|"none"
-let cStarSource = ""; // "saddle" | "signchange" — how c* was computed
+let outg; // Uint8Array: 1 where V or its gradient is non-finite (out of domain)
+let cStar = Infinity;
+let roaType = "none";
+let cStarSource = "";
+let anyOutOfDomain = false; // true when V is undefined somewhere in the grid
 
 function computeGrids() {
   const sys = SYSTEMS[sysIdx];
   const lyap = LYAPUNOV[lyapIdx];
-  Vg = new Float32Array((GN+1)*(GN+1));
+  Vg    = new Float32Array((GN+1)*(GN+1));
   dvdtg = new Float32Array((GN+1)*(GN+1));
-  fxg = new Float32Array((GN+1)*(GN+1));
-  fyg = new Float32Array((GN+1)*(GN+1));
+  fxg   = new Float32Array((GN+1)*(GN+1));
+  fyg   = new Float32Array((GN+1)*(GN+1));
+  outg  = new Uint8Array((GN+1)*(GN+1)); // 1 = out of domain
 
   for (let r = 0; r <= GN; r++) {
     for (let c = 0; c <= GN; c++) {
       const x = -domain + c / GN * 2*domain;
       const y = domain - r / GN * 2*domain;
       const idx = r*(GN+1)+c;
-      const v = lyap.V(x,y);
-      const gx = lyap.dVdx(x,y);
-      const gy = lyap.dVdy(x,y);
+      const v  = lyap.V(x,y,lyapParams);
+      const gx = lyap.dVdx(x,y,lyapParams);
+      const gy = lyap.dVdy(x,y,lyapParams);
       const [fx, fy] = sys.f(x,y,params);
-      Vg[idx] = isFinite(v) ? v : 0;
-      dvdtg[idx] = isFinite(gx*fx + gy*fy) ? gx*fx + gy*fy : 0;
+      const valid = isFinite(v) && isFinite(gx) && isFinite(gy);
+      outg[idx]  = valid ? 0 : 1;
+      Vg[idx]    = valid ? v : 0;
+      dvdtg[idx] = valid ? (isFinite(gx*fx + gy*fy) ? gx*fx + gy*fy : 0) : 0;
       fxg[idx] = fx;
       fyg[idx] = fy;
     }
   }
+  anyOutOfDomain = outg.some(v => v === 1);
+  const oodLegend = document.getElementById('legend-ood');
+  if (oodLegend) oodLegend.style.display = anyOutOfDomain ? '' : 'none';
 
   // ── Compute c* for ROA estimate ──
   // c* = inf{ V(x) : dV/dt(x) >= 0, x != 0 }
@@ -872,7 +1454,9 @@ function computeGrids() {
     const a = Math.abs(dvdtg[i]);
     if (a > dvMax) dvMax = a;
   }
-  const roaEps = dvMax * 1e-4;
+  // roaEps floor: prevents the relative threshold from being smaller than float64
+  // cancellation noise when dV/dt is analytically zero (e.g. conservative systems).
+  const roaEps = Math.max(dvMax * 1e-4, 1e-10);
 
   cStar = Infinity;
   let anyPos = false, anyNeg = false, allZero = true;
@@ -885,7 +1469,9 @@ function computeGrids() {
       const x = -domain + c * dStep;
       const y =  domain - r * dStep;
       if (x*x + y*y < skipR2) continue;
-      const dv = dvdtg[r*(GN+1)+c];
+      const idx = r*(GN+1)+c;
+      if (outg[idx]) continue;  // skip out-of-domain points
+      const dv = dvdtg[idx];
       if (dv >  roaEps) { anyPos = true; allZero = false; }
       if (dv < -roaEps) { anyNeg = true; allZero = false; }
     }
@@ -899,6 +1485,7 @@ function computeGrids() {
       const x0 = -domain + c * dStep;
       const y0 =  domain - r * dStep;
       const idx = r*(GN+1)+c;
+      if (outg[idx]) continue;  // skip out-of-domain
       const dv0 = dvdtg[idx];
       const v0  = Vg[idx];
       const aPos = dv0 > 0;
@@ -934,7 +1521,7 @@ function computeGrids() {
   }
 
   // Classify the ROA situation
-  const lyapOK = lyap.V(0,0) < 1e-4;
+  const lyapOK = lyap.V(0,0,lyapParams) < 1e-4;
   if (!lyapOK) {
     roaType = 'none';
     cStarSource = '';
@@ -949,7 +1536,7 @@ function computeGrids() {
     for (const [ex, ey, etype] of getEquil(sys)) {
       if (Math.abs(ex) < 0.15 && Math.abs(ey) < 0.15) continue;
       if (etype === 'saddle' || etype === 'unstable') {
-        const sv = lyap.V(ex, ey);
+        const sv = lyap.V(ex,ey,lyapParams);
         if (isFinite(sv) && sv > 1e-6 && sv < cStar) cStar = sv;
       }
     }
@@ -1136,8 +1723,8 @@ function render() {
   // ── dV/dt color map ──
   // ImageData must be in PHYSICAL pixels; we bypass the dpr transform for putImageData
   if (showColor) {
-    if (roaType === 'conservative') {
-      // dV/dt ≡ 0 everywhere — canvas stays cream, nothing meaningful to color
+    if (roaType === 'conservative' && !anyOutOfDomain) {
+      // dV/dt ≡ 0 everywhere and no out-of-domain region — canvas stays cream
     } else {
       let maxAbs = 1e-9;
       for (let i=0; i<dvdtg.length; i++) {
@@ -1158,6 +1745,15 @@ function render() {
           const idx = gr*(GN+1)+gc;
           const val = dvdtg[idx];
           const pi = (py*PW+px)*4;
+          // Out-of-domain: V undefined here — show diagonal hatch, not cream
+          if (outg[idx]) {
+            const stripe = (px + py) % 10 < 4;
+            d[pi]  = stripe ? 180 : 198;
+            d[pi+1]= stripe ? 176 : 193;
+            d[pi+2]= stripe ? 168 : 183;
+            d[pi+3]= 255;
+            continue;
+          }
           if (Math.abs(val) < threshold) {
             d[pi]=244; d[pi+1]=240; d[pi+2]=232; d[pi+3]=255;
             continue;
@@ -1436,15 +2032,17 @@ function render() {
 //  ASSESSMENT
 // ═══════════════════════════════════════════════════════════════════
 function updateAssessment() {
-  // Count grid points
+  // Count grid points — exclude out-of-domain entries
   let negCount=0, posCount=0, zeroCount=0, total=0;
   let dvdtMax = 0;
   for (let i=0; i<dvdtg.length; i++) {
+    if (outg[i]) continue;
     const a = Math.abs(dvdtg[i]);
     if (a > dvdtMax) dvdtMax = a;
   }
-  const countEps = dvdtMax * 1e-4; // consistent with color-map threshold
+  const countEps = Math.max(dvdtMax * 1e-4, 1e-10);
   for (let i=0; i<dvdtg.length; i++) {
+    if (outg[i]) continue;  // skip undefined region
     const v = dvdtg[i];
     total++;
     if (v < -countEps) negCount++;
@@ -1456,7 +2054,7 @@ function updateAssessment() {
 
   // Check if V is "positive definite"-ish (min near 0 at origin)
   const lyap = LYAPUNOV[lyapIdx];
-  const vAtOrigin = lyap.V(0,0);
+  const vAtOrigin = lyap.V(0,0,lyapParams);
   const vPos = vAtOrigin < 1e-4;
 
   const badges = document.getElementById('assessBadges');
@@ -1486,7 +2084,7 @@ function updateAssessment() {
   if (isConservative) {
     mkBadge('info', '≡', 'dV/dt = 0 everywhere');
   } else if (posCount === 0) {
-    mkBadge('ok', '✓', 'dV/dt ≤ 0 everywhere');
+    mkBadge('ok', '✓', anyOutOfDomain ? 'dV/dt ≤ 0 on valid domain' : 'dV/dt ≤ 0 everywhere');
   } else if (negCount === 0) {
     mkBadge('bad', '✗', 'dV/dt ≥ 0 everywhere');
   } else {
@@ -1514,14 +2112,22 @@ function updateAssessment() {
         + 'so the principle only tells us trajectories stay in the plane — which we already knew.';
 
   } else if (roaType === 'full') {
-    // dV/dt < 0 everywhere — strict Lyapunov, ROA ⊇ domain
+    // dV/dt < 0 everywhere on valid domain — strict Lyapunov, ROA ⊇ domain
     if (originTypeA) mkBadge('ok', '✓', `Origin: ${equilLabel(originTypeA)}`);
-    mkBadge('ok', '✓', 'ROA ⊇ displayed domain');
-    msg = 'V is a <strong>strict Lyapunov function</strong>: dV/dt&nbsp;&lt;&nbsp;0 everywhere '
-        + 'except the origin. Every sublevel set {V&nbsp;≤&nbsp;c} is positively invariant '
-        + 'and trajectories converge to the origin from anywhere in the displayed domain. '
-        + '<strong>LaSalle\'s invariance principle</strong> is not needed here — strict negativity '
-        + 'of dV/dt already gives global asymptotic stability directly.';
+    mkBadge('ok', '✓', anyOutOfDomain ? 'ROA ⊇ valid domain' : 'ROA ⊇ displayed domain');
+    if (anyOutOfDomain) {
+      msg = 'V is a <strong>strict Lyapunov function on its domain of definition</strong> '
+          + '(the hatched region is outside V\'s domain). dV/dt&nbsp;&lt;&nbsp;0 everywhere V is defined, '
+          + 'except at the origin. Every sublevel set {V&nbsp;≤&nbsp;c} that lies within the valid domain '
+          + 'is positively invariant and trajectories converge to the origin from within it. '
+          + 'The certified ROA is limited to the valid region.';
+    } else {
+      msg = 'V is a <strong>strict Lyapunov function</strong>: dV/dt&nbsp;&lt;&nbsp;0 everywhere '
+          + 'except the origin. Every sublevel set {V&nbsp;≤&nbsp;c} is positively invariant '
+          + 'and trajectories converge to the origin from anywhere in the displayed domain. '
+          + '<strong>LaSalle\'s invariance principle</strong> is not needed here — strict negativity '
+          + 'of dV/dt already gives global asymptotic stability directly.';
+    }
 
   } else if (roaType === 'bounded') {
     if (originTypeA) mkBadge('ok', '✓', `Origin: ${equilLabel(originTypeA)}`);
@@ -1608,9 +2214,9 @@ canvas.addEventListener('mousemove', e => {
 
   const lyap = LYAPUNOV[lyapIdx];
   const sys = SYSTEMS[sysIdx];
-  const Vval = lyap.V(x,y);
-  const gx = lyap.dVdx(x,y);
-  const gy = lyap.dVdy(x,y);
+  const Vval = lyap.V(x,y,lyapParams);
+  const gx = lyap.dVdx(x,y,lyapParams);
+  const gy = lyap.dVdy(x,y,lyapParams);
   const [fx, fy] = sys.f(x, y, params);
   const dvdt = gx*fx + gy*fy;
   const fmag = Math.sqrt(fx*fx+fy*fy);
@@ -1704,6 +2310,34 @@ function updateSysUI() {
 function updateLyapUI() {
   const l = LYAPUNOV[lyapIdx];
   document.getElementById('lyapFormula').textContent = l.formula;
+
+  lyapParams = {};
+  const sec = document.getElementById('lyapParamSection');
+  const rows = document.getElementById('lyapParamRows');
+  rows.innerHTML = '';
+  if (l.params && l.params.length) {
+    sec.style.display = '';
+    l.params.forEach(p => {
+      lyapParams[p.id] = p.default;
+      const div = document.createElement('div');
+      div.className = 'param-row';
+      div.innerHTML = `
+        <div class="range-row">
+          <span class="param-label">${p.label} = <span id="lpval-${p.id}">${p.default}</span></span>
+        </div>
+        <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.default}" id="lpslider-${p.id}">
+      `;
+      rows.appendChild(div);
+      div.querySelector(`#lpslider-${p.id}`).addEventListener('input', ev => {
+        lyapParams[p.id] = parseFloat(ev.target.value);
+        document.getElementById(`lpval-${p.id}`).textContent = lyapParams[p.id].toFixed(2);
+        clearTrajectories();
+        scheduleRender();
+      });
+    });
+  } else {
+    sec.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1741,6 +2375,20 @@ document.getElementById('togVectors').addEventListener('change', e => { showVect
 document.getElementById('togEquil').addEventListener('change', e => { showEquil=e.target.checked; scheduleRender(); });
 document.getElementById('togROA').addEventListener('change', e => { showROA=e.target.checked; scheduleRender(); });
 document.getElementById('clearTrajBtn').addEventListener('click', clearTrajectories);
+
+// ═══════════════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    // Re-render when switching back to explorer (canvas may have resized)
+    if (btn.dataset.tab === 'explorer') scheduleRender();
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════════
 //  BOOT
