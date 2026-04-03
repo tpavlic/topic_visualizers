@@ -141,6 +141,7 @@
 
   /* range slider */
   input[type=range] {
+    appearance: none;
     -webkit-appearance: none;
     height: 4px;
     background: var(--border);
@@ -420,8 +421,11 @@
     background: var(--panel2);
     border-bottom: 1px solid var(--border);
     overflow-x: auto;
+    overflow-y: hidden;       /* kill the vertical scrollbar */
     flex-shrink: 0;
+    scrollbar-width: none;    /* Firefox: hide scrollbar track */
   }
+  .tab-bar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
   .tab-btn {
     flex-shrink: 0;
     padding: 10px 18px;
@@ -439,6 +443,28 @@
   }
   .tab-btn:hover { color: var(--text); }
   .tab-btn.active { color: var(--green); border-bottom-color: var(--green); background: var(--cream); }
+  /* Narrow-screen: hide buttons, show a <select> dropdown instead */
+  .tab-select {
+    display: none;
+  }
+  @media (max-width: 480px) {
+    .tab-bar { padding: 8px 10px; }
+    .tab-btn  { display: none; }
+    .tab-select {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      appearance: auto;
+    }
+  }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
@@ -571,6 +597,11 @@
     <button class="tab-btn active" data-tab="explorer">Explorer</button>
     <button class="tab-btn" data-tab="systems">Systems Reference</button>
     <button class="tab-btn" data-tab="candidates">Lyapunov Reference</button>
+    <select class="tab-select" id="tabSelect">
+      <option value="explorer">Explorer</option>
+      <option value="systems">Systems Reference</option>
+      <option value="candidates">Lyapunov Reference</option>
+    </select>
   </div>
 
   <!-- ═══ EXPLORER PANEL ═══ -->
@@ -2381,13 +2412,23 @@ document.getElementById('clearTrajBtn').addEventListener('click', clearTrajector
 // ═══════════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-    // Re-render when switching back to explorer (canvas may have resized)
-    if (btn.dataset.tab === 'explorer') scheduleRender();
+    document.getElementById('panel-' + tab).classList.add('active');
+    document.getElementById('tabSelect').value = tab;
+    if (tab === 'explorer') scheduleRender();
   });
+});
+
+document.getElementById('tabSelect').addEventListener('change', e => {
+  const tab = e.target.value;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'explorer') scheduleRender();
 });
 
 // ═══════════════════════════════════════════════════════════════════
