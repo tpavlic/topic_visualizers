@@ -22,6 +22,9 @@ tags
 # Claude Code local settings (machine-specific, not shared)
 .claude/settings.local.json
 
+# Claude Code memory (personal assistant state, not project config)
+.claude/memory/
+
 # General
 .DS_Store
 __MACOSX/
