@@ -11,9 +11,9 @@ topics in science, mathematics, statistics, and engineering, built by Theodore P
 When a user asks to add an existing demo to the index/README/CLAUDE.md, **always also audit
 the demo's HTML file itself** before finishing:
 
-1. Check that `<head>` has a `<meta name="description">`, the full OG block, and the Twitter/X
-   card block. If any are missing, add them (use the preview image dimensions from the actual
-   file; aspect ratio should be close to 2:1 for Twitter).
+1. Check that `<head>` has a `<meta name="description">`, the full OG block, the Twitter/X
+   card block, and the Google Analytics gtag block. If any are missing, add them (use the
+   preview image dimensions from the actual file; aspect ratio should be close to 2:1 for Twitter).
 2. Check that the bottom of `<body>` has the standard back-link `<footer>` and the
    iframe-hiding `<script>`. If missing, add them.
 
@@ -62,6 +62,15 @@ Inside `<head>`, include all of the following, filling in the actual values:
 <meta name="twitter:title" content="Demo Title — interactive explainer">
 <meta name="twitter:description" content="One or two sentences describing the demo.">
 <meta name="twitter:image" content="https://tpavlic.github.io/topic_visualizers/my_demo/my_demo-preview.png">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-P0S68QRGVP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-P0S68QRGVP');
+</script>
 </head>
 ```
 
@@ -154,3 +163,4 @@ Update the **Current demos** list below to include the new demo.
 - **fb:app_id:** `2385695445236853` — include in all OG blocks
 - **GitHub Pages base URL:** `https://tpavlic.github.io/topic_visualizers/`
 - **YouTube channel:** <https://www.youtube.com/@TedPavlic> — linked from the index header
+- **Google Analytics measurement ID:** `G-P0S68QRGVP` — include the gtag block in every demo's `<head>`, after the Twitter/X card lines and before any `<link>` or `<style>` tags
