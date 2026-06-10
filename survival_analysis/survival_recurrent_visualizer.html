@@ -12,8 +12,8 @@
 <meta property="og:title" content="Survival &amp; Recurrent-Event Analysis Visualizer">
 <meta property="og:description" content="Interactive visualizer for survival analysis, recurrent-event survival analysis, exponential transition rates, censoring, and state-transition models.">
 <meta property="og:image" content="https://tpavlic.github.io/topic_visualizers/survival_analysis/survival_recurrent_visualizer-preview.png">
-<meta property="og:image:width" content="2960">
-<meta property="og:image:height" content="1452">
+<meta property="og:image:width" content="2288">
+<meta property="og:image:height" content="986">
 <meta property="og:url" content="https://tpavlic.github.io/topic_visualizers/survival_analysis/survival_recurrent_visualizer.html">
 <meta property="fb:app_id" content="2385695445236853">
 
@@ -98,6 +98,9 @@ a { color: var(--accent); }
 .btn.sec { background:transparent; color:var(--green-dark); }
 .btn.sec:hover { background:var(--green-pale); }
 .toggles { display:flex; gap:14px; flex-wrap:wrap; margin-top:6px; }
+.toggles.compact { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; margin-top:8px; }
+.toggles.compact .toggle { min-height:30px; font-size:0.76rem; gap:6px; }
+.toggles.compact .toggle input { width:17px; height:17px; }
 .toggle { display:inline-flex; align-items:center; gap:5px; font-size:0.82rem; color:var(--text); cursor:pointer; user-select:none; }
 .toggle input { margin:0; accent-color:var(--green-dark); }
 .sec-divider { border-top:1px dashed var(--border); margin:14px 0 12px; }
@@ -128,6 +131,8 @@ button, select, input[type=range], .toggle { min-height:44px; }
 .kpi { background:white; border:1px solid var(--border); border-radius:4px; padding:10px 12px; }
 .kpi .lab { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); }
 .kpi .val { font-family:var(--mono); font-size:1.05rem; color:var(--green-dark); font-weight:500; margin-top:2px; }
+.kpi.sig { background:var(--green-pale); border-color:var(--green-mid); box-shadow:inset 0 0 0 1px var(--green-mid); }
+.kpi.sig .val { font-weight:700; }
 .kpi .sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
 .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:4px; background:white; }
 table { width:100%; border-collapse:collapse; font-size:0.82rem; }
@@ -157,18 +162,19 @@ tr:last-child td { border-bottom:none; }
 <div class="widget">
   <div class="phdr">
     <h1>Survival &amp; Recurrent-Event Analysis Visualizer</h1>
-    <p class="sub">An interactive companion for rates, censoring, repeated transitions, and state-transition models</p>
+    <p class="sub">An interactive companion for rates, censoring, repeated transitions, state-transition models, and hypothesis testing</p>
     <p class="lede">Survival analysis is often introduced as “time until a patient fails.” The same mathematics estimates transition rates in behavioral, ecological, and epidemiological systems: time until an animal leaves a state, time until a nest switches activity, or time until an infected individual recovers.</p>
-    <p class="lede" style="font-size:0.85rem;color:var(--muted);">This widget starts with exponential waiting times and right censoring, then generalizes to recurrent events where the same observational unit (for example, one focal animal, nest, colony, pair, or arena) can contribute several transitions during one observation period. The word “unit” simply means whatever entity gets its own stopwatch.</p>
+    <p class="lede" style="font-size:0.85rem;color:var(--muted);">This widget starts with exponential waiting times and right censoring, generalizes to recurrent events where the same observational unit (for example, one focal animal, nest, colony, pair, or arena) can contribute several transitions during one observation period, and ends by testing whether an experimental factor changes the rate when the observations are not independent (fixed and random effects together). The word “unit” simply means whatever entity gets its own stopwatch.</p>
     <p class="topcopy">© 2026 Theodore P. Pavlic <span class="footer-sep">·</span> <span class="footer-lic"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a></span></p>
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="0">Survival basics</button>
+    <button class="tab active" data-tab="0">Censoring and rates</button>
     <button class="tab" data-tab="1">Recurrent events</button>
+    <button class="tab" data-tab="2">Hypothesis testing</button>
   </div>
   <div class="tabs-select-wrap"><select class="tabs-select" id="mainTabSelect">
-    <option value="0">1. Survival basics</option><option value="1">2. Recurrent events</option>
+    <option value="0">1. Censoring and rates</option><option value="1">2. Recurrent events</option><option value="2">3. Hypothesis testing</option>
   </select></div>
 
   <div class="tabpane active" data-pane="0">
@@ -282,7 +288,7 @@ fit <- coxph(Surv(time, status) ~ treatment + size, data = subjects)</pre></div>
     <div class="grid" style="margin-top:16px;">
       <div class="panel">
         <h3>Repeated transitions from the same observational unit</h3>
-        <div class="viz-wrap"><canvas id="recurCanvas" width="760" height="520"></canvas></div>
+        <div class="viz-wrap"><canvas id="recurCanvas" width="760" height="660"></canvas></div>
         <div class="viz-cap">A continuous-time two-state process. Green segments are time in state S (at risk of an S→I event); orange segments are time in state I. The vertical fence is the observation window T (drag it): segments past it are faint and not counted, so sliding T changes how much of each process you observe without changing the process itself.</div>
       </div>
       <div class="panel">
@@ -302,13 +308,13 @@ fit <- coxph(Surv(time, status) ~ treatment + size, data = subjects)</pre></div>
           <div class="kpi"><div class="lab"><span class="hatvar">β</span> calendar</div><div class="val" id="rNaive">—</div><div class="sub">events / calendar time</div></div>
           <div class="kpi"><div class="lab"><span class="hatvar">β</span> drop-censored</div><div class="val" id="rDropHat">—</div><div class="sub">time in S, censored dropped</div></div>
         </div>
-        <div class="explainer" style="margin-bottom:0;">
-          <h4>Why recurrent-event analysis matters</h4>
-          <p>The correct denominator for S→I is not total calendar time. It is total time spent at risk in state S. When an animal is already in state I, it cannot make another S→I transition until it recovers.</p>
-          <span class="formula"><span class="hatvar">β</span> = # S→I transitions / total time in S</span>
-          <p><strong>Censoring</strong> enters just as on the first tab. A unit still in S when the window closes has its current spell in S cut short at <code>T</code>; that truncated spell is genuine exposure (time at risk with no transition), so it stays in the denominator exactly as a censored wait does there, while adding nothing to the event count. The censoring is now measured against time in S rather than calendar time, and because the denominator already sums every S spell (completed and truncated), one unit can fold in several at once. The drop-censored monitor does the opposite: it discards every unit still in S at the close, throwing away the longest in-progress waits, which biases <span class="hatvar">β</span> upward, just as ignoring censoring does on the first tab. The interval estimate carries over unchanged, with <code>d</code> the number of S→I events: <code>log(<span class="hatvar">β</span>) ± 1.96/√d</code>, exponentiated, but only while the spells are conditionally independent given the rate, so that <code>d</code> events count as <code>d</code> independent observations even though they share units. That holds when units are exchangeable (Individual heterogeneity at zero); raising it makes a unit’s repeated events correlated and over-dispersed, the effective information then drops below <code>d</code>, and the true interval is wider than the one shown. The honest correction is the robust (cluster) variance of the Andersen–Gill fit below, or a frailty model.</p>
-        </div>
       </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>Why recurrent-event analysis matters</h3>
+      <p>In compartmental models where loops are possible, as in the SIS epidemiological model, estimating the rate of a recurrent event such as the S→I transition requires special care. In the SIS case, the correct denominator for S→I is not total calendar time; it is total time spent at risk in state S. When a unit is already in state I, it cannot make another S→I transition until it returns to S.</p>
+      <span class="formula"><span class="hatvar">β</span> = # S→I transitions / total time in S</span>
+      <p><strong>Censoring</strong> enters just as on the first tab. A unit still in S when the window closes has its current spell in S cut short at <code>T</code>; that truncated spell is genuine exposure (time at risk with no transition), so it stays in the denominator exactly as a censored wait does there, while adding nothing to the event count. The censoring is now measured against time in S rather than calendar time, and because the denominator already sums every S spell (completed and truncated), one unit can fold in several at once. The drop-censored monitor does the opposite: it discards every unit still in S at the close, throwing away the longest in-progress waits, which biases <span class="hatvar">β</span> upward, just as ignoring censoring does on the first tab. The interval estimate carries over unchanged, with <code>d</code> the number of S→I events: <code>log(<span class="hatvar">β</span>) ± 1.96/√d</code>, exponentiated, but only while the spells are conditionally independent given the rate, so that <code>d</code> events count as <code>d</code> independent observations even though they share units. That holds when units are exchangeable (Individual heterogeneity at zero); raising it makes a unit’s repeated events correlated and over-dispersed, the effective information then drops below <code>d</code>, and the true interval is wider than the one shown. The honest correction is the robust (cluster) variance of the Andersen–Gill fit below, or a frailty model.</p>
     </div>
     <div class="panel" style="margin-top:16px;">
       <h3>Comparing models: SIR, SIS, SIRS</h3>
@@ -334,6 +340,80 @@ fit <- coxph(Surv(start, stop, event_SI) ~ treatment + cluster(id), data = episo
     </div>
   </div>
 
+  <div class="tabpane" data-pane="2">
+    <div class="panel">
+      <h3>Hypothesis testing with mixed effects</h3>
+      <p>The first two tabs were about estimation: given right-censored, and then recurrent, waiting times, recover the underlying transition rate without letting unfinished or repeated spells bias it. Comparing that rate across groups appeared only in passing, in the Cox proportional hazards box at the foot of each tab. This tab makes that comparison the point. The question shifts from “what is the rate?” to “does an experimental factor change it?”, which is a hypothesis test: a predicted effect on survival, an estimated effect size with an interval, and a verdict on whether the data distinguish that effect from no effect.</p>
+      <p>Real experiments rarely supply independent observations to test against. There is a fixed effect (the manipulated factor whose influence on the rate is being tested) and there is structure that was not manipulated but cannot be ignored: subjects sharing a cage, a clutch, a colony, or a measurement occasion, whose outcomes are correlated in ways no covariate captures. A fixed-effects-only fit reads that shared variation as independent evidence and reports more certainty than the design earns. The Cox proportional hazards model extends to carry both kinds of term, the same way the linear model extends to the linear mixed model: keep the fixed effect being tested and add a random effect (a frailty) for the clusters, so within-cluster correlation is modeled rather than ignored.</p>
+      <p>Consider a brood-survival experiment testing whether diet changes mortality, with two diets (high-protein and high-carbohydrate). Diet is assigned at the level of a nest box: several replicate boxes per diet, and within each box a cohort of brood is followed until death or until the observation window closes. Diet is the fixed effect under test; nest box is a random effect, because brood sharing a box share a microenvironment, a queen, and a rearing history, so their death times are not independent. The model the students would fit is <code>coxme(Surv(time, status) ~ diet + (1 | nestID))</code>, with diet as the fixed effect and a random intercept per box.</p>
+      <p>This is the clustering problem from the recurrent-event tab in a different guise. There the repeated events came from one individual, and treating them as independent overstated the information in the sample; the correction was a cluster-robust variance or a frailty term. Here the events do not recur (each brood item dies once), but the brood within a box are coupled in the analogous way, so the analogous correction applies. The replication the test can actually support is at the box level, not the brood level: pooling all brood as independent (the naive fit) is pseudoreplication, and the hypothesis test it reports comes out far more certain than the design earns.</p>
+    </div>
+    <div class="grid" style="margin-top:16px;">
+      <div class="panel">
+        <h3>Brood survival by diet, grouped within nest boxes</h3>
+        <div class="viz-wrap"><canvas id="appCanvas" width="760" height="470"></canvas></div>
+        <div class="viz-cap">The vertical axis counts brood still alive (not a probability), so one nest box starts at its cohort size M and steps down by one at each death. Each diet's average survival is shown as mean brood alive per box (M times the pooled Kaplan–Meier estimate) and can carry one of two confidence bands: a pooled (Greenwood) band that treats brood as independent, or a nest-aware band that treats each box as the unit of replication. The vertical fence is the observation window T (drag it); deaths past it are censored and drawn faint. Toggle the layers at right.</div>
+        <div class="sec-divider"></div>
+        <div class="kpis">
+          <div class="kpi"><div class="lab">True HR <span class="greek">λ<sub>C</sub></span>/<span class="greek">λ<sub>P</sub></span></div><div class="val" id="appTrueHR">—</div><div class="sub">conditional, within nest</div></div>
+          <div class="kpi"><div class="lab">Mixed-effects HR</div><div class="val" id="appCoxHR">—</div><div class="sub" id="appCoxCI">95% CI —</div></div>
+          <div class="kpi" id="kpiCoxP"><div class="lab">Mixed-effects p</div><div class="val" id="appCoxP">—</div><div class="sub" id="appSigmaHat"><span class="hatvar greek">σ</span> = —</div></div>
+          <div class="kpi"><div class="lab">Pooled p</div><div class="val" id="appNaiveP">—</div><div class="sub">ignores nest (pseudoreplication)</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Controls</h3>
+        <div class="ctrls">
+          <div class="ctrl"><label><span class="label-name">High-protein hazard <span class="greek">λ<sub>P</sub></span></span> <span class="v" id="v-appLamP">0.30</span></label><input id="appLamP" type="range" min="10" max="80" value="30"></div>
+          <div class="ctrl"><label><span class="label-name">High-carb hazard <span class="greek">λ<sub>C</sub></span></span> <span class="v" id="v-appLamC">0.60</span></label><input id="appLamC" type="range" min="10" max="80" value="60"></div>
+          <div class="ctrl"><label>Brood per box M <span class="v" id="v-appM">16</span></label><input id="appM" type="range" min="6" max="20" value="16"></div>
+          <div class="ctrl"><label>Boxes per diet R <span class="v" id="v-appR">8</span></label><input id="appR" type="range" min="3" max="10" value="8"></div>
+          <div class="ctrl"><label><span class="label-name">Nest-to-nest SD <span class="greek">σ</span></span> <span class="v" id="v-appSigma">0.60</span></label><input id="appSigma" type="range" min="0" max="150" value="60"></div>
+          <div class="ctrl"><label>Observation window T <span class="v" id="v-appT">8.0</span></label><input id="appT" type="range" min="20" max="120" value="80"></div>
+          <div class="ctrl"><label>Random seed <span class="v" id="v-appSeed">19</span></label><input id="appSeed" type="range" min="1" max="99" value="19"></div>
+        </div>
+        <div class="sec-divider"></div>
+        <div class="toggles compact">
+          <label class="toggle"><input type="checkbox" id="appShowBoxes" checked> Individual boxes</label>
+          <label class="toggle"><input type="checkbox" id="appShowExp"> Exponential fit</label>
+          <label class="toggle"><input type="checkbox" id="appShowPooled"> Diet avg: pooled band</label>
+          <label class="toggle"><input type="checkbox" id="appShowNest" checked> Diet avg: nest-aware band</label>
+        </div>
+        <div class="explainer" style="margin-bottom:0;">
+          <h4>What to watch</h4>
+          <p>Compare the two p-values in the monitors under the plot; the mixed-effects result is echoed in the plot title, which turns green with a star when it clears p &lt; 0.05. Set the nest-to-nest SD to zero and the boxes are exchangeable: the mixed-effects and pooled fits agree, the estimated <span class="hatvar greek">σ</span> sits near zero, and the two bands become comparable (both then reflect only within-box sampling). Raise the SD and the pooled p shrinks toward significance while the mixed-effects p stays honest; turn both bands on to see the pooled band (narrow) nested inside the nest-aware band (wider). Set the two hazards equal (true HR = 1) at a moderate SD to watch the pooled fit declare a diet effect that is not there. Whether the survival bands overlap is not itself the test (pointwise bands can overlap even when the hazard-ratio test is significant); the verdict is the mixed-effects p.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>The mixed-effects Cox fit in R</h3>
+      <p>The fixed-effects models on the earlier tabs used <code>coxph</code>. When there is a single random effect, as with the shared nest boxes at the top of this page, <code>coxph</code> can be augmented with a <code>frailty</code> grouping to account for the pseudoreplication. For more complex random-effect structures, <code>coxme</code> from the package of the same name (both written by Therneau, who also wrote <code>survival</code>) adds a random intercept per cluster. The <code>coxme</code> random intercept is Gaussian on the log-hazard scale, which is a log-normal shared frailty acting on the baseline hazard of each box. Examples of both approaches are shown below, along with the random-effect-ignoring pooled fit that introduces pseudoreplication (for comparison only):</p>
+      <div class="rblock"><div class="rblock-hdr">Mixed-effects Cox in R <span class="lab-r">R</span></div><pre>library(coxme)
+# diet   : fixed effect (the hazard ratio of interest)
+# nestID : random intercept for the box the brood were reared in
+
+# single grouping factor: coxph's frailty() term fits essentially the
+# same Gaussian shared-frailty model as coxme below and often
+# converges more reliably:
+frail <- coxph(Surv(time, status) ~ diet +
+               frailty(nestID, distribution = "gaussian"),
+               data = brood)
+
+# alternative: use coxme instead of frailty groups
+# allows for more complex random effects but less reliable convergence
+model <- coxme(Surv(time, status) ~ diet + (1 | nestID), data = brood)
+
+# for comparison: the pooled fixed-effects fit, shown for
+# contrast, ignores the box (and introduces pseudoreplication):
+pooled <- coxph(Surv(time, status) ~ diet, data = brood)   # pseudoreplication</pre></div>
+      <p class="note" style="margin-top:10px;"><strong>Frailty term vs. coxme.</strong> For a single grouping factor, as here, the <code>frailty()</code> term and <code>coxme</code>'s <code>(1 | nestID)</code> fit essentially the same Gaussian shared-frailty model and usually return a very similar hazard ratio and variance. The <code>frailty()</code> route is a penalized fit specialized to one variance component, so it is often more numerically robust and more likely to converge on awkward data; <code>coxme</code> uses a general integrated likelihood that also handles multiple, crossed, or nested random effects, at the cost of a harder optimization.</p>
+      <p class="note" style="margin-top:8px;"><strong>Conditional vs. marginal hazard ratio.</strong> The hazard ratio from <code>coxme</code> (or <code>frailty()</code>) is conditional on the nest: it compares two brood in boxes of the same random quality. The pooled <code>coxph</code> returns a marginal hazard ratio, averaged over boxes. The two differ even in principle, not only in their standard errors, because the hazard ratio is non-collapsible (the same reason a conditional and a marginal odds ratio differ); raising the nest-to-nest SD widens that gap along with the interval.</p>
+      <p class="note" style="margin-top:8px;"><strong>Read the interval, not the point estimate.</strong> With only a handful of boxes per diet, both the random-effect variance and the diet coefficient are estimated imprecisely, so the point estimates here are noisy. The lesson lives in the interval and the p-value (does modeling the nest change whether the diet effect is distinguishable from zero?), not in the exact hazard-ratio value.</p>
+      <p class="note" style="margin-top:8px;"><strong>The two confidence bands.</strong> The diet-average curves are pooled Kaplan–Meier estimates, which marginalize over the boxes within a diet. The pooled (Greenwood) band treats brood as independent, so, like the pooled <code>coxph</code> p-value, it is narrower than the nesting warrants. The nest-aware band uses the between-box spread of the per-box survival fractions (mean ± 1.96 × SD / √R); it widens with the nest-to-nest SD and with fewer boxes, approaches the pooled band when the boxes are exchangeable, and is the band to report (the band analog of a cluster-robust standard error). Either way the formal verdict is the mixed-effects p, not whether the bands overlap.</p>
+      <p class="note" style="margin-top:8px;"><strong>The exponential overlay.</strong> The optional exponential fit assumes a hazard constant in time (the assumption of the first two tabs). It is correct for this simulation, where waiting times are exponential, but most field survival data are fit nonparametrically (Kaplan–Meier) or with a Cox baseline because that assumption is rarely safe.</p>
+    </div>
+  </div>
+
   <div class="foot">© 2026 Theodore P. Pavlic <span class="footer-sep">·</span> <span class="footer-lic"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a></span></div>
 </div>
 
@@ -343,6 +423,7 @@ fit <- coxph(Surv(start, stop, event_SI) ~ treatment + cluster(id), data = episo
 function RNG(seed){let s=(seed>>>0)||1; return function(){s=(1664525*s+1013904223)>>>0; return s/4294967296;};}
 function expRand(rng, rate){return -Math.log(Math.max(1e-12,1-rng()))/rate;}
 function fmt(x,d=3){return Number.isFinite(x)?x.toFixed(d):'—';}
+function pfmt(p){ return Number.isFinite(p)?(p<0.001?'<0.001':p.toFixed(3)):'—'; }
 function ciRate(events, exposure){ if(events<=0||exposure<=0) return [NaN,NaN]; const h=events/exposure; const se=1/Math.sqrt(events); return [h*Math.exp(-1.96*se), h*Math.exp(1.96*se)]; }
 function $(id){return document.getElementById(id);}
 function setText(id, value){ const el = document.getElementById(id); if (!el) { console.warn('Missing element for text update:', id); return; } el.textContent = value; }
@@ -417,7 +498,104 @@ function drawKMStep(ctx, rows, T, x0, y0, w, h, xmax){
   ctx.stroke();
 }
 
-let geomBasic=null, geomRecur=null, dragging=null;
+// ---- Mixed-effects (frailty) Cox engine for the Application tab ----
+// Validated against the coxph/coxme behavior: sigma=0 recovers the pooled fit;
+// a null effect with sigma>0 makes the pooled fit a false positive while the
+// mixed-effects fit stays non-significant (pseudoreplication demo).
+function appRNG(seed){ let s=(seed>>>0)||1; return ()=>{ s^=s<<13; s>>>=0; s^=s>>>17; s^=s<<5; s>>>=0; return (s>>>0)/4294967296; }; }
+function appExpRand(rng,rate){ let u=rng(); if(u<=0)u=1e-12; return -Math.log(u)/rate; }
+function gauss(rng){ let u=0,v=0; while(u<=0)u=rng(); while(v<=0)v=rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function erf(x){ const t=1/(1+0.3275911*Math.abs(x)); const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x); return x>=0?y:-y; }
+function normCDF(z){ return 0.5*(1+erf(z/Math.SQRT2)); }
+function clampEta(e){ return e>30?30:(e<-30?-30:e); }
+function inv(A){ const n=A.length; const M=A.map((r,i)=>r.concat(Array.from({length:n},(_,j)=>i===j?1:0)));
+  for(let c=0;c<n;c++){ let piv=c; for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[piv][c])) piv=r;
+    [M[c],M[piv]]=[M[piv],M[c]]; const d=M[c][c]; if(Math.abs(d)<1e-13) return null;
+    for(let j=0;j<2*n;j++) M[c][j]/=d; for(let r=0;r<n;r++){ if(r===c)continue; const f=M[r][c]; if(f) for(let j=0;j<2*n;j++) M[r][j]-=f*M[c][j]; } }
+  return M.map(r=>r.slice(n)); }
+function matvec(A,x){ return A.map(r=>r.reduce((s,v,j)=>s+v*x[j],0)); }
+function simulateApp(P){ const rng=appRNG(P.seed); const subjects=[]; let k=0; const boxTreat=[];
+  for(let treat=0;treat<2;treat++){ const base=treat===0?P.lamP:P.lamC;
+    for(let r=0;r<P.R;r++){ const b=P.sigma*gauss(rng); const rate=base*Math.exp(b); boxTreat.push(treat);
+      for(let m=0;m<P.M;m++){ const t=appExpRand(rng,rate); const obs=t<=P.T; subjects.push({x:treat,box:k,time:obs?t:P.T,status:obs?1:0,traw:t}); } k++; } }
+  return {subjects,nBox:k,boxTreat,T:P.T}; }
+function prepApp(sub){ return sub.map((s,i)=>i).sort((a,b)=>sub[b].time-sub[a].time); }
+function pplApp(sub,idx,q,theta,sigma2){ let S0=0,ll=0;
+  for(const j of idx){ const s=sub[j]; const eta=clampEta(theta[0]*s.x+theta[1+s.box]); S0+=Math.exp(eta); if(s.status===1) ll+=eta-Math.log(S0); }
+  let pen=0; for(let kk=0;kk<q;kk++) pen+=theta[1+kk]*theta[1+kk]; return ll-pen/(2*sigma2); }
+function scoreInfoApp(sub,idx,boxTreat,q,theta,sigma2){ const PD=1+q; const w=sub.map(s=>Math.exp(clampEta(theta[0]*s.x+theta[1+s.box])));
+  let S0=0; const S1=new Array(PD).fill(0); const U=new Array(PD).fill(0); const I=Array.from({length:PD},()=>new Array(PD).fill(0));
+  for(const j of idx){ const s=sub[j]; const wj=w[j]; S0+=wj; S1[0]+=wj*s.x; S1[1+s.box]+=wj;
+    if(s.status===1){ const p=new Array(PD); for(let a=0;a<PD;a++)p[a]=S1[a]/S0;
+      U[0]+=s.x-p[0]; for(let kk=0;kk<q;kk++) U[1+kk]-=p[1+kk]; U[1+s.box]+=1;
+      for(let a=0;a<PD;a++){ const pa=p[a]; const Ia=I[a]; for(let b=0;b<PD;b++) Ia[b]-=pa*p[b]; }
+      I[0][0]+=p[0]; for(let kk=0;kk<q;kk++){ const pk=p[1+kk]; if(pk){ I[1+kk][1+kk]+=pk; const tk=boxTreat[kk]*pk; I[0][1+kk]+=tk; I[1+kk][0]+=tk; } } } }
+  for(let kk=0;kk<q;kk++){ U[1+kk]-=theta[1+kk]/sigma2; I[1+kk][1+kk]+=1/sigma2; } return {U,I}; }
+function newtonApp(sub,idx,boxTreat,q,theta,sigma2){ let f0=pplApp(sub,idx,q,theta,sigma2);
+  for(let it=0;it<60;it++){ const {U,I}=scoreInfoApp(sub,idx,boxTreat,q,theta,sigma2); const V=inv(I); if(!V)return false;
+    const step=matvec(V,U); let lam=1,ok=false,ft;
+    for(let h=0;h<35;h++){ const trial=theta.map((t,a)=>t+lam*step[a]); ft=pplApp(sub,idx,q,trial,sigma2);
+      if(isFinite(ft)&&ft>=f0-1e-9){ for(let a=0;a<theta.length;a++) theta[a]+=lam*step[a]; ok=true; break; } lam*=0.5; }
+    if(!ok) return true; let mx=0; for(const u of U) mx=Math.max(mx,Math.abs(u)); if(mx<1e-7 && Math.abs(ft-f0)<1e-9){f0=ft;break;} f0=ft; }
+  return true; }
+function fitCoxmeApp(data){ const {subjects:sub,nBox:q,boxTreat}=data; if(!sub.some(s=>s.status===1)) return null;
+  const idx=prepApp(sub); const theta=new Array(1+q).fill(0); let sigma2=0.3;
+  for(let em=0;em<40;em++){ if(!newtonApp(sub,idx,boxTreat,q,theta,sigma2)) return null;
+    const {I}=scoreInfoApp(sub,idx,boxTreat,q,theta,sigma2); const V=inv(I); if(!V)return null;
+    let s2=0; for(let kk=0;kk<q;kk++) s2+=theta[1+kk]*theta[1+kk]+V[1+kk][1+kk]; s2/=q;
+    const done=Math.abs(s2-sigma2)<1e-5*(1+sigma2); sigma2=Math.max(s2,1e-7); if(done&&em>=3) break; }
+  newtonApp(sub,idx,boxTreat,q,theta,sigma2); const {I}=scoreInfoApp(sub,idx,boxTreat,q,theta,sigma2); const V=inv(I); if(!V)return null;
+  const beta=theta[0], se=Math.sqrt(Math.max(V[0][0],1e-12));
+  return {beta,se,hr:Math.exp(beta),lo:Math.exp(beta-1.96*se),hi:Math.exp(beta+1.96*se),p:2*(1-normCDF(Math.abs(beta)/se)),sigma:Math.sqrt(sigma2)}; }
+function fitNaiveApp(data){ const sub=data.subjects; if(!sub.some(s=>s.status===1)) return null; const idx=prepApp(sub); let beta=0;
+  for(let it=0;it<80;it++){ let S0=0,S1=0,U=0,If=0; const w=sub.map(s=>Math.exp(clampEta(beta*s.x)));
+    for(const j of idx){ const s=sub[j]; S0+=w[j]; S1+=w[j]*s.x; if(s.status===1){ const p=S1/S0; U+=s.x-p; If+=p-p*p; } }
+    if(If<1e-12)break; const st=U/If; beta+=st; if(Math.abs(st)<1e-9)break; }
+  let S0=0,S1=0,If=0; const w=sub.map(s=>Math.exp(clampEta(beta*s.x)));
+  for(const j of idx){ const s=sub[j]; S0+=w[j]; S1+=w[j]*s.x; if(s.status===1){ const p=S1/S0; If+=p-p*p; } }
+  const se=Math.sqrt(1/Math.max(If,1e-12)); return {beta,se,hr:Math.exp(beta),lo:Math.exp(beta-1.96*se),hi:Math.exp(beta+1.96*se),p:2*(1-normCDF(Math.abs(beta)/se))}; }
+
+// Pooled Kaplan-Meier per diet with Greenwood log-log confidence interval.
+// Pooling brood across boxes marginalizes over the nest random effect; the
+// Greenwood band treats brood as independent, so it is narrower than the
+// nesting warrants (the same pooling pitfall the mixed-effects test corrects).
+function kmFit(subs){
+  if(!subs.length) return [];
+  const evTimes=[...new Set(subs.filter(s=>s.status===1).map(s=>s.time))].sort((a,b)=>a-b);
+  const pts=[{t:0,S:1,lo:1,hi:1}]; let S=1, vs=0;
+  for(const t of evTimes){
+    let n=0,d=0; for(const s of subs){ if(s.time>=t-1e-9)n++; if(s.status===1&&Math.abs(s.time-t)<1e-9)d++; }
+    if(n<=0) continue;
+    S*=(1-d/n); if(n>d) vs+=d/(n*(n-d));
+    let lo,hi;
+    if(S<=0){ lo=0; hi=0; }
+    else if(S>=1){ lo=1; hi=1; }
+    else { const seL=Math.sqrt(vs)/Math.abs(Math.log(S)), L=Math.log(-Math.log(S));
+      lo=Math.exp(-Math.exp(L+1.96*seL)); hi=Math.exp(-Math.exp(L-1.96*seL)); }
+    pts.push({t,S,lo,hi});
+  }
+  return pts;
+}
+
+// Nest-aware (cluster-level) confidence band for the diet-average survival.
+// Each box's survival fraction at t is (# brood with raw death time > t)/M;
+// the diet average is their mean (= the pooled estimate), and the interval uses
+// the between-box variance with the box as the replication unit:
+//   mean +/- 1.96 * sd_box / sqrt(R).  This widens with nest-to-nest spread and
+// with fewer boxes, and collapses onto the pooled band when boxes are exchangeable.
+function nestBand(boxesSubs, M, T, ngrid){
+  const R=boxesSubs.length; const out=[];
+  for(let i=0;i<=ngrid;i++){ const t=T*i/ngrid;
+    const fs=boxesSubs.map(bs=>{ let a=0; for(const s of bs) if(s.traw>t) a++; return a/M; });
+    const mean=fs.reduce((x,y)=>x+y,0)/R;
+    let v=0; for(const f of fs) v+=(f-mean)*(f-mean); v/=(R>1?R-1:1);
+    const se=Math.sqrt(v/R);
+    out.push({t, mean, lo:Math.max(0,mean-1.96*se), hi:Math.min(1,mean+1.96*se)});
+  }
+  return out;
+}
+
+let geomBasic=null, geomRecur=null, geomApp=null, dragging=null;
 function basicData(){
   const lam=$('basicLam').value/100, T=$('basicT').value/10, N=+$('basicN').value, seed=+$('basicSeed').value;
   const rng=RNG(seed), times=[]; let events=0, exposure=0, eventTimeSum=0;
@@ -467,7 +645,7 @@ function recurEstimate(sim){
 function drawRecur(){
   const sim=simulateRecur(); setText('v-rBeta',fmt(sim.beta,2)); setText('v-rGamma',fmt(sim.gamma,2)); setText('v-rT',fmt(sim.T,1)); setText('v-rN',sim.N); setText('v-rHet',fmt(sim.het,2)); setText('v-rSeed',sim.seed);
   const est=recurEstimate(sim); const bh=est.timeS>0?est.evSI/est.timeS:NaN, ci=ciRate(est.evSI,est.timeS), naive=est.cal>0?est.evSI/est.cal:NaN, drop=est.timeDrop>0?est.evDrop/est.timeDrop:NaN; setText('rEvents',est.evSI); setText('rBetaHat',fmt(bh,3)); setText('rBetaCI','95% CI '+fmt(ci[0],3)+'–'+fmt(ci[1],3)); setText('rNaive',fmt(naive,3)); setText('rDropHat',fmt(drop,3));
-  const {ctx}=canvasPrep('recurCanvas'); const left=60,right=710,top=46,bottom=470,rowH=(bottom-top)/sim.N, xmax=RXMAX; const xOf=t=>left+(right-left)*Math.min(t,xmax)/xmax, xT=xOf(sim.T);
+  const {ctx}=canvasPrep('recurCanvas'); const left=60,right=710,top=46,bottom=610,rowH=(bottom-top)/sim.N, xmax=RXMAX; const xOf=t=>left+(right-left)*Math.min(t,xmax)/xmax, xT=xOf(sim.T);
   ctx.font='11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
   for(let i=0;i<=5;i++){const x=left+(right-left)*i/5; ctx.strokeStyle='#eee'; ctx.beginPath();ctx.moveTo(x,top-12);ctx.lineTo(x,bottom+8);ctx.stroke(); ctx.fillStyle='#777';ctx.fillText(fmt(xmax*i/5,1),x-8,bottom+25);}
   ctx.fillStyle='#666';ctx.textAlign='right';ctx.fillText('time',right,bottom+43);ctx.textAlign='left';
@@ -477,7 +655,110 @@ function drawRecur(){
   ctx.fillStyle='#222';ctx.font='13px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';ctx.fillText(`true β = ${fmt(sim.beta,2)}, recurrent estimate = ${fmt(bh,3)} (window T = ${fmt(sim.T,1)})`,60,26);
   drawInsetLegend(ctx,455,14,[{type:'line',color:'#4a8c69',w:6,label:'S exposure',desc:'Time the unit spends in state S, at risk of an S→I transition.'}, {type:'line',color:'#d97842',w:6,label:'I exposure',desc:'Time the unit spends in state I, not at risk of S→I until it returns to S.'}, {type:'circle',color:'#2f6b4a',label:'S→I recurrent event',desc:'An observed S→I transition; one unit can contribute several over the observation period.'}],'recurCanvas');
 }
-function drawAll(){ drawBasic(); drawRecur(); }
+const APPXMAX=14;
+function appData(){
+  return { lamP:$('appLamP').value/100, lamC:$('appLamC').value/100, M:+$('appM').value, R:+$('appR').value,
+           sigma:$('appSigma').value/100, T:$('appT').value/10, seed:+$('appSeed').value,
+           showBoxes:$('appShowBoxes').checked, showPooled:$('appShowPooled').checked, showNest:$('appShowNest').checked, showExp:$('appShowExp').checked };
+}
+function drawCountStep(ctx, ts, M, xOf, yOf, xT, solid, faint, lw){
+  ctx.lineWidth=lw; ctx.setLineDash([]);
+  const seg=(x1,x2,y,col)=>{ if(x2<=x1+0.01) return; ctx.strokeStyle=col; ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke(); };
+  const vseg=(x,y1,y2,col)=>{ ctx.strokeStyle=col; ctx.beginPath(); ctx.moveTo(x,y1); ctx.lineTo(x,y2); ctx.stroke(); };
+  let alive=M, xPrev=xOf(0);
+  for(const t of ts){
+    if(t>APPXMAX) break;
+    const x=xOf(t), y=yOf(alive);
+    seg(xPrev, Math.min(x,xT), y, solid);
+    seg(Math.max(xPrev,xT), x, y, faint);
+    vseg(x, y, yOf(alive-1), x<=xT?solid:faint);
+    alive--; xPrev=x;
+  }
+  const yEnd=yOf(alive), xEnd=xOf(APPXMAX);
+  seg(xPrev, Math.min(xEnd,xT), yEnd, solid);
+  seg(Math.max(xPrev,xT), xEnd, yEnd, faint);
+}
+function drawApp(){
+  const P=appData();
+  setText('v-appLamP',fmt(P.lamP,2)); setText('v-appLamC',fmt(P.lamC,2)); setText('v-appM',P.M);
+  setText('v-appR',P.R); setText('v-appSigma',fmt(P.sigma,2)); setText('v-appT',fmt(P.T,1)); setText('v-appSeed',P.seed);
+  const data=simulateApp(P);
+  setText('appTrueHR',fmt(P.lamC/P.lamP,2));
+  const cox=fitCoxmeApp(data), nv=fitNaiveApp(data);
+  const sig = !!(cox && cox.p<0.05);
+  if(cox){ setText('appCoxHR',fmt(cox.hr,2)); setText('appCoxCI','95% CI '+fmt(cox.lo,2)+'–'+fmt(cox.hi,2)); setText('appCoxP',pfmt(cox.p)+(sig?'  ✱':'')); setHTML('appSigmaHat','<span class="hatvar greek">σ</span> = '+fmt(cox.sigma,2)); }
+  else { setText('appCoxHR','—'); setText('appCoxCI','95% CI —'); setText('appCoxP','—'); setHTML('appSigmaHat','<span class="hatvar greek">σ</span> = —'); }
+  setText('appNaiveP', nv?pfmt(nv.p):'—');
+  const kp=$('kpiCoxP'); if(kp) kp.classList.toggle('sig', sig);
+  // per-diet pooled exponential MLE rates (constant-hazard summary curves)
+  let evP=0,exP=0,evC=0,exC=0; const subP=[], subC=[];
+  data.subjects.forEach(s=>{ if(s.x===0){evP+=s.status; exP+=s.time; subP.push(s);} else {evC+=s.status; exC+=s.time; subC.push(s);} });
+  const lamHatP=exP>0?evP/exP:NaN, lamHatC=exC>0?evC/exC:NaN;
+  const {ctx,W,H}=canvasPrep('appCanvas');
+  const x0=64, w=620, top=58, y0=H-52, h=y0-top, M=P.M, xmax=APPXMAX;
+  const xOf=t=>x0+w*Math.min(t,xmax)/xmax, yOf=cnt=>y0-h*(cnt/M), xT=xOf(P.T);
+  // axes
+  ctx.strokeStyle='#999'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,top); ctx.lineTo(x0+w,top); ctx.stroke();
+  ctx.font='12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+  for(let i=0;i<=4;i++){ const x=x0+w*i/4; ctx.strokeStyle='#eee'; ctx.beginPath(); ctx.moveTo(x,y0); ctx.lineTo(x,top); ctx.stroke(); ctx.fillStyle='#777'; ctx.textAlign='center'; ctx.fillText(fmt(xmax*i/4,1),x,y0+16); }
+  ctx.textAlign='right';
+  for(let j=0;j<=4;j++){ const cnt=Math.round(M*j/4), y=yOf(cnt); ctx.strokeStyle='#eee'; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x0+w,y); ctx.stroke(); ctx.fillStyle='#777'; ctx.fillText(String(cnt),x0-8,y+4); }
+  ctx.textAlign='left'; ctx.fillStyle='#666'; ctx.fillText('time',x0+w-2,y0+30);
+  ctx.save(); ctx.translate(x0-42,top+h/2+38); ctx.rotate(-Math.PI/2); ctx.fillText('brood still alive (count)',0,0); ctx.restore();
+  // box-grouped subjects, split by diet
+  const boxes=Array.from({length:data.nBox},()=>[]);
+  data.subjects.forEach(s=>boxes[s.box].push(s));
+  const boxesP=[], boxesC=[]; boxes.forEach((bs,k)=>{ (data.boxTreat[k]===0?boxesP:boxesC).push(bs); });
+  // --- individual nest-box step curves (counts), drawn first so bands overlay ---
+  if(P.showBoxes){
+    boxes.forEach((bs,k)=>{ const treat=data.boxTreat[k]; const ts=bs.map(s=>s.traw).sort((a,b)=>a-b);
+      const solid=treat===0?'rgba(74,140,105,0.45)':'rgba(217,120,66,0.45)', faint=treat===0?'rgba(74,140,105,0.13)':'rgba(217,120,66,0.13)';
+      drawCountStep(ctx, ts, M, xOf, yOf, xT, solid, faint, 1.3); });
+  }
+  // --- nest-aware (cluster) band: filled polygon over a time grid (wider, drawn first) ---
+  function bandPoly(pts, fill){ if(pts.length<2) return; ctx.fillStyle=fill; ctx.setLineDash([]); ctx.beginPath();
+    for(let i=0;i<pts.length;i++){ const x=xOf(pts[i].t), y=yOf(M*pts[i].hi); if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    for(let i=pts.length-1;i>=0;i--){ ctx.lineTo(xOf(pts[i].t), yOf(M*pts[i].lo)); } ctx.closePath(); ctx.fill(); }
+  if(P.showNest){ bandPoly(nestBand(boxesP,M,P.T,80),'rgba(74,140,105,0.16)'); bandPoly(nestBand(boxesC,M,P.T,80),'rgba(217,120,66,0.16)'); }
+  // --- pooled Greenwood band: stepped ribbon (narrower, drawn on top) ---
+  function greenwoodBand(subs, fill){ const pts=kmFit(subs); if(pts.length<2) return; ctx.fillStyle=fill;
+    for(let i=0;i<pts.length;i++){ const x1=xOf(pts[i].t), x2=Math.min(i+1<pts.length?xOf(pts[i+1].t):xT, xT); if(x2<=x1) continue;
+      const yT=yOf(M*pts[i].hi), yB=yOf(M*pts[i].lo); if(yB>yT) ctx.fillRect(x1,yT,x2-x1,yB-yT); } }
+  if(P.showPooled){ greenwoodBand(subP,'rgba(47,107,74,0.22)'); greenwoodBand(subC,'rgba(195,74,46,0.22)'); }
+  // --- diet-average Kaplan-Meier step line (shown whenever a band is on) ---
+  function kmLine(subs, color){ const pts=kmFit(subs); if(pts.length<2) return; ctx.strokeStyle=color; ctx.lineWidth=2.6; ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(xOf(0),yOf(M));
+    for(let i=0;i<pts.length;i++){ const x=Math.min(i+1<pts.length?xOf(pts[i+1].t):xT, xT), y=yOf(M*pts[i].S); ctx.lineTo(x,y); if(i+1<pts.length){ ctx.lineTo(Math.min(xOf(pts[i+1].t),xT), yOf(M*pts[i+1].S)); } } ctx.stroke(); }
+  if(P.showNest || P.showPooled){ kmLine(subP,'#2f6b4a'); kmLine(subC,'#c34a2e'); }
+  // --- per-diet exponential (constant-hazard) fit, scaled to cohort size M ---
+  if(P.showExp){
+    function expCurve(rate,solid,faint){ if(!Number.isFinite(rate)||rate<=0) return;
+      for(const phase of [0,1]){ ctx.strokeStyle=phase?faint:solid; ctx.lineWidth=2.2; ctx.setLineDash([6,4]); ctx.beginPath(); let started=false;
+        for(let i=0;i<=300;i++){ const t=xmax*i/300, x=xOf(t); if(phase===0 && x>xT+0.5){ if(started)ctx.stroke(); break; } if(phase===1 && x<xT){ continue; } const y=yOf(M*Math.exp(-rate*t)); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); }
+        if(phase===1 && started) ctx.stroke(); }
+      ctx.setLineDash([]);
+    }
+    expCurve(lamHatP,'#2f6b4a','rgba(47,107,74,0.3)'); expCurve(lamHatC,'#c34a2e','rgba(195,74,46,0.3)');
+  }
+  drawObsBar(ctx,xT,top,y0+8,'observation stops');
+  geomApp={x0,w,xmax,top,bottom:y0+8,T:P.T,slider:'appT',min:2,max:12};
+  // title with significance cue
+  ctx.font='13px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'; ctx.fillStyle='#222'; ctx.textAlign='left';
+  ctx.fillText(`true HR = ${fmt(P.lamC/P.lamP,2)}    mixed-effects HR = ${cox?fmt(cox.hr,2):'—'}    (window T = ${fmt(P.T,1)})`,64,22);
+  ctx.font='bold 13px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'; ctx.fillStyle=sig?'#2f7d4f':'#999';
+  ctx.fillText(cox?`mixed-effects p = ${pfmt(cox.p)}${sig?'   ✱ diet effect distinguishable from zero':'   (not distinguishable from zero)'}`:'',64,42);
+  // legend reflects active layers
+  const items=[];
+  if(P.showBoxes){ items.push({type:'line',color:'#4a8c69',w:6,label:'high-protein box (per nest)',desc:'Brood-alive count for one high-protein nest box, stepping down at each death.'});
+    items.push({type:'line',color:'#d97842',w:6,label:'high-carbohydrate box (per nest)',desc:'Brood-alive count for one high-carbohydrate nest box.'}); }
+  if(P.showNest||P.showPooled){ items.push({type:'line',color:'#2f6b4a',w:3,label:'high-protein diet average (KM)',desc:'Pooled Kaplan–Meier survival for the high-protein diet, as mean brood alive per box.'});
+    items.push({type:'line',color:'#c34a2e',w:3,label:'high-carbohydrate diet average (KM)',desc:'Pooled Kaplan–Meier survival for the high-carbohydrate diet, as mean brood alive per box.'}); }
+  if(P.showNest){ items.push({type:'line',color:'#c4c4be',w:11,label:'nest-aware CI band (box-level)',desc:'Drawn in each diet\u2019s color in the plot; the lighter, wider band. A between-box interval treating each nest box as the replication unit, the band you would report in a paper. Widens with nest-to-nest spread and with fewer boxes.'}); }
+  if(P.showPooled){ items.push({type:'line',color:'#8c8c85',w:11,label:'pooled CI band (ignores nesting)',desc:'Drawn in each diet\u2019s color in the plot; the darker, narrower band. A Greenwood interval treating brood as independent, narrower than the nesting warrants, the same pooling pitfall as the pooled p-value.'}); }
+  if(P.showExp){ items.push({type:'line',color:'#2f6b4a',dash:[6,4],w:2,label:'exponential fit (constant hazard)',desc:'Per-diet exponential MLE, scaled to cohort size M; valid only if the hazard is constant in time, which holds for this simulation but rarely for field data.'}); }
+  items.push({type:'line',color:'#bbb',dash:[3,3],w:3,label:'faint = beyond window T',desc:'Deaths after the observation window: censored in every fit, shown faint for reference.'});
+  drawInsetLegend(ctx,430,top-2,items,'appCanvas');
+}
+function drawAll(){ drawBasic(); drawRecur(); drawApp(); }
 function setTFromDrag(geom,x){
   const rightLimit=Math.min(geom.max, geom.xmax);
   const val=Math.max(geom.min,Math.min(rightLimit,(x-geom.x0)*geom.xmax/geom.w));
@@ -487,8 +768,13 @@ function setTFromDrag(geom,x){
 }
 function nearObsBar(canvas, geom, evt){
   const p=mouseXY(canvas,evt), xT=geom.x0+geom.w*geom.T/geom.xmax;
-  const hitX = Math.abs(p.x-xT) < 22;       // larger target for fingers
-  const hitY = p.y >= geom.top-28 && p.y <= geom.bottom+28;
+  const W=+canvas.dataset.lw||canvas.width, rect=canvas.getBoundingClientRect();
+  const scale = rect.width>0 ? W/rect.width : 1;            // internal units per on-screen px
+  const touch = evt.pointerType==='touch' || evt.pointerType==='pen';
+  const tolX = Math.max(22, (touch?32:12)*scale);           // ~64px finger-wide target on touch
+  const padY = (touch?34:28)*scale;
+  const hitX = Math.abs(p.x-xT) < tolX;
+  const hitY = p.y >= geom.top-padY && p.y <= geom.bottom+padY;
   return {hit:hitX && hitY, p};
 }
 function attachDrag(canvasId, geomGetter){
@@ -504,10 +790,10 @@ function attachDrag(canvasId, geomGetter){
   });
   c.addEventListener('pointerleave',()=>{ if(!dragging) c.style.cursor='default'; });
   c.addEventListener('pointerdown',e=>{
-    if(legendHitAt(canvasId,e)) return;
     const g=geomGetter(); if(!g) return;
     const {hit,p}=nearObsBar(c,g,e);
     if(hit){
+      hideTip();
       dragging={geom:g, canvas:c, pointerId:e.pointerId};
       if(c.setPointerCapture) c.setPointerCapture(e.pointerId);
       c.style.cursor='ew-resize';
@@ -533,8 +819,37 @@ function attachLegendTips(canvasId){
 window.addEventListener('pointerdown',e=>{ if(tipSticky && !(e.target&&e.target.tagName==='CANVAS')) hideTip(); });
 window.addEventListener('scroll',()=>hideTip(),{passive:true});
 window.addEventListener('resize',drawAll);
-['basicLam','basicT','basicN','basicSeed','rBeta','rGamma','rT','rN','rHet','rSeed'].forEach(id=>onInput(id,drawAll));
-setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',()=>geomRecur); drawAll(); attachLegendTips('basicCanvas'); attachLegendTips('recurCanvas');
+['basicLam','basicT','basicN','basicSeed','rBeta','rGamma','rT','rN','rHet','rSeed','appLamP','appLamC','appM','appR','appSigma','appT','appSeed'].forEach(id=>onInput(id,drawAll));
+['appShowBoxes','appShowPooled','appShowNest','appShowExp'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('change',drawApp); });
+const sliderTips={
+  basicLam:'The true exponential event rate λ generating the waiting times. Larger λ means events happen sooner.',
+  basicT:'When observation stops. A unit whose event has not occurred by T is right-censored at T.',
+  basicN:'Number of independent units, each with its own waiting time.',
+  basicSeed:'Redraws the random sample without changing any setting; use it to feel the sampling variability.',
+  rBeta:'Rate of leaving state S for state I (the focal recurrent event). Larger β means shorter waits in S.',
+  rGamma:'Rate of returning from I back to S. Larger γ means shorter stays in I, so a unit becomes at-risk again sooner.',
+  rT:'When observation stops. A spell still open at T is right-censored.',
+  rN:'Number of units; each can contribute several S→I events over the window.',
+  rHet:'Per-unit frailty on the S→I rate only (not the I→S rate). Each unit draws a value u uniformly from [\u22121, 1] once; its S→I rate is then β \u00d7 exp(h u), where β is the rate set above and h is this slider, so h and β are independent (β fixes the center, h the spread). At h = 0 every unit shares β; larger h fans the unit rates out multiplicatively, from β \u00d7 exp(\u2212h) up to β \u00d7 exp(+h), making some units intrinsically faster and correlating each unit\u2019s repeated events (over-dispersion).',
+  rSeed:'Redraws the random sample without changing any setting.',
+  appLamP:'Baseline death hazard λ_P for high-protein brood, before each box\u2019s random nest effect.',
+  appLamC:'Baseline death hazard λ_C for high-carbohydrate brood. The true hazard ratio is λ_C / λ_P.',
+  appM:'Number of brood followed in each nest box (the cohort size per box).',
+  appR:'Replicate nest boxes per diet. This, not the brood count, is the unit of replication for the diet test.',
+  appSigma:'Standard deviation σ of the per-box random intercept on the log-hazard (the frailty). 0 makes boxes identical; larger values spread boxes apart and inflate the pooled fit\u2019s false confidence.',
+  appT:'When observation stops. Brood still alive at T are right-censored.',
+  appSeed:'Redraws the random sample without changing any setting.'
+};
+Object.entries(sliderTips).forEach(([id,t])=>{
+  const el=$(id); if(!el) return; el.setAttribute('aria-label',t);
+  const ctrl=el.closest('.ctrl'); const label=ctrl&&ctrl.querySelector('label'); if(!label) return;
+  label.style.cursor='help';
+  label.addEventListener('pointerenter', e=>{ if(e.pointerType!=='touch') showTip(t,e.clientX,e.clientY); });
+  label.addEventListener('pointermove', e=>{ if(e.pointerType!=='touch' && !tipSticky) showTip(t,e.clientX,e.clientY); });
+  label.addEventListener('pointerleave', e=>{ if(e.pointerType!=='touch' && !tipSticky) hideTip(); });
+  label.addEventListener('click', e=>{ showTip(t,e.clientX,e.clientY); tipSticky=true; });
+});
+setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',()=>geomRecur); attachDrag('appCanvas',()=>geomApp); drawAll(); attachLegendTips('basicCanvas'); attachLegendTips('recurCanvas'); attachLegendTips('appCanvas');
 })();
 </script>
 <footer id="back-link-footer" style="max-width:1180px;margin:-2rem auto 0;padding:0 22px 1.5rem;">
