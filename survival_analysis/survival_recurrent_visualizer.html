@@ -138,8 +138,10 @@ tr:last-child td { border-bottom:none; }
 .rblock-hdr { background:var(--green-dark); color:white; padding:8px 14px; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.07em; font-weight:600; display:flex; justify-content:space-between; align-items:center; }
 .rblock-hdr .lab-r { font-family:var(--mono); text-transform:none; letter-spacing:0; background:rgba(255,255,255,0.18); padding:2px 7px; border-radius:3px; font-size:0.85em; }
 .rblock pre { margin:0; padding:14px 16px; font-family:var(--mono); font-size:0.82rem; line-height:1.55; color:var(--text); white-space:pre; overflow-x:auto; }
-.foot { border-top:1px solid var(--border); margin-top:36px; padding-top:12px; font-size:0.74rem; color:var(--tiny); text-align:right; font-family:var(--mono); }
+.foot { border-top:1px solid var(--border); margin-top:22px; padding-top:12px; font-size:0.74rem; color:var(--tiny); text-align:center; font-family:var(--mono); }
 .foot a { color:var(--tiny); text-decoration:underline; }
+.topcopy { text-align:left; font-family:var(--mono); font-size:0.74rem; color:var(--tiny); margin:12px 0 0; }
+.topcopy a { color:var(--tiny); text-decoration:underline; }
 .footer-sep { display:inline; } .footer-lic { display:inline; }
 .note { font-size:0.82rem; color:var(--muted); line-height:1.55; margin:0; }
 .pill { display:inline-block; padding:2px 7px; border-radius:12px; font-size:0.72rem; font-weight:600; background:var(--green-pale); color:var(--green-dark); border:1px solid var(--green-tint); }
@@ -158,6 +160,7 @@ tr:last-child td { border-bottom:none; }
     <p class="sub">An interactive companion for rates, censoring, repeated transitions, and state-transition models</p>
     <p class="lede">Survival analysis is often introduced as “time until a patient fails.” The same mathematics estimates transition rates in behavioral, ecological, and epidemiological systems: time until an animal leaves a state, time until a nest switches activity, or time until an infected individual recovers.</p>
     <p class="lede" style="font-size:0.85rem;color:var(--muted);">This widget starts with exponential waiting times and right censoring, then generalizes to recurrent events where the same observational unit (for example, one focal animal, nest, colony, pair, or arena) can contribute several transitions during one observation period. The word “unit” simply means whatever entity gets its own stopwatch.</p>
+    <p class="topcopy">© 2026 Theodore P. Pavlic <span class="footer-sep">·</span> <span class="footer-lic"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a></span></p>
   </div>
 
   <div class="tabs" role="tablist">
@@ -331,7 +334,7 @@ fit <- coxph(Surv(start, stop, event_SI) ~ treatment + cluster(id), data = episo
     </div>
   </div>
 
-  <div class="foot">Copyright 2026 Theodore P. Pavlic <span class="footer-sep">·</span> <span class="footer-lic"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a></span></div>
+  <div class="foot">© 2026 Theodore P. Pavlic <span class="footer-sep">·</span> <span class="footer-lic"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a></span></div>
 </div>
 
 <script>
