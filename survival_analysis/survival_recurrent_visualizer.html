@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survival & Recurrent-Event Analysis Visualizer</title>
+<!-- checked touch build v5 2026-06-09T20:20Z: label grouping, pedagogical censoring explainer, empirical survival step curve -->
+<meta name="description" content="Interactive visualizer for survival analysis, recurrent-event survival analysis, exponential transition rates, censoring, and state-transition models.">
+<style>
+:root {
+  --green-dark: #2f6b4a;
+  --green-mid:  #4a8c69;
+  --green-pale: #e6f0ea;
+  --green-tint: #d4e6dc;
+  --orange:     #d97842;
+  --orange-mid: #e3925f;
+  --orange-pale:#fbe8d8;
+  --orange-deep:#c34a2e;
+  --blue:       #2a5a8c;
+  --blue-pale:  #e5edf6;
+  --purple:     #7655a6;
+  --purple-pale:#eee8f6;
+  --bark:       #6b4a2a;
+  --text:       #222;
+  --muted:      #666;
+  --tiny:       #888;
+  --surface:    #fcfaf6;
+  --bg:         #ffffff;
+  --border:     #d8d8d4;
+  --border-strong:#b8b8b2;
+  --accent:     #2a5a8c;
+  --code-bg:    #f4f1ea;
+  --mono:       'IBM Plex Mono', 'SF Mono', Consolas, Menlo, monospace;
+  --sans:       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --r: 6px;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; font-family:var(--sans); color:var(--text); background:var(--bg); line-height:1.5; font-size:15px; }
+a { color: var(--accent); }
+.widget { max-width:1180px; margin:0 auto; padding:22px 22px 44px; }
+.phdr { border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:16px; }
+.phdr h1 { font-size:1.5rem; margin:0 0 4px; color:var(--green-dark); font-weight:600; letter-spacing:-0.01em; }
+.phdr .sub { font-size:0.9rem; color:var(--muted); margin:0 0 10px; font-style:italic; }
+.phdr .lede { font-size:0.95rem; color:var(--text); margin:0 0 8px; max-width:900px; }
+.phdr code, code { font-family:var(--mono); font-size:0.88em; background:var(--green-pale); padding:1px 5px; border-radius:3px; color:var(--green-dark); }
+.tabs { display:flex; gap:2px; border-bottom:2px solid var(--border); margin-bottom:16px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+.tabs::-webkit-scrollbar { display:none; }
+.tab { background:transparent; border:none; border-bottom:2px solid transparent; padding:10px 16px; font-family:var(--sans); font-size:0.9rem; font-weight:500; color:var(--muted); cursor:pointer; margin-bottom:-2px; transition:all 0.15s; white-space:nowrap; }
+.tab:hover { color:var(--green-dark); background:var(--green-pale); }
+.tab.active { color:var(--green-dark); background:var(--green-tint); border-bottom-color:var(--green-dark); font-weight:700; border-radius:5px 5px 0 0; }
+.tabs-select-wrap { display:none; margin-bottom:16px; }
+.tabs-select { width:100%; padding:10px 12px; font-family:var(--sans); font-size:0.95rem; font-weight:500; color:var(--green-dark); background:var(--green-pale); border:1px solid var(--green-mid); border-radius:var(--r); cursor:pointer; }
+.tabpane { display:none; }
+.tabpane.active { display:block; }
+.grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,0.9fr); gap:18px; align-items:stretch; }
+.grid-even { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:16px; min-width:0; }
+.panel h3 { margin:0 0 12px; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--green-dark); font-weight:600; }
+.panel h3 .ann { text-transform:none; letter-spacing:0; font-weight:400; color:var(--muted); font-size:0.92em; margin-left:5px; }
+.ctrls { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; }
+.ctrl { display:flex; flex-direction:column; gap:4px; }
+.ctrl label { font-size:0.74rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.ctrl label .label-name { display:inline-flex; align-items:baseline; gap:0.35em; white-space:nowrap; }
+.ctrl label .v { font-family:var(--mono); font-size:0.82rem; color:var(--green-dark); text-transform:none; letter-spacing:0; font-weight:500; }
+.nocaps, .greek { text-transform:none !important; letter-spacing:0 !important; }
+.hatvar { position:relative; text-transform:none; letter-spacing:0; }
+.hatvar::after { content:"\005E"; position:absolute; left:0; right:0; top:-0.48em; text-align:center; font-size:0.8em; font-weight:inherit; line-height:1; pointer-events:none; }
+.ctrl input[type=range] { width:100%; accent-color:var(--green-dark); margin:0; }
+.ctrl select { font-family:var(--sans); font-size:0.85rem; padding:5px 7px; border:1px solid var(--border-strong); border-radius:3px; background:white; }
+.ctrl-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+.btn { background:var(--green-dark); border:1px solid var(--green-dark); border-radius:4px; padding:6px 12px; font-family:var(--sans); font-size:0.82rem; font-weight:500; color:white; cursor:pointer; transition:all 0.13s; }
+.btn:hover { background:var(--green-mid); border-color:var(--green-mid); }
+.btn.sec { background:transparent; color:var(--green-dark); }
+.btn.sec:hover { background:var(--green-pale); }
+.toggles { display:flex; gap:14px; flex-wrap:wrap; margin-top:6px; }
+.toggle { display:inline-flex; align-items:center; gap:5px; font-size:0.82rem; color:var(--text); cursor:pointer; user-select:none; }
+.toggle input { margin:0; accent-color:var(--green-dark); }
+.sec-divider { border-top:1px dashed var(--border); margin:14px 0 12px; }
+.viz-wrap { width:100%; background:white; border:1px solid var(--border); border-radius:4px; overflow:hidden; position:relative; }
+.viz-wrap canvas, .viz-wrap svg { display:block; width:100%; height:auto; }
+.viz-wrap canvas { touch-action:none; }
+button, select, input[type=range], .toggle { min-height:44px; }
+.tab { min-height:44px; }
+.tabs-select { min-height:46px; font-size:1rem; }
+.ctrl input[type=range] { height:28px; }
+.ctrl input[type=range]::-webkit-slider-thumb { min-width:24px; min-height:24px; }
+.ctrl input[type=range]::-moz-range-thumb { width:24px; height:24px; }
+.btn { min-height:44px; padding:9px 14px; }
+.toggle input { width:22px; height:22px; }
+@media (pointer:coarse) {
+  .panel { padding:14px; }
+  .ctrl label { font-size:0.76rem; }
+  .viz-cap, .note { font-size:0.84rem; }
+}
+.viz-cap { font-size:0.78rem; color:var(--muted); margin-top:8px; line-height:1.5; }
+.viz-cap b { color:var(--text); }
+.explainer { background:var(--surface); border-left:3px solid var(--green-mid); border-radius:0 var(--r) var(--r) 0; padding:14px 18px; margin:18px 0; font-size:0.93rem; color:var(--text); line-height:1.6; }
+.explainer h4 { margin:0 0 8px; font-size:0.86rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--green-dark); font-weight:600; }
+.explainer p { margin:0 0 8px; }
+.explainer p:last-child { margin-bottom:0; }
+.formula { display:block; font-family:var(--mono); background:white; border:1px solid var(--border); border-radius:4px; padding:10px 14px; margin:10px 0; font-size:0.95rem; overflow-x:auto; }
+.kpis { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.kpi { background:white; border:1px solid var(--border); border-radius:4px; padding:10px 12px; }
+.kpi .lab { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); }
+.kpi .val { font-family:var(--mono); font-size:1.05rem; color:var(--green-dark); font-weight:500; margin-top:2px; }
+.kpi .sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+.table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:4px; background:white; }
+table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+th, td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+th { color:var(--green-dark); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; background:var(--green-pale); }
+tr:last-child td { border-bottom:none; }
+.rblock { margin-top:22px; border:1px solid var(--border); border-radius:var(--r); background:var(--code-bg); overflow:hidden; }
+.rblock-hdr { background:var(--green-dark); color:white; padding:8px 14px; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.07em; font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+.rblock-hdr .lab-r { font-family:var(--mono); text-transform:none; letter-spacing:0; background:rgba(255,255,255,0.18); padding:2px 7px; border-radius:3px; font-size:0.85em; }
+.rblock pre { margin:0; padding:14px 16px; font-family:var(--mono); font-size:0.82rem; line-height:1.55; color:var(--text); white-space:pre; overflow-x:auto; }
+.foot { border-top:1px solid var(--border); margin-top:36px; padding-top:12px; font-size:0.74rem; color:var(--tiny); text-align:right; font-family:var(--mono); }
+.foot a { color:var(--tiny); text-decoration:underline; }
+.footer-sep { display:inline; } .footer-lic { display:inline; }
+.note { font-size:0.82rem; color:var(--muted); line-height:1.55; margin:0; }
+.pill { display:inline-block; padding:2px 7px; border-radius:12px; font-size:0.72rem; font-weight:600; background:var(--green-pale); color:var(--green-dark); border:1px solid var(--green-tint); }
+.pill.warn { background:var(--orange-pale); color:var(--orange-deep); border-color:#efc6a5; }
+.pill.info { background:var(--blue-pale); color:var(--blue); border-color:#c5d6ea; }
+@media (max-width:960px) { .tabs { display:none; } .tabs-select-wrap { display:block; } }
+@media (max-width:880px) { .grid, .grid-even { grid-template-columns:1fr; } .kpis { grid-template-columns:1fr 1fr; } }
+@media (max-width:600px) { .widget { padding:18px 14px 36px; } .phdr h1 { font-size:1.3rem; } .ctrls { grid-template-columns:1fr; } .kpis { grid-template-columns:1fr; } .footer-sep { display:none; } .footer-lic { display:block; margin-top:3px; } }
+.legend-tip { position:fixed; z-index:9999; max-width:240px; background:#2b2b2b; color:#fff; font-size:12px; line-height:1.45; padding:7px 9px; border-radius:5px; pointer-events:none; box-shadow:0 2px 10px rgba(0,0,0,0.28); display:none; }
+</style>
+</head>
+<body>
+<div class="widget">
+  <div class="phdr">
+    <h1>Survival &amp; Recurrent-Event Analysis Visualizer</h1>
+    <p class="sub">An interactive companion for rates, censoring, repeated transitions, and state-transition models</p>
+    <p class="lede">Survival analysis is often introduced as “time until a patient fails.” The same mathematics estimates transition rates in behavioral, ecological, and epidemiological systems: time until an animal leaves a state, time until a nest switches activity, or time until an infected individual recovers.</p>
+    <p class="lede" style="font-size:0.85rem;color:var(--muted);">This widget starts with exponential waiting times and right censoring, then generalizes to recurrent events where the same observational unit (for example, one focal animal, nest, colony, pair, or arena) can contribute several transitions during one observation period. The word “unit” simply means whatever entity gets its own stopwatch.</p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="0">Survival basics</button>
+    <button class="tab" data-tab="1">Recurrent events</button>
+  </div>
+  <div class="tabs-select-wrap"><select class="tabs-select" id="mainTabSelect">
+    <option value="0">1. Survival basics</option><option value="1">2. Recurrent events</option>
+  </select></div>
+
+  <div class="tabpane active" data-pane="0">
+    <div class="grid">
+      <div class="panel">
+        <h3>Waiting times as transition rates</h3>
+        <div class="viz-wrap"><canvas id="basicCanvas" width="720" height="700"></canvas></div>
+        <div class="viz-cap">For a constant transition rate <code>λ</code>, the event time is exponential: the chance of still waiting at time <code>t</code> is <code>S(t)=exp(−λt)</code>. The hazard is flat because the next instant does not “remember” how long the individual has already waited.</div>
+      </div>
+      <div class="panel">
+        <h3>Controls</h3>
+        <div class="ctrls">
+          <div class="ctrl"><label><span class="label-name">True rate <span class="greek">λ</span></span> <span class="v" id="v-basicLam">0.35</span></label><input id="basicLam" type="range" min="5" max="120" value="35"></div>
+          <div class="ctrl"><label>Observation window T <span class="v" id="v-basicT">6.0</span></label><input id="basicT" type="range" min="10" max="120" value="60"></div>
+          <div class="ctrl"><label>Units N <span class="v" id="v-basicN">35</span></label><input id="basicN" type="range" min="20" max="120" value="35"></div>
+          <div class="ctrl"><label>Random seed <span class="v" id="v-basicSeed">1</span></label><input id="basicSeed" type="range" min="1" max="99" value="1"></div>
+        </div>
+        <div class="sec-divider"></div>
+        <div class="kpis">
+          <div class="kpi"><div class="lab">events seen</div><div class="val" id="basicEvents">—</div><div class="sub">uncensored observations</div></div>
+          <div class="kpi"><div class="lab">censored</div><div class="val" id="basicCens">—</div><div class="sub">still waiting at T</div></div>
+          <div class="kpi"><div class="lab">MLE <span class="hatvar">λ</span></div><div class="val" id="basicHat">—</div><div class="sub" id="basicCI">95% CI —</div></div>
+          <div class="kpi"><div class="lab">naive <span class="hatvar">λ</span></div><div class="val" id="basicNaive">—</div><div class="sub">ignores unfinished waits</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>How survival analysis uses unfinished waiting times</h3>
+      <p>In an ordinary regression or mixed model, every response is observed in full. Survival analysis exists for the case where the response is a waiting time and some of those times are seen only in part. Give each observational unit (e.g., a focal animal, nest, colony, pair, or arena) its own clock that starts when it enters the at-risk state, and let <code>W</code> be the (random) waiting time until the transition of interest, with <code>wᵢ</code> its value for unit <code>i</code>. The complication is that we watch only until a fixed observation window <code>T</code> (the slider above). If a unit's transition lands inside the window (<code>wᵢ ≤ T</code>), we observe that value and record it. If the window closes first (<code>wᵢ &gt; T</code>), the unit is right-censored: <code>wᵢ</code> itself is never seen, and we learn only that it exceeds the stopping time <code>cᵢ</code>, which in this synchronized design is the same window <code>T</code> for every unit. A censored unit is not missing data; it is a known lower bound on <code>wᵢ</code>, and the method is built around using that bound rather than discarding it.</p>
+      <p>The object we model is the survival function <code>S(t)=P(W&gt;t)</code>, the probability that the waiting time <code>W</code> exceeds a given time <code>t</code> (equivalently, that a unit is still waiting at <code>t</code>). The capital <code>W</code> is the random waiting time, whose realized value <code>wᵢ</code> varies from unit to unit; the lowercase <code>t</code> is just a particular time at which we evaluate that function. The survival curve <code>S(t)</code> equals 1 at <code>t=0</code> and decreases as units transition out of the at-risk state.</p>
+      <p>This tab models each unit's waiting time as an independent draw from an exponential distribution with a single rate <code>λ</code>. That is the natural choice when the only feature we are willing to fix is a finite average wait <code>1/λ</code>. The exponential then carries the fewest extra assumptions: it has no other parameters to set, and it has the greatest entropy of any distribution on the non-negative reals with that mean. Equivalently, the exponential is the only waiting-time distribution for which the probability of transitioning in the next short interval does not depend on how long a unit has already waited (i.e., it is <em>memoryless</em>). This is why it can be described by a single, constant <em>hazard rate</em> <code>λ</code>: a unit still at risk transitions at a steady <code>λ</code> per unit time, so its chance of transitioning in a short interval of length <code>δ</code> is about <code>λδ</code>, no matter how long it has already waited. The survival curve <code>S(t)=exp(−λt)</code> is then the probability that the transition occurs only after time <code>t</code> (that the unit is still waiting at <code>t</code>).</p>
+      <p>To estimate <code>λ</code> we score each candidate rate by how plausible it makes the data, then take the rate that maximizes that score. That plausibility is the probability of everything we observed, read as a function of <code>λ</code>, and about each unit we learned exactly one fact. For a censored unit <code>i</code>, the fact is that no transition had occurred by <code>cᵢ</code> (here equal to <code>T</code> for every censored unit), the event <code>{W &gt; cᵢ}</code>, whose probability is the survivor value <code>S(cᵢ) = exp(−λcᵢ) = exp(−λT)</code>. For an observed unit <code>i</code>, the fact is its transition time, but a continuous time is never measured to infinite precision: what we really know is that the transition fell in some narrow interval <code>[wᵢ, wᵢ+Δt)</code>. The probability of that is the survival lost across the interval, <code>S(wᵢ) − S(wᵢ+Δt)</code>, which for small <code>Δt</code> is <code>f(wᵢ)·Δt</code> with <code>f(wᵢ) = λ exp(−λwᵢ)</code>. The same width <code>Δt</code> multiplies every observed unit and carries no <code>λ</code>, so it cancels when we compare candidate rates, leaving the density <code>f(wᵢ)</code> as that unit's contribution.</p>
+      <p>The score we maximize, as a function of <code>λ</code>, is the joint likelihood of all the units. Because each unit is independent of the others, this is a product of their contributions, a density for each observed unit and a survival probability for each censored one:</p>
+      <span class="formula">L(λ) = ∏<sub>obs</sub> f(wᵢ) · ∏<sub>cens</sub> S(cᵢ) = ∏<sub>obs</sub> [λ exp(−λwᵢ)] · ∏<sub>cens</sub> [exp(−λcᵢ)]</span>
+      <p>Every censored unit shares the same window, so <code>cᵢ = T</code>. Writing <code>d</code> for the number of observed events and <code>m</code> for the number censored (the same counts reported as "events seen" and "censored" above), each censored unit contributes <code>exp(−λT)</code> and the products collapse:</p>
+      <span class="formula">L(λ) = λ<sup>d</sup> · exp(−λ · (Σ<sub>obs</sub> wᵢ + m·T))</span>
+      <p>The data now enter only through two numbers: the event count <code>d</code> and the sum <code>E = Σ<sub>obs</sub> wᵢ + m·T</code> (jointly the sufficient statistics for <code>λ</code>). Maximizing <code>L</code> is equivalent to maximizing its logarithm (the logarithm is monotonic, so both peak at the same <code>λ</code>), and the log is more convenient to differentiate because it turns the product and exponential into a sum. In particular, the log-likelihood <code>ln L = d·ln λ − λE</code> has derivative <code>d/λ − E</code>, which vanishes at the estimate</p>
+      <span class="formula"><span class="hatvar">λ</span> = d / (Σ<sub>obs</sub> wᵢ + m·T),    1/<span class="hatvar">λ</span> = (Σ<sub>obs</sub> wᵢ + m·T) / d</span>
+      <p>It reads most clearly through its reciprocal. An exponential's rate is one over its mean, so <code>1/<span class="hatvar">λ</span></code> estimates the mean waiting time. Averaging only the completed waits would give <code>(Σ<sub>obs</sub> wᵢ)/d</code>, which is biased low: the censored units are precisely the ones whose waits ran past <code>T</code>, the longest in the sample, so dropping them shortens the average. Crediting each censored unit with the time <code>T</code> we did watch it wait, <code>(Σ<sub>obs</sub> wᵢ + m·T)/d</code>, repairs that bias; this is the familiar mean time to failure, the total at-risk time per failure observed, and <code><span class="hatvar">λ</span></code> is its reciprocal. The truncated units are therefore not ignored: each one lengthens the estimated mean wait by the time <code>T</code> it was known to survive, and so lowers the rate. The naive estimator is exactly the uncorrected version, <code><span class="hatvar">λ</span><sub>naive</sub> = d / (Σ<sub>obs</sub> wᵢ)</code>, the reciprocal of the biased-low average, which is why it overstates the rate; shortening the window <code>T</code> raises the censored fraction and drives the naive value further above the MLE reported above.</p>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>How sure is the estimate? A confidence interval</h3>
+      <p>A point estimate needs a margin of error. On the log scale the rate estimate is approximately normal with a standard error that depends only on the number of observed events <code>d</code>, which gives the interval reported beside the MLE above:</p>
+      <span class="formula">log(<span class="hatvar">λ</span>) ± 1.96 / √d</span>
+      <p>Exponentiating both endpoints returns a positive interval for <code><span class="hatvar">λ</span></code>. Only the event count <code>d</code> sets its width: more observed events tighten it, while adding censored exposure (time at risk with no new events) does not. That is why heavy censoring can leave the rate loosely pinned even when many units were watched for a long time.</p>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>Reading the empirical step curve</h3>
+      <p>The orange step curve in the plot is the Kaplan–Meier estimate. It recovers <code>S(t)</code> directly from the data without assuming any rate at all: starting at 1, it steps down at each observed transition in proportion to the share of the still-at-risk units that transition there, while a censored unit produces no step but leaves the risk set (so later steps are larger). Because it assumes no parametric form, it serves as a check on the exponential fit. Here the data are generated from a constant rate, so the step curve and the fitted exponential should track each other closely; on real data a persistent gap between them would warn that a single constant rate is too restrictive, a sign to relax the exponential assumption: with a richer parametric hazard if the rate itself is the goal, or with the Cox model below (which leaves the baseline shape unspecified) if the goal is the effect of covariates.</p>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>A different question: covariate effects with Cox proportional hazards</h3>
+      <p>The exponential model answers <em>what is the rate?</em> Cox proportional-hazards regression answers a different question, and it helps to keep the two apart. Cox is built to estimate and test the <em>relative</em> effect of covariates on the hazard (does treatment raise or lower it, and by how much) without committing to any shape for the hazard over time. It keeps the survival machinery, including the treatment of censoring above, but it is an inference tool for effects rather than a rate estimator. It writes the hazard for a unit with covariate vector <code>x</code> as</p>
+      <span class="formula">h(t | x) = h₀(t) · exp(β·x)</span>
+      <p>Here <code>x</code> is a vector of covariates (e.g., age, treatment, body size, colony) and <code>β</code> a matching vector of coefficients, one per covariate. The factor <code>exp(β·x)</code> is just a positive number that scales the baseline hazard up or down; despite the notation it has nothing to do with the exponential waiting-time distribution above. The exponential link is only a convenient way to keep that multiplier positive and to let several effects combine multiplicatively, so each <code>β<sub>j</sub></code> reads as a log hazard ratio. The model is called <em>proportional</em> because any two covariate profiles keep a constant hazard ratio over time, <code>exp(β·(x₁ − x₂))</code>, the shared baseline having cancelled.</p>
+      <p>That cancellation is the point. Cox fits <code>β</code> from a partial likelihood that uses only the order in which events occur: at each transition it compares the unit that transitioned against those still at risk, and the unknown <code>h₀(t)</code> divides out. Censored units sit in the risk sets while they are watched and drop out once censored, exactly as above. What comes back are hazard ratios and tests such as <code>H₀: β<sub>j</sub> = 0</code> (does this factor move the hazard at all), which is usually the scientific question, e.g., treatment versus control.</p>
+      <p>Because the baseline is conditioned out rather than estimated, Cox says nothing about the absolute hazard or the transition rate, even when the waiting time really is exponential: there the constant rate <code>λ</code> is folded into the unspecified <code>h₀(t)</code> and never enters the partial likelihood. If the rate itself is what you want, fit the parametric exponential model (the MLE above); if you want to know which factors shift the hazard, use Cox. (A baseline hazard can be recovered after the fit by a separate estimator, but that step restores exactly the baseline-shape commitment Cox was designed to avoid.) The Kaplan–Meier step curve in the plot is the no-covariate end of the same idea: an assumption-free baseline, again with no rate attached.</p>
+      <div class="rblock"><div class="rblock-hdr">Single-event Cox in R <span class="lab-r">R</span></div><pre># observed time and status: 1 = event, 0 = right-censored
+fit <- coxph(Surv(time, status) ~ treatment + size, data = subjects)</pre></div>
+    </div>
+  </div>
+
+  <div class="tabpane" data-pane="1">
+    <div class="grid-even">
+      <div class="panel">
+        <h3>Survival analysis as a one-way transition</h3>
+        <div class="viz-wrap"><svg viewBox="0 0 560 270" xmlns="http://www.w3.org/2000/svg">
+          <defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#2f6b4a"/></marker></defs>
+          <rect width="560" height="270" fill="white"/>
+          <circle cx="160" cy="135" r="55" fill="#e6f0ea" stroke="#2f6b4a" stroke-width="2"/><text x="160" y="143" text-anchor="middle" font-family="var(--sans)" font-size="23" fill="#2f6b4a" font-weight="600">At risk</text>
+          <circle cx="400" cy="135" r="55" fill="#fbe8d8" stroke="#d97842" stroke-width="2"/><text x="400" y="132" text-anchor="middle" font-family="var(--sans)" font-size="23" fill="#c34a2e" font-weight="600">Event</text><text x="400" y="156" text-anchor="middle" font-family="var(--mono)" font-size="14" fill="#666">absorbing</text>
+          <line x1="218" y1="135" x2="337" y2="135" stroke="#2f6b4a" stroke-width="3" marker-end="url(#arrow)"/><text x="278" y="115" text-anchor="middle" font-family="var(--mono)" font-size="18" fill="#2f6b4a">λ</text>
+          <line x1="278" y1="150" x2="278" y2="208" stroke="#999" stroke-width="2" stroke-dasharray="5,4"/><text x="278" y="226" text-anchor="middle" font-family="var(--sans)" font-size="13" fill="#666">right censored if observation stops first</text>
+        </svg></div>
+        <div class="explainer">
+          <h4>Examples</h4>
+          <p>Time until first alarm call. Time until a forager leaves a patch. Time until an infected individual recovers (the I→R step of an SIR epidemic). Time until a colony relocates.</p>
+          <p>This is the form usually covered in introductory survival analysis: one event per subject, or one first event per subject. The SIR model is built entirely from transitions of this kind: S→I and I→R each run one way, with R absorbing (no return to S), so each is its own survival problem with its own rate. The SIS model in the next panel keeps the same machinery but lets a transition be returnable instead of absorbing, the single change that turns a one-way model into a recurrent one.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Recurrent events as returnable transitions: the SIS model</h3>
+        <div class="viz-wrap"><svg viewBox="0 0 560 270" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ah-g" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#2f6b4a"/></marker>
+            <marker id="ah-o" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#d97842"/></marker>
+          </defs>
+          <rect width="560" height="270" fill="white"/>
+          <text x="280" y="30" text-anchor="middle" font-family="var(--sans)" font-size="15" font-weight="700" fill="#2f6b4a">SIS model</text>
+          <circle cx="180" cy="128" r="50" fill="#e6f0ea" stroke="#2f6b4a" stroke-width="2"/><text x="180" y="137" text-anchor="middle" font-family="var(--sans)" font-size="27" fill="#2f6b4a" font-weight="600">S</text><text x="180" y="198" text-anchor="middle" font-family="var(--sans)" font-size="12.5" fill="#666">susceptible / inactive</text>
+          <circle cx="380" cy="128" r="50" fill="#fbe8d8" stroke="#d97842" stroke-width="2"/><text x="380" y="137" text-anchor="middle" font-family="var(--sans)" font-size="27" fill="#c34a2e" font-weight="600">I</text><text x="380" y="198" text-anchor="middle" font-family="var(--sans)" font-size="12.5" fill="#666">infected / active</text>
+          <path d="M 222 102 C 255 62, 305 62, 338 102" fill="none" stroke="#2f6b4a" stroke-width="2.5" marker-end="url(#ah-g)"/><text x="280" y="52" text-anchor="middle" font-family="var(--mono)" font-size="18" fill="#2f6b4a">β</text>
+          <path d="M 338 154 C 305 194, 255 194, 222 154" fill="none" stroke="#d97842" stroke-width="2.5" marker-end="url(#ah-o)"/><text x="280" y="214" text-anchor="middle" font-family="var(--mono)" font-size="18" fill="#c34a2e">γ</text>
+        </svg></div>
+        <div class="explainer">
+          <h4>Why the SIS model? A template for recurrence</h4>
+          <p>The diagram above is an SIS model: a unit cycles between susceptible (S, at risk of the event) and infected (I, not at risk), leaving S at rate β and returning from I at rate γ. It is the smallest model in which the focal event can happen more than once, which is what makes it the natural starting point here. Any process where the same unit can re-enter the at-risk state and trigger the event again has this two-state skeleton, whatever the states are actually called, so the SIS picture doubles as a high-level model of recurrence in general.</p>
+          <p>Richer models extend the same skeleton. A SIRS model inserts a temporary refractory or immune state R between I and the return to S (S→I→R→S), so re-exposure is delayed rather than immediate. Behavioral analogs of the recurrent S→I event include repeated bouts of activity, repeated vigilance or alarm responses, repeated nest maintenance, and repeated switches between task states; in each, "susceptible" is just the state currently eligible for the next transition.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>Conceptual map</h3>
+      <div class="table-wrap"><table><thead><tr><th>Model</th><th>Survival interpretation</th><th>Recurrent-event interpretation</th><th>Correct exposure denominator</th></tr></thead><tbody>
+        <tr><td>S→I</td><td>Time to first transition</td><td>Not recurrent if I is absorbing</td><td>Time in S until event/censoring</td></tr>
+        <tr><td>SIS</td><td>First infection only discards later events</td><td>Repeated S→I transitions after I→S recovery</td><td>Total time in S across all episodes</td></tr>
+        <tr><td>SIRS</td><td>First infection ignores immune/refractory cycling</td><td>Events recur after S→I→R→S cycles</td><td>Total time in S; recovery/refractory rates use time in I/R</td></tr>
+        <tr><td>Behavioral state model</td><td>Time until first departure from a state</td><td>Repeated departures/returns during observation</td><td>Time eligible for the focal transition</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="grid" style="margin-top:16px;">
+      <div class="panel">
+        <h3>Repeated transitions from the same observational unit</h3>
+        <div class="viz-wrap"><canvas id="recurCanvas" width="760" height="520"></canvas></div>
+        <div class="viz-cap">A continuous-time two-state process. Green segments are time in state S (at risk of an S→I event); orange segments are time in state I. The vertical fence is the observation window T (drag it): segments past it are faint and not counted, so sliding T changes how much of each process you observe without changing the process itself.</div>
+      </div>
+      <div class="panel">
+        <h3>Controls</h3>
+        <div class="ctrls">
+          <div class="ctrl"><label><span class="label-name">S→I rate <span class="greek">β</span></span> <span class="v" id="v-rBeta">0.35</span></label><input id="rBeta" type="range" min="5" max="120" value="35"></div>
+          <div class="ctrl"><label><span class="label-name">I→S rate <span class="greek">γ</span></span> <span class="v" id="v-rGamma">0.70</span></label><input id="rGamma" type="range" min="5" max="160" value="70"></div>
+          <div class="ctrl"><label>Observation window T <span class="v" id="v-rT">14.0</span></label><input id="rT" type="range" min="40" max="200" value="140"></div>
+          <div class="ctrl"><label>Units N <span class="v" id="v-rN">24</span></label><input id="rN" type="range" min="8" max="80" value="24"></div>
+          <div class="ctrl"><label>Individual heterogeneity <span class="v" id="v-rHet">0.00</span></label><input id="rHet" type="range" min="0" max="100" value="0"></div>
+          <div class="ctrl"><label>Random seed <span class="v" id="v-rSeed">12</span></label><input id="rSeed" type="range" min="1" max="99" value="12"></div>
+        </div>
+        <div class="sec-divider"></div>
+        <div class="kpis">
+          <div class="kpi"><div class="lab">S→I events</div><div class="val" id="rEvents">—</div><div class="sub">all recurrent events</div></div>
+          <div class="kpi"><div class="lab"><span class="hatvar">β</span> recurrent</div><div class="val" id="rBetaHat">—</div><div class="sub" id="rBetaCI">95% CI —</div></div>
+          <div class="kpi"><div class="lab"><span class="hatvar">β</span> calendar</div><div class="val" id="rNaive">—</div><div class="sub">events / calendar time</div></div>
+          <div class="kpi"><div class="lab"><span class="hatvar">β</span> drop-censored</div><div class="val" id="rDropHat">—</div><div class="sub">time in S, censored dropped</div></div>
+        </div>
+        <div class="explainer" style="margin-bottom:0;">
+          <h4>Why recurrent-event analysis matters</h4>
+          <p>The correct denominator for S→I is not total calendar time. It is total time spent at risk in state S. When an animal is already in state I, it cannot make another S→I transition until it recovers.</p>
+          <span class="formula"><span class="hatvar">β</span> = # S→I transitions / total time in S</span>
+          <p><strong>Censoring</strong> enters just as on the first tab. A unit still in S when the window closes has its current spell in S cut short at <code>T</code>; that truncated spell is genuine exposure (time at risk with no transition), so it stays in the denominator exactly as a censored wait does there, while adding nothing to the event count. The censoring is now measured against time in S rather than calendar time, and because the denominator already sums every S spell (completed and truncated), one unit can fold in several at once. The drop-censored monitor does the opposite: it discards every unit still in S at the close, throwing away the longest in-progress waits, which biases <span class="hatvar">β</span> upward, just as ignoring censoring does on the first tab. The interval estimate carries over unchanged, with <code>d</code> the number of S→I events: <code>log(<span class="hatvar">β</span>) ± 1.96/√d</code>, exponentiated.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>Comparing models: SIR, SIS, SIRS</h3>
+      <p>Whether events should recur at all is itself a modeling choice, and competing choices can be compared by fit. The Akaike information criterion scores a fitted model by its maximized likelihood <code><span class="hatvar">L</span></code> (the likelihood evaluated at the fitted parameters), penalized for the number of free parameters <code>k</code> (here, just the number of transition rates listed below). Lower is better, so a richer model has to earn its extra parameters with enough improvement in <code><span class="hatvar">L</span></code> to offset the heavier penalty:</p>
+      <span class="formula">AIC = 2k − 2 ln <span class="hatvar">L</span></span>
+      <div class="table-wrap"><table><thead><tr><th>Model</th><th>Recurrence</th><th>What it adds</th><th>Rate parameters (k)</th><th>What AIC weighs</th></tr></thead><tbody>
+        <tr><td>S→I (absorbing)</td><td>One event per unit, then done</td><td>A single rate λ</td><td>1 (λ)</td><td>The single-event baseline from the first tab</td></tr>
+        <tr><td>SIS</td><td>S→I→S, events repeat</td><td>A return rate γ</td><td>2 (β, γ)</td><td>Do repeated transitions fit better than scoring only the first?</td></tr>
+        <tr><td>SIRS</td><td>S→I→R→S, with a refractory R</td><td>A refractory rate before re-exposure</td><td>3 (β, I→R, R→S)</td><td>Does a delay before returning to risk improve fit enough to justify the parameter?</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h3>Comparing recurrent-event rates across groups: counting-process Cox</h3>
+      <p>The explorer's estimator (S→I events divided by total time in S) gives the rate within one homogeneous sample. To ask instead whether that rate differs across groups (e.g., treatment versus control), use the recurrent-event analog of the Cox model from the first tab: a counting-process layout with one row per at-risk interval per unit, fit with a Cox model that clusters intervals by unit so the repeated events from one unit are not treated as independent. As there, it returns hazard ratios (relative effects between groups), not the rate itself:</p>
+      <div class="rblock"><div class="rblock-hdr">Recurrent-event Cox in R <span class="lab-r">R</span></div><pre># one row per at-risk interval per unit
+# columns: id, start, stop, event_SI  (1 = S->I at stop, else 0)
+risk_time_S <- with(episodes, sum((stop - start)[state == "S"]))
+beta_hat    <- sum(episodes$event_SI) / risk_time_S
+
+# Cox version with covariates and within-unit clustering:
+fit <- coxph(Surv(start, stop, event_SI) ~ treatment + cluster(id), data = episodes)</pre></div>
+    </div>
+  </div>
+
+  <div class="foot">Copyright 2026 Theodore P. Pavlic <span class="footer-sep">·</span> <span class="footer-lic"><a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a></span></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+function RNG(seed){let s=(seed>>>0)||1; return function(){s=(1664525*s+1013904223)>>>0; return s/4294967296;};}
+function expRand(rng, rate){return -Math.log(Math.max(1e-12,1-rng()))/rate;}
+function fmt(x,d=3){return Number.isFinite(x)?x.toFixed(d):'—';}
+function ciRate(events, exposure){ if(events<=0||exposure<=0) return [NaN,NaN]; const h=events/exposure; const se=1/Math.sqrt(events); return [h*Math.exp(-1.96*se), h*Math.exp(1.96*se)]; }
+function $(id){return document.getElementById(id);}
+function setText(id, value){ const el = document.getElementById(id); if (!el) { console.warn('Missing element for text update:', id); return; } el.textContent = value; }
+function setHTML(id, value){ const el = document.getElementById(id); if (!el) { console.warn('Missing element for HTML update:', id); return; } el.innerHTML = value; }
+function onInput(id, fn){ const el=$(id); if(el) el.addEventListener('input', fn); else console.warn('Missing input element:', id); }
+function qtile(a,q){ const b=a.filter(Number.isFinite).slice().sort((x,y)=>x-y); if(!b.length) return NaN; return b[Math.min(b.length-1, Math.max(0, Math.floor(q*(b.length-1))))]; }
+function canvasPrep(id){
+  const c=$(id); if(!c.dataset.lw){ c.dataset.lw=c.getAttribute('width'); c.dataset.lh=c.getAttribute('height'); }
+  const W=+c.dataset.lw, H=+c.dataset.lh, dpr=Math.max(1, window.devicePixelRatio||1);
+  if(c.width!==Math.round(W*dpr) || c.height!==Math.round(H*dpr)){ c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); }
+  c.style.width='100%'; c.style.height='auto';
+  const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H); ctx.fillStyle='white'; ctx.fillRect(0,0,W,H);
+  ctx.lineCap='round'; ctx.lineJoin='round'; return {c,ctx,W,H};
+}
+function mouseXY(c,e){ const r=c.getBoundingClientRect(), W=+c.dataset.lw, H=+c.dataset.lh; return {x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height}; }
+function diamond(ctx,x,y,r){ ctx.beginPath(); ctx.moveTo(x,y-r); ctx.lineTo(x+r,y); ctx.lineTo(x,y+r); ctx.lineTo(x-r,y); ctx.closePath(); ctx.fill(); }
+function roundRect(ctx,x,y,w,h,r){ const rr=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+rr,y); ctx.lineTo(x+w-rr,y); ctx.quadraticCurveTo(x+w,y,x+w,y+rr); ctx.lineTo(x+w,y+h-rr); ctx.quadraticCurveTo(x+w,y+h,x+w-rr,y+h); ctx.lineTo(x+rr,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-rr); ctx.lineTo(x,y+rr); ctx.quadraticCurveTo(x,y,x+rr,y); ctx.closePath(); }
+function drawTPill(ctx,x,y,label){ ctx.fillStyle='#fbe8d8'; ctx.strokeStyle='#c34a2e'; ctx.lineWidth=1; roundRect(ctx,x-18,y-11,36,20,10); ctx.fill(); ctx.stroke(); ctx.fillStyle='#c34a2e'; ctx.font='12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label,x,y); ctx.textAlign='left'; ctx.textBaseline='alphabetic'; }
+function drawObsBar(ctx,x,top,bottom,label){
+  ctx.strokeStyle='#c34a2e'; ctx.lineWidth=2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x,top); ctx.lineTo(x,bottom); ctx.stroke();
+  // Put the draggable T handle at the lower end so it reads as a handle for the whole fence.
+  drawTPill(ctx,x,bottom-12,'T');
+  ctx.save();
+  ctx.translate(x+17,(top+bottom)/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#c34a2e';
+  ctx.font='12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText(label,0,0);
+  ctx.restore();
+}
+let legendHits={};
+function drawInsetLegend(ctx,x,y,items,canvasId){
+  const row=19, w=270, h=items.length*row+16; ctx.fillStyle='rgba(255,255,255,0.92)'; ctx.strokeStyle='#d8d8d4'; ctx.lineWidth=1; roundRect(ctx,x,y,w,h,6); ctx.fill(); ctx.stroke();
+  ctx.font='11.5px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'; ctx.textBaseline='middle';
+  const hits=[];
+  items.forEach((it,i)=>{const yy=y+13+i*row; if(it.type==='line'){ctx.strokeStyle=it.color; ctx.lineWidth=it.w||3; ctx.setLineDash(it.dash||[]); ctx.beginPath(); ctx.moveTo(x+12,yy); ctx.lineTo(x+34,yy); ctx.stroke(); ctx.setLineDash([]);} else if(it.type==='circle'){ctx.fillStyle=it.color; ctx.beginPath(); ctx.arc(x+23,yy,4,0,Math.PI*2); ctx.fill();} else if(it.type==='diamond'){ctx.fillStyle=it.color; diamond(ctx,x+23,yy,5);} else if(it.type==='tick'){ctx.strokeStyle=it.color; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+23,yy-6); ctx.lineTo(x+23,yy+6); ctx.stroke();}
+    ctx.fillStyle='#555'; ctx.fillText(it.label,x+43,yy);
+    if(it.desc) hits.push({x0:x, y0:y+4+i*row, x1:x+w, y1:y+4+(i+1)*row, desc:it.desc});
+  }); ctx.textBaseline='alphabetic';
+  if(canvasId) legendHits[canvasId]=hits;
+}
+function setupTabs(){
+  function setTab(idx){ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',String(b.dataset.tab)===String(idx))); document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',String(p.dataset.pane)===String(idx))); const sel=$('mainTabSelect'); if(sel) sel.value=idx; drawAll(); }
+  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+  const sel=$('mainTabSelect'); if(sel) sel.addEventListener('change',e=>setTab(e.target.value));
+}
+function axes(ctx,x0,y0,w,h,xmax){
+  ctx.strokeStyle='#999'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,y0-h); ctx.lineTo(x0+w,y0-h); ctx.stroke();
+  ctx.fillStyle='#666'; ctx.font='12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'; ctx.textAlign='right'; ctx.fillText('time',x0+w,y0+28); ctx.textAlign='left';
+  ctx.save(); ctx.translate(x0-40,y0-h/2+48); ctx.rotate(-Math.PI/2); ctx.fillText('survival probability',0,0); ctx.restore();
+  for(let i=0;i<=4;i++){let x=x0+w*i/4; ctx.strokeStyle='#eee'; ctx.beginPath(); ctx.moveTo(x,y0); ctx.lineTo(x,y0-h); ctx.stroke(); ctx.fillStyle='#777'; ctx.fillText(fmt(xmax*i/4,1),x-10,y0+16);} 
+  for(let j=0;j<=4;j++){let y=y0-h*j/4; ctx.strokeStyle='#eee'; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x0+w,y); ctx.stroke(); ctx.fillStyle='#777'; ctx.fillText(fmt(j/4,2),x0-38,y+4);} }
+function drawKMStep(ctx, rows, T, x0, y0, w, h, xmax){
+  const evTimes = rows.filter(r=>r.ev && r.obs<=T).map(r=>r.obs).sort((a,b)=>a-b);
+  if(!evTimes.length) return;
+  ctx.strokeStyle='#d97842'; ctx.lineWidth=2.4; ctx.setLineDash([]);
+  let S=1, lastT=0;
+  ctx.beginPath(); ctx.moveTo(x0, y0-h*S);
+  evTimes.forEach(t=>{
+    const atRisk = rows.filter(r=>r.obs >= t - 1e-9).length;
+    const deaths = rows.filter(r=>r.ev && Math.abs(r.obs-t)<1e-9).length || 1;
+    const x = x0 + w*Math.min(t,xmax)/xmax;
+    ctx.lineTo(x, y0-h*S);
+    S *= Math.max(0, 1 - deaths/Math.max(1,atRisk));
+    ctx.lineTo(x, y0-h*S);
+    lastT=t;
+  });
+  const xEnd = x0 + w*Math.min(T,xmax)/xmax;
+  ctx.lineTo(xEnd, y0-h*S);
+  ctx.stroke();
+}
+
+let geomBasic=null, geomRecur=null, dragging=null;
+function basicData(){
+  const lam=$('basicLam').value/100, T=$('basicT').value/10, N=+$('basicN').value, seed=+$('basicSeed').value;
+  const rng=RNG(seed), times=[]; let events=0, exposure=0, eventTimeSum=0;
+  for(let i=0;i<N;i++){ const t=expRand(rng,lam); const ev=t<=T; times.push({t,ev,obs:Math.min(t,T)}); exposure+=Math.min(t,T); if(ev){events++; eventTimeSum+=t;} }
+  return {lam,T,N,seed,times,events,exposure,eventTimeSum};
+}
+function drawBasic(){
+  const D=basicData(); setText('v-basicLam',fmt(D.lam,2)); setText('v-basicT',fmt(D.T,1)); setText('v-basicN',D.N); setText('v-basicSeed',D.seed);
+  const cens=D.N-D.events, hat=D.events/D.exposure, naive=D.events?D.events/D.eventTimeSum:NaN, ci=ciRate(D.events,D.exposure);
+  setText('basicEvents',D.events+'/'+D.N); setText('basicCens',cens); setText('basicHat',fmt(hat,3)); setText('basicCI','95% CI '+fmt(ci[0],3)+'–'+fmt(ci[1],3)); setText('basicNaive',fmt(naive,3));
+  const {ctx,W,H}=canvasPrep('basicCanvas'); const x0=62,w=610,xmax=12; const y0=300,h=230;
+  axes(ctx,x0,y0,w,h,xmax);
+  function curve(rate,color,dash,width){ if(!Number.isFinite(rate)||rate<=0) return; ctx.strokeStyle=color; ctx.lineWidth=width; ctx.setLineDash(dash||[]); ctx.beginPath(); for(let i=0;i<=250;i++){let t=xmax*i/250, s=Math.exp(-rate*t), x=x0+w*t/xmax, y=y0-h*s; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.stroke(); ctx.setLineDash([]); }
+  curve(D.lam,'#2f6b4a',[],3); curve(hat,'#2a5a8c',[5,4],2); curve(naive,'#c34a2e',[2,4],2); drawKMStep(ctx,D.times,D.T,x0,y0,w,h,xmax);
+  const barTop=y0+58, barBot=H-44, rowH=(barBot-barTop)/D.N, xOf=t=>x0+w*Math.min(t,xmax)/xmax, xT=xOf(D.T);
+  ctx.font='11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+  for(let i=0;i<=4;i++){const gx=x0+w*i/4; ctx.strokeStyle='#f0f0ec'; ctx.beginPath(); ctx.moveTo(gx,barTop-8); ctx.lineTo(gx,barBot+4); ctx.stroke();}
+  ctx.fillStyle='#666'; ctx.fillText('one row per unit: bar ends at the event (dot) or stops at T (tick); faint tail = unobserved remainder',x0,barTop-18);
+  D.times.forEach((r,i)=>{ const y=barTop+i*rowH+rowH/2, xEvent=xOf(r.t), mk=Math.max(1.6,Math.min(3.6,rowH*0.4));
+    ctx.strokeStyle='#cfcfca'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(Math.min(xT,xEvent),y); ctx.stroke();
+    if(r.t>D.T && r.t<=xmax){ ctx.strokeStyle='rgba(118,85,166,0.32)'; ctx.beginPath(); ctx.moveTo(xT,y); ctx.lineTo(xEvent,y); ctx.stroke(); }
+    if(r.ev){ ctx.fillStyle='#d97842'; ctx.beginPath(); ctx.arc(xEvent,y,mk,0,Math.PI*2); ctx.fill(); }
+    else { ctx.strokeStyle='#999'; ctx.lineWidth=1.4; const tk=Math.min(4,Math.max(2,rowH*0.6)); ctx.beginPath(); ctx.moveTo(xT,y-tk); ctx.lineTo(xT,y+tk); ctx.stroke(); if(r.t<=xmax){ ctx.fillStyle='#7655a6'; diamond(ctx,xEvent,y,mk+0.6); } }
+  });
+  drawObsBar(ctx,xT,y0-h,barBot+8,'observation stops');
+  geomBasic={x0,w,xmax,top:y0-h,bottom:barBot+8,T:D.T,slider:'basicT',min:1,max:12};
+  drawInsetLegend(ctx,405,18,[{type:'line',color:'#2f6b4a',label:'true S(t)',desc:'The exponential survival curve S(t)=exp(−λt) for the rate that generated the data.'},{type:'line',color:'#2a5a8c',dash:[5,4],w:2,label:'survival MLE with censoring',desc:'Exponential curve at the maximum-likelihood rate, fit from observed and censored units together.'},{type:'line',color:'#c34a2e',dash:[2,4],w:2,label:'naive exponential fit',desc:'Exponential curve at the rate from averaging only completed waits; biased toward too high a rate.'},{type:'line',color:'#d97842',w:2,label:'empirical Kaplan–Meier step',desc:'Nonparametric estimate of S(t) from the data alone, with no assumed rate; steps down at each observed event.'},{type:'circle',color:'#d97842',label:'observed event ≤ T',desc:'A transition seen before the window closed, so its exact time is known.'},{type:'diamond',color:'#7655a6',label:'future event censored at T',desc:'A transition that would occur after T; unobserved, so the unit is right-censored at T.'}],'basicCanvas');
+}
+const RXMAX=20;
+function simulateRecur(){
+  const beta=$('rBeta').value/100,gamma=$('rGamma').value/100,T=$('rT').value/10,N=+$('rN').value,het=$('rHet').value/100,seed=+$('rSeed').value; const rng=RNG(seed); const units=[];
+  for(let i=0;i<N;i++){let t=0,state='S',segs=[]; const mult=Math.exp(het*(rng()*2-1)); while(t<RXMAX){const rate=(state==='S'?beta*mult:gamma), wait=expRand(rng,rate), end=Math.min(RXMAX,t+wait), done=(t+wait<=RXMAX); segs.push({state,start:t,end,event:done}); if(done){ state=state==='S'?'I':'S'; } t=end;} units.push(segs);}
+  return {beta,gamma,T,N,het,seed,units};
+}
+function recurEstimate(sim){
+  let evSI=0,timeS=0,evDrop=0,timeDrop=0;
+  sim.units.forEach(segs=>{
+    let stateAtT=segs[segs.length-1].state;
+    for(const s of segs){ if(s.start<=sim.T && sim.T<s.end){ stateAtT=s.state; break; } }
+    let uEv=0,uS=0;
+    segs.forEach(s=>{ if(s.state==='S'){ const e=Math.min(s.end,sim.T); if(e>s.start) uS+=e-s.start; if(s.event && s.end<=sim.T) uEv++; } });
+    evSI+=uEv; timeS+=uS;
+    if(stateAtT!=='S'){ evDrop+=uEv; timeDrop+=uS; }
+  });
+  return {evSI,timeS,evDrop,timeDrop,cal:sim.N*sim.T};
+}
+function drawRecur(){
+  const sim=simulateRecur(); setText('v-rBeta',fmt(sim.beta,2)); setText('v-rGamma',fmt(sim.gamma,2)); setText('v-rT',fmt(sim.T,1)); setText('v-rN',sim.N); setText('v-rHet',fmt(sim.het,2)); setText('v-rSeed',sim.seed);
+  const est=recurEstimate(sim); const bh=est.timeS>0?est.evSI/est.timeS:NaN, ci=ciRate(est.evSI,est.timeS), naive=est.cal>0?est.evSI/est.cal:NaN, drop=est.timeDrop>0?est.evDrop/est.timeDrop:NaN; setText('rEvents',est.evSI); setText('rBetaHat',fmt(bh,3)); setText('rBetaCI','95% CI '+fmt(ci[0],3)+'–'+fmt(ci[1],3)); setText('rNaive',fmt(naive,3)); setText('rDropHat',fmt(drop,3));
+  const {ctx}=canvasPrep('recurCanvas'); const left=60,right=710,top=46,bottom=470,rowH=(bottom-top)/sim.N, xmax=RXMAX; const xOf=t=>left+(right-left)*Math.min(t,xmax)/xmax, xT=xOf(sim.T);
+  ctx.font='11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+  for(let i=0;i<=5;i++){const x=left+(right-left)*i/5; ctx.strokeStyle='#eee'; ctx.beginPath();ctx.moveTo(x,top-12);ctx.lineTo(x,bottom+8);ctx.stroke(); ctx.fillStyle='#777';ctx.fillText(fmt(xmax*i/5,1),x-8,bottom+25);}
+  ctx.fillStyle='#666';ctx.textAlign='right';ctx.fillText('time',right,bottom+43);ctx.textAlign='left';
+  sim.units.forEach((segs,i)=>{const y=top+i*rowH+rowH/2; ctx.lineWidth=Math.max(2,Math.min(7,rowH*0.55)); segs.forEach(s=>{const x1=xOf(s.start), x2=xOf(s.end), xMid=Math.min(x2,xT); const solid=s.state==='S'?'#4a8c69':'#d97842', faint=s.state==='S'?'rgba(74,140,105,0.3)':'rgba(217,120,66,0.3)'; if(xMid>x1){ctx.strokeStyle=solid;ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(xMid,y);ctx.stroke();} if(x2>xT){ctx.strokeStyle=faint;ctx.beginPath();ctx.moveTo(Math.max(x1,xT),y);ctx.lineTo(x2,y);ctx.stroke();} if(s.event){const inW=s.end<=sim.T; ctx.fillStyle=s.state==='S'?(inW?'#2f6b4a':'rgba(47,107,74,0.32)'):(inW?'#c34a2e':'rgba(195,74,46,0.32)'); ctx.beginPath();ctx.arc(x2,y,Math.max(2,Math.min(4,rowH*0.35)),0,Math.PI*2);ctx.fill();}});});
+  drawObsBar(ctx,xT,top-12,bottom+8,'observation stops');
+  geomRecur={x0:left,w:right-left,xmax,top:top-12,bottom:bottom+8,T:sim.T,slider:'rT',min:4,max:RXMAX};
+  ctx.fillStyle='#222';ctx.font='13px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';ctx.fillText(`true β = ${fmt(sim.beta,2)}, recurrent estimate = ${fmt(bh,3)} (window T = ${fmt(sim.T,1)})`,60,26);
+  drawInsetLegend(ctx,455,14,[{type:'line',color:'#4a8c69',w:6,label:'S exposure',desc:'Time the unit spends in state S, at risk of an S→I transition.'}, {type:'line',color:'#d97842',w:6,label:'I exposure',desc:'Time the unit spends in state I, not at risk of S→I until it returns to S.'}, {type:'circle',color:'#2f6b4a',label:'S→I recurrent event',desc:'An observed S→I transition; one unit can contribute several over the observation period.'}],'recurCanvas');
+}
+function drawAll(){ drawBasic(); drawRecur(); }
+function setTFromDrag(geom,x){
+  const rightLimit=Math.min(geom.max, geom.xmax);
+  const val=Math.max(geom.min,Math.min(rightLimit,(x-geom.x0)*geom.xmax/geom.w));
+  const slider=$(geom.slider);
+  if(slider) slider.value=Math.round(val*10);
+  drawAll();
+}
+function nearObsBar(canvas, geom, evt){
+  const p=mouseXY(canvas,evt), xT=geom.x0+geom.w*geom.T/geom.xmax;
+  const hitX = Math.abs(p.x-xT) < 22;       // larger target for fingers
+  const hitY = p.y >= geom.top-28 && p.y <= geom.bottom+28;
+  return {hit:hitX && hitY, p};
+}
+function attachDrag(canvasId, geomGetter){
+  const c=$(canvasId); if(!c){ console.warn('Missing canvas:', canvasId); return; }
+  c.style.touchAction='none';
+  c.addEventListener('pointermove',e=>{
+    const g=dragging && dragging.canvas===c ? dragging.geom : geomGetter();
+    if(!g){ c.style.cursor='default'; return; }
+    if(dragging && dragging.canvas===c){ const p=mouseXY(c,e); setTFromDrag(g,p.x); e.preventDefault(); return; }
+    if(legendHitAt(canvasId,e)){ c.style.cursor='default'; return; }
+    const {hit}=nearObsBar(c,g,e);
+    c.style.cursor=hit?'ew-resize':'default';
+  });
+  c.addEventListener('pointerleave',()=>{ if(!dragging) c.style.cursor='default'; });
+  c.addEventListener('pointerdown',e=>{
+    if(legendHitAt(canvasId,e)) return;
+    const g=geomGetter(); if(!g) return;
+    const {hit,p}=nearObsBar(c,g,e);
+    if(hit){
+      dragging={geom:g, canvas:c, pointerId:e.pointerId};
+      if(c.setPointerCapture) c.setPointerCapture(e.pointerId);
+      c.style.cursor='ew-resize';
+      setTFromDrag(g,p.x);
+      e.preventDefault();
+    }
+  });
+  c.addEventListener('pointerup',e=>{ if(dragging && dragging.canvas===c){ if(c.releasePointerCapture) { try{ c.releasePointerCapture(e.pointerId); }catch(_){} } dragging=null; c.style.cursor='default'; }});
+  c.addEventListener('pointercancel',()=>{ dragging=null; c.style.cursor='default'; });
+}
+window.addEventListener('pointerup',()=>{ dragging=null; });
+const legendTip=document.createElement('div'); legendTip.className='legend-tip'; document.body.appendChild(legendTip);
+let tipSticky=false;
+function showTip(text,cx,cy){ legendTip.textContent=text; legendTip.style.display='block'; const pad=10, ow=legendTip.offsetWidth, oh=legendTip.offsetHeight, vw=window.innerWidth, vh=window.innerHeight; let left=cx+14, top=cy+16; if(left+ow+pad>vw) left=cx-ow-14; if(left<pad) left=pad; if(top+oh+pad>vh) top=cy-oh-16; if(top<pad) top=pad; legendTip.style.left=left+'px'; legendTip.style.top=top+'px'; }
+function hideTip(){ legendTip.style.display='none'; tipSticky=false; }
+function legendHitAt(canvasId,e){ const hits=legendHits[canvasId]; if(!hits||!hits.length) return null; const c=$(canvasId); if(!c) return null; const p=mouseXY(c,e); for(const b of hits){ if(p.x>=b.x0&&p.x<=b.x1&&p.y>=b.y0&&p.y<=b.y1) return b; } return null; }
+function attachLegendTips(canvasId){
+  const c=$(canvasId); if(!c) return;
+  c.addEventListener('pointermove',e=>{ const it=legendHitAt(canvasId,e); if(it){ showTip(it.desc,e.clientX,e.clientY); } else if(!tipSticky){ hideTip(); } });
+  c.addEventListener('pointerdown',e=>{ const it=legendHitAt(canvasId,e); if(it){ showTip(it.desc,e.clientX,e.clientY); tipSticky=(e.pointerType==='touch'); } else { hideTip(); } });
+  c.addEventListener('pointerleave',()=>{ if(!tipSticky) hideTip(); });
+}
+window.addEventListener('pointerdown',e=>{ if(tipSticky && !(e.target&&e.target.tagName==='CANVAS')) hideTip(); });
+window.addEventListener('scroll',()=>hideTip(),{passive:true});
+window.addEventListener('resize',drawAll);
+['basicLam','basicT','basicN','basicSeed','rBeta','rGamma','rT','rN','rHet','rSeed'].forEach(id=>onInput(id,drawAll));
+setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',()=>geomRecur); drawAll(); attachLegendTips('basicCanvas'); attachLegendTips('recurCanvas');
+})();
+</script>
+</body>
+</html>
