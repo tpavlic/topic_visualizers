@@ -304,7 +304,7 @@ fit <- coxph(Surv(time, status) ~ treatment + size, data = subjects)</pre></div>
         <div class="sec-divider"></div>
         <div class="kpis">
           <div class="kpi"><div class="lab">S→I events</div><div class="val" id="rEvents">—</div><div class="sub">all recurrent events</div></div>
-          <div class="kpi"><div class="lab"><span class="hatvar">β</span> recurrent</div><div class="val" id="rBetaHat">—</div><div class="sub" id="rBetaCI">95% CI —</div></div>
+          <div class="kpi"><div class="lab"><span class="hatvar">β</span> recurrent</div><div class="val" id="rBetaHat">—</div><div class="sub" id="rBetaCI">model-based 95% CI —</div><div class="sub" id="rBetaCIrob">robust 95% CI —</div></div>
           <div class="kpi"><div class="lab"><span class="hatvar">β</span> calendar</div><div class="val" id="rNaive">—</div><div class="sub">events / calendar time</div></div>
           <div class="kpi"><div class="lab"><span class="hatvar">β</span> drop-censored</div><div class="val" id="rDropHat">—</div><div class="sub">time in S, censored dropped</div></div>
         </div>
@@ -314,7 +314,7 @@ fit <- coxph(Surv(time, status) ~ treatment + size, data = subjects)</pre></div>
       <h3>Why recurrent-event analysis matters</h3>
       <p>In compartmental models where loops are possible, as in the SIS epidemiological model, estimating the rate of a recurrent event such as the S→I transition requires special care. In the SIS case, the correct denominator for S→I is not total calendar time; it is total time spent at risk in state S. When a unit is already in state I, it cannot make another S→I transition until it returns to S.</p>
       <span class="formula"><span class="hatvar">β</span> = # S→I transitions / total time in S</span>
-      <p><strong>Censoring</strong> enters just as on the first tab. A unit still in S when the window closes has its current spell in S cut short at <code>T</code>; that truncated spell is genuine exposure (time at risk with no transition), so it stays in the denominator exactly as a censored wait does there, while adding nothing to the event count. The censoring is now measured against time in S rather than calendar time, and because the denominator already sums every S spell (completed and truncated), one unit can fold in several at once. The drop-censored monitor does the opposite: it discards every unit still in S at the close, throwing away the longest in-progress waits, which biases <span class="hatvar">β</span> upward, just as ignoring censoring does on the first tab. The interval estimate carries over unchanged, with <code>d</code> the number of S→I events: <code>log(<span class="hatvar">β</span>) ± 1.96/√d</code>, exponentiated, but only while the spells are conditionally independent given the rate, so that <code>d</code> events count as <code>d</code> independent observations even though they share units. That holds when units are exchangeable (Individual heterogeneity at zero); raising it makes a unit’s repeated events correlated and over-dispersed, the effective information then drops below <code>d</code>, and the true interval is wider than the one shown. The honest correction is the robust (cluster) variance of the Andersen–Gill fit below, or a frailty model.</p>
+      <p><strong>Censoring</strong> enters just as on the first tab. A unit still in S when the window closes has its current spell in S cut short at <code>T</code>; that truncated spell is genuine exposure (time at risk with no transition), so it stays in the denominator exactly as a censored wait does there, while adding nothing to the event count. The censoring is now measured against time in S rather than calendar time, and because the denominator already sums every S spell (completed and truncated), one unit can fold in several at once. The drop-censored monitor does the opposite: it discards every unit still in S at the close, throwing away the longest in-progress waits, which biases <span class="hatvar">β</span> upward, just as ignoring censoring does on the first tab. The interval estimate carries over unchanged, with <code>d</code> the number of S→I events: <code>log(<span class="hatvar">β</span>) ± 1.96/√d</code>, exponentiated, but only while the spells are conditionally independent given the rate, so that <code>d</code> events count as <code>d</code> independent observations even though they share units. That holds when units are exchangeable (Individual heterogeneity at zero); raising it makes a unit’s repeated events correlated and over-dispersed, the effective information then drops below <code>d</code>, and the true interval is wider than the one shown. The honest correction is the robust (cluster) variance of the Andersen–Gill fit below, or a frailty model. The robust 95% CI in the monitor is this cluster correction in action: it reads the dispersion off the between-unit spread of the per-unit contributions instead of assuming each event is one independent observation. One wrinkle: because each S spell is followed by a forced I spell, the S→I stream is an alternating renewal process and is mildly under-dispersed at zero heterogeneity, so the robust interval can sit just inside the naive one there, crossing outside and widening only once heterogeneity over-disperses the counts.</p>
     </div>
     <div class="panel" style="margin-top:16px;">
       <h3>Comparing models: SIR, SIS, SIRS</h3>
@@ -631,20 +631,24 @@ function simulateRecur(){
   return {beta,gamma,T,N,het,seed,units};
 }
 function recurEstimate(sim){
-  let evSI=0,timeS=0,evDrop=0,timeDrop=0;
+  let evSI=0,timeS=0,evDrop=0,timeDrop=0; const units=[];
   sim.units.forEach(segs=>{
     let stateAtT=segs[segs.length-1].state;
     for(const s of segs){ if(s.start<=sim.T && sim.T<s.end){ stateAtT=s.state; break; } }
     let uEv=0,uS=0;
     segs.forEach(s=>{ if(s.state==='S'){ const e=Math.min(s.end,sim.T); if(e>s.start) uS+=e-s.start; if(s.event && s.end<=sim.T) uEv++; } });
-    evSI+=uEv; timeS+=uS;
+    evSI+=uEv; timeS+=uS; units.push({d:uEv,e:uS});
     if(stateAtT!=='S'){ evDrop+=uEv; timeDrop+=uS; }
   });
-  return {evSI,timeS,evDrop,timeDrop,cal:sim.N*sim.T};
+  return {evSI,timeS,evDrop,timeDrop,cal:sim.N*sim.T,units};
 }
 function drawRecur(){
   const sim=simulateRecur(); setText('v-rBeta',fmt(sim.beta,2)); setText('v-rGamma',fmt(sim.gamma,2)); setText('v-rT',fmt(sim.T,1)); setText('v-rN',sim.N); setText('v-rHet',fmt(sim.het,2)); setText('v-rSeed',sim.seed);
-  const est=recurEstimate(sim); const bh=est.timeS>0?est.evSI/est.timeS:NaN, ci=ciRate(est.evSI,est.timeS), naive=est.cal>0?est.evSI/est.cal:NaN, drop=est.timeDrop>0?est.evDrop/est.timeDrop:NaN; setText('rEvents',est.evSI); setText('rBetaHat',fmt(bh,3)); setText('rBetaCI','95% CI '+fmt(ci[0],3)+'–'+fmt(ci[1],3)); setText('rNaive',fmt(naive,3)); setText('rDropHat',fmt(drop,3));
+  const est=recurEstimate(sim); const bh=est.timeS>0?est.evSI/est.timeS:NaN, ci=ciRate(est.evSI,est.timeS), naive=est.cal>0?est.evSI/est.cal:NaN, drop=est.timeDrop>0?est.evDrop/est.timeDrop:NaN; setText('rEvents',est.evSI); setText('rBetaHat',fmt(bh,3)); setText('rBetaCI','model-based 95% CI '+fmt(ci[0],3)+'–'+fmt(ci[1],3)); setText('rNaive',fmt(naive,3)); setText('rDropHat',fmt(drop,3));
+  // cluster-robust (sandwich) CI: bread^-1 = 1/E, meat = sum_i (d_i - bh*e_i)^2 over units;
+  // Var(bh)=meat/E^2, so SE(log bh)=sqrt(meat)/(E*bh)=sqrt(meat)/D. Equals the naive 1/sqrt(d)
+  // interval when units are exchangeable, and fans out as individual heterogeneity rises.
+  { const D=est.evSI; let meat=0; for(const u of est.units){ const r=u.d-bh*u.e; meat+=r*r; } const seR=(D>0&&isFinite(bh))?Math.sqrt(meat)/D:NaN; const cr=isFinite(seR)?[bh*Math.exp(-1.96*seR),bh*Math.exp(1.96*seR)]:[NaN,NaN]; setText('rBetaCIrob','robust 95% CI '+fmt(cr[0],3)+'–'+fmt(cr[1],3)); }
   const {ctx}=canvasPrep('recurCanvas'); const left=60,right=710,top=46,bottom=610,rowH=(bottom-top)/sim.N, xmax=RXMAX; const xOf=t=>left+(right-left)*Math.min(t,xmax)/xmax, xT=xOf(sim.T);
   ctx.font='11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
   for(let i=0;i<=5;i++){const x=left+(right-left)*i/5; ctx.strokeStyle='#eee'; ctx.beginPath();ctx.moveTo(x,top-12);ctx.lineTo(x,bottom+8);ctx.stroke(); ctx.fillStyle='#777';ctx.fillText(fmt(xmax*i/5,1),x-8,bottom+25);}
@@ -848,6 +852,17 @@ Object.entries(sliderTips).forEach(([id,t])=>{
   label.addEventListener('pointermove', e=>{ if(e.pointerType!=='touch' && !tipSticky) showTip(t,e.clientX,e.clientY); });
   label.addEventListener('pointerleave', e=>{ if(e.pointerType!=='touch' && !tipSticky) hideTip(); });
   label.addEventListener('click', e=>{ showTip(t,e.clientX,e.clientY); tipSticky=true; });
+});
+const textTips={
+  rBetaCI:'Model-based interval: log(\u03b2) \u00b1 1.96/\u221ad over the d events, the Poisson rate interval that counts each S\u2192I event as one independent observation. It trusts Var = mean, so it cannot see within-unit correlation; as individual heterogeneity clusters a unit\u2019s repeated events the interval stays narrow and grows overconfident.',
+  rBetaCIrob:'Robust (cluster) interval: groups the S\u2192I events by individual and reads the dispersion off the between-individual spread of their contributions rather than assuming Poisson. The point estimate is unchanged; only the uncertainty is. It tracks the true dispersion, so it can sit just inside the model-based interval at zero heterogeneity (the S\u2192I renewal stream is mildly under-dispersed there) and widens past it once heterogeneity over-disperses the counts.'
+};
+Object.entries(textTips).forEach(([id,t])=>{
+  const el=$(id); if(!el) return; el.setAttribute('aria-label',t); el.style.cursor='help';
+  el.addEventListener('pointerenter', e=>{ if(e.pointerType!=='touch') showTip(t,e.clientX,e.clientY); });
+  el.addEventListener('pointermove', e=>{ if(e.pointerType!=='touch' && !tipSticky) showTip(t,e.clientX,e.clientY); });
+  el.addEventListener('pointerleave', e=>{ if(e.pointerType!=='touch' && !tipSticky) hideTip(); });
+  el.addEventListener('click', e=>{ showTip(t,e.clientX,e.clientY); tipSticky=true; });
 });
 setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',()=>geomRecur); attachDrag('appCanvas',()=>geomApp); drawAll(); attachLegendTips('basicCanvas'); attachLegendTips('recurCanvas'); attachLegendTips('appCanvas');
 })();
