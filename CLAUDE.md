@@ -87,8 +87,10 @@ Inside `<head>`, include all of the following, filling in the actual values:
 At the very bottom of `<body>`, before `</body>`, add:
 
 ```html
-<footer id="back-link-footer" style="margin-top:1.5rem;padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
-  <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+<footer id="back-link-footer" style="max-width:CONTENT_MAX_WIDTH;margin:0 auto;padding:0 CONTENT_HPAD 1.5rem;">
+  <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+    <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+  </div>
 </footer>
 <script>
 if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
@@ -97,9 +99,17 @@ if (window.self !== window.top) { var f = document.getElementById('back-link-foo
 
 The `<script>` hides the footer when the page is embedded in a Canvas LMS iframe.
 
+**Match the page's content width.** Replace `CONTENT_MAX_WIDTH` and `CONTENT_HPAD` with the
+`max-width` and horizontal `padding` of the demo's main centered content container (e.g.
+`.widget`, `.page-inner`, or whatever wraps the app). This keeps the back-link aligned with
+the rest of the page instead of drifting to the viewport's left edge. The `border-top` (the
+horizontal rule) goes on the **inner `<div>`**, inside the horizontal padding, so the rule
+spans the content width and matches the length of the main footer's rule — not the full
+element width.
+
 **Watch for body padding:** if the demo's `body` CSS has no `padding-bottom`, the footer will
-sit flush against the viewport edge. Add `padding-bottom` to the body or `margin-bottom` to
-the footer if needed.
+sit flush against the viewport edge. Add `padding-bottom` to the body, bump the footer's
+bottom padding, or add `margin-bottom` if needed.
 
 ### 3. Entry in `index.html`
 

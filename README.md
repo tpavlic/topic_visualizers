@@ -51,15 +51,21 @@ For a new `my_demo.html`, the checklist is:
 2. **Back-link footer** — add at the bottom of `<body>`:
 
    ```html
-   <footer id="back-link-footer" style="margin-top:1.5rem;padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
-     <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+   <footer id="back-link-footer" style="max-width:CONTENT_MAX_WIDTH;margin:0 auto;padding:0 CONTENT_HPAD 1.5rem;">
+     <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+       <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+     </div>
    </footer>
    <script>
    if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
    </script>
    ```
 
-   The script hides the footer when the page is embedded in a Canvas iframe.
+   Set `CONTENT_MAX_WIDTH` and `CONTENT_HPAD` to the `max-width` and horizontal `padding` of
+   the page's main centered content container, so the back-link and its rule align with the
+   page content (the `border-top` lives on the inner `<div>`, inside the padding, so its length
+   matches the main footer's rule). The script hides the footer when the page is embedded in a
+   Canvas iframe.
 
 3. **Index entry** — add a `<li>` to the appropriate `<section>` in [`index.html`](index.html),
    following the existing pattern (thumbnail + title + one-sentence description). Create
