@@ -154,6 +154,11 @@ Update the **Current demos** list below to include the new demo.
 - **Lyapunov Level-Set Explorer** — `lyapunov_functions/lyapunov_explorer.html`
   Interactive exploration of Lyapunov functions and level-set curves for common nonlinear dynamical systems.
 
+### Statistics
+
+- **Survival & Recurrent-Event Analysis Visualizer** — `survival_analysis/survival_recurrent_visualizer.html`
+  Interactive exploration of exponential transition rates, right censoring, and recurrent events via survival curves and two-state transition models.
+
 ---
 
 ## Shared conventions
@@ -164,3 +169,4 @@ Update the **Current demos** list below to include the new demo.
 - **GitHub Pages base URL:** `https://tpavlic.github.io/topic_visualizers/`
 - **YouTube channel:** <https://www.youtube.com/@TedPavlic> — linked from the index header
 - **Google Analytics measurement ID:** `G-P0S68QRGVP` — include the gtag block in every demo's `<head>`, after the Twitter/X card lines and before any `<link>` or `<style>` tags
+- **Git commits:** do **not** add a `Co-Authored-By: Claude` (or any AI co-author) trailer to commit messages

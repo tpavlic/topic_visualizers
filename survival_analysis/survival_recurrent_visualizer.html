@@ -6,6 +6,31 @@
 <title>Survival & Recurrent-Event Analysis Visualizer</title>
 <!-- checked touch build v5 2026-06-09T20:20Z: label grouping, pedagogical censoring explainer, empirical survival step curve -->
 <meta name="description" content="Interactive visualizer for survival analysis, recurrent-event survival analysis, exponential transition rates, censoring, and state-transition models.">
+
+<!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Survival &amp; Recurrent-Event Analysis Visualizer">
+<meta property="og:description" content="Interactive visualizer for survival analysis, recurrent-event survival analysis, exponential transition rates, censoring, and state-transition models.">
+<meta property="og:image" content="https://tpavlic.github.io/topic_visualizers/survival_analysis/survival_recurrent_visualizer-preview.png">
+<meta property="og:image:width" content="2960">
+<meta property="og:image:height" content="1452">
+<meta property="og:url" content="https://tpavlic.github.io/topic_visualizers/survival_analysis/survival_recurrent_visualizer.html">
+<meta property="fb:app_id" content="2385695445236853">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Survival &amp; Recurrent-Event Analysis Visualizer">
+<meta name="twitter:description" content="Interactive visualizer for survival analysis, recurrent-event survival analysis, exponential transition rates, censoring, and state-transition models.">
+<meta name="twitter:image" content="https://tpavlic.github.io/topic_visualizers/survival_analysis/survival_recurrent_visualizer-preview.png">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-P0S68QRGVP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-P0S68QRGVP');
+</script>
 <style>
 :root {
   --green-dark: #2f6b4a;
@@ -507,6 +532,12 @@ window.addEventListener('resize',drawAll);
 ['basicLam','basicT','basicN','basicSeed','rBeta','rGamma','rT','rN','rHet','rSeed'].forEach(id=>onInput(id,drawAll));
 setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',()=>geomRecur); drawAll(); attachLegendTips('basicCanvas'); attachLegendTips('recurCanvas');
 })();
+</script>
+<footer id="back-link-footer" style="max-width:1180px;margin:0 auto;padding:0.75rem 22px 1.5rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+  <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+</footer>
+<script>
+if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
 </script>
 </body>
 </html>
