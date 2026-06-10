@@ -74,6 +74,13 @@ Inside `<head>`, include all of the following, filling in the actual values:
 </head>
 ```
 
+**Ampersands in OG/Twitter `content` titles:** use a literal `&`, not the `&amp;` entity, in
+the `og:title`, `twitter:title`, and description `content` attributes. Although `&amp;` is the
+technically correct HTML encoding (parsers decode it in attribute values), many card scrapers —
+Slack's notably — read the `content` string without decoding entities and display the literal
+`&amp;`. A bare `&` followed by a space is not an ambiguous ampersand, so it stays valid HTML.
+(The page `<title>` already renders a literal `&` fine.)
+
 **Twitter/X image requirements** (stricter than other platforms):
 
 - Aspect ratio must be close to **2:1** (e.g. 1200×600, 2400×1200). Twitter silently drops
