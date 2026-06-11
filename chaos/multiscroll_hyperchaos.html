@@ -726,8 +726,16 @@ a { color: var(--accent); }
     <div class="explainer">
       <h4>What you are looking at</h4>
       <p>
-        <b>Chua's circuit</b> is the simplest electronic circuit (one inductor, two capacitors, one resistor,
-        one piecewise-linear &ldquo;Chua diode&rdquo;) whose state vector is governed by
+        <b>Chua's circuit</b> is widely regarded as the simplest <em>autonomous</em> electronic circuit known
+        to produce chaos: just one inductor, two capacitors, one resistor, and one nonlinear element (the
+        piecewise-linear &ldquo;Chua diode&rdquo;), with no external driving signal. &ldquo;Simplest&rdquo; here
+        is the standard characterization from the circuit's originators rather than a proof of minimality.
+        What actually makes it canonical is that its chaos was <em>rigorously proven</em> (Chua, Komuro &amp;
+        Matsumoto, 1986), which at the time had not been done for the Lorenz system (the famous
+        three-equation atmospheric-convection model from 1963, the original textbook example of chaotic
+        dynamics). The piecewise-linear
+        nonlinearity was chosen deliberately so that the return maps could be written in closed form and the
+        proof carried out. Its state vector obeys
       </p>
       <code class="formula">  dx/dt = &alpha; ( y - x - h(x) )
   dy/dt = x - y + z
@@ -739,6 +747,9 @@ a { color: var(--accent); }
         unstable equilibrium with a complex pair of eigenvalues (spiral &rarr; outward) plus a real eigenvalue
         (stretching toward the center). The trajectory spirals outward until the stretching direction throws it
         across the central saddle; once on the other outer segment, the geometry repeats with mirrored signs.
+        Each of those tightly wound bundles of outward-spiraling loops around an equilibrium is what is called
+        a <b>scroll</b> (the name comes from the visual resemblance to a rolled-up paper scroll seen edge on);
+        the Chua attractor visits two of them, hence <em>double-scroll</em>.
       </p>
       <p>
         The defaults reproduce the classical double-scroll. Push <code>&alpha;</code> down and you collapse to a
