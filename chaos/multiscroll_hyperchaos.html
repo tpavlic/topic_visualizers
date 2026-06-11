@@ -1121,8 +1121,10 @@ a { color: var(--accent); }
       <div class="panel">
         <h4 style="margin:0 0 6px; font-size:0.86rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--nav-dark);">The system</h4>
         <p style="font-size:0.88rem; line-height:1.5; margin:0 0 6px;">
-          The 4D hyperchaotic Chen system (Li, Wu, Chen, 2005). The fourth equation lifts the classic 3D Chen
-          attractor into 4D; the term <code>r&middot;w</code> feeds the <code>w</code> channel back on itself.
+          The 4D hyperchaotic Chen system, introduced by Li, Tang &amp; Chen (2005) by adding the
+          fourth equation as a state-feedback extension of the classic 3D Chen attractor. The term
+          <code>r&middot;w</code> feeds the <code>w</code> channel back on itself; tuning <code>r</code>
+          moves the second Lyapunov exponent through zero, switching the system between chaos and hyperchaos.
         </p>
         <code class="formula">  dx/dt = a (y - x) + w
   dy/dt = d x - x z + c y
@@ -2540,7 +2542,9 @@ function refreshChd() {
 //  TAB 4: Chaos vs Hyperchaos
 // ═════════════════════════════════════════════════════════════════════
 
-// 4D hyperchaotic Chen system (Li, Wu, Chen, 2005):
+// 4D hyperchaotic Chen system (Li, Tang & Chen, 2005):
+//   "Generating hyperchaos via state feedback control",
+//   Int. J. Bifurcation and Chaos 15(10): 3367-3375.
 //   x' = a(y - x) + w
 //   y' = d x - x z + c y
 //   z' = x y - b z
