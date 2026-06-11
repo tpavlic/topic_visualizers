@@ -171,15 +171,13 @@ Update the **Current demos** list below to include the new demo.
 - **Lyapunov Level-Set Explorer** — `lyapunov_functions/lyapunov_explorer.html`
   Interactive exploration of Lyapunov functions and level-set curves for common nonlinear dynamical systems.
 
+- **Multi-Scroll Attractors & Hyperchaos** — `chaos/multiscroll_hyperchaos.html`
+  Interactive primer on multi-scroll chaotic attractors and hyperchaos, with applications to image encryption.
+
 ### Statistics
 
 - **Survival & Recurrent-Event Analysis Visualizer** — `survival_analysis/survival_recurrent_visualizer.html`
   Interactive exploration of exponential transition rates, right censoring, and recurrent events via survival curves and two-state transition models.
-
-### Chaos
-
-- **Multi-Scroll Attractors & Hyperchaos** — `chaos/multiscroll_hyperchaos.html`
-  Interactive primer on multi-scroll chaotic attractors and hyperchaos, with applications to image encryption.
 
 ---
 
