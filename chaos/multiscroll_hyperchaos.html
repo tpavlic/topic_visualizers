@@ -947,8 +947,20 @@ a { color: var(--accent); }
         it is exactly what a <em>linear</em> system cannot do, no matter how unstable it is.
       </p>
       <p>
-        This tab makes the distinction concrete with a deliberately boring example: a linear unstable spiral.
-        Its trajectories grow without bound, yet it is not chaotic, because there is no folding. The
+        For a continuous-time autonomous ODE (no delays, no external forcing), this requires at least
+        <b>three state dimensions</b>. The argument is topological. In a smooth ODE two trajectories cannot
+        cross (uniqueness of solutions), so any closed loop a trajectory traces in two dimensions divides the
+        plane into a fixed inside and outside it cannot escape. A bounded planar trajectory therefore has
+        nowhere to go but a fixed point or a periodic orbit (Poincar&eacute;-Bendixson). A third dimension
+        is what lets the stretched filament pass over or under itself, folding back into the bounded region
+        without crossing its own past. In contrast, discrete-time maps and time-delay systems escape this
+        constraint by not being continuous flows in finite dimension; for example, the logistic map exhibits
+        chaos in one variable because it is a discrete-time system that can &ldquo;jump&rdquo; as opposed to
+        flow smoothly through space.
+      </p>
+      <p>
+        This tab makes the distinction concrete with a deliberately boring example: a 3D linear unstable
+        spiral. Its trajectories grow without bound, yet it is not chaotic, because there is no folding. The
         attractors that <em>do</em> fold (and therefore are chaotic) you have already seen on the first two
         tabs: the double-scroll and the scroll grids. Here we isolate the stretching half so the missing
         ingredient is obvious.
@@ -980,6 +992,13 @@ a { color: var(--accent); }
         attractor's own diameter (the neighbors are flung apart and folded into unrelated parts of the set).
         The two panels below show this directly: each runs a pair of trajectories from nearly-identical starts
         and tracks their separation underneath.
+      </p>
+      <p style="font-size:0.86rem; color: var(--muted);">
+        An <em>n</em>-dimensional ODE actually has <em>n</em> Lyapunov exponents, one per independent
+        direction (the full <b>Lyapunov spectrum</b>); we are tracking only the largest here. As noted above,
+        chaos for a continuous-time autonomous system requires at least three state dimensions. The next tab
+        looks at the full spectrum and at <em>hyperchaos</em>, which needs at least four dimensions because
+        it demands two positive exponents at once.
       </p>
     </div>
 
@@ -1236,20 +1255,28 @@ a { color: var(--accent); }
       <div class="panel">
         <h3>Why dimension matters</h3>
         <p style="font-size:0.9rem; line-height:1.55; margin:0 0 8px;">
-          For a continuous-time autonomous dissipative system the Lyapunov spectrum must include at least one
-          zero exponent (the flow direction), and the trace of the Jacobian (= sum of LEs) must be negative.
-          That forces a budget:
+          For a continuous-time autonomous dissipative ODE (no delays, no external forcing), chaos requires
+          at least <b>three</b> state dimensions and hyperchaos at least <b>four</b>. The reason follows from
+          the structure of the Lyapunov spectrum: such a system must include at least one zero exponent (the
+          flow direction), and the trace of the Jacobian (= sum of LEs) must be negative for the orbit to be
+          bounded. That forces a budget:
         </p>
         <ul style="font-size:0.9rem; line-height:1.5; margin:4px 0 10px 20px; padding:0;">
-          <li style="margin-bottom:4px;">3D chaos: <code>(+, 0, &minus;)</code>, one expanding direction.</li>
+          <li style="margin-bottom:4px;">3D chaos: <code>(+, 0, &minus;)</code>, one expanding direction; the minimum embedding for chaos.</li>
           <li style="margin-bottom:4px;">3D hyperchaos is impossible: it would need <code>(+, +, 0, &hellip;)</code>, but there is no fourth slot for a sufficiently negative LE to keep the sum negative.</li>
-          <li style="margin-bottom:4px;">4D hyperchaos: <code>(+, +, 0, &minus;)</code>, the minimum embedding.</li>
+          <li style="margin-bottom:4px;">4D hyperchaos: <code>(+, +, 0, &minus;)</code>, the minimum embedding for hyperchaos.</li>
         </ul>
-        <p style="font-size:0.9rem; line-height:1.55; margin:0;">
-          This is why the system above is 4D: hyperchaos simply cannot occur in three dimensions. The scroll
-          systems on the earlier tabs are 3D and therefore chaotic but never hyperchaotic. Hyperchaotic
-          systems are of practical interest in cryptography, because two independent unstable directions make
-          a recorded signal much harder to reconstruct or predict than an ordinary chaotic one.
+        <p style="font-size:0.9rem; line-height:1.55; margin:0 0 8px;">
+          This is why the system above is 4D. The scroll systems on the earlier tabs are 3D and therefore
+          chaotic but never hyperchaotic. Hyperchaotic systems are of practical interest in cryptography,
+          because two independent unstable directions make a recorded signal much harder to reconstruct or
+          predict than an ordinary chaotic one.
+        </p>
+        <p style="font-size:0.84rem; color: var(--muted); margin:0;">
+          These bounds are specific to autonomous continuous-time flows. Discrete-time maps escape them (the
+          logistic map is chaotic in one variable), and time-delay equations are infinite-dimensional even
+          when written in one nominal state, so they too can be chaotic or hyperchaotic at lower apparent
+          dimension. The rule above is the right one for the ODE systems this widget shows.
         </p>
       </div>
     </div>
