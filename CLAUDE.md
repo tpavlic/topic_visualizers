@@ -176,6 +176,11 @@ Update the **Current demos** list below to include the new demo.
 - **Survival & Recurrent-Event Analysis Visualizer** — `survival_analysis/survival_recurrent_visualizer.html`
   Interactive exploration of exponential transition rates, right censoring, and recurrent events via survival curves and two-state transition models.
 
+### Chaos
+
+- **Multi-Scroll Attractors & Hyperchaos** — `chaos/multiscroll_hyperchaos.html`
+  Interactive primer on multi-scroll chaotic attractors and hyperchaos, with applications to image encryption.
+
 ---
 
 ## Shared conventions

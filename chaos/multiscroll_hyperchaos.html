@@ -1,0 +1,3687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Scroll Attractors &amp; Hyperchaos: an interactive primer</title>
+<meta name="description" content="Interactive primer on multi-scroll chaotic attractors and hyperchaos, with applications to image encryption.">
+
+<!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Multi-Scroll Attractors & Hyperchaos: an interactive primer">
+<meta property="og:description" content="Interactive primer on multi-scroll chaotic attractors and hyperchaos, with applications to image encryption.">
+<meta property="og:image" content="https://tpavlic.github.io/topic_visualizers/chaos/multiscroll_hyperchaos-preview.png">
+<meta property="og:image:width" content="2360">
+<meta property="og:image:height" content="840">
+<meta property="og:url" content="https://tpavlic.github.io/topic_visualizers/chaos/multiscroll_hyperchaos.html">
+<meta property="fb:app_id" content="2385695445236853">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Multi-Scroll Attractors & Hyperchaos: an interactive primer">
+<meta name="twitter:description" content="Interactive primer on multi-scroll chaotic attractors and hyperchaos, with applications to image encryption.">
+<meta name="twitter:image" content="https://tpavlic.github.io/topic_visualizers/chaos/multiscroll_hyperchaos-preview.png">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-P0S68QRGVP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-P0S68QRGVP');
+</script>
+<style>
+:root {
+  --nav-dark:  #1f3a5f;
+  --nav-mid:   #3d6694;
+  --nav-pale:  #e7eef6;
+  --nav-tint:  #d2dfec;
+  --orange:    #d97842;
+  --orange-mid:#e3925f;
+  --orange-pale:#fbe8d8;
+  --orange-deep:#c34a2e;
+  --crimson:   #b03a4c;
+  --crimson-pale:#f5e0e4;
+  --teal:      #2a8c8a;
+  --teal-pale: #def0ef;
+  --amber:     #c89630;
+  --amber-pale:#f5ecd4;
+  --text:      #222;
+  --muted:     #666;
+  --tiny:      #888;
+  --surface:   #fcfaf6;
+  --bg:        #ffffff;
+  --border:    #d8d8d4;
+  --border-strong:#b8b8b2;
+  --accent:    #2a5a8c;
+  --code-bg:   #f3f1ea;
+  --mono:      'IBM Plex Mono', 'SF Mono', Consolas, Menlo, monospace;
+  --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --r: 6px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+  font-size: 15px;
+}
+a { color: var(--accent); }
+
+.widget {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 22px 22px 16px;
+}
+
+.phdr {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+.phdr h1 {
+  font-size: 1.5rem;
+  margin: 0 0 4px;
+  color: var(--nav-dark);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.phdr .sub {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 10px;
+  font-style: italic;
+}
+.phdr .lede {
+  font-size: 0.95rem;
+  color: var(--text);
+  margin: 0 0 8px;
+  max-width: 880px;
+}
+.phdr .lede code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--nav-pale);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--nav-dark);
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+  flex-wrap: nowrap;
+  overflow: hidden;          /* hide cut-off tabs while JS measures and may swap to dropdown */
+}
+.tab {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 10px 16px;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  margin-bottom: -2px;
+  border-radius: 5px 5px 0 0;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--nav-dark); background: var(--nav-pale); }
+.tab.active {
+  color: white;
+  background: var(--nav-dark);
+  border-bottom-color: var(--orange);
+  font-weight: 600;
+}
+.tab.active:hover {
+  color: white;
+  background: var(--nav-dark);
+}
+
+.tabs-select-wrap { display: none; margin-bottom: 16px; }
+.tabs-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--nav-dark);
+  background: var(--nav-pale);
+  border: 1px solid var(--nav-mid);
+  border-radius: var(--r);
+  cursor: pointer;
+}
+
+.tabpane { display: none; }
+.tabpane.active { display: block; }
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.grid-2eq {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.grid-encrypt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  min-width: 0;
+}
+.panel h3 {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--nav-dark);
+  font-weight: 600;
+}
+.panel h3 .ann {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.92em;
+  margin-left: 5px;
+}
+
+.ctrls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+.ctrls.one-col { grid-template-columns: 1fr; }
+.ctrl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctrl.span2 { grid-column: 1 / -1; }
+.ctrl label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  display: flex; align-items: baseline;
+  gap: 0;
+}
+.ctrl label .v {
+  margin-left: auto;
+  padding-left: 8px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--nav-dark);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.ctrl label .greek,
+.ctrl label .nocaps {
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--mono);
+  font-style: normal;
+}
+.ctrl input[type=range] {
+  width: 100%;
+  accent-color: var(--nav-dark);
+  margin: 0;
+}
+.ctrl input[type=text],
+.ctrl input[type=number] {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 5px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: white;
+  min-width: 0;
+}
+.ctrl select {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  padding: 5px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: white;
+}
+.ctrl-row {
+  display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.btn {
+  background: var(--nav-dark);
+  border: 1px solid var(--nav-dark);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: all 0.13s;
+}
+.btn:hover { background: var(--nav-mid); border-color: var(--nav-mid); }
+.btn.sec {
+  background: transparent;
+  color: var(--nav-dark);
+}
+.btn.sec:hover { background: var(--nav-pale); }
+.btn.orange { background: var(--orange); border-color: var(--orange); }
+.btn.orange:hover { background: var(--orange-mid); border-color: var(--orange-mid); }
+
+/* preset chip — toggleable, marks an active regime */
+.preset-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  margin-bottom: 12px;
+}
+.preset-chip {
+  background: var(--nav-pale);
+  border: 1px solid var(--nav-tint);
+  border-radius: 14px;
+  padding: 4px 11px;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--nav-dark);
+  cursor: pointer;
+  transition: all 0.13s;
+  white-space: nowrap;
+}
+.preset-chip:hover { background: var(--nav-tint); }
+.preset-chip.active {
+  background: var(--nav-dark);
+  color: white;
+  border-color: var(--nav-dark);
+}
+.preset-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  align-self: center;
+  margin-right: 2px;
+  letter-spacing: 0.02em;
+}
+
+.toggles {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 6px;
+}
+.toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.82rem; color: var(--text);
+  cursor: pointer; user-select: none;
+}
+.toggle input { margin: 0; accent-color: var(--nav-dark); }
+
+/* Time-series channel toggles: small color swatch + per-channel accent on the checkbox */
+.ts-swatch {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 1px;
+}
+.ts-sw-x { background: #1f3a5f; }
+.ts-sw-y { background: #c34a2e; }
+.ts-sw-z { background: #4a8480; }
+.ts-sw-w { background: #b8860b; }
+.ts-toggle-x input { accent-color: #1f3a5f; }
+.ts-toggle-y input { accent-color: #c34a2e; }
+.ts-toggle-z input { accent-color: #4a8480; }
+.ts-toggle-w input { accent-color: #b8860b; }
+
+.sec-divider {
+  border-top: 1px dashed var(--border);
+  margin: 14px 0 12px;
+}
+
+.viz-wrap {
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.viz-wrap canvas, .viz-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* Rotatable 3D canvas: drag with mouse or finger to rotate yaw/pit */
+.viz-wrap canvas.rotatable {
+  cursor: grab;
+  touch-action: none;        /* prevent page scroll while dragging on touchscreens */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.viz-wrap canvas.rotatable.dragging {
+  cursor: grabbing;
+}
+/* small corner hint inside a viz-wrap with a rotatable canvas */
+.rot-hint {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--muted);
+  background: rgba(255,255,255,0.78);
+  padding: 1px 6px;
+  border-radius: 3px;
+  pointer-events: none;
+  letter-spacing: 0.02em;
+  transition: opacity 0.4s ease;
+  white-space: nowrap;
+}
+.rot-hint.fade { opacity: 0; }
+.viz-cap {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.viz-cap b { color: var(--text); }
+.viz-cap code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--nav-dark);
+  background: var(--nav-pale);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.explainer {
+  background: var(--surface);
+  border-left: 3px solid var(--nav-mid);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 14px 18px;
+  margin: 18px 0;
+  font-size: 0.93rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+.explainer.orange { border-left-color: var(--orange); }
+.explainer.crimson { border-left-color: var(--crimson); }
+
+/* Lévy analogy panel styled as a panel but with the orange explainer accent */
+.ms-lower { margin-top: 18px; }
+#ms-levy-panel { border-left: 3px solid var(--orange); }
+#ms-levy-panel h4 {
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--orange-deep);
+  font-weight: 600;
+}
+#ms-levy-panel ul { margin: 4px 0 10px 0; padding-left: 20px; }
+#ms-levy-panel ul li { margin-bottom: 4px; }
+.explainer h4 {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--nav-dark);
+  font-weight: 600;
+}
+.explainer.orange h4 { color: var(--orange-deep); }
+.explainer.crimson h4 { color: var(--crimson); }
+.explainer p { margin: 0 0 8px; }
+.explainer p:last-child { margin-bottom: 0; }
+.explainer ul { margin: 4px 0 10px 0; padding-left: 20px; }
+.explainer ul li { margin-bottom: 4px; }
+.explainer code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--nav-pale);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--nav-dark);
+}
+.formula {
+  display: block;
+  font-family: var(--mono);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 0.92rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Lyapunov spectrum bars */
+.lyap-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.lyap-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 96px;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+.lyap-label { color: var(--nav-dark); font-weight: 500; text-align: right; }
+.lyap-bar-wrap {
+  position: relative;
+  height: 14px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.lyap-bar-zero {
+  position: absolute;
+  left: 50%;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: var(--border-strong);
+}
+.lyap-bar-fill {
+  position: absolute;
+  top: 1px; bottom: 1px;
+  background: var(--teal);
+}
+.lyap-bar-fill.pos { background: var(--orange-mid); }
+.lyap-bar-fill.neg { background: var(--nav-mid); }
+.lyap-bar-fill.zero { background: var(--muted); }
+.lyap-val { color: var(--text); text-align: left; }
+
+/* Image-encryption canvases */
+.enc-img {
+  width: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #fafafa;
+  border: 1px solid var(--border);
+}
+.enc-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  margin: 4px 0 8px;
+  font-family: var(--mono);
+}
+/* descriptor directly under each 96x96 image: fixed height so the histograms
+   below line up across the Plain and Encrypted panels regardless of wrapping */
+.enc-label.enc-cap-img {
+  min-height: 2.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legend {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.legend .sw {
+  display: inline-block;
+  width: 14px; height: 3px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.foot {
+  border-top: 1px solid var(--border);
+  margin-top: 36px;
+  padding-top: 12px;
+  padding-bottom: 4px;
+  font-size: 0.74rem;
+  color: var(--tiny);
+  text-align: center;
+  font-family: var(--mono);
+}
+.foot a { color: var(--tiny); text-decoration: underline; }
+.footer-sep { display: inline; }
+.footer-lic { display: inline; }
+
+/* small left-justified copyright under the lede, matching the footer */
+.lede-credit {
+  font-size: 0.74rem;
+  color: var(--tiny);
+  font-family: var(--mono);
+  text-align: left;
+  margin: 12px 0 0;
+}
+.lede-credit a { color: var(--tiny); text-decoration: underline; }
+
+@media (max-width: 880px) {
+  .grid, .grid-2eq, .grid-encrypt { grid-template-columns: 1fr; }
+  /* On narrow screens the jump histogram should come before the Lévy prose,
+     matching the requested stacking: time series, then histogram, then analogy. */
+  .ms-lower #ms-hist-panel { order: 1; }
+  .ms-lower #ms-levy-panel { order: 2; }
+}
+
+@media (max-width: 600px) {
+  .widget { padding: 18px 14px 14px; }
+  .phdr h1 { font-size: 1.3rem; }
+  .ctrls { grid-template-columns: 1fr; }
+  .footer-sep { display: none; }
+  .footer-lic { display: block; margin-top: 3px; }
+}
+</style>
+</head>
+<body>
+<div class="widget">
+
+  <div class="phdr">
+    <h1>Multi-Scroll Attractors &amp; Hyperchaos: an interactive primer</h1>
+    <p class="sub">From the double-scroll of a Chua circuit to deterministic L&eacute;vy-like exploration and chaotic image encryption</p>
+    <p class="lede">
+      A chaotic trajectory looks random but is generated by a purely deterministic rule. That combination (a
+      fixed recipe that nonetheless explores space in an intricate, broadband, hard-to-predict way and is
+      exquisitely sensitive to its starting point) makes chaos a tunable stand-in for randomness, and the
+      same properties power pseudo-random number generation, secure communication, image and signal
+      encryption, and wide-band signal design.
+    </p>
+    <p class="lede">
+      The <em>multi-scroll</em> attractor makes that exploration especially vivid. Its trajectory spirals
+      tightly around one equilibrium (a &ldquo;scroll&rdquo;), then is flung along an unstable direction to a
+      neighboring scroll, where it spirals again. The resulting pattern of long bouts of local exploration
+      interrupted by hard-to-predict jumps mimics the qualitative signature of a
+      <code>L&eacute;vy flight</code>, yet with no stochastic input at all. That exploration can be enriched in
+      two directions: adding more scrolls enlarges the landscape the orbit roams, while a fourth state
+      variable opens the door to <em>hyperchaos</em>, in which nearby trajectories are stretched apart along
+      two or more independent directions at once rather than just one. The extra stretching fills space more
+      thoroughly and makes a captured trajectory still harder to reconstruct or predict, exactly the
+      properties the applications above are after. This widget builds up these ideas tab by tab, then puts
+      them to work on image encryption.
+    </p>
+    <p class="lede" style="font-size: 0.85rem; color: var(--muted);">
+      This widget walks through (1) the canonical double-scroll, (2) its multi-scroll generalizations,
+      (3) what separates a merely unstable system from a chaotic one, (4) the distinction between chaos and
+      hyperchaos, and (5) one practical use: pseudo-random number generation for image encryption.
+    </p>
+    <p class="lede-credit">&copy; 2026 Theodore P. Pavlic&nbsp;&middot;&nbsp;<a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a></p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="0">Double-scroll basics</button>
+    <button class="tab"        data-tab="1">Scroll grids &amp; L&eacute;vy analogy</button>
+    <button class="tab"        data-tab="2">Unstable vs chaotic</button>
+    <button class="tab"        data-tab="3">Chaos vs hyperchaos</button>
+    <button class="tab"        data-tab="4">Application: image encryption</button>
+  </div>
+  <div class="tabs-select-wrap">
+    <select class="tabs-select" id="mainTabSelect">
+      <option value="0">1. Double-scroll basics</option>
+      <option value="1">2. Scroll grids &amp; L&eacute;vy analogy</option>
+      <option value="2">3. Unstable vs chaotic</option>
+      <option value="3">4. Chaos vs hyperchaos</option>
+      <option value="4">5. Application: image encryption</option>
+    </select>
+  </div>
+
+  <!-- ═════════════════ TAB 1: Double-scroll basics ═════════════════ -->
+  <div class="tabpane active" data-pane="0">
+
+    <div class="grid">
+      <div class="panel">
+        <h3>Chua's circuit: 3D phase portrait <span class="ann">(x, y, z)</span></h3>
+        <div class="viz-wrap"><canvas id="chua-phase" width="640" height="480"></canvas></div>
+        <div class="viz-cap">
+          The trajectory winds around two unstable foci <code>P&#8314;</code> and <code>P&#8315;</code>
+          (orange squares), spiraling outward on one until tossed across the saddle at the origin
+          (orange &times;) to spiral on the other. Color fades from <span style="color:var(--nav-dark)">deep
+          navy</span> (early) to <span style="color:var(--orange-deep)">orange</span> (late) so the order
+          of points is visible.
+        </div>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="chua-tg-axes" checked> Axes &amp; bounds</label>
+          <label class="toggle"><input type="checkbox" id="chua-tg-eq" checked> Equilibria</label>
+          <label class="toggle"><input type="checkbox" id="chua-tg-nl" checked> h(x) curve</label>
+          <label class="toggle"><input type="checkbox" id="chua-tg-fade" checked> Time fade</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controls</h3>
+        <div class="preset-row" id="chua-presets">
+          <span class="preset-label">regime:</span>
+          <button class="preset-chip" data-alpha="7.5"  data-beta="14.2857" data-m0="-1.1429" data-m1="-0.7143">Limit cycle</button>
+          <button class="preset-chip" data-alpha="8.6"  data-beta="14.2857" data-m0="-1.1429" data-m1="-0.7143">Single-scroll chaos</button>
+          <button class="preset-chip" data-alpha="8.85" data-beta="14.2857" data-m0="-1.1429" data-m1="-0.7143">Edge of chaos</button>
+          <button class="preset-chip active" data-alpha="10.0" data-beta="14.2857" data-m0="-1.1429" data-m1="-0.7143">Double-scroll</button>
+        </div>
+        <div class="ctrls">
+          <div class="ctrl">
+            <label><span class="greek">&alpha;</span> <span class="v" id="v-chua-alpha">10.00</span></label>
+            <input type="range" id="chua-alpha" min="500" max="1500" value="1000">
+          </div>
+          <div class="ctrl">
+            <label><span class="greek">&beta;</span> <span class="v" id="v-chua-beta">14.29</span></label>
+            <input type="range" id="chua-beta" min="1000" max="2000" value="1429">
+          </div>
+
+          <div class="ctrl">
+            <label><span class="nocaps">m&#8320;</span> <span class="v" id="v-chua-m0">-1.14</span></label>
+            <input type="range" id="chua-m0" min="-200" max="-50" value="-114">
+          </div>
+          <div class="ctrl">
+            <label><span class="nocaps">m&#8321;</span> <span class="v" id="v-chua-m1">-0.71</span></label>
+            <input type="range" id="chua-m1" min="-150" max="50" value="-71">
+          </div>
+
+          <div class="ctrl">
+            <label>view azimuth <span class="v" id="v-chua-yaw">35&deg;</span></label>
+            <input type="range" id="chua-yaw" min="-180" max="180" value="35">
+          </div>
+          <div class="ctrl">
+            <label>view elevation <span class="v" id="v-chua-pit">25&deg;</span></label>
+            <input type="range" id="chua-pit" min="-80" max="80" value="25">
+          </div>
+
+          <div class="ctrl span2">
+            <div class="ctrl-row" style="margin-top: 2px;">
+              <button class="btn sec" id="chua-new">New initial condition</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec-divider"></div>
+        <h3 style="margin-top:4px;">Time series <span class="ann">overlay any subset of x(t), y(t), z(t)</span></h3>
+        <div class="ctrls" style="grid-template-columns: repeat(3, max-content); gap: 14px; margin-bottom: 8px;">
+          <label class="toggle ts-toggle ts-toggle-x"><input type="checkbox" id="chua-ts-x" checked> <span class="ts-swatch ts-sw-x"></span> x(t)</label>
+          <label class="toggle ts-toggle ts-toggle-y"><input type="checkbox" id="chua-ts-y"> <span class="ts-swatch ts-sw-y"></span> y(t)</label>
+          <label class="toggle ts-toggle ts-toggle-z"><input type="checkbox" id="chua-ts-z"> <span class="ts-swatch ts-sw-z"></span> z(t)</label>
+        </div>
+        <div class="viz-wrap"><canvas id="chua-time" width="500" height="180"></canvas></div>
+        <div class="viz-cap">
+          The three state variables share the same scroll-switching events but differ in amplitude and phase:
+          <code>x(t)</code> and <code>y(t)</code> stay within a unit interval (capacitor voltages, scaled);
+          <code>z(t)</code> swings larger (inductor current). The sign of <code>x(t)</code> identifies which
+          scroll the trajectory is currently visiting, and the moment of the next jump is sensitive to the
+          initial condition.
+        </div>
+      </div>
+    </div>
+
+    <div class="explainer">
+      <h4>What you are looking at</h4>
+      <p>
+        <b>Chua's circuit</b> is the simplest electronic circuit (one inductor, two capacitors, one resistor,
+        one piecewise-linear &ldquo;Chua diode&rdquo;) whose state vector is governed by
+      </p>
+      <code class="formula">  dx/dt = &alpha; ( y - x - h(x) )
+  dy/dt = x - y + z
+  dz/dt = -&beta; y
+
+  h(x) = m&#8321;&middot;x + &frac12;(m&#8320; - m&#8321;)(|x+1| - |x-1|)</code>
+      <p>
+        The nonlinearity <code>h(x)</code> is piecewise linear with three segments. Each outer segment hosts an
+        unstable equilibrium with a complex pair of eigenvalues (spiral &rarr; outward) plus a real eigenvalue
+        (stretching toward the center). The trajectory spirals outward until the stretching direction throws it
+        across the central saddle; once on the other outer segment, the geometry repeats with mirrored signs.
+      </p>
+      <p>
+        The defaults reproduce the classical double-scroll. Push <code>&alpha;</code> down and you collapse to a
+        limit cycle on one side; push it up and the spiraling tightens. The number of <em>scrolls</em> stays at
+        two because <code>h(x)</code> has just three slopes (the next tab tiles a whole plane with scrolls).
+      </p>
+    </div>
+  </div>
+
+  <!-- ═════════════════ TAB 2: Scroll grids & Lévy analogy ═════════════════ -->
+  <div class="tabpane" data-pane="1">
+
+    <div class="grid">
+      <div class="panel">
+        <h3>Scroll grid attractor <span class="ann">(colored by current cell)</span></h3>
+        <div class="viz-wrap"><canvas id="ms-phase" width="640" height="480"></canvas></div>
+        <div class="viz-cap">
+          Two staircase nonlinearities, <code>f&#8321;(x)</code> and <code>f&#8322;(y)</code>, tile the
+          <code>(x,&nbsp;y)</code> plane with scroll cells: one scroll per lattice point (orange squares).
+          The trajectory is colored by <em>which cell it is currently visiting</em>, revealing the slow-fast
+          structure: long dwells inside one scroll, brief hops between neighbors, and occasional runs across
+          several cells at once. Setting <em>scrolls in y</em> to 1 switches off <code>f&#8322;</code> and
+          degenerates the grid into the classic 1D scroll chain.
+        </div>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="ms-tg-eq" checked> Equilibria</label>
+          <label class="toggle"><input type="checkbox" id="ms-tg-nl" checked> Sawtooth curves</label>
+          <label class="toggle"><input type="checkbox" id="ms-tg-fade"> Time fade</label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Controls</h3>
+        <div class="preset-row" id="ms-presets">
+          <span class="preset-label">grid:</span>
+          <button class="preset-chip" data-nx="5" data-ny="1" data-a="0.8">5&times;1 (1D chain)</button>
+          <button class="preset-chip" data-nx="2" data-ny="2" data-a="0.8">2&times;2</button>
+          <button class="preset-chip active" data-nx="3" data-ny="3" data-a="0.8">3&times;3</button>
+          <button class="preset-chip" data-nx="5" data-ny="3" data-a="0.8">5&times;3</button>
+        </div>
+        <div class="ctrls">
+          <div class="ctrl">
+            <label>scrolls in x <span class="v" id="v-ms-nx">3</span></label>
+            <input type="range" id="ms-nx" min="1" max="6" value="3">
+          </div>
+          <div class="ctrl">
+            <label>scrolls in y <span class="v" id="v-ms-ny">3</span></label>
+            <input type="range" id="ms-ny" min="1" max="4" value="3">
+          </div>
+
+          <div class="ctrl">
+            <label>damping <span class="nocaps">a</span> <span class="v" id="v-ms-a">0.80</span></label>
+            <input type="range" id="ms-a" min="55" max="100" value="80">
+          </div>
+          <div class="ctrl">
+            <label>view elevation <span class="v" id="v-ms-pit">48&deg;</span></label>
+            <input type="range" id="ms-pit" min="-80" max="80" value="48">
+          </div>
+
+          <div class="ctrl">
+            <label>view azimuth <span class="v" id="v-ms-yaw">18&deg;</span></label>
+            <input type="range" id="ms-yaw" min="-180" max="180" value="18">
+          </div>
+
+          <div class="ctrl span2">
+            <div class="ctrl-row" style="margin-top: 2px;">
+              <button class="btn sec" id="ms-new">New initial condition</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec-divider"></div>
+        <h3 style="margin-top:4px;">Time series <span class="ann">overlay any subset of x(t), y(t), z(t)</span></h3>
+        <div class="ctrls" style="grid-template-columns: repeat(3, max-content); gap: 14px; margin-bottom: 8px;">
+          <label class="toggle ts-toggle ts-toggle-x"><input type="checkbox" id="ms-ts-x" checked> <span class="ts-swatch ts-sw-x"></span> x(t)</label>
+          <label class="toggle ts-toggle ts-toggle-y"><input type="checkbox" id="ms-ts-y" checked> <span class="ts-swatch ts-sw-y"></span> y(t)</label>
+          <label class="toggle ts-toggle ts-toggle-z"><input type="checkbox" id="ms-ts-z"> <span class="ts-swatch ts-sw-z"></span> z(t)</label>
+        </div>
+        <div class="viz-wrap"><canvas id="ms-time" width="500" height="180"></canvas></div>
+        <div class="viz-cap">
+          For the grid system, <code>x(t)</code> and <code>y(t)</code> are step-like: each plateau level is
+          (close to) an integer that identifies the current column and row, so the dwell-then-jump structure
+          is explicit. <code>z(t)</code> is the fast variable that drives the switching. With
+          <em>scrolls in y</em> set to 1, <code>y(t)</code> stays near zero (no row structure).
+        </div>
+      </div>
+    </div>
+
+    <div class="grid ms-lower">
+      <div class="panel" id="ms-levy-panel">
+        <h4 style="margin-top:0;">The deterministic L&eacute;vy analogy</h4>
+        <p style="font-size:0.9rem; line-height:1.55; color:var(--text);">
+          A <b>L&eacute;vy flight</b> is a random walk whose step lengths are drawn from a heavy-tailed
+          distribution: most steps are small (intensive local search), but occasionally a single step is
+          enormous (long-range relocation). The classical use is foraging theory (e.g., predators searching
+          sparsely distributed prey, animals tracking patches that move on multiple scales).
+        </p>
+        <p style="font-size:0.9rem; line-height:1.55; color:var(--text);">
+          A scroll grid attractor produces a <em>qualitatively similar</em> trace through phase space:
+        </p>
+        <ul style="font-size:0.9rem; line-height:1.5; color:var(--text);">
+          <li>Inside a cell, the trajectory winds around its scroll (many small displacements).</li>
+          <li>The unstable stretching direction eventually carries it across a switching surface into another cell (a single large displacement), sometimes sweeping across several cells before it is recaptured.</li>
+          <li>Which cell it lands in, and how far the excursion runs, is set by where on the unstable manifold the trajectory happens to be at the crossing (a sensitive function of state). With a 2D grid the jumps have direction as well as length: horizontal, vertical, and diagonal hops all occur.</li>
+        </ul>
+        <p style="font-size:0.9rem; line-height:1.55; color:var(--text);">
+          Crucially, there is <em>no random number generator</em> anywhere in the equations. The apparent
+          randomness, including the heavy tail of the jump distribution, is generated entirely by the geometry
+          of stretching and folding in a low-dimensional ODE.
+        </p>
+      </div>
+
+      <div class="panel" id="ms-hist-panel">
+        <h3 style="margin-top:0;">Inter-cell jump distance, deterministic vs L&eacute;vy</h3>
+        <div class="viz-wrap"><canvas id="ms-hist" width="500" height="220"></canvas></div>
+        <div class="viz-cap">
+          Each bar counts cell-to-cell crossings by the planar displacement <code>|&Delta;(x,y)|</code>
+          between consecutive crossings. The empirical distribution
+          (<span style="color:var(--nav-dark)">navy</span>) is overlaid with a half-normal fit
+          (<span style="color:var(--muted)">gray</span>) and a heavy-tailed reference (half-Cauchy,
+          <span style="color:var(--orange-deep)">orange</span>). The empirical tails are heavier than
+          the half-normal: rare long runs across multiple cells occur even though the system is fully
+          deterministic.
+        </div>
+      </div>
+    </div>
+
+    <div class="explainer">
+      <h4>Staircase nonlinearities and scroll grids</h4>
+      <p>
+        The double-scroll on the previous tab strung its two scrolls along a single axis. The natural
+        generalization is to tile a whole <em>plane</em> (or volume) with scrolls. The construction here
+        follows Yalcin, Suykens, and Vandewalle's scroll grid family, a third-order autonomous system
+        in <code>(x, y, z)</code> with one staircase nonlinearity per spatial axis:
+      </p>
+      <code class="formula">  dx/dt = y - f&#8322;(y)
+  dy/dt = z
+  dz/dt = -a (x - f&#8321;(x)) - a (y - f&#8322;(y)) - a z</code>
+      <p>
+        The two nonlinearities are instances of a single staircase template
+        <code>f(u; N) = &Sigma;<sub>k=1..N</sub> &frac12; ( sgn(u - (k - &frac12;)) + 1 )</code>, a sum of
+        <code>N</code> unit steps. Here <code>f&#8321;(u) &equiv; f(u; n<sub>x</sub>-1)</code> and
+        <code>f&#8322;(u) &equiv; f(u; n<sub>y</sub>-1)</code> (a third axis would add
+        <code>f&#8323;(u) &equiv; f(u; n<sub>z</sub>-1)</code>).
+      </p>
+      <p>
+        Each staircase makes <code>u - f(u)</code> a sawtooth with zeros at <code>u = 0, 1, &hellip;, N</code>
+        (see the insets). The equilibria of the full system are exactly the lattice points where both
+        sawtooths vanish, so <code>f&#8321;</code> with <code>n<sub>x</sub>-1</code> steps and
+        <code>f&#8322;</code> with <code>n<sub>y</sub>-1</code> steps produce an
+        <code>n<sub>x</sub> &times; n<sub>y</sub></code> grid of scroll cells. Locally, every cell repeats
+        the same saddle-focus geometry; globally, the cells are stitched together by the switching surfaces
+        of the staircases.
+      </p>
+      <p>
+        Setting <code>n<sub>y</sub> = 1</code> turns <code>f&#8322;</code> off entirely
+        (<code>f&#8322; &equiv; 0</code>) and the system collapses to the classic 1D scroll chain. In that
+        case <code>y = dx/dt</code> and <code>z = d&sup2;x/dt&sup2;</code>, so the three equations reduce to
+        a single scalar jerk equation
+        <code>d&sup3;x/dt&sup3; = -a (x - f&#8321;(x)) - a&middot;dx/dt - a&middot;d&sup2;x/dt&sup2;</code>,
+        the same construction as the multi-scroll Chua extensions. (With <code>f&#8322;</code> active the
+        full grid system no longer reduces to a single jerk equation, because <code>dx/dt = y - f&#8322;(y)</code>
+        is not invertible in <code>y</code>.) The grid is the general case; the chain is the degenerate one.
+        Adding the third staircase <code>f&#8323;</code> in <code>z</code> would extend the same idea to a 3D
+        lattice of scrolls (not implemented here).
+      </p>
+      <p>
+        Unlike the piecewise-linear Chua diode, the staircase construction is remarkably forgiving: with
+        <code>a &asymp; 0.8</code> a single initial condition near the origin eventually visits
+        <em>every</em> cell in the grid, because the cells are all dynamically connected through the
+        switching surfaces rather than separated into disjoint basins.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═════════════════ TAB 3: Unstable vs chaotic ═════════════════ -->
+  <div class="tabpane" data-pane="2">
+
+    <div class="explainer" style="margin-top:0;">
+      <h4>Unstable is not the same as chaotic</h4>
+      <p>
+        It is tempting to think that any system whose trajectories blow up must be chaotic. It is not so.
+        Picture the set of initial conditions as a small ball of dough sitting in state space, and let the
+        dynamics knead it forward in time. <b>Instability</b> alone just inflates the dough: every point flies
+        outward, the ball grows, but a crumb that started next to its neighbor stays next to that neighbor.
+        The shape is preserved; only the scale changes.
+      </p>
+      <p>
+        <b>Chaos</b> needs something more violent: <em>stretching and folding</em>. The dough is pulled out
+        into a long thin filament (stretching, so nearby crumbs are driven apart), and because the trajectory
+        is bounded, that filament has to be folded back into the working volume over and over, like a baker
+        making puff pastry. After enough folds, two crumbs that began as immediate neighbors can end up on
+        opposite sides of the attractor. The folding is what scrambles the topology of the initial set, and
+        it is exactly what a <em>linear</em> system cannot do, no matter how unstable it is.
+      </p>
+      <p>
+        This tab makes the distinction concrete with a deliberately boring example: a linear unstable spiral.
+        Its trajectories grow without bound, yet it is not chaotic, because there is no folding. The
+        attractors that <em>do</em> fold (and therefore are chaotic) you have already seen on the first two
+        tabs: the double-scroll and the scroll grids. Here we isolate the stretching half so the missing
+        ingredient is obvious.
+      </p>
+    </div>
+
+    <div class="explainer crimson">
+      <h4>The Lyapunov exponent, in one idea</h4>
+      <p>
+        To measure stretching, track two trajectories that start a tiny distance <code>&delta;&#8320;</code>
+        apart and watch how their separation <code>&delta;(t)</code> evolves. The <b>(largest) Lyapunov
+        exponent</b> <code>&lambda;</code> is the long-time average rate of that growth,
+        <code>&lambda; = lim (1/t) ln[&delta;(t)/&delta;&#8320;]</code>, equivalently
+        <code>&delta;(t) &asymp; &delta;&#8320; e<sup>&lambda;t</sup></code>. Every system has such a rate, and
+        its sign is what matters: <code>&lambda; &gt; 0</code> means neighbors pull apart (sensitive
+        dependence on initial conditions), <code>&lambda; = 0</code> means they drift apart slower than any
+        exponential, and <code>&lambda; &lt; 0</code> means they converge (a stable system). So
+        <code>&lambda;</code> is a single number that characterizes any system; the question is only its sign
+        and size.
+      </p>
+      <div id="lyap-schematic" style="margin: 4px 0 8px;"></div>
+      <p>
+        Here is the subtlety that separates instability from chaos. The unstable spiral <em>also</em> has a
+        positive exponent, so a positive <code>&lambda;</code> is necessary but not sufficient for chaos. The
+        deciding question is what happens to the separation <em>relative to the size of the orbit</em>. On the
+        spiral the whole orbit inflates at the same rate as the separation, so two neighbors stay
+        proportionally as close as they started (the dough inflates without being scrambled). On a chaotic
+        attractor the orbit stays bounded while the separation keeps growing until it saturates at the
+        attractor's own diameter (the neighbors are flung apart and folded into unrelated parts of the set).
+        The two panels below show this directly: each runs a pair of trajectories from nearly-identical starts
+        and tracks their separation underneath.
+      </p>
+    </div>
+
+    <div class="grid-2eq" style="margin-top: 18px;">
+      <!-- Spiral panel -->
+      <div class="panel" style="display:flex; flex-direction:column;">
+        <h3>Unstable spiral <span class="ann">(linear: stretch, no fold)</span></h3>
+        <div class="viz-wrap"><canvas id="spi-phase" width="500" height="360"></canvas></div>
+        <div class="toggles" style="margin: 6px 0 2px;">
+          <label class="toggle ts-toggle ts-toggle-x"><input type="checkbox" id="spi-tA" checked> <span class="ts-swatch ts-sw-x"></span> trajectory A</label>
+          <label class="toggle ts-toggle ts-toggle-y"><input type="checkbox" id="spi-tB" checked> <span class="ts-swatch ts-sw-y"></span> trajectory B</label>
+        </div>
+        <div class="viz-cap">
+          Two trajectories from starts <code>&delta;&#8320; = 10<sup>&minus;3</sup></code> apart
+          (<span style="color:var(--nav-dark)">navy</span> and
+          <span style="color:var(--orange-deep)">orange</span>). The hollow dot marks the shared start
+          (<code>&delta;&#8320;</code>); the filled dots mark the two endpoints
+          (<code>&delta;<sub>t</sub></code>). Both trajectories spiral outward together, the gap between them
+          grows in absolute terms but the two strands stay side by side. Toggle each trajectory to confirm
+          there are two, and drag to rotate.
+        </div>
+        <code class="formula" style="margin-top:10px;">  dx/dt = &lambda; x &minus; &omega; y
+  dy/dt = &omega; x + &lambda; y
+  dz/dt = &mu; z
+
+  &lambda; = 0.05, &omega; = 2.0, &mu; = 0.08</code>
+
+        <div class="sec-divider" style="margin-top:auto;"></div>
+        <h4 style="margin:0 0 6px; font-size:0.84rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--nav-dark);">Separation <code style="text-transform:none;">&delta;(t)</code></h4>
+        <div class="viz-wrap"><canvas id="spi-sep" width="500" height="150"></canvas></div>
+        <div class="viz-cap">
+          Solid: absolute separation <code>&delta;(t)</code>. Dashed: separation relative to orbit size,
+          <code>&delta;(t)/|state|</code>. The absolute gap grows (positive <code>&lambda;</code>), but the
+          relative gap stays flat: neighbors are never scrambled.
+        </div>
+      </div>
+
+      <!-- Chua panel -->
+      <div class="panel" style="display:flex; flex-direction:column;">
+        <h3>Chua double-scroll <span class="ann">(chaotic: stretch + fold)</span></h3>
+        <div class="viz-wrap"><canvas id="chd-phase" width="500" height="360"></canvas></div>
+        <div class="toggles" style="margin: 6px 0 2px;">
+          <label class="toggle ts-toggle ts-toggle-x"><input type="checkbox" id="chd-tA" checked> <span class="ts-swatch ts-sw-x"></span> trajectory A</label>
+          <label class="toggle ts-toggle ts-toggle-y"><input type="checkbox" id="chd-tB" checked> <span class="ts-swatch ts-sw-y"></span> trajectory B</label>
+        </div>
+        <div class="viz-cap">
+          The same experiment on the chaotic attractor from tab 1, again starting
+          <code>&delta;&#8320; = 10<sup>&minus;3</sup></code> apart. The two trajectories track each other for
+          a while, then a fold near the origin throws them onto different scrolls and they decorrelate
+          completely (<code>&delta;<sub>t</sub></code> spans the whole attractor). Toggle each trajectory to
+          confirm there are two, and drag to rotate.
+        </div>
+        <code class="formula" style="margin-top:10px;">  dx/dt = &alpha; ( y &minus; x &minus; h(x) )
+  dy/dt = x &minus; y + z
+  dz/dt = &minus;&beta; y
+
+  h(x) = m&#8321; x + &frac12;(m&#8320; &minus; m&#8321;)( |x+1| &minus; |x&minus;1| )
+
+  &alpha; = 10, &beta; = 100/7, m&#8320; = &minus;8/7, m&#8321; = &minus;5/7</code>
+
+        <div class="sec-divider" style="margin-top:auto;"></div>
+        <h4 style="margin:0 0 6px; font-size:0.84rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--nav-dark);">Separation <code style="text-transform:none;">&delta;(t)</code></h4>
+        <div class="viz-wrap"><canvas id="chd-sep" width="500" height="150"></canvas></div>
+        <div class="viz-cap">
+          Same axes as the spiral. Here the <em>relative</em> separation climbs by orders of magnitude and
+          saturates near 1: the two neighbors end up a whole attractor apart. That saturating climb, not mere
+          growth, is the signature of chaos.
+        </div>
+      </div>
+    </div>
+
+    <div class="explainer crimson">
+      <h4>Stretching is cheap; folding is the hard part</h4>
+      <p>
+        Both systems stretch, both have a positive largest Lyapunov exponent, so both pull nearby trajectories
+        apart exponentially at first. The difference is entirely in the <em>fold</em>. The spiral is linear:
+        a small blob of states grows in volume at every instant and never shrinks. (The rate at which a flow
+        expands or contracts volume is the divergence of the vector field, <code>div(f) = &part;f&#8321;/&part;x
+        + &part;f&#8322;/&part;y + &part;f&#8323;/&part;z</code>; for the spiral it is the constant
+        <code>2&lambda; + &mu; &gt; 0</code>, i.e. always expanding.) The trajectory therefore escapes to
+        infinity, there is no attractor, and nothing ever re-mixes. The two strands just inflate together.
+      </p>
+      <p>
+        Chua's piecewise-linear nonlinearity supplies the fold: each time a runaway trajectory crosses a
+        breakpoint it is re-injected toward the other scroll, which keeps the motion bounded and, in doing so,
+        repeatedly slices and stacks the stretched material. That is what lets two immediate neighbors finish
+        on opposite sides of the attractor. Stretching alone (the spiral) gives sensitive growth without
+        scrambling; stretching <em>plus</em> folding (Chua) gives chaos. The scroll grids on tab 2 are the
+        same story with more folds.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═════════════════ TAB 4: Chaos vs Hyperchaos ═════════════════ -->
+  <div class="tabpane" data-pane="3">
+
+    <div class="explainer" style="margin-top:0;">
+      <h4>What hyperchaos is, and what to look for</h4>
+      <p>
+        <b>Chaos</b> means sensitive dependence on initial conditions: nearby trajectories separate
+        exponentially, but only along <em>one</em> direction. Formally, the largest Lyapunov exponent (the
+        average exponential rate at which a perturbation grows) is positive, and exactly one exponent is
+        positive. <b>Hyperchaos</b> is the stronger condition that <em>two or more</em> Lyapunov exponents
+        are positive: the trajectory is being stretched in several independent directions at once. It is a
+        special case of chaos, not a separate phenomenon, and it requires at least four state variables for a
+        continuous-time autonomous system (the reason is the dimension budget explained below).
+      </p>
+      <p>
+        The system below is 4D with a single knob <code>r</code>. As <code>r</code> increases from negative
+        values toward zero, a second Lyapunov exponent crosses from negative to positive and the dynamics
+        change from chaotic to hyperchaotic. What to look for in the attractor: in the chaotic regime it is
+        essentially a <em>thin sheet</em>, a thickened loop that nearly closes on itself, because one unstable
+        direction can only smear the orbit out so far. In the hyperchaotic regime it becomes a <em>fat
+        cloud</em> filling a genuinely two-dimensional region, because the second unstable direction spreads
+        the orbit across an extra dimension. Use the presets to snap between the two regimes, or sweep
+        <code>r</code> to watch the transition.
+      </p>
+      <p>
+        Right at the boundary, near <code>r &asymp; &minus;0.32</code>, the second exponent is approximately
+        zero. A zero exponent is a <em>neutral</em> direction: on average it neither stretches nor contracts.
+        The attractor there looks like the chaotic sheet being slowly extruded along that marginal direction,
+        elongated but not yet filled out into a cloud. This is the <b>onset of hyperchaos</b> (the
+        <code>&lambda;&#8322; = 0</code> crossing), not a separate named regime, but a recognizable
+        intermediate state. The &ldquo;Onset&rdquo; preset parks the system right at it; nudging <code>r</code>
+        a little either way tips the second exponent negative (back to a sheet) or clearly positive (into a
+        cloud).
+      </p>
+    </div>
+
+    <div class="grid-2eq" style="margin-top: 18px;">
+      <div class="panel">
+        <h3>3D projection of the 4D Chen system <span class="ann" id="chen-regime-tag">(hyperchaotic, r = 0)</span></h3>
+        <div class="viz-wrap"><canvas id="chen-phase" width="500" height="380"></canvas></div>
+        <div class="viz-cap">
+          Projection shown in <code>(x, z, w)</code>; drag to rotate. Thin ribbon = chaos (one unstable
+          direction); thick filled cloud = hyperchaos (two unstable directions).
+        </div>
+      </div>
+
+      <div class="panel">
+        <h4 style="margin:0 0 6px; font-size:0.86rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--nav-dark);">The system</h4>
+        <p style="font-size:0.88rem; line-height:1.5; margin:0 0 6px;">
+          The 4D hyperchaotic Chen system (Li, Wu, Chen, 2005). The fourth equation lifts the classic 3D Chen
+          attractor into 4D; the term <code>r&middot;w</code> feeds the <code>w</code> channel back on itself.
+        </p>
+        <code class="formula">  dx/dt = a (y - x) + w
+  dy/dt = d x - x z + c y
+  dz/dt = x y - b z
+  dw/dt = y z + r w</code>
+
+        <div class="sec-divider"></div>
+        <h4 style="margin:0 0 6px; font-size:0.86rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--nav-dark);">Controls</h4>
+        <div class="preset-row" id="chen-presets">
+          <span class="preset-label">regime:</span>
+          <button class="preset-chip" data-r="-0.5">Chaotic (r = &minus;0.5)</button>
+          <button class="preset-chip" data-r="-0.32">Onset (r &asymp; &minus;0.32)</button>
+          <button class="preset-chip active" data-r="0.0">Hyperchaotic (r = 0)</button>
+        </div>
+        <div class="ctrls one-col">
+          <div class="ctrl">
+            <label>feedback <span class="nocaps">r</span> <span class="v" id="v-chen-r">0.00</span></label>
+            <input type="range" id="chen-r" min="-80" max="60" value="0">
+          </div>
+        </div>
+        <div class="viz-cap" style="margin-top: 12px;">
+          The other parameters are held fixed at <code>a = 35</code>, <code>b = 3</code>, <code>c = 12</code>,
+          <code>d = 7</code>. Moving <code>r</code> re-initializes the Lyapunov estimate below, since changing
+          the parameter changes the attractor (and therefore its spectrum). The second exponent crosses zero
+          near <code>r &asymp; &minus;0.32</code>: that is the onset of hyperchaos.
+        </div>
+
+        <div class="sec-divider"></div>
+        <h4 style="margin:0 0 6px; font-size:0.86rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--nav-dark);">Time series</h4>
+        <div class="ctrls" style="grid-template-columns: repeat(4, max-content); gap: 12px; margin-bottom: 8px;">
+          <label class="toggle ts-toggle ts-toggle-x"><input type="checkbox" id="chen-ts-x" checked> <span class="ts-swatch ts-sw-x"></span> x</label>
+          <label class="toggle ts-toggle ts-toggle-y"><input type="checkbox" id="chen-ts-y" checked> <span class="ts-swatch ts-sw-y"></span> y</label>
+          <label class="toggle ts-toggle ts-toggle-z"><input type="checkbox" id="chen-ts-z" checked> <span class="ts-swatch ts-sw-z"></span> z</label>
+          <label class="toggle ts-toggle ts-toggle-w"><input type="checkbox" id="chen-ts-w" checked> <span class="ts-swatch ts-sw-w"></span> w</label>
+        </div>
+        <div class="viz-wrap"><canvas id="chen-time" width="500" height="170"></canvas></div>
+        <div class="viz-cap">
+          All four state variables. <code>x</code>, <code>y</code>, <code>z</code> share the
+          <span style="color:var(--nav-dark)">left</span> axis; <code>w</code> uses the
+          <span style="color:var(--orange-deep)">right</span> axis because it swings much wider. As
+          <code>r</code> crosses into the hyperchaotic regime, <code>w</code>'s excursions grow and turn
+          more erratic, the visible signature of the feedback term driving the second unstable direction.
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2eq" style="margin-top: 18px;">
+      <div class="panel">
+        <h3>Lyapunov spectrum <span class="ann">(Benettin/QR, running estimate)</span></h3>
+        <div class="lyap-bars" id="chen-lyap"></div>
+
+        <div class="ctrl-row" style="margin-top: 14px;">
+          <button class="btn" id="lyap-reset">Reset LE estimates</button>
+          <button class="btn sec" id="lyap-pause">Pause</button>
+          <span id="lyap-status" style="font-size:0.78rem; color:var(--muted); font-family:var(--mono); align-self:center;"></span>
+        </div>
+
+        <div class="viz-cap" style="margin-top: 14px;">
+          Bars show the running estimate of each Lyapunov exponent (LE), computed as a time-average of the
+          tangent-space stretching with periodic Gram-Schmidt re-orthogonalization. The estimate converges
+          as the simulation accumulates time, then auto-freezes; the last digit keeps fluctuating because the
+          average converges slowly on a chaotic attractor (the motion is the estimator settling, not the
+          dynamics changing). Count the orange (positive) bars: one in the chaotic regime, two in the
+          hyperchaotic regime. The single large negative exponent (strong contraction) pegs its bar; that is
+          expected and is what keeps the attractor bounded.
+        </div>
+
+        <div class="sec-divider"></div>
+        <div style="font-size:0.82rem; color:var(--text); line-height: 1.55;">
+          <p style="margin:0 0 8px;"><b>Reading the bars.</b> Orange means positive (expansion), navy means
+          negative (contraction). A trajectory on a strange attractor must satisfy
+          <code>&Sigma; &lambda;<sub>i</sub> &lt; 0</code> (the attractor has zero volume), so positive LEs
+          are always offset by sufficiently negative ones.</p>
+          <p style="margin:0 0 8px;"><b>Is a positive exponent &ldquo;big enough&rdquo;?</b> Any
+          <code>&lambda; &gt; 0</code> already means exponential separation; the size just sets the timescale
+          (<code>1/&lambda;</code> is roughly how long until a gap grows by a factor <code>e</code>). The
+          reason the orbit does not run off to infinity, as the unstable spiral on the previous tab does, is
+          the <em>sum</em>. The current estimate is
+          <code id="chen-spectrum">(&hellip;)</code>, giving
+          <code>&Sigma;&lambda;<sub>i</sub> &asymp; <span id="chen-spectrum-sum">&hellip;</span></code>: the one
+          huge negative exponent dominates the sum, so a blob of states loses volume fast overall even while
+          it is stretched along its positive direction(s). That strong net contraction is exactly what folds
+          the stretched material back and keeps the orbit a fixed, bounded size, so a growing
+          <code>&delta;(t)</code> can only spread <em>within</em> the attractor, never escape it.</p>
+          <p style="margin:0 0 8px;"><b>Reading a spectrum at a glance.</b> A short checklist tells you what
+          kind of system you have, without simulating it any further. Check boundedness first, because a
+          positive exponent only means chaos once the motion is trapped on an attractor:</p>
+          <ul style="margin:0 0 8px 18px; padding:0; font-size:0.97em;">
+            <li style="margin-bottom:3px;"><b>Negative sum</b> (<code>&Sigma;&lambda;<sub>i</sub> &lt; 0</code>) &rarr; dissipative: volumes shrink, so the motion settles onto a bounded attractor. A <b>non-negative sum</b> means volumes do not shrink and the orbit is unbounded, no attractor at all.</li>
+            <li style="margin-bottom:3px;"><b>Exactly one zero</b> LE (the flow direction) confirms the attractor is more than a single point.</li>
+            <li><b>Given a negative sum, at least one positive</b> LE &rarr; chaotic (two or more &rarr; hyperchaotic); <b>no positive</b> LE &rarr; not chaotic. A positive LE <em>without</em> a negative sum is mere instability, not chaos.</li>
+          </ul>
+          <p style="margin:0 0 8px;">
+            By that test, a stable focus has a spectrum like <code>(&minus;, &minus;, &minus;)</code> (sum
+            negative, but no positive LE): it spirals in to a point. A limit cycle reads
+            <code>(0, &minus;, &minus;)</code>: bounded, one neutral direction around the loop, no stretching.
+            The unstable spiral from the previous tab has <code>(+, +, +)</code> with a <em>positive</em> sum:
+            it has positive exponents but fails the boundedness test, so it stretches without folding, stays
+            unbounded, and is not chaotic despite all those plus signs. Only the combination &ldquo;negative
+            sum <em>and</em> a positive LE&rdquo; signals a chaotic attractor, which is exactly the pattern in
+            the bars above.</p>
+          <p style="margin:0;"><b>&ldquo;Hyper&rdquo; is a subset.</b> Hyperchaos is just chaos with
+          <em>at least two</em> positive LEs. It implies more independent unstable directions, denser orbits,
+          and generally requires <code>n &ge; 4</code> dimensions for a continuous-time autonomous system.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Why dimension matters</h3>
+        <p style="font-size:0.9rem; line-height:1.55; margin:0 0 8px;">
+          For a continuous-time autonomous dissipative system the Lyapunov spectrum must include at least one
+          zero exponent (the flow direction), and the trace of the Jacobian (= sum of LEs) must be negative.
+          That forces a budget:
+        </p>
+        <ul style="font-size:0.9rem; line-height:1.5; margin:4px 0 10px 20px; padding:0;">
+          <li style="margin-bottom:4px;">3D chaos: <code>(+, 0, &minus;)</code>, one expanding direction.</li>
+          <li style="margin-bottom:4px;">3D hyperchaos is impossible: it would need <code>(+, +, 0, &hellip;)</code>, but there is no fourth slot for a sufficiently negative LE to keep the sum negative.</li>
+          <li style="margin-bottom:4px;">4D hyperchaos: <code>(+, +, 0, &minus;)</code>, the minimum embedding.</li>
+        </ul>
+        <p style="font-size:0.9rem; line-height:1.55; margin:0;">
+          This is why the system above is 4D: hyperchaos simply cannot occur in three dimensions. The scroll
+          systems on the earlier tabs are 3D and therefore chaotic but never hyperchaotic. Hyperchaotic
+          systems are of practical interest in cryptography, because two independent unstable directions make
+          a recorded signal much harder to reconstruct or predict than an ordinary chaotic one.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════ TAB 5: Application, Image encryption ═════════════════ -->
+  <div class="tabpane" data-pane="4">
+
+    <div class="explainer" style="margin-top:0;">
+      <h4>Example: using chaos to encrypt an image</h4>
+      <p>
+        Images are an awkward fit for standard ciphers like AES or RSA. They are bulky (millions of bytes),
+        and, more importantly, adjacent pixels are strongly correlated and only a handful of color values
+        usually dominate. A block cipher run in a naive mode can leave that spatial structure faintly visible
+        in the ciphertext, and the sheer volume makes per-block public-key encryption slow. Chaos-based image
+        ciphers were proposed as a lightweight alternative tailored to exactly these properties: a chaotic
+        system is cheap to iterate, intrinsically sensitive to its starting condition, and produces a long
+        aperiodic stream from a tiny key, which lines up neatly with the two things image encryption needs:
+        <b>scrambling pixel positions</b> (to destroy spatial correlation) and <b>masking pixel values</b>
+        (to flatten the histogram).
+      </p>
+      <p>
+        The scheme demonstrated on this tab is a standard two-stage construction. The key is the initial
+        condition <code>(x&#8320;, y&#8320;, z&#8320;)</code> of a chaotic system (Chua's circuit here); the
+        equations themselves are public. The recipe runs in three steps:
+      </p>
+      <ol style="margin: 4px 0 10px 20px; padding: 0; font-size:0.92rem;">
+        <li style="margin-bottom: 4px;">Iterate the chaotic system from the key to generate <code>2N</code> samples, where <code>N = width &times; height</code>.</li>
+        <li style="margin-bottom: 4px;"><b>Permute</b> (confusion): from the first <code>N</code> samples, sort indices on the chaotic values to build a permutation <code>P</code>, and apply it to scramble pixel positions.</li>
+        <li style="margin-bottom: 4px;"><b>Mask</b> (diffusion): from the next <code>N</code> samples, derive a byte stream and XOR it into the (already permuted) pixel values, flattening the histogram.</li>
+      </ol>
+      <p>
+        Decryption is the same recipe run backward: XOR with the identical byte stream (XOR is self-inverse),
+        then apply <code>P<sup>&minus;1</sup></code>. Because both parties can regenerate the entire stream
+        from the shared key and equations, nothing but the key and the equations ever needs to be exchanged.
+        With the correct key the two passes cancel exactly; with even a slightly wrong key the chaotic
+        sequence diverges within a few iterations and the output stays noise. Try it below: encrypt an image,
+        then nudge the <em>decryption key offset</em> and watch recovery fail.
+      </p>
+      <p>
+        This demo uses a plain double-scroll Chua circuit for clarity, but the earlier tabs point at why the
+        same construction is usually built on something richer. A <b>multi-scroll</b> or scroll-grid system
+        (tabs 1&ndash;2) has many more equilibria and a larger, more intricate roaming region, which widens the
+        key space and makes the generated stream's statistics harder to fingerprint. A <b>hyperchaotic</b>
+        system (tab 4) stretches along two or more independent directions at once, so its time series is
+        broadband in more dimensions and an eavesdropper trying to reconstruct the generator from a captured
+        sequence faces a much harder estimation problem. In short, more scrolls buys a bigger, more uniform
+        state space to draw from, and hyperchaos buys resistance to reconstruction; practical chaotic ciphers
+        reach for both, which is why those ideas precede this application in the widget.
+      </p>
+      <p style="font-size: 0.86em; color: var(--muted);">
+        One honest caveat worth keeping in mind while exploring: schemes of this family have no proof of
+        security in the modern cryptographic sense. They are heuristic constructions that lean on the chaotic
+        system's sensitivity and ergodicity, and several published chaotic image ciphers have later been broken
+        by chosen-plaintext and statistical attacks. They illustrate the confusion/diffusion principle vividly
+        but are not a substitute for vetted cryptography when protecting real secrets.
+      </p>
+    </div>
+
+    <div class="grid-encrypt" style="margin-top: 18px;">
+      <div class="panel">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:28px;">
+          <h3 style="margin:0;">Plain image</h3>
+          <button class="btn sec" id="enc-pattern" style="padding:4px 10px; font-size:0.76rem;">Cycle test image</button>
+        </div>
+        <canvas id="enc-plain" class="enc-img" width="96" height="96" style="margin-top:10px;"></canvas>
+        <div class="enc-label enc-cap-img">96 &times; 96 synthetic, strong autocorrelation</div>
+        <h3 style="margin-top:14px;">Plain histogram</h3>
+        <canvas id="hist-plain" width="320" height="150" style="width:100%; border:1px solid var(--border); background:white; border-radius:3px;"></canvas>
+        <div class="enc-label">Per-channel counts (R, G, B overlaid). Spiky: a few intensities dominate each channel.</div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex; align-items:center; min-height:28px;">
+          <h3 style="margin:0;">Encrypted</h3>
+        </div>
+        <canvas id="enc-cipher" class="enc-img" width="96" height="96" style="margin-top:10px;"></canvas>
+        <div class="enc-label enc-cap-img">Permute pixels + XOR with chaotic stream</div>
+        <h3 style="margin-top:14px;">Cipher histogram</h3>
+        <canvas id="hist-cipher" width="320" height="150" style="width:100%; border:1px solid var(--border); background:white; border-radius:3px;"></canvas>
+        <div class="enc-label">All three channels near-uniform and overlapping: first-order statistics flattened.</div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex; align-items:center; min-height:28px;">
+          <h3 style="margin:0;">Decrypted</h3>
+        </div>
+        <canvas id="enc-decrypt" class="enc-img" width="96" height="96" style="margin-top:10px;"></canvas>
+        <div class="enc-label enc-cap-img" id="enc-decrypt-label">Same key as encryption: perfect recovery</div>
+        <h3 style="margin-top:14px;">Key</h3>
+        <div class="ctrls one-col" style="gap:10px;">
+          <div class="ctrl">
+            <label>x<sub>0</sub> <span class="v" id="v-key-x">0.10000000</span></label>
+            <input type="range" id="key-x" min="0" max="100000" value="10000">
+          </div>
+          <div class="ctrl">
+            <label>y<sub>0</sub> <span class="v" id="v-key-y">0.00000000</span></label>
+            <input type="range" id="key-y" min="-50000" max="50000" value="0">
+          </div>
+          <div class="ctrl">
+            <label>z<sub>0</sub> <span class="v" id="v-key-z">0.00000000</span></label>
+            <input type="range" id="key-z" min="-50000" max="50000" value="0">
+          </div>
+          <div class="ctrl">
+            <label>decryption key offset &Delta; <span class="v" id="v-key-eps">0</span></label>
+            <input type="range" id="key-eps" min="0" max="110" value="0">
+            <div style="font-size:0.72rem; color:var(--muted); margin-top: 2px;">Add &Delta; to x<sub>0</sub> when decrypting. Left edge (<code>0</code>) uses the correct key; moving right increases the offset from <code>10<sup>&minus;12</sup></code> up to <code>10<sup>&minus;1</sup></code>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="explainer orange">
+      <h4>Confusion and diffusion, in the histograms</h4>
+      <p>
+        Each histogram is the standard image histogram: for every intensity level (0 to 255 on the
+        horizontal axis) it counts how many pixels have that value, plotted separately for the red, green,
+        and blue channels. The plain image's histogram is spiky, a few intensities dominate each channel,
+        which is exactly the statistical fingerprint an attacker exploits. After encryption the cipher
+        histogram is nearly flat, the signature of good <b>diffusion</b> (every intensity roughly equally
+        likely in every channel). A flat intensity histogram is the image-domain version of a white,
+        featureless distribution: the cipher's first-order statistics carry no information about the
+        plaintext. The scrambled appearance of the cipher image itself is the <b>confusion</b> stage: the
+        permutation has destroyed the spatial correlation between neighboring pixels.
+      </p>
+      <p>
+        The key's <b>sensitivity to initial conditions</b> is the whole game. A change in
+        <code>(x&#8320;,&nbsp;y&#8320;,&nbsp;z&#8320;)</code> smaller than one part in 10<sup>10</sup> already
+        produces a completely different chaotic sequence after a few hundred iterates, so a near-miss key
+        recovers noise rather than an approximate image. The <em>decryption key offset</em> slider makes this
+        concrete: even the smallest nonzero offset destroys recovery.
+      </p>
+    </div>
+  </div>
+
+  <div class="foot">
+    &copy; 2026 Theodore P. Pavlic<span class="footer-sep">&nbsp;&middot;&nbsp;</span><a class="footer-lic" href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═════════════════════════════════════════════════════════════════════
+//  Common utilities: ODE integration, 3D projection, palette helpers
+// ═════════════════════════════════════════════════════════════════════
+
+// Classic 4th-order Runge-Kutta step
+function rk4(f, x, h) {
+  const n = x.length;
+  const k1 = f(x);
+  const x2 = new Array(n); for (let i=0;i<n;i++) x2[i] = x[i] + 0.5*h*k1[i];
+  const k2 = f(x2);
+  const x3 = new Array(n); for (let i=0;i<n;i++) x3[i] = x[i] + 0.5*h*k2[i];
+  const k3 = f(x3);
+  const x4 = new Array(n); for (let i=0;i<n;i++) x4[i] = x[i] + h*k3[i];
+  const k4 = f(x4);
+  const out = new Array(n);
+  for (let i=0;i<n;i++) out[i] = x[i] + (h/6)*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
+  return out;
+}
+
+// Integrate ODE for N steps, return arrays for each component
+function integrate(f, x0, h, N) {
+  const dim = x0.length;
+  const traj = [];
+  for (let i=0;i<dim;i++) traj.push(new Float64Array(N+1));
+  let x = x0.slice();
+  for (let i=0;i<dim;i++) traj[i][0] = x[i];
+  for (let k=0;k<N;k++) {
+    x = rk4(f, x, h);
+    for (let i=0;i<dim;i++) traj[i][k+1] = x[i];
+  }
+  return traj;
+}
+
+// Simple deterministic seedable PRNG (mulberry32) for the "new initial condition" buttons
+function makeRNG(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// 3D -> 2D projection with yaw (around y-axis) then pitch (around x-axis)
+function makeProjector(yawDeg, pitDeg, scale, cx, cy) {
+  const yaw = yawDeg * Math.PI/180, pit = pitDeg * Math.PI/180;
+  const cY = Math.cos(yaw),  sY = Math.sin(yaw);
+  const cP = Math.cos(pit),  sP = Math.sin(pit);
+  return function project(x, y, z) {
+    // yaw: rotate around y
+    const x1 =  cY*x + sY*z;
+    const z1 = -sY*x + cY*z;
+    const y1 = y;
+    // pitch: rotate around x
+    const y2 = cP*y1 - sP*z1;
+    const z2 = sP*y1 + cP*z1;
+    return [cx + x1*scale, cy - y2*scale, z2]; // z2 used only for depth ordering if desired
+  };
+}
+
+// Linearly map t in [0,1] to a navy-to-orange gradient
+function gradientColor(t) {
+  // navy (31, 58, 95) -> orange (195, 74, 46)
+  const t2 = Math.max(0, Math.min(1, t));
+  const r = Math.round( 31 + (195- 31)*t2 );
+  const g = Math.round( 58 + ( 74- 58)*t2 );
+  const b = Math.round( 95 + ( 46- 95)*t2 );
+  return `rgb(${r},${g},${b})`;
+}
+
+// Distinct colors for multi-scroll regions (avoid red-green confusion)
+const SCROLL_COLORS = [
+  '#1f3a5f', '#d97842', '#2a8c8a', '#b03a4c', '#c89630',
+  '#4a7099', '#7a3a8c', '#3a8c5a', '#a06030'
+];
+
+// Draw faint axes + bounding box
+function drawAxes(ctx, project, w, h, range) {
+  ctx.save();
+  ctx.strokeStyle = '#c6c6c0';
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([3, 4]);
+  const r = range;
+  const corners = [
+    [-r,-r,-r],[ r,-r,-r],[ r, r,-r],[-r, r,-r],
+    [-r,-r, r],[ r,-r, r],[ r, r, r],[-r, r, r]
+  ];
+  const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  const pj = corners.map(p => project(p[0],p[1],p[2]));
+  ctx.beginPath();
+  for (const [a,b] of edges) {
+    ctx.moveTo(pj[a][0], pj[a][1]);
+    ctx.lineTo(pj[b][0], pj[b][1]);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // axis labels
+  ctx.font = '11px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#888';
+  const lx = project( r*1.1, 0, 0);
+  const ly = project( 0,  r*1.1, 0);
+  const lz = project( 0, 0,  r*1.1);
+  ctx.fillText('x', lx[0]+2, lx[1]+3);
+  ctx.fillText('y', ly[0]+2, ly[1]+3);
+  ctx.fillText('z', lz[0]+2, lz[1]+3);
+  ctx.restore();
+}
+
+// Draw trajectory as a polyline with per-segment color
+function drawTrajectory(ctx, project, xs, ys, zs, opts) {
+  const N = xs.length;
+  const skip  = opts && opts.skip  ? opts.skip  : 1;
+  const burn  = opts && opts.burn  ? opts.burn  : 0;
+  const fade  = opts && opts.fade  ? true : false;
+  const fixed = opts && opts.color ? opts.color : null;
+  const colorOf = opts && opts.colorOf ? opts.colorOf : null;
+  const lw    = opts && opts.lw    ? opts.lw    : 0.85;
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  let prev = project(xs[burn], ys[burn], zs[burn]);
+  for (let k = burn + skip; k < N; k += skip) {
+    const cur = project(xs[k], ys[k], zs[k]);
+    let col;
+    if (colorOf) col = colorOf(k);
+    else if (fade) col = gradientColor((k - burn) / (N - burn));
+    else col = fixed || '#1f3a5f';
+    ctx.strokeStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(prev[0], prev[1]);
+    ctx.lineTo(cur[0], cur[1]);
+    ctx.stroke();
+    prev = cur;
+  }
+}
+
+// Ensure canvas backing-store matches its CSS-resolved size, scaled for devicePixelRatio
+function fitCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = cv.clientWidth || cv.width;
+  const cssH = cv.clientHeight || cv.height;
+  const desiredW = Math.round(cssW * dpr);
+  const desiredH = Math.round(cssH * dpr);
+  if (cv.width !== desiredW || cv.height !== desiredH) {
+    cv.width  = desiredW;
+    cv.height = desiredH;
+  }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w: cssW, h: cssH };
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  TAB 1: Chua's circuit (double-scroll)
+// ═════════════════════════════════════════════════════════════════════
+
+const Chua = {
+  alpha: 10.0,
+  beta:  100/7,        // ≈ 14.2857
+  m0:   -8/7,          // ≈ -1.1429 (inner slope)
+  m1:   -5/7,          // ≈ -0.7143 (outer slope)
+  yaw:   35,
+  pit:   25,
+  showAxes: true,
+  showEq:   true,
+  showNL:   true,         // h(x) inset on phase canvas
+  fade:     true,
+  // time-series channel visibility (default: just x, to keep the lede uncluttered)
+  tsShow: { x: true, y: false, z: false },
+  // initial condition
+  x0: 0.7, y0: 0, z0: 0,
+  cachedTraj: null
+};
+
+function chuaH(x, m0, m1) {
+  return m1*x + 0.5*(m0 - m1) * (Math.abs(x+1) - Math.abs(x-1));
+}
+function chuaF(s) {
+  const x = s[0], y = s[1], z = s[2];
+  return [
+    Chua.alpha * (y - x - chuaH(x, Chua.m0, Chua.m1)),
+    x - y + z,
+    -Chua.beta * y
+  ];
+}
+
+function chuaIntegrate() {
+  const h = 0.01;
+  const N = 30000;
+  const traj = integrate(chuaF, [Chua.x0, Chua.y0, Chua.z0], h, N);
+  Chua.cachedTraj = traj;
+  return traj;
+}
+
+function chuaEquilibria() {
+  // h(x) = m1 x  + 0.5 (m0 - m1)(|x+1| - |x-1|).
+  // Inside (|x|<1):  h = m0 x.  Outside (x>1):  h = m1 x + (m0-m1).
+  // Equilibria solve x + h(x) = 0 with y=0, z=-x.
+  const m0 = Chua.m0, m1 = Chua.m1;
+  const eqs = [];
+  // outer right: x + m1 x + (m0 - m1) = 0 => x*(1+m1) = -(m0 - m1) = (m1-m0)
+  // => x = (m1 - m0) / (1 + m1)
+  const xR = (m1 - m0) / (1 + m1);
+  if (xR > 1) eqs.push([xR, 0, -xR]);
+  const xL = (m0 - m1) / (1 + m1);
+  if (xL < -1) eqs.push([xL, 0, -xL]);
+  // and the origin always
+  eqs.push([0, 0, 0]);
+  return eqs;
+}
+
+function drawChuaPhase() {
+  const cv = document.getElementById('chua-phase');
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+
+  const traj = Chua.cachedTraj || chuaIntegrate();
+  const xs = traj[0], ys = traj[1], zs = traj[2];
+
+  // determine scale from data
+  let xmax=0, ymax=0, zmax=0;
+  const burn = 2000;
+  for (let k = burn; k < xs.length; k++) {
+    if (Math.abs(xs[k]) > xmax) xmax = Math.abs(xs[k]);
+    if (Math.abs(ys[k]) > ymax) ymax = Math.abs(ys[k]);
+    if (Math.abs(zs[k]) > zmax) zmax = Math.abs(zs[k]);
+  }
+  const range = Math.max(xmax, ymax, zmax, 1) * 1.05;
+  const scale = Math.min(w, h) / (range * 2.6);
+  const project = makeProjector(Chua.yaw, Chua.pit, scale, w*0.5, h*0.5);
+
+  if (Chua.showAxes) drawAxes(ctx, project, w, h, range);
+
+  drawTrajectory(ctx, project, xs, ys, zs, { burn, skip: 1, fade: Chua.fade, color: '#1f3a5f', lw: 0.7 });
+
+  if (Chua.showEq) {
+    const eqs = chuaEquilibria();
+    ctx.font = 'bold 11px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    for (const e of eqs) {
+      const p = project(e[0], e[1], e[2]);
+      const isSaddle = Math.abs(e[0]) < 1e-6;
+      if (isSaddle) {
+        // saddle at origin: drawn as an X so it is visually distinct from the unstable foci
+        ctx.strokeStyle = '#c34a2e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p[0]-5, p[1]-5); ctx.lineTo(p[0]+5, p[1]+5);
+        ctx.moveTo(p[0]-5, p[1]+5); ctx.lineTo(p[0]+5, p[1]-5);
+        ctx.stroke();
+      } else {
+        // unstable focus (one per outer linear segment of h)
+        ctx.fillStyle = '#d97842';
+        ctx.strokeStyle = '#c34a2e';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.rect(p[0]-4, p[1]-4, 8, 8);
+        ctx.fill(); ctx.stroke();
+      }
+      // text label (white outline for legibility over trajectory)
+      const label = isSaddle ? '0' : (e[0] > 0 ? 'P\u207A' : 'P\u207B');
+      const tx = p[0] + 8, ty = p[1] - 14;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(252,250,246,0.95)';
+      ctx.strokeText(label, tx, ty);
+      ctx.fillStyle = '#c34a2e';
+      ctx.fillText(label, tx, ty);
+    }
+  }
+
+  // h(x) inset (top-right): piecewise-linear nonlinearity that creates the equilibria.
+  // Same visual idiom as the multi-scroll tab, here showing the K=1 special case
+  // (two breakpoints at x = +/-1, three slope segments, three equilibria).
+  if (Chua.showNL) {
+    const insetW = Math.max(110, Math.min(170, w * 0.22));
+    const insetH = Math.max(80, insetW * 0.7);
+    const insetX = w - insetW - 10;
+    const insetY = 10;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.strokeStyle = '#cfd6df';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.rect(insetX, insetY, insetW, insetH);
+    ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#5a6878';
+    ctx.fillText('h(x)', insetX + 6, insetY + 12);
+
+    // Plot h(x) over [-xRange, +xRange]; pick xRange wide enough to include both breakpoints
+    // and a margin past the outer equilibria.
+    const xR = (Chua.m1 - Chua.m0) / (1 + Chua.m1);
+    const xRange = Math.max(2.5, Math.abs(xR) * 1.4);
+    const padL = 8, padR = 8, padT = 18, padB = 8;
+    const plotX = insetX + padL, plotY = insetY + padT;
+    const plotW = insetW - padL - padR, plotH = insetH - padT - padB;
+
+    const NS = 160;
+    let hMin = Infinity, hMax = -Infinity;
+    const hs = new Float64Array(NS);
+    for (let i = 0; i < NS; i++) {
+      const xv = -xRange + (2*xRange) * (i / (NS-1));
+      const v = chuaH(xv, Chua.m0, Chua.m1);
+      hs[i] = v;
+      if (v < hMin) hMin = v;
+      if (v > hMax) hMax = v;
+    }
+    const hAmp = Math.max(Math.abs(hMin), Math.abs(hMax), 0.1);
+
+    // x and y axes through the origin
+    ctx.strokeStyle = '#dfe4eb';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(plotX, plotY + plotH/2);
+    ctx.lineTo(plotX + plotW, plotY + plotH/2);
+    ctx.moveTo(plotX + plotW/2, plotY);
+    ctx.lineTo(plotX + plotW/2, plotY + plotH);
+    ctx.stroke();
+
+    // breakpoint markers at x = +/-1
+    ctx.strokeStyle = '#e8d4be';
+    ctx.lineWidth = 0.6;
+    const xToPx = xv => plotX + plotW * (xv + xRange) / (2*xRange);
+    ctx.beginPath();
+    ctx.moveTo(xToPx( 1), plotY); ctx.lineTo(xToPx( 1), plotY + plotH);
+    ctx.moveTo(xToPx(-1), plotY); ctx.lineTo(xToPx(-1), plotY + plotH);
+    ctx.stroke();
+
+    // h(x) curve
+    ctx.strokeStyle = '#1f3a5f';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let i = 0; i < NS; i++) {
+      const px = plotX + plotW * i / (NS - 1);
+      const py = plotY + plotH/2 - (hs[i] / hAmp) * (plotH/2 - 2);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawChuaTime() {
+  const cv = document.getElementById('chua-time');
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#fcfaf6';
+  ctx.fillRect(0,0,w,h);
+
+  const traj = Chua.cachedTraj || chuaIntegrate();
+  const series = [traj[0], traj[1], traj[2]];          // x, y, z arrays
+  const burn = 2000;
+  const Nshow = Math.min(8000, series[0].length - burn);
+  const start = burn;
+
+  // Which channels are visible
+  const chans = [
+    { key: 'x', label: 'x(t)', color: '#1f3a5f', data: series[0] },
+    { key: 'y', label: 'y(t)', color: '#c34a2e', data: series[1] },
+    { key: 'z', label: 'z(t)', color: '#4a8480', data: series[2] }
+  ].filter(c => Chua.tsShow[c.key]);
+
+  // Find a shared y-extent so relative amplitudes stay readable.
+  // (z is typically ~3× larger than x and y in Chua; this preserves that.)
+  let amp = 0;
+  if (chans.length === 0) {
+    // empty state
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#999';
+    ctx.fillText('No channels selected. Check x(t), y(t), or z(t) above.', 12, h*0.5 + 4);
+    return;
+  }
+  for (const c of chans) {
+    for (let i = start; i < start + Nshow; i++) {
+      const v = Math.abs(c.data[i]);
+      if (v > amp) amp = v;
+    }
+  }
+  amp = Math.max(amp, 0.5) * 1.1;
+
+  // zero line
+  ctx.strokeStyle = '#c6c6c0';
+  ctx.lineWidth = 0.7;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, h*0.5); ctx.lineTo(w, h*0.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Plot each enabled channel.  z drawn first (typically largest amplitude)
+  // so x and y sit visually on top of it.
+  const drawOrder = chans.slice().sort((a, b) => (b.key === 'z') - (a.key === 'z'));
+  for (const c of drawOrder) {
+    ctx.beginPath();
+    ctx.strokeStyle = c.color;
+    ctx.lineWidth = 1.0;
+    // slight transparency only when multiple channels are visible so overlaps remain readable
+    ctx.globalAlpha = (chans.length > 1) ? 0.88 : 1.0;
+    for (let i = 0; i < Nshow; i++) {
+      const x = (i/(Nshow-1)) * w;
+      const y = h*0.5 - (c.data[start + i] / amp) * (h*0.42);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // axis labels
+  ctx.font = '10px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#888';
+  ctx.fillText('+' + amp.toFixed(2), 4, 12);
+  ctx.fillText('-' + amp.toFixed(2), 4, h-4);
+  ctx.fillText('t  →', w-28, h-4);
+
+  // on-canvas legend (matches checkbox swatches)
+  const legendItems = chans;
+  const padX = 8, lh = 14;
+  // estimate width
+  ctx.font = '11px "IBM Plex Mono", monospace';
+  let lw = 0;
+  for (const c of legendItems) lw = Math.max(lw, ctx.measureText(c.label).width);
+  const boxW = lw + 26;
+  const boxH = legendItems.length * lh + 8;
+  const bx = w - boxW - 8, by = 6;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.strokeStyle = '#dfe4eb';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.rect(bx, by, boxW, boxH); ctx.fill(); ctx.stroke();
+  legendItems.forEach((c, i) => {
+    const y = by + 6 + i*lh;
+    ctx.fillStyle = c.color;
+    ctx.fillRect(bx + padX, y, 10, 3);
+    ctx.fillStyle = '#444';
+    ctx.fillText(c.label, bx + padX + 14, y + 5);
+  });
+}
+
+function refreshChua() {
+  chuaIntegrate();
+  drawChuaPhase();
+  drawChuaTime();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  TAB 2: Scroll grids
+// ═════════════════════════════════════════════════════════════════════
+
+const MS = {
+  nx:   3,             // scrolls along x (columns)
+  ny:   3,             // scrolls along y (rows); ny=1 degenerates to the 1D scroll chain
+  a:    0.8,           // damping / gain parameter (single gain a shared across terms)
+  yaw:  18,
+  pit:  48,            // fairly top-down by default so the (x,y) grid reads clearly
+  x0: 0.1, y0: 0.05, z0: 0,
+  showEq:   true,
+  showNL:   true,
+  fade:     false,
+  // time-series channel visibility (x and y on by default; they identify the cell)
+  tsShow: { x: true, y: true, z: false },
+  cachedTraj: null,
+  cachedJumps: null
+};
+
+// Staircase nonlinearity with N steps of unit height at u = 0.5, 1.5, ..., N-0.5.
+// Then u - staircase(u, N) is a sawtooth with zeros at u = 0, 1, ..., N: those
+// zeros are the scroll positions along that axis.
+function msStair(u, N) {
+  let total = 0;
+  for (let k = 1; k <= N; k++) {
+    total += 0.5 * (Math.sign(u - (k - 0.5)) + 1);
+  }
+  return total;
+}
+
+// Grid scroll system (third-order autonomous, after Yalcin, Suykens & Vandewalle):
+//   x' = y - f2(y)
+//   y' = z
+//   z' = -a (x - f1(x)) - a (y - f2(y)) - a z
+// f1 has (nx-1) steps -> nx scroll columns at x = 0..nx-1.
+// f2 has (ny-1) steps -> ny scroll rows at y = 0..ny-1.
+// With ny = 1, f2 ≡ 0 and the system degenerates to the classic 1D n-scroll chain.
+function msF(s) {
+  const x = s[0], y = s[1], z = s[2];
+  const f1 = msStair(x, MS.nx - 1);
+  const f2 = msStair(y, MS.ny - 1);
+  return [
+    y - f2,
+    z,
+    -MS.a*(x - f1) - MS.a*(y - f2) - MS.a*z
+  ];
+}
+
+function msIntegrate() {
+  const h = 0.01;
+  const N = 90000;
+  const traj = integrate(msF, [MS.x0, MS.y0, MS.z0], h, N);
+  MS.cachedTraj = traj;
+  // record jumps between scroll cells.  Cell = (round(x), round(y)).
+  // Jump size = Euclidean displacement in the (x,y) plane between consecutive
+  // cell-switch events.  (For ny=1 this reduces to |Δx| along the chain.)
+  const burn = 4000;
+  const xs = traj[0], ys = traj[1];
+  const jumps = [];
+  let ci = Math.round(xs[burn]), cj = Math.round(ys[burn]);
+  let lastIdx = burn;
+  for (let k = burn + 1; k < xs.length; k++) {
+    const i = Math.round(xs[k]), j = Math.round(ys[k]);
+    if (i !== ci || j !== cj) {
+      const dx = xs[k] - xs[lastIdx], dy = ys[k] - ys[lastIdx];
+      jumps.push(Math.hypot(dx, dy));
+      lastIdx = k;
+      ci = i; cj = j;
+    }
+  }
+  MS.cachedJumps = jumps;
+  return traj;
+}
+
+function msEquilibria() {
+  // Equilibria of the grid system sit exactly on the integer lattice:
+  // x ∈ {0..nx-1}, y ∈ {0..ny-1}, z = 0.
+  const eqs = [];
+  for (let i = 0; i < MS.nx; i++) {
+    for (let j = 0; j < MS.ny; j++) {
+      eqs.push([i, j, 0]);
+    }
+  }
+  return eqs;
+}
+
+function drawMSPhase() {
+  const cv = document.getElementById('ms-phase');
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+
+  const traj = MS.cachedTraj || msIntegrate();
+  const xs = traj[0], ys = traj[1], zs = traj[2];
+
+  // Center the lattice for display: cells live at x ∈ 0..nx-1, y ∈ 0..ny-1.
+  const cxOff = (MS.nx - 1) / 2;
+  const cyOff = (MS.ny - 1) / 2;
+
+  let xmax = 0, ymax = 0, zmax = 0;
+  const burn = 4000;
+  for (let k = burn; k < xs.length; k++) {
+    const ax = Math.abs(xs[k] - cxOff), ay = Math.abs(ys[k] - cyOff), az = Math.abs(zs[k]);
+    if (ax > xmax) xmax = ax;
+    if (ay > ymax) ymax = ay;
+    if (az > zmax) zmax = az;
+  }
+  const range = Math.max(xmax, ymax, zmax, 1) * 1.05;
+  const scale = Math.min(w, h) / (range * 2.6);
+  const project0 = makeProjector(MS.yaw, MS.pit, scale, w*0.5, h*0.5);
+  const project = (x, y, z) => project0(x - cxOff, y - cyOff, z);
+
+  drawAxes(ctx, project0, w, h, range);
+
+  // color by current scroll cell (i + j*nx) cycling the palette
+  const colorOf = (k) => {
+    const i = Math.round(xs[k]), j = Math.round(ys[k]);
+    const cell = i + j * MS.nx;
+    const idx = ((cell % SCROLL_COLORS.length) + SCROLL_COLORS.length) % SCROLL_COLORS.length;
+    return SCROLL_COLORS[idx];
+  };
+
+  drawTrajectory(ctx, project, xs, ys, zs, {
+    burn, skip: 1,
+    colorOf: MS.fade ? null : colorOf,
+    fade: MS.fade,
+    lw: 0.65
+  });
+
+  if (MS.showEq) {
+    const eqs = msEquilibria();
+    ctx.fillStyle = '#d97842';
+    ctx.strokeStyle = '#c34a2e';
+    ctx.lineWidth = 1.2;
+    for (const e of eqs) {
+      const p = project(e[0], e[1], e[2]);
+      ctx.beginPath();
+      ctx.rect(p[0]-3.5, p[1]-3.5, 7, 7);
+      ctx.fill(); ctx.stroke();
+    }
+  }
+
+  // Sawtooth insets (top-right): u - f(u) for each axis that has scrolls.
+  // The zeros of the sawtooth are the scroll positions; this is what replaces
+  // the Chua h(x) when the staircase construction is used.
+  if (MS.showNL) {
+    const insetW = Math.max(110, Math.min(170, w * 0.22));
+    const insetH = Math.max(56, insetW * 0.45);
+    const insetX = w - insetW - 10;
+
+    const drawSaw = (insetY, N, label) => {
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.strokeStyle = '#cfd6df';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(insetX, insetY, insetW, insetH);
+      ctx.fill(); ctx.stroke();
+      ctx.font = '10px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#5a6878';
+      ctx.fillText(label, insetX + 6, insetY + 12);
+
+      const uMin = -0.8, uMax = (N - 1) + 0.8;
+      const padL = 8, padR = 8, padT = 16, padB = 6;
+      const plotX = insetX + padL, plotY = insetY + padT;
+      const plotW = insetW - padL - padR, plotH = insetH - padT - padB;
+
+      // zero line
+      ctx.strokeStyle = '#dfe4eb';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(plotX, plotY + plotH/2);
+      ctx.lineTo(plotX + plotW, plotY + plotH/2);
+      ctx.stroke();
+
+      // scroll-position markers at the sawtooth zeros u = 0..N-1
+      ctx.strokeStyle = '#e8d4be';
+      ctx.lineWidth = 0.6;
+      for (let m = 0; m < N; m++) {
+        const px = plotX + plotW * (m - uMin) / (uMax - uMin);
+        ctx.beginPath();
+        ctx.moveTo(px, plotY); ctx.lineTo(px, plotY + plotH);
+        ctx.stroke();
+      }
+
+      // sawtooth u - f(u): amplitude is ±0.5 plus the unbounded ends
+      const NS = 200;
+      ctx.strokeStyle = '#1f3a5f';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      for (let s = 0; s < NS; s++) {
+        const u = uMin + (uMax - uMin) * (s / (NS-1));
+        const v = u - msStair(u, N - 1);
+        const vv = Math.max(-0.9, Math.min(0.9, v));
+        const px = plotX + plotW * s / (NS - 1);
+        const py = plotY + plotH/2 - (vv / 0.9) * (plotH/2 - 2);
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    };
+
+    drawSaw(10, MS.nx, 'x \u2212 f\u2081(x)');
+    if (MS.ny > 1) drawSaw(10 + insetH + 6, MS.ny, 'y \u2212 f\u2082(y)');
+  }
+}
+
+function drawMSHist() {
+  const cv = document.getElementById('ms-hist');
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#fcfaf6';
+  ctx.fillRect(0,0,w,h);
+
+  const jumps = MS.cachedJumps || [];
+  if (jumps.length < 5) {
+    ctx.font = '12px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#888';
+    ctx.fillText('Not enough cell-to-cell transitions to build a histogram.', 12, h/2 - 6);
+    ctx.fillText('try a different parameter set or a larger grid.', 12, h/2 + 12);
+    return;
+  }
+
+  // jumps are nonnegative planar displacements |Δ(x,y)|
+  let maxJ = 0, sumSq = 0;
+  for (const v of jumps) {
+    if (v > maxJ) maxJ = v;
+    sumSq += v*v;
+  }
+  const amp = maxJ * 1.05;
+  // half-normal scale parameter: σ̂² = mean of squares (MLE for half-normal)
+  const sigma = Math.max(Math.sqrt(sumSq / jumps.length), 0.05);
+
+  const nb = 40;
+  const bins = new Array(nb).fill(0);
+  for (const v of jumps) {
+    let i = Math.floor((v / amp) * nb);
+    if (i < 0) i = 0; else if (i >= nb) i = nb - 1;
+    bins[i]++;
+  }
+  const maxBin = Math.max(...bins);
+
+  // plot area
+  const padL = 38, padR = 14, padT = 12, padB = 26;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const x0 = padL, y0 = padT;
+  ctx.strokeStyle = '#d8d8d4';
+  ctx.lineWidth = 0.7;
+  ctx.strokeRect(x0, y0, plotW, plotH);
+
+  // bars
+  ctx.fillStyle = '#1f3a5f';
+  const bw = plotW / nb;
+  for (let i = 0; i < nb; i++) {
+    const bh = (bins[i] / maxBin) * (plotH - 4);
+    ctx.fillRect(x0 + i*bw + 0.5, y0 + plotH - bh, bw - 1, bh);
+  }
+
+  const binWidth = amp / nb;
+  const gNorm = jumps.length * binWidth;
+
+  // half-normal reference (light tail)
+  function halfNormalPDF(x, s) {
+    if (x < 0) return 0;
+    return Math.sqrt(2/Math.PI) / s * Math.exp(-0.5*(x/s)*(x/s));
+  }
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const t = i/200;
+    const xv = amp * t;
+    const yPlot = halfNormalPDF(xv, sigma) * gNorm;
+    const xPix = x0 + t * plotW;
+    const yPix = y0 + plotH - Math.min(plotH, (yPlot / maxBin) * (plotH - 4));
+    if (i === 0) ctx.moveTo(xPix, yPix); else ctx.lineTo(xPix, yPix);
+  }
+  ctx.stroke();
+
+  // half-Cauchy reference (heavy tail)
+  function halfCauchyPDF(x, gamma) {
+    if (x < 0) return 0;
+    return 2 / (Math.PI * gamma * (1 + (x/gamma)*(x/gamma)));
+  }
+  const gamma = Math.max(0.6*sigma, 0.05);
+  ctx.strokeStyle = '#c34a2e';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const t = i/200;
+    const xv = amp * t;
+    const yPlot = halfCauchyPDF(xv, gamma) * gNorm;
+    const xPix = x0 + t * plotW;
+    const yPix = y0 + plotH - Math.min(plotH, (yPlot / maxBin) * (plotH - 4));
+    if (i === 0) ctx.moveTo(xPix, yPix); else ctx.lineTo(xPix, yPix);
+  }
+  ctx.stroke();
+
+  // axis labels
+  ctx.font = '10px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#666';
+  ctx.fillText('jump |Δ(x,y)|', x0 + plotW/2 - 34, h - 8);
+  // vertical y-axis label, centered on the plot height
+  ctx.save();
+  ctx.translate(11, y0 + plotH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.textAlign = 'center';
+  ctx.fillText('count', 0, 0);
+  ctx.restore();
+  ctx.textAlign = 'left';
+  ctx.fillText('0', x0, h - padB + 14);
+  ctx.fillText(amp.toFixed(1), x0 + plotW - 18, h - padB + 14);
+
+  // legend
+  const lx = x0 + 8, ly = y0 + 4;
+  ctx.fillStyle = '#1f3a5f';
+  ctx.fillRect(lx, ly+3, 14, 7);
+  ctx.fillStyle = '#666';
+  ctx.fillText('empirical', lx + 18, ly + 10);
+
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(lx+60, ly + 7); ctx.lineTo(lx+74, ly+7); ctx.stroke();
+  ctx.fillText('half-normal fit', lx + 78, ly + 10);
+
+  ctx.strokeStyle = '#c34a2e'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(lx+170, ly + 7); ctx.lineTo(lx+184, ly+7); ctx.stroke();
+  ctx.fillText('half-Cauchy ref', lx + 188, ly + 10);
+}
+
+function drawMSTime() {
+  const cv = document.getElementById('ms-time');
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#fcfaf6';
+  ctx.fillRect(0,0,w,h);
+
+  const traj = MS.cachedTraj || msIntegrate();
+  const burn = 4000;
+  const Nshow = Math.min(12000, traj[0].length - burn);
+  const start = burn;
+
+  const chans = [
+    { key: 'x', label: 'x(t)', color: '#1f3a5f', data: traj[0] },
+    { key: 'y', label: 'y(t)', color: '#c34a2e', data: traj[1] },
+    { key: 'z', label: 'z(t)', color: '#4a8480', data: traj[2] }
+  ].filter(c => MS.tsShow[c.key]);
+
+  if (chans.length === 0) {
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#999';
+    ctx.fillText('No channels selected. Check x(t), y(t), or z(t) above.', 12, h*0.5 + 4);
+    return;
+  }
+
+  // Shared vertical extent across visible channels (keeps relative amplitudes honest;
+  // x and y are O(grid size), z is the smaller fast variable).
+  let lo = Infinity, hi = -Infinity;
+  for (const c of chans) {
+    for (let i = start; i < start + Nshow; i++) {
+      const v = c.data[i];
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+  }
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * 0.08;
+  lo -= pad; hi += pad;
+  const yOf = (v) => h - ((v - lo) / (hi - lo)) * h;
+
+  // integer gridlines (cell levels) since x,y plateau on integers
+  ctx.strokeStyle = '#ececE6';
+  ctx.lineWidth = 0.6;
+  for (let level = Math.ceil(lo); level <= Math.floor(hi); level++) {
+    const yy = yOf(level);
+    ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(w, yy); ctx.stroke();
+  }
+  // zero line slightly stronger
+  if (lo < 0 && hi > 0) {
+    ctx.strokeStyle = '#c6c6c0';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.moveTo(0, yOf(0)); ctx.lineTo(w, yOf(0)); ctx.stroke();
+  }
+
+  // z first (background), then x, y on top
+  const drawOrder = chans.slice().sort((a, b) => (b.key === 'z') - (a.key === 'z'));
+  for (const c of drawOrder) {
+    ctx.beginPath();
+    ctx.strokeStyle = c.color;
+    ctx.lineWidth = 1.0;
+    ctx.globalAlpha = (chans.length > 1) ? 0.9 : 1.0;
+    for (let i = 0; i < Nshow; i++) {
+      const x = (i/(Nshow-1)) * w;
+      const y = yOf(c.data[start + i]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // axis labels
+  ctx.font = '10px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#888';
+  ctx.fillText('+' + hi.toFixed(1), 4, 12);
+  ctx.fillText(lo.toFixed(1), 4, h - 4);
+  ctx.fillText('t  →', w-28, h-4);
+
+  // legend (top-right), only enabled channels
+  ctx.font = '11px "IBM Plex Mono", monospace';
+  let lw = 0;
+  for (const c of chans) lw = Math.max(lw, ctx.measureText(c.label).width);
+  const boxW = lw + 26, lh = 14;
+  const boxH = chans.length * lh + 8;
+  const bx = w - boxW - 8, by = 6;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.strokeStyle = '#dfe4eb';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.rect(bx, by, boxW, boxH); ctx.fill(); ctx.stroke();
+  chans.forEach((c, i) => {
+    const yy = by + 6 + i*lh;
+    ctx.fillStyle = c.color;
+    ctx.fillRect(bx + 8, yy, 10, 3);
+    ctx.fillStyle = '#444';
+    ctx.fillText(c.label, bx + 22, yy + 5);
+  });
+}
+
+function refreshMS() {
+  msIntegrate();
+  drawMSPhase();
+  drawMSTime();
+  drawMSHist();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  TAB 3: Linear unstable spiral
+// ═════════════════════════════════════════════════════════════════════
+
+// Static parameters: this tab no longer exposes lambda/mu/time sliders, only
+// viewing-angle drag. Two nearby trajectories are integrated and their separation
+// tracked, to illustrate the Lyapunov idea.
+const SPI = {
+  lam: 0.05, om: 2.0, mu: 0.08,
+  T: 60,
+  yaw: 40, pit: 15,
+  x0: 0.05, y0: 0.0, z0: 0.05,
+  showA: true, showB: true,
+  trajA: null, trajB: null
+};
+
+const CHD = {            // Chua double-scroll demo (canonical Matsumoto)
+  T: 40,
+  yaw: 35, pit: 25,
+  showA: true, showB: true,
+  trajA: null, trajB: null
+};
+
+const DELTA0 = 1e-3;     // initial separation of the two trajectories
+
+function spiF(s) {
+  const x = s[0], y = s[1], z = s[2];
+  return [ SPI.lam*x - SPI.om*y, SPI.om*x + SPI.lam*y, SPI.mu*z ];
+}
+
+// Chua double-scroll vector field (canonical Matsumoto, same as tab 1 defaults).
+function chuaFRef(s) {
+  const al = 10, be = 100/7, m0 = -8/7, m1 = -5/7;
+  const x = s[0], y = s[1], z = s[2];
+  const hh = m1*x + 0.5*(m0 - m1)*(Math.abs(x+1) - Math.abs(x-1));
+  return [ al*(y - x - hh), x - y + z, -be*y ];
+}
+
+// Integrate two trajectories DELTA0 apart from a common origin.
+// burnIC, when given, is integrated first (shared) so both start on the attractor.
+function integratePair(F, ic, h, N, burn) {
+  let base = ic.slice();
+  for (let k = 0; k < burn; k++) base = rk4(F, base, h);
+  const a0 = base.slice();
+  const b0 = base.slice(); b0[0] += DELTA0;
+  const A = integrate(F, a0, h, N);
+  const B = integrate(F, b0, h, N);
+  return { A, B };
+}
+
+function spiIntegrate() {
+  const h = 0.01, N = Math.round(SPI.T / h);
+  const pair = integratePair(spiF, [SPI.x0, SPI.y0, SPI.z0], h, N, 0);
+  SPI.trajA = pair.A; SPI.trajB = pair.B;
+}
+function chdIntegrate() {
+  const h = 0.005, N = Math.round(CHD.T / h);
+  const pair = integratePair(chuaFRef, [0.7, 0, 0], h, N, 4000);
+  CHD.trajA = pair.A; CHD.trajB = pair.B;
+}
+
+// Draw two trajectories in a shared 3D projection, with delta0 at the common
+// start (hollow dot) and delta_t at the two endpoints (filled dots).
+function drawPairPhase(cvId, trajA, trajB, yaw, pit, showA, showB) {
+  const cv = document.getElementById(cvId);
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+
+  const ax = trajA[0], ay = trajA[1], az = trajA[2];
+  const bx = trajB[0], by = trajB[1], bz = trajB[2];
+  // scale to whichever trajectories are visible (fall back to both)
+  let amp = 0;
+  for (let k = 0; k < ax.length; k++) {
+    if (showA) amp = Math.max(amp, Math.abs(ax[k]), Math.abs(ay[k]), Math.abs(az[k]));
+    if (showB) amp = Math.max(amp, Math.abs(bx[k]), Math.abs(by[k]), Math.abs(bz[k]));
+  }
+  amp = Math.max(amp, 1) * 1.05;
+  const scale = Math.min(w, h) / (amp * 2.6);
+  const project = makeProjector(yaw, pit, scale, w*0.5, h*0.5);
+  drawAxes(ctx, project, w, h, amp);
+
+  if (showA) drawTrajectory(ctx, project, ax, ay, az, { burn: 0, skip: 1, color: '#1f3a5f', lw: 0.8 });
+  if (showB) drawTrajectory(ctx, project, bx, by, bz, { burn: 0, skip: 1, color: '#c34a2e', lw: 0.8 });
+
+  // shared start: hollow dot labeled delta-0 (drawn if either trajectory is shown)
+  if (showA || showB) {
+    const ps = project(ax[0], ay[0], az[0]);
+    ctx.lineWidth = 1.6; ctx.strokeStyle = '#222';
+    ctx.fillStyle = '#fcfaf6';
+    ctx.beginPath(); ctx.arc(ps[0], ps[1], 4.5, 0, 2*Math.PI); ctx.fill(); ctx.stroke();
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#222';
+    ctx.fillText('\u03b4\u2080', ps[0] + 7, ps[1] - 5);
+  }
+
+  // endpoints: filled dots, labeled delta-t (connector only if both shown)
+  const L = ax.length - 1;
+  const pa = project(ax[L], ay[L], az[L]);
+  const pb = project(bx[L], by[L], bz[L]);
+  if (showA && showB) {
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(pa[0], pa[1]); ctx.lineTo(pb[0], pb[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#222';
+    const mx = (pa[0]+pb[0])/2, my = (pa[1]+pb[1])/2;
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.fillText('\u03b4\u209c', mx + 6, my - 4);
+  }
+  if (showA) { ctx.fillStyle = '#1f3a5f'; ctx.beginPath(); ctx.arc(pa[0], pa[1], 3.8, 0, 2*Math.PI); ctx.fill(); }
+  if (showB) { ctx.fillStyle = '#c34a2e'; ctx.beginPath(); ctx.arc(pb[0], pb[1], 3.8, 0, 2*Math.PI); ctx.fill(); }
+}
+
+function drawSpiPhase() { drawPairPhase('spi-phase', SPI.trajA, SPI.trajB, SPI.yaw, SPI.pit, SPI.showA, SPI.showB); }
+function drawChdPhase() { drawPairPhase('chd-phase', CHD.trajA, CHD.trajB, CHD.yaw, CHD.pit, CHD.showA, CHD.showB); }
+
+// small helper: superscript digits for decade labels
+function supDigits(n) {
+  const map = {'0':'\u2070','1':'\u00b9','2':'\u00b2','3':'\u00b3','4':'\u2074','5':'\u2075','6':'\u2076','7':'\u2077','8':'\u2078','9':'\u2079'};
+  return String(n).split('').map(d => map[d] || d).join('');
+}
+
+// Compute separation arrays from a precomputed trajectory pair.
+function pairSeparation(trajA, trajB, h) {
+  const ax=trajA[0], ay=trajA[1], az=trajA[2];
+  const bx=trajB[0], by=trajB[1], bz=trajB[2];
+  const t=[], sep=[], rel=[];
+  const N = ax.length;
+  const sample = Math.max(1, Math.floor(N / 400));
+  for (let k = 0; k < N; k += sample) {
+    const dx=ax[k]-bx[k], dy=ay[k]-by[k], dz=az[k]-bz[k];
+    const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
+    const ra = Math.sqrt(ax[k]*ax[k]+ay[k]*ay[k]+az[k]*az[k]) || 1e-12;
+    t.push(k*h); sep.push(Math.max(d,1e-18)); rel.push(Math.max(d/ra,1e-18));
+  }
+  return { t, sep, rel };
+}
+
+// Draw a single panel's separation strip (its own log axes).
+function drawSepStrip(cvId, curve, tMax) {
+  const cv = document.getElementById(cvId);
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#fcfaf6'; ctx.fillRect(0,0,w,h);
+
+  let lo = Infinity, hi = -Infinity;
+  for (const d of [curve.sep, curve.rel]) for (const v of d) {
+    const Lg = Math.log10(v); if (Lg<lo) lo=Lg; if (Lg>hi) hi=Lg;
+  }
+  lo = Math.floor(lo); hi = Math.ceil(hi);
+  if (hi - lo < 2) hi = lo + 2;
+
+  const padL = 40, padR = 10, padT = 8, padB = 20;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+  const x0 = padL, y0 = padT;
+  const xPix = t => x0 + (t/tMax)*plotW;
+  const yPix = v => y0 + plotH - ((Math.log10(v)-lo)/(hi-lo))*plotH;
+
+  ctx.strokeStyle = '#ececE6'; ctx.lineWidth = 0.6;
+  ctx.font = '9px "IBM Plex Mono", monospace'; ctx.textAlign = 'right';
+  for (let Lg = lo; Lg <= hi; Lg++) {
+    const yy = y0 + plotH - ((Lg-lo)/(hi-lo))*plotH;
+    ctx.fillStyle = '#aaa';
+    ctx.beginPath(); ctx.moveTo(x0,yy); ctx.lineTo(x0+plotW,yy); ctx.stroke();
+    ctx.fillText('10'+(Lg<0?'\u207B':'')+supDigits(Math.abs(Lg)), x0-4, yy+3);
+  }
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = '#d8d8d4'; ctx.lineWidth = 0.7;
+  ctx.strokeRect(x0,y0,plotW,plotH);
+
+  function plot(arr, dash) {
+    ctx.strokeStyle = '#1f3a5f'; ctx.lineWidth = 1.3;
+    ctx.setLineDash(dash?[4,3]:[]);
+    ctx.beginPath();
+    for (let i=0;i<arr.length;i++){
+      const px=xPix(curve.t[i]), py=yPix(arr[i]);
+      if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  plot(curve.sep, false);
+  plot(curve.rel, true);
+
+  ctx.font = '10px "IBM Plex Mono", monospace'; ctx.fillStyle = '#888';
+  ctx.fillText('t \u2192', x0 + plotW/2 - 8, h - 6);
+
+  // mini legend
+  const lx = x0 + 8, ly = y0 + 4;
+  ctx.strokeStyle = '#1f3a5f'; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(lx, ly+4); ctx.lineTo(lx+14, ly+4); ctx.stroke();
+  ctx.fillStyle = '#555'; ctx.fillText('\u03b4(t)', lx+18, ly+7);
+  ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(lx+58, ly+4); ctx.lineTo(lx+72, ly+4); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillText('\u03b4/|s|', lx+76, ly+7);
+}
+
+function drawSpiSep() { drawSepStrip('spi-sep', pairSeparation(SPI.trajA, SPI.trajB, 0.01), SPI.T); }
+function drawChdSep() { drawSepStrip('chd-sep', pairSeparation(CHD.trajA, CHD.trajB, 0.005), CHD.T); }
+
+// One-time schematic SVG: stretch-only vs stretch-and-fold, with delta_0,
+// delta(t), and orbit-size annotated in both rows.
+function buildLyapSchematic() {
+  const host = document.getElementById('lyap-schematic');
+  if (!host) return;
+  host.innerHTML =
+    '<svg viewBox="0 0 640 196" width="100%" style="max-width:640px; display:block; margin:0 auto;" font-family="IBM Plex Mono, monospace">' +
+    '<defs>' +
+    '<marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#888"/></marker>' +
+    '<marker id="cap" markerWidth="6" markerHeight="8" refX="3" refY="4" orient="auto"><path d="M3 0 V8" stroke="#7a7a72" stroke-width="1"/></marker>' +
+    '</defs>' +
+
+    // ───────── top row: stretching only ─────────
+    '<text x="8" y="18" font-size="11" fill="#1f3a5f" font-weight="600">stretch only (unstable, not chaotic)</text>' +
+    // start blob with delta-0
+    '<ellipse cx="72" cy="52" rx="15" ry="15" fill="#1f3a5f" opacity="0.16" stroke="#1f3a5f"/>' +
+    '<circle cx="66" cy="52" r="2.5" fill="#1f3a5f"/><circle cx="78" cy="52" r="2.5" fill="#c34a2e"/>' +
+    '<text x="72" y="84" font-size="10" fill="#555" text-anchor="middle">\u03b4\u2080</text>' +
+    '<path d="M98 52 H140" stroke="#888" stroke-width="1" marker-end="url(#arr)"/>' +
+    // mid
+    '<ellipse cx="210" cy="52" rx="40" ry="8" fill="#1f3a5f" opacity="0.16" stroke="#1f3a5f"/>' +
+    '<circle cx="180" cy="52" r="2.5" fill="#1f3a5f"/><circle cx="198" cy="52" r="2.5" fill="#c34a2e"/>' +
+    '<path d="M262 52 H304" stroke="#888" stroke-width="1" marker-end="url(#arr)"/>' +
+    // end blob, with delta(t) gap and orbit-size bracket
+    '<ellipse cx="430" cy="52" rx="86" ry="5" fill="#1f3a5f" opacity="0.16" stroke="#1f3a5f"/>' +
+    '<circle cx="356" cy="52" r="2.5" fill="#1f3a5f"/><circle cx="384" cy="52" r="2.5" fill="#c34a2e"/>' +
+    // delta(t): the (still small) gap between the two dots
+    '<path d="M356 40 H384" stroke="#7a7a72" stroke-width="1" marker-start="url(#cap)" marker-end="url(#cap)"/>' +
+    '<text x="370" y="34" font-size="10" fill="#555" text-anchor="middle">\u03b4(t)</text>' +
+    // orbit size: bracket under the whole final extent
+    '<path d="M344 64 H516" stroke="#7a7a72" stroke-width="1" marker-start="url(#cap)" marker-end="url(#cap)"/>' +
+    '<text x="430" y="78" font-size="10" fill="#555" text-anchor="middle">orbit size (also grew)</text>' +
+    '<text x="540" y="49" font-size="10" fill="#555">\u03b4(t)/size</text>' +
+    '<text x="540" y="62" font-size="10" fill="#555">stays small</text>' +
+
+    '<line x1="8" y1="104" x2="632" y2="104" stroke="#e0e0da"/>' +
+
+    // ───────── bottom row: stretch and fold ─────────
+    '<text x="8" y="124" font-size="11" fill="#c34a2e" font-weight="600">stretch + fold (chaotic)</text>' +
+    '<ellipse cx="72" cy="156" rx="15" ry="9" fill="#c34a2e" opacity="0.14" stroke="#c34a2e"/>' +
+    '<circle cx="66" cy="156" r="2.5" fill="#1f3a5f"/><circle cx="78" cy="156" r="2.5" fill="#c34a2e"/>' +
+    '<text x="72" y="180" font-size="10" fill="#555" text-anchor="middle">\u03b4\u2080</text>' +
+    '<path d="M98 156 H140" stroke="#888" stroke-width="1" marker-end="url(#arr)"/>' +
+    // stretched then folded (a hairpin); dots still fairly close
+    '<path d="M158 161 C 200 161, 240 161, 258 156 C 272 152, 272 146, 258 143 C 240 138, 195 138, 168 143" fill="none" stroke="#c34a2e" stroke-width="1.3" opacity="0.7"/>' +
+    '<circle cx="164" cy="160" r="2.5" fill="#1f3a5f"/><circle cx="176" cy="143" r="2.5" fill="#c34a2e"/>' +
+    '<path d="M286 156 H328" stroke="#888" stroke-width="1" marker-end="url(#arr)"/>' +
+    // folded repeatedly; dots now far apart, but within the same bounded region
+    '<path d="M346 162 C 430 162, 512 162, 512 153 C 512 146, 350 146, 350 139 C 350 132, 512 132, 512 144" fill="none" stroke="#c34a2e" stroke-width="1.1" opacity="0.7"/>' +
+    '<circle cx="356" cy="161" r="2.5" fill="#1f3a5f"/><circle cx="500" cy="134" r="2.5" fill="#c34a2e"/>' +
+    // orbit size: bracket showing the bounded extent (did NOT grow)
+    '<path d="M344 174 H516" stroke="#7a7a72" stroke-width="1" marker-start="url(#cap)" marker-end="url(#cap)"/>' +
+    '<text x="430" y="188" font-size="10" fill="#555" text-anchor="middle">orbit size (bounded, fixed)</text>' +
+    '<text x="540" y="153" font-size="10" fill="#555">\u03b4(t)/size</text>' +
+    '<text x="540" y="166" font-size="10" fill="#555">grows to ~1</text>' +
+    '</svg>';
+}
+
+function refreshSpi() {
+  spiIntegrate();
+  drawSpiPhase();
+  drawSpiSep();
+}
+function refreshChd() {
+  chdIntegrate();
+  drawChdPhase();
+  drawChdSep();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  TAB 4: Chaos vs Hyperchaos
+// ═════════════════════════════════════════════════════════════════════
+
+// 4D hyperchaotic Chen system (Li, Wu, Chen, 2005):
+//   x' = a(y - x) + w
+//   y' = d x - x z + c y
+//   z' = x y - b z
+//   w' = y z + r w
+// with a=35, b=3, c=12, d=7 fixed. The single knob r tunes the dynamics:
+// r < ~ -0.45 gives one positive Lyapunov exponent (ordinary chaos); r >= ~ -0.4
+// gives two positive exponents (hyperchaos). The (x,z,w) projection looks
+// dramatically different across the transition (thin ribbon vs thick cloud).
+const CHEN_A = 35, CHEN_B = 3, CHEN_C = 12, CHEN_D = 7;
+
+const Chen = {
+  r: 0.0,
+  x0: 1, y0: 1, z0: 1, w0: 1,
+  yaw: 28, pit: 22,
+  tsShow: { x: true, y: true, z: true, w: true },
+  cachedTraj: null,
+  le: [0,0,0,0], leTime: 0, Q: null, state: null
+};
+
+function chenF(s) {
+  const x=s[0], y=s[1], z=s[2], w=s[3];
+  return [
+    CHEN_A*(y - x) + w,
+    CHEN_D*x - x*z + CHEN_C*y,
+    x*y - CHEN_B*z,
+    y*z + Chen.r*w
+  ];
+}
+function chenJ(s) {
+  const x=s[0], y=s[1], z=s[2], w=s[3];
+  return [
+    [-CHEN_A, CHEN_A, 0, 1],
+    [CHEN_D - z, CHEN_C, -x, 0],
+    [y, x, -CHEN_B, 0],
+    [0, z, y, Chen.r]
+  ];
+}
+
+function chenIntegrate() {
+  const h = 0.004;
+  const N = 30000;
+  Chen.cachedTraj = integrate(chenF, [Chen.x0, Chen.y0, Chen.z0, Chen.w0], h, N);
+}
+
+function draw3DAttractor(cv, traj, yaw, pit, color) {
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+  // Project onto (x, z, w): the x-z plane shows the wing structure, w adds the
+  // extra dimension that distinguishes hyperchaos. We pass xs=x, ys=z, zs=w.
+  const xs = traj[0], ys = traj[2], zs = traj[3];
+  const burn = 4000;
+  let xmax=0, ymax=0, zmax=0;
+  for (let k=burn;k<xs.length;k++){
+    if (Math.abs(xs[k])>xmax) xmax = Math.abs(xs[k]);
+    if (Math.abs(ys[k])>ymax) ymax = Math.abs(ys[k]);
+    if (Math.abs(zs[k])>zmax) zmax = Math.abs(zs[k]);
+  }
+  const range = Math.max(xmax, ymax, zmax, 1) * 1.05;
+  const scale = Math.min(w, h) / (range * 2.6);
+  const project = makeProjector(yaw, pit, scale, w*0.5, h*0.5);
+  drawAxes(ctx, project, w, h, range);
+  drawTrajectory(ctx, project, xs, ys, zs, { burn, skip: 1, color, lw: 0.6 });
+}
+
+// ─── Lyapunov spectrum via Benettin + QR ───
+
+function matVec(M, v) {
+  const n = M.length, m = v.length;
+  const out = new Array(n);
+  for (let i=0;i<n;i++){
+    let s=0;
+    for (let j=0;j<m;j++) s += M[i][j]*v[j];
+    out[i] = s;
+  }
+  return out;
+}
+
+// In-place Gram-Schmidt on columns of A (n×k), returns array of norms (the diagonal of R)
+function gramSchmidt(A) {
+  const n = A.length;          // row count
+  const k = A[0].length;       // column count
+  const norms = new Array(k);
+  for (let j = 0; j < k; j++) {
+    // subtract projections onto previous columns
+    for (let i = 0; i < j; i++) {
+      let dot = 0;
+      for (let r = 0; r < n; r++) dot += A[r][j]*A[r][i];
+      for (let r = 0; r < n; r++) A[r][j] -= dot * A[r][i];
+    }
+    let nrm = 0;
+    for (let r = 0; r < n; r++) nrm += A[r][j]*A[r][j];
+    nrm = Math.sqrt(nrm);
+    if (nrm < 1e-14) nrm = 1e-14;
+    for (let r = 0; r < n; r++) A[r][j] /= nrm;
+    norms[j] = nrm;
+  }
+  return norms;
+}
+
+function initLyap(obj, dim, x0) {
+  obj.state = x0.slice();
+  obj.Q = [];
+  for (let i = 0; i < dim; i++) {
+    const row = new Array(dim).fill(0);
+    row[i] = 1;
+    obj.Q.push(row);
+  }
+  obj.le = new Array(dim).fill(0);
+  obj.leTime = 0;
+}
+
+// LE tracker: keep separate sums of log expansion rates, divide by total time at the end.
+const ChenLE = { sumLog: null, T: 0 };
+
+function stepLyapClean(obj, F, J, h, reorthEvery, sumObj) {
+  const dim = obj.state.length;
+  for (let step = 0; step < reorthEvery; step++) {
+    const Jx = J(obj.state);
+    const newQ = [];
+    for (let r = 0; r < dim; r++) {
+      const row = new Array(dim);
+      for (let c = 0; c < dim; c++) {
+        let s = obj.Q[r][c];
+        for (let k = 0; k < dim; k++) s += h * Jx[r][k] * obj.Q[k][c];
+        row[c] = s;
+      }
+      newQ.push(row);
+    }
+    obj.Q = newQ;
+    obj.state = rk4(F, obj.state, h);
+  }
+  const norms = gramSchmidt(obj.Q);
+  for (let i = 0; i < dim; i++) sumObj.sumLog[i] += Math.log(norms[i]);
+  sumObj.T += reorthEvery * h;
+  for (let i = 0; i < dim; i++) obj.le[i] = sumObj.sumLog[i] / sumObj.T;
+}
+
+function resetLyap() {
+  initLyap(Chen, 4, [Chen.x0, Chen.y0, Chen.z0, Chen.w0]);
+  ChenLE.sumLog = [0,0,0,0]; ChenLE.T = 0;
+  lyapFrozen = false;
+  Chen.le = [0,0,0,0];
+  updateChenSpectrumText();
+  // If Tab 4 is currently showing, (re)start the estimator so the bars visibly
+  // re-converge after a parameter change.  Otherwise just leave it reset; the
+  // loop will start when the user switches to the tab.
+  const tab4Active = document.querySelector('.tabpane[data-pane="3"]')?.classList.contains('active');
+  if (tab4Active) {
+    stopLyap();
+    startLyap();
+  }
+}
+
+function buildLyapBars(containerId, count) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const row = document.createElement('div');
+    row.className = 'lyap-row';
+    row.innerHTML = `
+      <div class="lyap-label">λ<sub>${i+1}</sub></div>
+      <div class="lyap-bar-wrap">
+        <div class="lyap-bar-zero"></div>
+        <div class="lyap-bar-fill" data-le="${i}"></div>
+      </div>
+      <div class="lyap-val" data-le-val="${i}">,</div>
+    `;
+    c.appendChild(row);
+  }
+}
+
+function updateLyapBars(containerId, les, maxAbs) {
+  const c = document.getElementById(containerId);
+  const M = maxAbs;
+  for (let i = 0; i < les.length; i++) {
+    const v = les[i];
+    const fill = c.querySelector(`[data-le="${i}"]`);
+    const valEl = c.querySelector(`[data-le-val="${i}"]`);
+    if (!fill || !valEl) continue;
+    const ratio = Math.max(-1, Math.min(1, v / M));
+    if (ratio >= 0) {
+      const wpct = ratio * 50;
+      fill.style.left = '50%';
+      fill.style.width = wpct + '%';
+      fill.className = 'lyap-bar-fill pos';
+    } else {
+      const wpct = -ratio * 50;
+      fill.style.left = (50 - wpct) + '%';
+      fill.style.width = wpct + '%';
+      fill.className = 'lyap-bar-fill neg';
+    }
+    valEl.textContent = v.toFixed(3);
+  }
+}
+
+let lyapRunning = false;
+let lyapRAF = null;
+const LYAP_CONVERGE_T = 250;     // simulated-time window for convergence
+let LYAP_FREEZE_TARGET = LYAP_CONVERGE_T;  // current freeze threshold (extended on manual resume)
+let lyapFrozen = false;          // true once converged (distinct from user pause)
+
+function setLyapStatus(text) {
+  const el = document.getElementById('lyap-status');
+  if (el) el.textContent = text;
+}
+
+// Classify the current estimate into chaos / onset / hyperchaos. λ2 near zero is
+// the onset of hyperchaos (a near-neutral second direction). Before the estimate
+// has accumulated time we fall back to a provisional call based on r (the λ2=0
+// crossing for this system sits near r = -0.32), to avoid stale-LE flicker.
+function chenRegime() {
+  if (ChenLE.T > 30) {
+    const sorted = Chen.le.slice().sort((a,b) => b - a);
+    const l2 = sorted[1];
+    if (l2 > 0.06)  return 'hyper';
+    if (l2 > -0.06) return 'onset';
+    return 'chaos';
+  }
+  if (Chen.r > -0.27) return 'hyper';
+  if (Chen.r > -0.37) return 'onset';
+  return 'chaos';
+}
+function chenColor() {
+  const reg = chenRegime();
+  if (reg === 'hyper') return '#c34a2e';
+  if (reg === 'onset') return '#b8860b';
+  return '#1f3a5f';
+}
+function updateChenRegimeTag() {
+  const tag = document.getElementById('chen-regime-tag');
+  if (!tag) return;
+  const reg = chenRegime();
+  const rTxt = Chen.r.toFixed(2);
+  const word = reg === 'hyper' ? 'hyperchaotic'
+             : reg === 'onset' ? 'hyperchaos onset, \u03bb\u2082 \u2248 0'
+             : 'chaotic';
+  tag.textContent = '(' + word + ', r = ' + rTxt + ')';
+}
+
+// Update the live spectrum readout in the "reading the bars" text. Values are
+// rounded; the large contracting exponent is shown to 0 decimals, the others to 2.
+function updateChenSpectrumText() {
+  const specEl = document.getElementById('chen-spectrum');
+  const sumEl = document.getElementById('chen-spectrum-sum');
+  if (!specEl && !sumEl) return;
+  if (ChenLE.T < 5) {
+    if (specEl) specEl.textContent = '(settling\u2026)';
+    if (sumEl) sumEl.textContent = '\u2026';
+    return;
+  }
+  const sorted = Chen.le.slice().sort((a,b) => b - a);
+  const fmt = v => {
+    if (Math.abs(v) < 0.005) return '0.00';
+    const s = (Math.abs(v) >= 5) ? v.toFixed(0) : v.toFixed(2);
+    return (v >= 0 ? '+' : '\u2212') + s.replace('-', '');
+  };
+  if (specEl) specEl.textContent = '(' + sorted.map(fmt).join(', ') + ')';
+  if (sumEl) {
+    const sum = sorted.reduce((a,b) => a+b, 0);
+    sumEl.textContent = (sum >= 0 ? '+' : '\u2212') + Math.abs(sum).toFixed(0);
+  }
+}
+
+function lyapTick() {
+  if (!lyapRunning) { lyapRAF = null; return; }
+  const h = 0.004;
+  const chunks = 3;        // more integration per frame to keep wall-clock settle time reasonable
+  const reorthEvery = 25;  // re-orthonormalize every 0.1 time units
+  for (let i = 0; i < chunks; i++) {
+    stepLyapClean(Chen, chenF, chenJ, h, reorthEvery, ChenLE);
+  }
+  updateLyapBars('chen-lyap', Chen.le, 0.8);
+  updateChenRegimeTag();
+  updateChenSpectrumText();
+
+  // auto-freeze once enough simulated time has accumulated
+  if (ChenLE.T >= LYAP_FREEZE_TARGET) {
+    lyapFrozen = true;
+    lyapRunning = false;
+    lyapRAF = null;
+    document.getElementById('lyap-pause').textContent = 'Resume';
+    setLyapStatus('converged (T \u2248 ' + Math.round(ChenLE.T) + ')');
+    // redraw attractor in the regime color once converged
+    draw3DAttractor(document.getElementById('chen-phase'), Chen.cachedTraj, Chen.yaw, Chen.pit, chenColor());
+    return;
+  }
+  setLyapStatus('settling\u2026 T = ' + Math.round(ChenLE.T));
+  lyapRAF = requestAnimationFrame(lyapTick);
+}
+
+function startLyap() {
+  if (lyapRunning) return;
+  lyapRunning = true;
+  lyapFrozen = false;
+  LYAP_FREEZE_TARGET = LYAP_CONVERGE_T;
+  document.getElementById('lyap-pause').textContent = 'Pause';
+  lyapTick();
+}
+function stopLyap() {
+  lyapRunning = false;
+  document.getElementById('lyap-pause').textContent = 'Resume';
+  if (lyapRAF) cancelAnimationFrame(lyapRAF);
+  lyapRAF = null;
+  if (!lyapFrozen) setLyapStatus('paused (T = ' + Math.round(ChenLE.T) + ')');
+}
+
+function drawChenTime() {
+  const cv = document.getElementById('chen-time');
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#fcfaf6';
+  ctx.fillRect(0,0,w,h);
+
+  const traj = Chen.cachedTraj || (chenIntegrate(), Chen.cachedTraj);
+  const burn = 4000;
+  const Nshow = Math.min(9000, traj[0].length - burn);
+  const start = burn;
+
+  // left-axis channels (x,y,z) and right-axis channel (w)
+  const left = [
+    { key:'x', color:'#1f3a5f', data: traj[0] },
+    { key:'y', color:'#c34a2e', data: traj[1] },
+    { key:'z', color:'#4a8480', data: traj[2] }
+  ].filter(c => Chen.tsShow[c.key]);
+  const showW = Chen.tsShow.w;
+  const wData = traj[3];
+
+  if (left.length === 0 && !showW) {
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#999';
+    ctx.fillText('No channels selected.', 12, h*0.5 + 4);
+    return;
+  }
+
+  const padL = 34, padR = 38, padT = 8, padB = 8;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const x0 = padL, y0 = padT;
+
+  // left extent over visible x/y/z
+  let lLo = Infinity, lHi = -Infinity;
+  for (const c of left) for (let i=start;i<start+Nshow;i++){const v=c.data[i]; if(v<lLo)lLo=v; if(v>lHi)lHi=v;}
+  if (!isFinite(lLo)) { lLo = -1; lHi = 1; }
+  if (lLo === lHi) { lLo -= 1; lHi += 1; }
+  const lPad = (lHi - lLo)*0.08; lLo -= lPad; lHi += lPad;
+  const yL = v => y0 + plotH - ((v - lLo)/(lHi - lLo))*plotH;
+
+  // right extent over w
+  let rLo = Infinity, rHi = -Infinity;
+  if (showW) { for (let i=start;i<start+Nshow;i++){const v=wData[i]; if(v<rLo)rLo=v; if(v>rHi)rHi=v;} }
+  if (!isFinite(rLo)) { rLo = -1; rHi = 1; }
+  if (rLo === rHi) { rLo -= 1; rHi += 1; }
+  const rPad = (rHi - rLo)*0.08; rLo -= rPad; rHi += rPad;
+  const yR = v => y0 + plotH - ((v - rLo)/(rHi - rLo))*plotH;
+
+  // zero line on the left axis if it spans zero
+  if (lLo < 0 && lHi > 0) {
+    ctx.strokeStyle = '#dcdcd6'; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.moveTo(x0, yL(0)); ctx.lineTo(x0+plotW, yL(0)); ctx.stroke();
+  }
+
+  // w first (background, behind), on right axis
+  if (showW) {
+    ctx.strokeStyle = '#b8860b';
+    ctx.lineWidth = 1.0;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    for (let i=0;i<Nshow;i++){
+      const px = x0 + (i/(Nshow-1))*plotW;
+      const py = yR(wData[start+i]);
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+  }
+  // x,y,z on left axis
+  for (const c of left) {
+    ctx.strokeStyle = c.color;
+    ctx.lineWidth = 1.0;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    for (let i=0;i<Nshow;i++){
+      const px = x0 + (i/(Nshow-1))*plotW;
+      const py = yL(c.data[start+i]);
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // left axis labels (navy)
+  ctx.font = '9px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1f3a5f';
+  if (left.length) {
+    ctx.fillText(lHi.toFixed(0), 3, y0 + 8);
+    ctx.fillText(lLo.toFixed(0), 3, y0 + plotH - 1);
+    // left axis title: the visible left-axis channels, vertically centered
+    ctx.save();
+    ctx.translate(10, y0 + plotH/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.textAlign = 'center';
+    ctx.fillText(left.map(c => c.key).join(', '), 0, 0);
+    ctx.restore();
+  }
+  // right axis labels (gold), for w
+  if (showW) {
+    ctx.fillStyle = '#b8860b';
+    ctx.textAlign = 'right';
+    ctx.fillText(rHi.toFixed(0), w - 3, y0 + 8);
+    ctx.fillText(rLo.toFixed(0), w - 3, y0 + plotH - 1);
+    // right axis title
+    ctx.save();
+    ctx.translate(w - 9, y0 + plotH/2);
+    ctx.rotate(Math.PI/2);
+    ctx.textAlign = 'center';
+    ctx.fillText('w', 0, 0);
+    ctx.restore();
+  }
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#888';
+  ctx.fillText('t  →', x0 + plotW/2 - 8, h - 1);
+}
+
+function refreshChen() {
+  chenIntegrate();
+  draw3DAttractor(document.getElementById('chen-phase'), Chen.cachedTraj, Chen.yaw, Chen.pit, chenColor());
+  updateChenRegimeTag();
+  drawChenTime();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  TAB 5: Image encryption demo
+// ═════════════════════════════════════════════════════════════════════
+
+const W = 96, H = 96;
+const ENC = {
+  pattern: 0,                       // 0..K
+  x0: 0.1, y0: 0, z0: 0,
+  eps: 0,                           // slider position 0..110 (0 = exact key)
+  plain: null,                      // Uint8ClampedArray RGBA
+  cipher: null,
+  decrypted: null
+};
+
+// Map the offset slider position to an actual additive offset on x0.
+// Position 0 -> 0 (exact key). Positions 1..110 -> 10^exp with exp rising
+// linearly from -12 (just past zero) to -1 (far right), so the offset grows
+// monotonically as the slider moves right.
+const KEY_EXP_MIN = -12, KEY_EXP_MAX = -1, KEY_SLIDER_MAX = 110;
+function keyOffsetExponent(v) {
+  return KEY_EXP_MIN + (v - 1) / (KEY_SLIDER_MAX - 1) * (KEY_EXP_MAX - KEY_EXP_MIN);
+}
+function keyOffsetFromSlider(v) {
+  if (v <= 0) return 0;
+  return Math.pow(10, keyOffsetExponent(v));
+}
+
+function makePattern(idx) {
+  // Generate strong-autocorrelation 96x96 RGBA image
+  const buf = new Uint8ClampedArray(W * H * 4);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    let r=255,g=255,b=255;
+    const c = i / W, d = j / H;
+    if (idx === 0) {
+      // Sun above mountains, simple geometric
+      // Sky gradient
+      r = Math.round(180 - 60*d);
+      g = Math.round(210 - 30*d);
+      b = Math.round(245 - 10*d);
+      // Sun
+      const dxs = i - W*0.7, dys = j - H*0.3;
+      if (dxs*dxs + dys*dys < 110) { r=240; g=190; b=80; }
+      // Mountains: piecewise linear silhouettes
+      const mountY = H*0.55 - 16*Math.abs(((i % 32) - 16)/16);
+      if (j > mountY) { r=80; g=70; b=85; }
+      const mount2Y = H*0.65 - 10*Math.abs(((i+10) % 24 - 12)/12);
+      if (j > mount2Y) { r=55; g=50; b=70; }
+    } else if (idx === 1) {
+      // Concentric rings
+      const dx = i - W/2 + 0.5, dy = j - H/2 + 0.5;
+      const rr = Math.sqrt(dx*dx + dy*dy);
+      const band = Math.floor(rr/6) % 2;
+      r = band ? 220 : 50;
+      g = band ? 210 : 60;
+      b = band ? 200 : 100;
+    } else if (idx === 2) {
+      // ASU-ish: horizontal stripes
+      const band = Math.floor(j/24) % 2;
+      r = band ? 220 : 140;
+      g = band ? 60 : 30;
+      b = band ? 70 : 50;
+    } else {
+      // text-like: black bar on white at top, gray block bottom
+      r = 250; g = 250; b = 250;
+      if (j > 10 && j < 20 && i > 8 && i < W-8) { r=20; g=20; b=20; }
+      if (j > 28 && j < 70 && i > 10 && i < W-10) {
+        if ((j-28) % 12 < 7) { r=120; g=120; b=120; }
+      }
+    }
+    const k = 4*(j*W + i);
+    buf[k]=r; buf[k+1]=g; buf[k+2]=b; buf[k+3]=255;
+  }
+  return buf;
+}
+
+// Iterate Chua's circuit to produce a stream of doubles (using x-component).
+// Skip a burn-in and decimate to decorrelate.
+function chuaStream(x0, y0, z0, N) {
+  const stream = new Float64Array(N);
+  const h = 0.01;
+  const burn = 500;
+  const skip = 5;        // take every 5th sample for decorrelation
+  // Fixed alpha/beta/m0/m1 (classical double-scroll), so the key is just (x0,y0,z0).
+  const aA = 10.0, bB = 14.87, M0 = -1.27/7, M1 = -0.68/7;
+  function F(p) {
+    const x = p[0], y = p[1], z = p[2];
+    const hh = M1*x + 0.5*(M0 - M1)*(Math.abs(x+1) - Math.abs(x-1));
+    return [aA*(y - x - hh), x - y + z, -bB*y];
+  }
+  let s = [x0, y0, z0];
+  for (let i = 0; i < burn; i++) s = rk4(F, s, h);
+  let count = 0, sub = 0;
+  while (count < N) {
+    s = rk4(F, s, h);
+    sub++;
+    if (sub >= skip) {
+      stream[count++] = s[0];
+      sub = 0;
+    }
+  }
+  return stream;
+}
+
+function permutationFromStream(stream) {
+  // pair each (value, index), sort by value, take indices
+  const N = stream.length;
+  const pairs = new Array(N);
+  for (let i = 0; i < N; i++) pairs[i] = [stream[i], i];
+  pairs.sort((a, b) => a[0] - b[0]);
+  const P = new Uint32Array(N);
+  for (let i = 0; i < N; i++) P[i] = pairs[i][1];
+  return P;
+}
+
+function bytesFromStream(stream) {
+  // Convert each chaotic value to a byte using fractional bits.
+  const N = stream.length;
+  const out = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    let v = stream[i];
+    // mantissa-style extraction
+    v = v * 1e6;
+    v = v - Math.floor(v);
+    out[i] = Math.floor(v * 256) & 0xff;
+  }
+  return out;
+}
+
+function applyEncrypt(plain, P, keyBytes) {
+  // Permute pixel POSITIONS, then XOR R,G,B channels (preserve A)
+  const N = W * H;
+  const out = new Uint8ClampedArray(plain.length);
+  for (let i = 0; i < N; i++) {
+    const src = P[i];               // pixel i in cipher comes from src in plain
+    const kSrc = 4 * src, kDst = 4 * i;
+    const kb1 = keyBytes[(3*i) % keyBytes.length];
+    const kb2 = keyBytes[(3*i + 1) % keyBytes.length];
+    const kb3 = keyBytes[(3*i + 2) % keyBytes.length];
+    out[kDst]   = (plain[kSrc]   ^ kb1) & 0xff;
+    out[kDst+1] = (plain[kSrc+1] ^ kb2) & 0xff;
+    out[kDst+2] = (plain[kSrc+2] ^ kb3) & 0xff;
+    out[kDst+3] = 255;
+  }
+  return out;
+}
+
+function applyDecrypt(cipher, P, keyBytes) {
+  // First inverse-XOR, then inverse permutation
+  const N = W * H;
+  const out = new Uint8ClampedArray(cipher.length);
+  // Build inverse permutation
+  const Pinv = new Uint32Array(N);
+  for (let i = 0; i < N; i++) Pinv[P[i]] = i;
+  for (let i = 0; i < N; i++) {
+    const kb1 = keyBytes[(3*i) % keyBytes.length];
+    const kb2 = keyBytes[(3*i + 1) % keyBytes.length];
+    const kb3 = keyBytes[(3*i + 2) % keyBytes.length];
+    const cBase = 4*i;
+    const r = (cipher[cBase]   ^ kb1) & 0xff;
+    const g = (cipher[cBase+1] ^ kb2) & 0xff;
+    const b = (cipher[cBase+2] ^ kb3) & 0xff;
+    // pixel i in cipher = (permuted-then-XORed) of plain pixel P[i]
+    // so after inverse-XOR, cipher position i corresponds to plain pixel P[i]
+    const dst = 4 * P[i];
+    out[dst]   = r;
+    out[dst+1] = g;
+    out[dst+2] = b;
+    out[dst+3] = 255;
+  }
+  return out;
+}
+
+function drawRGBA(canvasId, buf) {
+  const cv = document.getElementById(canvasId);
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  img.data.set(buf);
+  ctx.putImageData(img, 0, 0);
+}
+
+function drawHistogram(canvasId, buf) {
+  const cv = document.getElementById(canvasId);
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0,0,w,h);
+
+  const nb = 64;
+  const binsR = new Uint32Array(nb), binsG = new Uint32Array(nb), binsB = new Uint32Array(nb);
+  for (let i = 0; i < W*H; i++) {
+    const r = buf[4*i], g = buf[4*i+1], b = buf[4*i+2];
+    binsR[Math.floor(r/256 * nb)]++;
+    binsG[Math.floor(g/256 * nb)]++;
+    binsB[Math.floor(b/256 * nb)]++;
+  }
+  let mx = 0;
+  for (let i = 0; i < nb; i++) { mx = Math.max(mx, binsR[i], binsG[i], binsB[i]); }
+  if (mx < 1) mx = 1;
+
+  // Layout: a dedicated legend band across the top that bars never enter,
+  // then the plot area below it, then the x-axis label strip at the bottom.
+  const padL = 8, padR = 8, padB = 16;
+  const legendH = 14;          // reserved band for "count" + R/G/B legend
+  const y0 = legendH + 4;      // top of plot area
+  const plotW = w - padL - padR;
+  const plotH = h - y0 - padB;
+  const x0 = padL;
+  const bw = plotW / nb;
+
+  function drawBins(bins, color) {
+    ctx.fillStyle = color;
+    for (let i = 0; i < nb; i++) {
+      const bh = (bins[i] / mx) * plotH;
+      ctx.fillRect(x0 + i*bw, y0 + plotH - bh, Math.max(bw - 0.3, 0.6), bh);
+    }
+  }
+  // baseline
+  ctx.strokeStyle = '#e0e0da'; ctx.lineWidth = 0.7;
+  ctx.beginPath(); ctx.moveTo(x0, y0+plotH); ctx.lineTo(x0+plotW, y0+plotH); ctx.stroke();
+
+  // semi-transparent so all three channels are visible where they overlap
+  ctx.globalAlpha = 0.5;
+  drawBins(binsR, '#c34a2e');
+  drawBins(binsG, '#2a8c8a');
+  drawBins(binsB, '#1f3a5f');
+  ctx.globalAlpha = 1.0;
+
+  // x-axis labels (intensity 0..255)
+  ctx.font = '9px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#888';
+  ctx.textAlign = 'left';
+  ctx.fillText('0', x0, h - 4);
+  ctx.textAlign = 'center';
+  ctx.fillText('pixel intensity', x0 + plotW/2, h - 4);
+  ctx.textAlign = 'right';
+  ctx.fillText('255', x0 + plotW, h - 4);
+
+  // top band: "count" on the left, R/G/B legend on the right (clear of all bars)
+  const bandY = 9;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#aaa';
+  ctx.fillText('count', x0 + 1, bandY);
+
+  // channel legend (top-right)
+  const items = [['R','#c34a2e'], ['G','#2a8c8a'], ['B','#1f3a5f']];
+  let lx = x0 + plotW;
+  ctx.font = '9px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'left';
+  for (let k = items.length - 1; k >= 0; k--) {
+    const label = items[k][0], col = items[k][1];
+    const tw = ctx.measureText(label).width;
+    lx -= (tw + 14);
+    ctx.globalAlpha = 0.7; ctx.fillStyle = col;
+    ctx.fillRect(lx, bandY - 7, 8, 8);
+    ctx.globalAlpha = 1.0; ctx.fillStyle = '#777';
+    ctx.fillText(label, lx + 10, bandY);
+  }
+  ctx.textAlign = 'left';
+}
+
+function refreshEnc() {
+  if (!ENC.plain) ENC.plain = makePattern(ENC.pattern);
+  const N = W * H;
+  const streamA = chuaStream(ENC.x0, ENC.y0, ENC.z0, N);
+  const streamB = chuaStream(ENC.x0 + 0.001, ENC.y0 + 0.001, ENC.z0 + 0.001, N);
+  const P = permutationFromStream(streamA);
+  const keyB = bytesFromStream(streamB);
+  ENC.cipher = applyEncrypt(ENC.plain, P, keyB);
+
+  // Decryption uses possibly-perturbed key.
+  // Slider 0 -> exact key (offset 0). Slider 1..110 -> offset 10^exp with exp
+  // increasing from -12 (just right of zero) to -1 (far right), so the offset
+  // grows monotonically left-to-right.
+  const eps = keyOffsetFromSlider(ENC.eps);
+  const streamA2 = chuaStream(ENC.x0 + eps, ENC.y0, ENC.z0, N);
+  const streamB2 = chuaStream(ENC.x0 + eps + 0.001, ENC.y0 + 0.001, ENC.z0 + 0.001, N);
+  const P2 = permutationFromStream(streamA2);
+  const keyB2 = bytesFromStream(streamB2);
+  ENC.decrypted = applyDecrypt(ENC.cipher, P2, keyB2);
+
+  drawRGBA('enc-plain', ENC.plain);
+  drawRGBA('enc-cipher', ENC.cipher);
+  drawRGBA('enc-decrypt', ENC.decrypted);
+  drawHistogram('hist-plain', ENC.plain);
+  drawHistogram('hist-cipher', ENC.cipher);
+
+  const lbl = document.getElementById('enc-decrypt-label');
+  if (ENC.eps === 0) lbl.textContent = 'Same key as encryption: perfect recovery';
+  else {
+    lbl.textContent = 'Key off by Δ = ' + eps.toExponential(1) + ' → recovery fails';
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  Tab switching + slider wiring
+// ═════════════════════════════════════════════════════════════════════
+
+function showTab(idx) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab == idx));
+  document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.dataset.pane == idx));
+  document.getElementById('mainTabSelect').value = idx;
+  // refresh active tab in case window resized
+  if (idx == 0) refreshChua();
+  else if (idx == 1) refreshMS();
+  else if (idx == 2) { refreshSpi(); refreshChd(); }
+  else if (idx == 3) { refreshChen(); }
+  else if (idx == 4) refreshEnc();
+
+  if (idx == 3) {
+    if (lyapFrozen) {
+      // already converged on a previous visit; leave it frozen, just show status
+      setLyapStatus('converged (T \u2248 ' + Math.round(ChenLE.T) + ')');
+    } else {
+      startLyap();
+    }
+  } else {
+    stopLyap();
+  }
+}
+
+// helper: wire a slider that maps int range → real value
+function wireSlider(id, valueId, store, key, transform, fmt, onChange) {
+  const el = document.getElementById(id);
+  const lab = document.getElementById(valueId);
+  el.addEventListener('input', () => {
+    const v = transform ? transform(+el.value) : +el.value;
+    store[key] = v;
+    lab.textContent = fmt ? fmt(v) : v;
+    onChange();
+  });
+}
+
+// helper: make a 3D phase canvas draggable to update store.yaw / store.pit.
+// onChange() is called on every move (cheap re-render expected).
+// sliderSync: optional { yawId, pitId, yawValId, pitValId } to keep sliders in sync.
+// Pitch is clamped to [-80, 80]; yaw wraps to [-180, 180].
+function addRotationHandle(canvasId, store, onChange, sliderSync, hintText) {
+  const cv = document.getElementById(canvasId);
+  if (!cv) return;
+  cv.classList.add('rotatable');
+
+  // add a small hint badge inside the viz-wrap (one-time fade after first drag)
+  let hint = null;
+  if (hintText !== false) {
+    const wrap = cv.parentElement;
+    if (wrap && getComputedStyle(wrap).position !== 'static') {
+      hint = document.createElement('div');
+      hint.className = 'rot-hint';
+      hint.textContent = hintText || 'drag to rotate';
+      wrap.appendChild(hint);
+    }
+  }
+
+  let dragging = false;
+  let sx = 0, sy = 0, sYaw = 0, sPit = 0;
+  let lastTapTime = 0, movedDist = 0;
+
+  function recenter() {
+    store.yaw = sliderSync && sliderSync.defaults ? sliderSync.defaults.yaw : 30;
+    store.pit = sliderSync && sliderSync.defaults ? sliderSync.defaults.pit : 20;
+    syncSliders();
+    onChange();
+  }
+
+  function wrapYaw(y) {
+    let v = ((y + 180) % 360 + 360) % 360 - 180;
+    return v;
+  }
+  function clampPit(p) {
+    return Math.max(-80, Math.min(80, p));
+  }
+  function syncSliders() {
+    if (!sliderSync) return;
+    const ys = document.getElementById(sliderSync.yawId);
+    const ps = document.getElementById(sliderSync.pitId);
+    const yv = document.getElementById(sliderSync.yawValId);
+    const pv = document.getElementById(sliderSync.pitValId);
+    if (ys) ys.value = Math.round(store.yaw);
+    if (ps) ps.value = Math.round(store.pit);
+    if (yv) yv.textContent = Math.round(store.yaw) + '°';
+    if (pv) pv.textContent = Math.round(store.pit) + '°';
+  }
+
+  // scale sensitivity to the canvas display width: bigger canvas → slower per-pixel.
+  // Target: a half-width horizontal drag spans about 180° of yaw.
+  function sensitivity() {
+    const w = cv.getBoundingClientRect().width || 400;
+    return Math.max(0.4, Math.min(1.2, 360 / w));
+  }
+
+  function down(e) {
+    // ignore secondary buttons / multi-touch beyond the first
+    if (e.button !== undefined && e.button !== 0) return;
+    dragging = true;
+    movedDist = 0;
+    cv.classList.add('dragging');
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    sx = e.clientX; sy = e.clientY;
+    sYaw = store.yaw; sPit = store.pit;
+    if (hint) { hint.classList.add('fade'); }
+    e.preventDefault();
+  }
+  function move(e) {
+    if (!dragging) return;
+    const k = sensitivity();
+    movedDist += Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy);
+    store.yaw = wrapYaw(sYaw + (e.clientX - sx) * k);
+    store.pit = clampPit(sPit - (e.clientY - sy) * k);
+    syncSliders();
+    onChange();
+    e.preventDefault();
+  }
+  function up(e) {
+    if (!dragging) return;
+    dragging = false;
+    cv.classList.remove('dragging');
+    try { cv.releasePointerCapture(e.pointerId); } catch (_) {}
+    // remove the hint entirely after the first successful drag
+    if (hint) {
+      setTimeout(() => { if (hint && hint.parentElement) hint.parentElement.removeChild(hint); }, 500);
+      hint = null;
+    }
+    // Double-tap to recenter (works on touch, where dblclick is unreliable).
+    // Only counts as a tap if the pointer barely moved.
+    if (movedDist < 8) {
+      const now = Date.now();
+      if (now - lastTapTime < 320) { recenter(); lastTapTime = 0; }
+      else { lastTapTime = now; }
+    } else {
+      lastTapTime = 0;
+    }
+  }
+
+  cv.addEventListener('pointerdown', down);
+  cv.addEventListener('pointermove', move);
+  cv.addEventListener('pointerup', up);
+  cv.addEventListener('pointercancel', up);
+  // double-click / double-tap to recenter to a sensible default view
+  cv.addEventListener('dblclick', recenter);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+
+  // tabs
+  document.querySelectorAll('.tab').forEach(b => {
+    b.addEventListener('click', () => showTab(+b.dataset.tab));
+  });
+  document.getElementById('mainTabSelect').addEventListener('change', e => showTab(+e.target.value));
+
+  // Switch the tab strip to a <select> dropdown only when the tabs would not fit
+  // on a single row. Re-evaluates on resize, on font load, and on container size
+  // changes. Hysteresis (a few pixels of slack) prevents thrashing right at the boundary.
+  (function setupResponsiveTabs() {
+    const tabs = document.querySelector('.tabs');
+    const selectWrap = document.querySelector('.tabs-select-wrap');
+    if (!tabs || !selectWrap) return;
+    let mode = 'tabs';   // 'tabs' or 'dropdown'
+
+    function measure() {
+      // Always start by showing tabs so we can measure their natural fit.
+      tabs.style.display = 'flex';
+      selectWrap.style.display = 'none';
+      // scrollWidth gives the natural single-row width (because flex-wrap is nowrap),
+      // clientWidth gives the available width. A small slack avoids flicker when
+      // they're a hair apart due to sub-pixel rounding.
+      const overflowing = tabs.scrollWidth > tabs.clientWidth + 2;
+      const next = overflowing ? 'dropdown' : 'tabs';
+      if (next === 'dropdown') {
+        tabs.style.display = 'none';
+        selectWrap.style.display = 'block';
+      }
+      mode = next;
+    }
+    measure();
+
+    // Re-measure on viewport changes
+    let rafId = 0;
+    function schedule() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => { rafId = 0; measure(); });
+    }
+    window.addEventListener('resize', schedule);
+    if ('ResizeObserver' in window) {
+      const ro = new ResizeObserver(schedule);
+      // observe the parent that actually constrains the tab row's width
+      ro.observe(tabs.parentElement || document.body);
+    }
+    // Web fonts can shift tab widths after initial paint; recheck once they load.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(schedule).catch(() => {});
+    }
+  })();
+
+  // ── Tab 1: Chua ──
+  wireSlider('chua-alpha', 'v-chua-alpha', Chua, 'alpha', v=>v/100, v=>v.toFixed(2), refreshChua);
+  wireSlider('chua-beta',  'v-chua-beta',  Chua, 'beta',  v=>v/100, v=>v.toFixed(2), refreshChua);
+  wireSlider('chua-m0',    'v-chua-m0',    Chua, 'm0',    v=>v/100, v=>v.toFixed(2), refreshChua);
+  wireSlider('chua-m1',    'v-chua-m1',    Chua, 'm1',    v=>v/100, v=>v.toFixed(2), refreshChua);
+  wireSlider('chua-yaw',   'v-chua-yaw',   Chua, 'yaw',   v=>v,     v=>v+'°',         drawChuaPhase);
+  wireSlider('chua-pit',   'v-chua-pit',   Chua, 'pit',   v=>v,     v=>v+'°',         drawChuaPhase);
+  document.getElementById('chua-tg-axes').addEventListener('change', e => { Chua.showAxes = e.target.checked; drawChuaPhase(); });
+  document.getElementById('chua-tg-eq').addEventListener('change',   e => { Chua.showEq   = e.target.checked; drawChuaPhase(); });
+  document.getElementById('chua-tg-nl').addEventListener('change',   e => { Chua.showNL   = e.target.checked; drawChuaPhase(); });
+  document.getElementById('chua-tg-fade').addEventListener('change', e => { Chua.fade     = e.target.checked; drawChuaPhase(); });
+  // Time-series channel visibility
+  document.getElementById('chua-ts-x').addEventListener('change', e => { Chua.tsShow.x = e.target.checked; drawChuaTime(); });
+  document.getElementById('chua-ts-y').addEventListener('change', e => { Chua.tsShow.y = e.target.checked; drawChuaTime(); });
+  document.getElementById('chua-ts-z').addEventListener('change', e => { Chua.tsShow.z = e.target.checked; drawChuaTime(); });
+
+  // Preset chips: apply a (α, β, m0, m1) tuple and mark the chip active.
+  // Also clear the active flag if any slider is manually moved (the user has
+  // left the preset's parameter point).
+  function applyChuaPreset(alpha, beta, m0, m1) {
+    Chua.alpha = alpha; Chua.beta = beta; Chua.m0 = m0; Chua.m1 = m1;
+    // sync sliders + readouts
+    const sliderUpdates = [
+      ['chua-alpha', 'v-chua-alpha', Math.round(alpha*100), alpha.toFixed(2)],
+      ['chua-beta',  'v-chua-beta',  Math.round(beta*100),  beta.toFixed(2)],
+      ['chua-m0',    'v-chua-m0',    Math.round(m0*100),    m0.toFixed(2)],
+      ['chua-m1',    'v-chua-m1',    Math.round(m1*100),    m1.toFixed(2)],
+    ];
+    for (const [sId, vId, sv, vt] of sliderUpdates) {
+      document.getElementById(sId).value = sv;
+      document.getElementById(vId).textContent = vt;
+    }
+    refreshChua();
+  }
+  document.querySelectorAll('#chua-presets .preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#chua-presets .preset-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      applyChuaPreset(
+        parseFloat(chip.dataset.alpha),
+        parseFloat(chip.dataset.beta),
+        parseFloat(chip.dataset.m0),
+        parseFloat(chip.dataset.m1)
+      );
+    });
+  });
+  // If the user adjusts any of the four parameter sliders manually, deactivate any active preset chip
+  ['chua-alpha', 'chua-beta', 'chua-m0', 'chua-m1'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      document.querySelectorAll('#chua-presets .preset-chip').forEach(c => c.classList.remove('active'));
+    });
+  });
+
+  document.getElementById('chua-new').addEventListener('click', () => {
+    const rng = makeRNG(Date.now());
+    Chua.x0 = (rng()-0.5)*0.4;
+    Chua.y0 = (rng()-0.5)*0.2;
+    Chua.z0 = (rng()-0.5)*0.4;
+    refreshChua();
+  });
+
+  // ── Tab 2: Scroll grid ──
+  wireSlider('ms-nx',  'v-ms-nx',  MS, 'nx',  v=>v|0,   v=>v,            refreshMS);
+  wireSlider('ms-ny',  'v-ms-ny',  MS, 'ny',  v=>v|0,   v=>v,            refreshMS);
+  wireSlider('ms-a',   'v-ms-a',   MS, 'a',   v=>v/100, v=>v.toFixed(2), refreshMS);
+  wireSlider('ms-yaw', 'v-ms-yaw', MS, 'yaw', v=>v,     v=>v+'°',        drawMSPhase);
+  wireSlider('ms-pit', 'v-ms-pit', MS, 'pit', v=>v,     v=>v+'°',        drawMSPhase);
+  document.getElementById('ms-tg-eq').addEventListener('change',   e => { MS.showEq = e.target.checked; drawMSPhase(); });
+  document.getElementById('ms-tg-nl').addEventListener('change',   e => { MS.showNL = e.target.checked; drawMSPhase(); });
+  document.getElementById('ms-tg-fade').addEventListener('change', e => { MS.fade   = e.target.checked; drawMSPhase(); });
+  document.getElementById('ms-ts-x').addEventListener('change', e => { MS.tsShow.x = e.target.checked; drawMSTime(); });
+  document.getElementById('ms-ts-y').addEventListener('change', e => { MS.tsShow.y = e.target.checked; drawMSTime(); });
+  document.getElementById('ms-ts-z').addEventListener('change', e => { MS.tsShow.z = e.target.checked; drawMSTime(); });
+
+  // MS preset chips: grid dimensions plus the damping value.  The 5×1 chip is
+  // the degenerate 1D chain (f2 switched off).
+  function applyMSPreset(nx, ny, a) {
+    MS.nx = nx; MS.ny = ny; MS.a = a;
+    MS.x0 = 0.1; MS.y0 = 0.05; MS.z0 = 0;
+    const updates = [
+      ['ms-nx', 'v-ms-nx', nx,                String(nx)],
+      ['ms-ny', 'v-ms-ny', ny,                String(ny)],
+      ['ms-a',  'v-ms-a',  Math.round(a*100), a.toFixed(2)],
+    ];
+    for (const [sId, vId, sv, vt] of updates) {
+      document.getElementById(sId).value = sv;
+      document.getElementById(vId).textContent = vt;
+    }
+    refreshMS();
+  }
+  document.querySelectorAll('#ms-presets .preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#ms-presets .preset-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      applyMSPreset(parseInt(chip.dataset.nx), parseInt(chip.dataset.ny), parseFloat(chip.dataset.a));
+    });
+  });
+  // any manual slider tweak clears the active chip (the user has left the preset)
+  ['ms-nx', 'ms-ny', 'ms-a'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      document.querySelectorAll('#ms-presets .preset-chip').forEach(c => c.classList.remove('active'));
+    });
+  });
+
+  // "New initial condition" starts near a random lattice cell.  All cells are
+  // dynamically connected, so any cell-adjacent IC reaches the full attractor;
+  // varying the start mostly changes the early transient and the jump record.
+  document.getElementById('ms-new').addEventListener('click', () => {
+    const rng = makeRNG(Date.now());
+    const ci = Math.floor(rng() * MS.nx);
+    const cj = Math.floor(rng() * MS.ny);
+    MS.x0 = ci + (rng()-0.5)*0.3;
+    MS.y0 = cj + (rng()-0.5)*0.3;
+    MS.z0 = (rng()-0.5)*0.2;
+    refreshMS();
+  });
+
+  // ── Tab 3: Unstable vs chaotic ──
+  // No parameter sliders on this tab; parameters are static and printed in the
+  // ODE blocks. Only viewing-angle drag (wired via addRotationHandle below).
+  buildLyapSchematic();
+  document.getElementById('spi-tA').addEventListener('change', e => { SPI.showA = e.target.checked; drawSpiPhase(); });
+  document.getElementById('spi-tB').addEventListener('change', e => { SPI.showB = e.target.checked; drawSpiPhase(); });
+  document.getElementById('chd-tA').addEventListener('change', e => { CHD.showA = e.target.checked; drawChdPhase(); });
+  document.getElementById('chd-tB').addEventListener('change', e => { CHD.showB = e.target.checked; drawChdPhase(); });
+
+  // ── Tab 4: Chaos vs Hyperchaos (hyperchaotic Chen, knob = r) ──
+  wireSlider('chen-r', 'v-chen-r', Chen, 'r', v=>v/100, v=>v.toFixed(2), () => { refreshChen(); resetLyap(); });
+  // preset chips snap r to the two canonical regimes
+  document.querySelectorAll('#chen-presets .preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#chen-presets .preset-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const r = parseFloat(chip.dataset.r);
+      Chen.r = r;
+      document.getElementById('chen-r').value = Math.round(r*100);
+      document.getElementById('v-chen-r').textContent = r.toFixed(2);
+      refreshChen();
+      resetLyap();
+    });
+  });
+  // manual slider movement clears the active preset chip
+  document.getElementById('chen-r').addEventListener('input', () => {
+    document.querySelectorAll('#chen-presets .preset-chip').forEach(c => c.classList.remove('active'));
+  });
+  // time-series channel visibility (cheap redraw from cached trajectory)
+  document.getElementById('chen-ts-x').addEventListener('change', e => { Chen.tsShow.x = e.target.checked; drawChenTime(); });
+  document.getElementById('chen-ts-y').addEventListener('change', e => { Chen.tsShow.y = e.target.checked; drawChenTime(); });
+  document.getElementById('chen-ts-z').addEventListener('change', e => { Chen.tsShow.z = e.target.checked; drawChenTime(); });
+  document.getElementById('chen-ts-w').addEventListener('change', e => { Chen.tsShow.w = e.target.checked; drawChenTime(); });
+
+  buildLyapBars('chen-lyap', 4);
+  resetLyap();
+  document.getElementById('lyap-reset').addEventListener('click', resetLyap);
+  document.getElementById('lyap-pause').addEventListener('click', () => {
+    if (lyapRunning) {
+      stopLyap();
+    } else if (lyapFrozen) {
+      // user wants to keep refining past the auto-freeze point: push the freeze
+      // target out so it runs for another full convergence window
+      LYAP_FREEZE_TARGET = ChenLE.T + LYAP_CONVERGE_T;
+      lyapFrozen = false;
+      lyapRunning = true;
+      document.getElementById('lyap-pause').textContent = 'Pause';
+      lyapTick();
+    } else {
+      startLyap();
+    }
+  });
+
+  // ── Rotation handles on every 3D phase canvas (drag with mouse or finger).
+  // Each call attaches pointer drag, syncs the corresponding sliders where present,
+  // and adds a small one-time "drag to rotate" hint that fades after first use.
+  addRotationHandle('chua-phase', Chua, drawChuaPhase, {
+    yawId: 'chua-yaw', pitId: 'chua-pit',
+    yawValId: 'v-chua-yaw', pitValId: 'v-chua-pit',
+    defaults: { yaw: 35, pit: 25 }
+  });
+  addRotationHandle('ms-phase', MS, drawMSPhase, {
+    yawId: 'ms-yaw', pitId: 'ms-pit',
+    yawValId: 'v-ms-yaw', pitValId: 'v-ms-pit',
+    defaults: { yaw: 18, pit: 48 }
+  });
+  // Tab 3: both phase portraits are drag-to-rotate only (no angle sliders).
+  addRotationHandle('spi-phase', SPI, drawSpiPhase, { defaults: { yaw: 40, pit: 15 } });
+  addRotationHandle('chd-phase', CHD, drawChdPhase, { defaults: { yaw: 35, pit: 25 } });
+  // Chen phase portrait: no rotation sliders, so no sync; redraw uses cached traj
+  // and the regime-dependent color.
+  addRotationHandle('chen-phase', Chen,
+    () => draw3DAttractor(document.getElementById('chen-phase'), Chen.cachedTraj, Chen.yaw, Chen.pit, chenColor()),
+    { defaults: { yaw: 28, pit: 22 } });
+
+  // ── Tab 5: Encryption ──
+  wireSlider('key-x', 'v-key-x', ENC, 'x0', v=>v/100000, v=>v.toFixed(8), refreshEnc);
+  wireSlider('key-y', 'v-key-y', ENC, 'y0', v=>v/100000, v=>v.toFixed(8), refreshEnc);
+  wireSlider('key-z', 'v-key-z', ENC, 'z0', v=>v/100000, v=>v.toFixed(8), refreshEnc);
+  wireSlider('key-eps', 'v-key-eps', ENC, 'eps', v=>v, v=>{
+    if (v == 0) return '0';
+    const exp = keyOffsetExponent(v);
+    return '10^' + exp.toFixed(1);
+  }, refreshEnc);
+  document.getElementById('enc-pattern').addEventListener('click', () => {
+    ENC.pattern = (ENC.pattern + 1) % 4;
+    ENC.plain = makePattern(ENC.pattern);
+    refreshEnc();
+  });
+
+  // initial paint
+  showTab(0);
+
+  // recompute on resize
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      const active = document.querySelector('.tab.active');
+      if (active) showTab(+active.dataset.tab);
+    }, 120);
+  });
+});
+</script>
+<footer id="back-link-footer" style="max-width:1180px;margin:0 auto;padding:0 22px 1.5rem;">
+  <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+    <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+  </div>
+</footer>
+<script>
+if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
+</script>
+</body>
+</html>

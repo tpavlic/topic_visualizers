@@ -25,6 +25,12 @@ in course management systems (e.g., Canvas LMS) as an iframe.
 |-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | [`survival_analysis/`](survival_analysis/)    | Explore exponential transition rates, right censoring, and repeated events through interactive survival curves and two-state transition models.  |
 
+### Chaos
+
+| Demo                                          | Description                                                                                                                          |
+|-----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| [`chaos/`](chaos/)                            | Explore multi-scroll chaotic attractors and hyperchaos, and how their dynamics underpin image-encryption schemes.  |
+
 ---
 
 ## Adding a new visualization
