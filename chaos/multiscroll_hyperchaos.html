@@ -602,22 +602,24 @@ a { color: var(--accent); }
       encryption, and wide-band signal design.
     </p>
     <p class="lede">
-      The <em>multi-scroll</em> attractor makes that exploration especially vivid. Its trajectory spirals
-      tightly around one equilibrium (a &ldquo;scroll&rdquo;), then is flung along an unstable direction to a
-      neighboring scroll, where it spirals again. The resulting pattern of long bouts of local exploration
-      interrupted by hard-to-predict jumps mimics the qualitative signature of a
-      <code>L&eacute;vy flight</code>, yet with no stochastic input at all. That exploration can be enriched in
-      two directions: adding more scrolls enlarges the landscape the orbit roams, while a fourth state
-      variable opens the door to <em>hyperchaos</em>, in which nearby trajectories are stretched apart along
-      two or more independent directions at once rather than just one. The extra stretching fills space more
-      thoroughly and makes a captured trajectory still harder to reconstruct or predict, exactly the
-      properties the applications above are after. This widget builds up these ideas tab by tab, then puts
-      them to work on image encryption.
+      Not all chaotic dynamics are alike, and this widget is built around two <em>independent</em> ways to
+      enrich them. The first is <b>geometric</b>: a chaotic flow can spiral around <em>one, two, or many</em>
+      equilibria (&ldquo;scrolls&rdquo;), and adding more scrolls enlarges and complicates the region the
+      orbit roams without changing how many directions it is unstable in. The second is <b>dynamical</b>: a
+      system can have <em>one or more</em> positive Lyapunov exponents, i.e. one or more independent
+      directions along which nearby trajectories are stretched apart exponentially; the term
+      <em>hyperchaos</em> is reserved for chaos with two or more such directions and (for a continuous-time
+      autonomous ODE) requires at least four state dimensions. These axes are orthogonal: ordinary 3D chaos
+      can have many scrolls (multi-scroll attractors remain 3D and have a single positive Lyapunov exponent),
+      and a 4D hyperchaotic system can have as few as two scrolls. Multi-scroll does <em>not</em> imply
+      hyperchaos, and vice versa.
     </p>
     <p class="lede" style="font-size: 0.85rem; color: var(--muted);">
-      This widget walks through (1) the canonical double-scroll, (2) its multi-scroll generalizations,
-      (3) what separates a merely unstable system from a chaotic one, (4) the distinction between chaos and
-      hyperchaos, and (5) one practical use: pseudo-random number generation for image encryption.
+      The widget walks the geometric axis first, building intuition with (1) the canonical double-scroll and
+      (2) its multi-scroll generalizations (whose &ldquo;long-spiral, then-jump&rdquo; tour mimics a
+      deterministic L&eacute;vy flight), then (3) separates a merely unstable system from a chaotic one and
+      (4) moves to the dynamical axis with a 4D hyperchaotic system; (5) the closing tab puts both ideas to
+      work on image encryption.
     </p>
     <p class="lede-credit">&copy; 2026 Theodore P. Pavlic&nbsp;&middot;&nbsp;<a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT&nbsp;License</a></p>
   </div>
