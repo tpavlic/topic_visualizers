@@ -730,8 +730,9 @@ a { color: var(--accent); }
         to produce chaos: just one inductor, two capacitors, one resistor, and one nonlinear element (the
         piecewise-linear &ldquo;Chua diode&rdquo;), with no external driving signal. &ldquo;Simplest&rdquo; here
         is the standard characterization from the circuit's originators rather than a proof of minimality.
-        What actually makes it canonical is that its chaos was <em>rigorously proven</em> (Chua, Komuro &amp;
-        Matsumoto, 1986), which at the time had not been done for the Lorenz system (the famous
+        What actually makes it canonical is that its chaos was <em>rigorously proven</em>
+        (<a href="https://doi.org/10.1109/TCS.1986.1085869" target="_blank" rel="noopener">Chua, Komuro &amp;
+        Matsumoto, 1986</a>), which at the time had not been done for the Lorenz system (the famous
         three-equation atmospheric-convection model from 1963, the original textbook example of chaotic
         dynamics). The piecewise-linear
         nonlinearity was chosen deliberately so that the return maps could be written in closed form and the
@@ -1121,7 +1122,7 @@ a { color: var(--accent); }
       <div class="panel">
         <h4 style="margin:0 0 6px; font-size:0.86rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--nav-dark);">The system</h4>
         <p style="font-size:0.88rem; line-height:1.5; margin:0 0 6px;">
-          The 4D hyperchaotic Chen system, introduced by Li, Tang &amp; Chen (2005) by adding the
+          The 4D hyperchaotic Chen system, introduced by <a href="https://doi.org/10.1142/S0218127405013988" target="_blank" rel="noopener">Li, Tang &amp; Chen (2005)</a> by adding the
           fourth equation as a state-feedback extension of the classic 3D Chen attractor. The term
           <code>r&middot;w</code> feeds the <code>w</code> channel back on itself; tuning <code>r</code>
           moves the second Lyapunov exponent through zero, switching the system between chaos and hyperchaos.
@@ -2545,6 +2546,7 @@ function refreshChd() {
 // 4D hyperchaotic Chen system (Li, Tang & Chen, 2005):
 //   "Generating hyperchaos via state feedback control",
 //   Int. J. Bifurcation and Chaos 15(10): 3367-3375.
+//   https://doi.org/10.1142/S0218127405013988
 //   x' = a(y - x) + w
 //   y' = d x - x z + c y
 //   z' = x y - b z
