@@ -1132,7 +1132,8 @@ a { color: var(--accent); }
 
     <div class="grid-2eq" style="margin-top: 18px;">
       <div class="panel">
-        <h3>3D projection of the 4D Chen system <span class="ann" id="chen-regime-tag">(hyperchaotic, r = 0)</span></h3>
+        <h3 style="margin-bottom:6px;">3D projection of the 4D Chen system</h3>
+        <div class="ann" id="chen-regime-tag" style="text-transform:none; letter-spacing:0; font-weight:400; color:var(--muted); font-size:0.82rem; margin:0 0 12px;">(hyperchaotic, r = 0)</div>
         <div class="viz-wrap"><canvas id="chen-phase" width="500" height="380"></canvas></div>
         <div class="viz-cap">
           Projection shown in <code>(x, z, w)</code>; drag to rotate. Thin ribbon = chaos (one unstable
@@ -1643,7 +1644,12 @@ function drawChuaPhase() {
   const traj = Chua.cachedTraj || chuaIntegrate();
   const xs = traj[0], ys = traj[1], zs = traj[2];
 
-  // determine scale from data
+  // determine scale from data, then floor it to a stable reference frame that
+  // fits the canonical chaotic attractor. The equilibria are parameter-
+  // independent (with respect to alpha) landmarks at ~|x|=|z|=(m1-m0)/(1+m1);
+  // the canonical chaotic attractor extends to roughly 2.2x that. Using this
+  // as a floor keeps the axis numbers (and therefore the equilibrium markers)
+  // anchored when alpha drops and trajectories collapse onto a focus.
   let xmax=0, ymax=0, zmax=0;
   const burn = 2000;
   for (let k = burn; k < xs.length; k++) {
@@ -1651,7 +1657,13 @@ function drawChuaPhase() {
     if (Math.abs(ys[k]) > ymax) ymax = Math.abs(ys[k]);
     if (Math.abs(zs[k]) > zmax) zmax = Math.abs(zs[k]);
   }
-  const range = Math.max(xmax, ymax, zmax, 1) * 1.05;
+  const eqs = chuaEquilibria();
+  let eqR = 0;
+  for (const e of eqs) {
+    eqR = Math.max(eqR, Math.abs(e[0]), Math.abs(e[2]));
+  }
+  const floor = eqR * 2.2;
+  const range = Math.max(xmax, ymax, zmax, floor) * 1.05;
   const scale = Math.min(w, h) / (range * 2.6);
   const project = makeProjector(Chua.yaw, Chua.pit, scale, w*0.5, h*0.5);
 
@@ -1660,7 +1672,6 @@ function drawChuaPhase() {
   drawTrajectory(ctx, project, xs, ys, zs, { burn, skip: 1, fade: Chua.fade, color: '#1f3a5f', lw: 0.7 });
 
   if (Chua.showEq) {
-    const eqs = chuaEquilibria();
     ctx.font = 'bold 11px "IBM Plex Mono", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -1975,7 +1986,14 @@ function drawMSPhase() {
     if (ay > ymax) ymax = ay;
     if (az > zmax) zmax = az;
   }
-  const range = Math.max(xmax, ymax, zmax, 1) * 1.05;
+  // Floor to a stable reference frame sized to the equilibrium lattice plus
+  // the typical chaotic excursion (~ ±0.7 around each cell). This keeps the
+  // lattice fixed on screen as alpha varies and trajectories collapse into a
+  // single cell.
+  const xFloor = cxOff + 0.7;
+  const yFloor = cyOff + 0.7;
+  const zFloor = 1.2;
+  const range = Math.max(xmax, ymax, zmax, xFloor, yFloor, zFloor) * 1.05;
   const scale = Math.min(w, h) / (range * 2.6);
   const project0 = makeProjector(MS.yaw, MS.pit, scale, w*0.5, h*0.5);
   const project = (x, y, z) => project0(x - cxOff, y - cyOff, z);
