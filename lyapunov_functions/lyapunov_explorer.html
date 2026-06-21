@@ -150,8 +150,8 @@
 
   /* range slider */
   input[type=range] {
-    appearance: none;
     -webkit-appearance: none;
+    appearance: none;
     height: 4px;
     background: var(--border);
     border-radius: 2px;
@@ -643,6 +643,9 @@
     <div class="sidebar-section" id="lyapParamSection" style="display:none">
       <div class="sidebar-label">Candidate Parameter</div>
       <div id="lyapParamRows"></div>
+      <div class="traj-hint" style="margin-top:8px;">Use the optimizer below to search this candidate's parameter for the largest certified region of attraction.</div>
+      <button id="optimizeBtn" class="clear-btn" style="margin-top:6px; width:100%;">Optimize parameter for largest ROA</button>
+      <div class="traj-hint" id="optResult" style="display:none; margin-top:6px;"></div>
     </div>
 
     <div class="sidebar-section">
@@ -988,10 +991,9 @@ V = 2x²+y²:  ∇V = (4x, 2y)   [more weight on x]</div>
       <span class="ref-entry-name">V = x² + ay²  (parameterized)</span>
       <span class="ref-entry-tag">slider: a ∈ [0.25, 4]</span>
     </div>
-    <div class="ref-formula">V = x² + ay²,  ∇V = (2x, 2ay)
-a = 1 → circle;  a &gt; 1 → y-stretched ellipse;  a &lt; 1 → x-stretched</div>
+    <div class="ref-formula">V = x² + ay²,  ∇V = (2x, 2ay)</div>
     <div class="ref-body">
-      <p>Continuously varies the aspect ratio of the elliptic level curves. Exploring the slider reveals how much the certified ROA depends on this seemingly minor choice.</p>
+      <p><strong>Aspect ratio:</strong> a = 1 → circle; a &gt; 1 → y-stretched ellipse; a &lt; 1 → x-stretched. Continuously varies the elliptic level curves. Exploring the slider reveals how much the certified ROA depends on this seemingly minor choice.</p>
       <p><strong>Pedagogical use:</strong> For the stable node (eigenvalues −2, −1), different values of a give dramatically different ROA shapes, showing that the "right" P in the Lyapunov equation is not arbitrary.</p>
     </div>
   </div>
@@ -1001,13 +1003,18 @@ a = 1 → circle;  a &gt; 1 → y-stretched ellipse;  a &lt; 1 → x-stretched</
       <span class="ref-entry-name">V = x² + bxy + y²  (cross-term)</span>
       <span class="ref-entry-tag">slider: b ∈ (−2, 2)</span>
     </div>
-    <div class="ref-formula">V = x² + bxy + y²,  ∇V = (2x+by, bx+2y)
-Positive definite iff |b| &lt; 2  (det P = 1 − b²/4 &gt; 0)</div>
+    <div class="ref-formula">V = x² + bxy + y²,  ∇V = (2x+by, bx+2y)</div>
     <div class="ref-body">
-      <p>The cross-term bxy rotates the ellipse relative to the coordinate axes. As |b| → 2 the ellipse degenerates and V is no longer positive definite.</p>
+      <p><strong>Positive definite iff |b| &lt; 2</strong> (det P = 1 − b²/4 &gt; 0). The cross-term bxy rotates the ellipse relative to the coordinate axes. As |b| → 2 the ellipse degenerates and V is no longer positive definite.</p>
       <p><strong>Connection to Lyapunov matrix equation:</strong> For a system with A = [[a,b],[c,d]], solving A&#7488;P+PA = −I typically yields P with non-zero off-diagonal entries. This candidate represents exactly such a solution.</p>
       <p><strong>Key insight:</strong> The cross-term candidate often gives a tighter ROA for systems whose eigenvectors are not aligned with the coordinate axes — e.g. the stable spiral.</p>
     </div>
+  </div>
+
+  <div class="ref-callout">
+    <strong>Adjustable parameters and the region of attraction.</strong> For the two parameterized candidates above, changing the parameter (the weight a, or the cross-term b) reshapes the elliptic level curves of V. Because the certified ROA is the largest sublevel set {V ≤ c*} contained in {dV/dt &lt; 0}, this reshaping changes <em>how much of the true region of attraction the candidate can certify</em> — even though the system itself is unchanged.
+    <br><br>
+    The <strong>"Optimize parameter for largest ROA"</strong> button on the Explorer tab searches the parameter for the value that certifies the largest area. This makes a key point concrete: within a fixed family of candidates, finding the best certificate is a well-posed optimization. Enlarging the family — to higher-degree polynomials, or candidates with more free parameters — generally certifies more, which is the motivation for the sum-of-squares methods described in the Key Terms tab.
   </div>
 
   <div class="ref-group-title">Polynomial (Non-Quadratic)</div>
@@ -1311,6 +1318,19 @@ With damping c:  dV/dt = −cy²</div>
           <li>Spong, Hutchinson &amp; Vidyasagar (2006) — <em>Robot Modeling and Control</em>, Ch. 9 (PBC for robot manipulators)</li>
         </ul>
       </div>
+    </div>
+  </div>
+
+  <div class="ref-group-title">Computational Lyapunov Synthesis</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Sum-of-Squares (SOS) Methods</span></div>
+    <div class="ref-body">
+      <p>A computational approach to <em>constructing</em> Lyapunov functions and certifying regions of attraction, rather than guessing a candidate and checking it by hand. The starting observation: verifying that a polynomial is non-negative everywhere is NP-hard in general, but verifying that it is a <strong>sum of squares</strong> of other polynomials — which is a sufficient condition for non-negativity — is a convex feasibility problem.</p>
+      <p><strong>The reformulation:</strong> a polynomial p(x) is SOS if and only if it can be written p(x) = z(x)&#7488; Q z(x) for a positive semidefinite matrix Q, where z is a vector of monomials. Searching for such a Q is a <strong>semidefinite program</strong> (SDP) — solvable to global optimality in polynomial time.</p>
+      <p><strong>Application to stability:</strong> parameterize V as a polynomial with unknown coefficients and require both V and −dV/dt to be SOS. This searches an entire family of candidates at once for one that certifies stability — automating the step that, done by hand, requires insight or luck. The fixed library and adjustable sliders in this tool are a manual, low-dimensional stand-in for that search.</p>
+      <p><strong>Region of attraction:</strong> the certified ROA can be enlarged by jointly searching for V and the level c that maximize the size of {V ≤ c} subject to dV/dt &lt; 0 on that set. The set-containment conditions are handled with the <em>S-procedure</em>, which introduces multiplier polynomials (themselves SOS). Because V and the multipliers multiply each other, the problem is bilinear and is solved by alternating SDP solves — the standard V–s iteration.</p>
+      <p><strong>Relation to this tool:</strong> the "Optimize parameter for largest ROA" button performs the same kind of search in spirit, but over a single slider and by brute-force grid evaluation rather than convex optimization. Crucially, the tool's ROA is a <em>numerical estimate</em> from sampling the grid, not a proof; the value of SOS is that it produces an actual certificate — a guarantee that holds at every point, not just the sampled ones. Scaling beyond the lowest-degree polynomials, or handling non-polynomial dynamics (which must first be recast or approximated), is where dedicated SOS and optimization software becomes necessary.</p>
     </div>
   </div>
 
@@ -1824,6 +1844,160 @@ function computeGrids() {
       roaType = 'saddle_origin';
       cStar = Infinity;
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FAMILY OPTIMIZER
+//  Searches the adjustable parameter of the current Lyapunov candidate for
+//  the value that certifies the largest region of attraction. This is a
+//  brute-force sweep over the slider's discrete values, reusing the same
+//  grid-based c* logic as the display — it is NOT a sum-of-squares program,
+//  and the result is a numerical estimate, not a formal certificate.
+// ═══════════════════════════════════════════════════════════════════
+
+// Evaluate the certified ROA area for a trial parameter set, on a coarse grid.
+// Returns { area, roaType }: area = count of valid grid points in {V <= c*}.
+function evalCertArea(testParams, gn) {
+  const sys = SYSTEMS[sysIdx];
+  const lyap = LYAPUNOV[lyapIdx];
+  const step = 2*domain/gn;
+  const n = (gn+1)*(gn+1);
+  const Vl = new Float32Array(n);
+  const dvl = new Float32Array(n);
+  const outl = new Uint8Array(n);
+  for (let r=0; r<=gn; r++) {
+    for (let c=0; c<=gn; c++) {
+      const x = -domain + c*step, y = domain - r*step;
+      const idx = r*(gn+1)+c;
+      const v = lyap.V(x,y,testParams);
+      const gx = lyap.dVdx(x,y,testParams);
+      const gy = lyap.dVdy(x,y,testParams);
+      const [fx, fy] = sys.f(x,y,params);
+      const valid = isFinite(v) && isFinite(gx) && isFinite(gy);
+      outl[idx] = valid ? 0 : 1;
+      Vl[idx]   = valid ? v : 0;
+      dvl[idx]  = valid ? (isFinite(gx*fx + gy*fy) ? gx*fx + gy*fy : 0) : 0;
+    }
+  }
+  let dvMax = 0;
+  for (let i=0; i<n; i++) if (!outl[i]) { const a = Math.abs(dvl[i]); if (a > dvMax) dvMax = a; }
+  const eps = Math.max(dvMax*1e-4, 1e-10);
+  const skipR2 = (domain*0.025)*(domain*0.025);
+  let anyPos=false, anyNeg=false, allZero=true;
+  for (let r=0; r<=gn; r++) for (let c=0; c<=gn; c++) {
+    const x = -domain+c*step, y = domain-r*step;
+    if (x*x + y*y < skipR2) continue;
+    const idx = r*(gn+1)+c;
+    if (outl[idx]) continue;
+    const dv = dvl[idx];
+    if (dv >  eps) { anyPos = true; allZero = false; }
+    if (dv < -eps) { anyNeg = true; allZero = false; }
+  }
+  // c* via sign-change edge interpolation
+  let cs = Infinity;
+  for (let r=0; r<=gn; r++) for (let c=0; c<=gn; c++) {
+    const x0 = -domain+c*step, y0 = domain-r*step;
+    const idx = r*(gn+1)+c;
+    if (outl[idx]) continue;
+    const dv0 = dvl[idx], v0 = Vl[idx], aPos = dv0 > 0;
+    if (c < gn) {
+      const idxR = idx+1, dvR = dvl[idxR];
+      if (!outl[idxR] && aPos !== (dvR > 0) && dv0 !== dvR) {
+        const t = Math.min(1, Math.max(0, dv0/(dv0-dvR)));
+        const xC = x0 + t*step;
+        if (xC*xC + y0*y0 > skipR2) { const vC = v0 + t*(Vl[idxR]-v0); if (isFinite(vC) && vC > 1e-6 && vC < cs) cs = vC; }
+      }
+    }
+    if (r < gn) {
+      const idxB = idx+(gn+1), dvB = dvl[idxB];
+      if (!outl[idxB] && aPos !== (dvB > 0) && dv0 !== dvB) {
+        const t = Math.min(1, Math.max(0, dv0/(dv0-dvB)));
+        const yC = y0 - t*step;
+        if (x0*x0 + yC*yC > skipR2) { const vC = v0 + t*(Vl[idxB]-v0); if (isFinite(vC) && vC > 1e-6 && vC < cs) cs = vC; }
+      }
+    }
+  }
+  // classify
+  let rt;
+  const lyapOK = lyap.V(0,0,testParams) < 1e-4;
+  if (!lyapOK) rt = 'none';
+  else if (allZero) rt = 'conservative';
+  else if (!anyPos && anyNeg) {
+    rt = 'full'; cs = Infinity;
+    for (const [ex, ey, etype] of getEquil(sys)) {
+      if (Math.abs(ex) < 0.15 && Math.abs(ey) < 0.15) continue;
+      if (etype === 'saddle' || etype === 'unstable') { const sv = lyap.V(ex,ey,testParams); if (isFinite(sv) && sv > 1e-6 && sv < cs) cs = sv; }
+    }
+    if (isFinite(cs)) rt = 'bounded';
+  }
+  else if (anyPos && anyNeg) rt = 'bounded';
+  else rt = 'unstable';
+  const originEquil = getEquil(sys).find(e => Math.abs(e[0]) < 0.15 && Math.abs(e[1]) < 0.15);
+  const originType  = originEquil ? originEquil[2] : 'unknown';
+  if ((rt === 'full' || rt === 'bounded') && isUnstableType(originType)) { rt = 'saddle_origin'; cs = Infinity; }
+
+  // certified area = count of valid points inside {V <= c*}
+  let area = 0;
+  if (rt === 'full') {
+    for (let i=0; i<n; i++) if (!outl[i]) area++;
+  } else if (rt === 'bounded' && isFinite(cs)) {
+    for (let i=0; i<n; i++) if (!outl[i] && Vl[i] <= cs) area++;
+  }
+  return { area, roaType: rt };
+}
+
+function optimizeFamily() {
+  const lyap = LYAPUNOV[lyapIdx];
+  const result = document.getElementById('optResult');
+  if (!lyap.params || !lyap.params.length) return;
+
+  const GN_OPT = GN; // match the display grid so reported % equals the badge transition
+  const p = lyap.params[0]; // all parameterized candidates have a single parameter
+  const label = p.label;
+
+  // baseline at current value
+  const base = evalCertArea(lyapParams, GN_OPT);
+
+  // sweep the slider's discrete values
+  const vals = [];
+  for (let v = p.min; v <= p.max + 1e-9; v += p.step) vals.push(+v.toFixed(6));
+
+  let best = { area: -1, val: lyapParams[p.id], roaType: 'none' };
+  for (const v of vals) {
+    const test = { ...lyapParams, [p.id]: v };
+    const res = evalCertArea(test, GN_OPT);
+    // prefer strictly larger area; on ties prefer the value closest to current
+    if (res.area > best.area) best = { area: res.area, val: v, roaType: res.roaType };
+  }
+
+  result.style.display = '';
+  if (best.area <= 0) {
+    result.innerHTML = `No certifiable bounded ROA in this family for the current system. Try a system with a stable origin.`;
+    return;
+  }
+
+  // apply the best value
+  lyapParams[p.id] = best.val;
+  const slider = document.getElementById(`lpslider-${p.id}`);
+  const valSpan = document.getElementById(`lpval-${p.id}`);
+  if (slider) slider.value = best.val;
+  if (valSpan) valSpan.textContent = best.val.toFixed(2);
+  clearTrajectories();
+  scheduleRender();
+
+  // report relative to baseline
+  if (best.roaType === 'full') {
+    result.innerHTML = `Best ${label} = ${best.val.toFixed(2)}: dV/dt &lt; 0 across the whole displayed domain (ROA ⊇ domain).`;
+  } else if (base.area > 0) {
+    const pct = Math.round((best.area / base.area - 1) * 100);
+    if (pct <= 1) {
+      result.innerHTML = `${label} = ${best.val.toFixed(2)} is already near-optimal in this family: it maximizes the area enclosed by the orange ROA boundary for the displayed domain.`;
+    } else {
+      result.innerHTML = `Best ${label} = ${best.val.toFixed(2)}: the area enclosed by the orange ROA boundary (shown as "ROA area" in the assessment) is about ${pct}% larger than at the previous value.`;
+    }
+  } else {
+    result.innerHTML = `Best ${label} = ${best.val.toFixed(2)}: certifies a bounded ROA (the orange boundary) where the previous value certified none.`;
   }
 }
 
@@ -2399,7 +2573,11 @@ function updateAssessment() {
     if (originTypeA) mkBadge('ok', '✓', `Origin: ${equilLabel(originTypeA)}`);
     const cStr = isFinite(cStar) ? cStar.toFixed(4) : '∞';
     mkBadge('ok', '✓', `c* ≈ ${cStr}`);
-    mkBadge('ok', '◉', 'ROA certified');
+    // Certified ROA area in phase-plane (x,y) units — the quantity the optimizer maximizes.
+    let roaCells = 0;
+    for (let i=0; i<Vg.length; i++) if (!outg[i] && Vg[i] <= cStar) roaCells++;
+    const roaArea = roaCells * (2*domain/GN) * (2*domain/GN);
+    mkBadge('ok', '◉', `ROA area ≈ ${roaArea.toFixed(2)}`);
 
     if (cStarSource === 'saddle') {
       // dV/dt ≤ 0 everywhere; c* set by saddle equilibria, not a sign-change boundary
@@ -2433,6 +2611,13 @@ function updateAssessment() {
           + 'for all initial conditions inside the <strong>orange dashed boundary</strong> (V&nbsp;=&nbsp;c*). '
           + 'Expanding the domain or trying a different V may reveal a larger ROA.';
     }
+
+    // Shared clarifier: the certified region is a conservative inner estimate.
+    msg += ' <br><br>The orange region is a <strong>guaranteed inner estimate</strong> of the true basin of '
+         + 'attraction, not the basin itself: it is usually conservative and can shrink to a small neighborhood '
+         + 'of the origin for a poorly matched V. A small certified ROA still proves the origin is asymptotically '
+         + 'stable — its area (shown in the badge above) measures how much of the basin <em>this</em> V can '
+         + 'capture, not whether stability holds. The optimizer maximizes exactly that area within the candidate\'s family.';
 
   } else if (roaType === 'saddle_origin') {
     const sys = SYSTEMS[sysIdx];
@@ -2577,6 +2762,9 @@ function updateLyapUI() {
   const l = LYAPUNOV[lyapIdx];
   document.getElementById('lyapFormula').textContent = l.formula;
 
+  const optRes = document.getElementById('optResult');
+  if (optRes) { optRes.style.display = 'none'; optRes.innerHTML = ''; }
+
   lyapParams = {};
   const sec = document.getElementById('lyapParamSection');
   const rows = document.getElementById('lyapParamRows');
@@ -2597,6 +2785,8 @@ function updateLyapUI() {
       div.querySelector(`#lpslider-${p.id}`).addEventListener('input', ev => {
         lyapParams[p.id] = parseFloat(ev.target.value);
         document.getElementById(`lpval-${p.id}`).textContent = lyapParams[p.id].toFixed(2);
+        const or = document.getElementById('optResult');
+        if (or) { or.style.display = 'none'; or.innerHTML = ''; }
         clearTrajectories();
         scheduleRender();
       });
@@ -2612,9 +2802,13 @@ function updateLyapUI() {
 document.getElementById('sysSelect').addEventListener('change', e => {
   sysIdx = +e.target.value;
   clearTrajectories();
+  const or = document.getElementById('optResult');
+  if (or) { or.style.display = 'none'; or.innerHTML = ''; }
   updateSysUI();
   scheduleRender();
 });
+
+document.getElementById('optimizeBtn').addEventListener('click', optimizeFamily);
 
 document.getElementById('lyapSelect').addEventListener('change', e => {
   lyapIdx = +e.target.value;
