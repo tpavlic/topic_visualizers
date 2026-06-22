@@ -252,6 +252,7 @@
 
   /* dynamic params */
   .param-row { display: flex; flex-direction: column; gap: 4px; }
+  .param-row + .param-row { margin-top: 16px; }
   .param-label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
@@ -641,10 +642,13 @@
     </div>
 
     <div class="sidebar-section" id="lyapParamSection" style="display:none">
-      <div class="sidebar-label">Candidate Parameter</div>
+      <div class="sidebar-label">Candidate Parameters</div>
+      <div id="lyapPresetRow" style="display:none; margin-bottom:10px;">
+        <select id="lyapPresetSelect"></select>
+      </div>
       <div id="lyapParamRows"></div>
-      <div class="traj-hint" style="margin-top:8px;">Use the optimizer below to search this candidate's parameter for the largest certified region of attraction.</div>
-      <button id="optimizeBtn" class="clear-btn" style="margin-top:6px; width:100%;">Optimize parameter for largest ROA</button>
+      <div class="traj-hint" style="margin-top:8px;">Adjust the parameters above, or use the optimizer to search the whole family for the largest certified region of attraction.</div>
+      <button id="optimizeBtn" class="clear-btn" style="margin-top:6px; width:100%;">Optimize parameters for largest ROA</button>
       <div class="traj-hint" id="optResult" style="display:none; margin-top:6px;"></div>
     </div>
 
@@ -801,7 +805,7 @@
       <p><strong>Eigenvalues:</strong> −2, −1 (real, distinct, negative)</p>
       <p>Trajectories approach the origin tangent to the slow eigenvector (y-axis, eigenvalue −1). Unlike a focus, there is no rotation.</p>
       <p><strong>Lyapunov:</strong> V = x²+y² works but gives non-circular level curves relative to the flow. The "natural" candidate from solving A&#7488;P+PA = −I is an ellipse aligned with the eigenvectors.</p>
-      <p><strong>Key insight:</strong> The cross-term candidate V = x²+bxy+y² (b ≠ 0) can give a tighter ROA estimate than the isotropic one because it better matches the geometry of the flow.</p>
+      <p><strong>Key insight:</strong> The general quadratic with a nonzero cross-term b can give a tighter ROA estimate than the isotropic one because it better matches the geometry of the flow.</p>
     </div>
   </div>
 
@@ -869,7 +873,7 @@
     <div class="ref-body">
       <p><strong>Eigenvalues of linearization at origin:</strong> μ/2 ± i√(1−μ²/4) — stable focus for μ &lt; 0, unstable focus for μ &gt; 0, center for μ = 0.</p>
       <p>The damping term μ(1−x²)y is negative (dissipative) for |x| &lt; 1 and positive (pumping energy in) for |x| &gt; 1. This nonlinear balance creates a stable limit cycle for μ &gt; 0.</p>
-      <p><strong>μ &lt; 0:</strong> Stable focus. V = x²+y² gives dV/dt = 2μ(1−x²)y², which is negative inside |x| &lt; 1. The ROA is the unit disk (c* = 1).</p>
+      <p><strong>μ &lt; 0:</strong> Stable focus. This is the <em>reverse-time Van der Pol oscillator</em>, the standard region-of-attraction benchmark. The isotropic V = x²+y² gives dV/dt = 2μ(1−x²)y², negative inside the strip |x| &lt; 1, so it certifies the unit disk (c* = 1). That is only the estimate from this particular V: the true ROA is the interior of the unstable limit cycle (near amplitude 2), and optimizing the general quadratic certifies a noticeably larger region.</p>
       <p><strong>μ &gt; 0:</strong> Unstable focus; energy pumped into small oscillations. Limit cycle at r ≈ 2. No Lyapunov certificate for the origin.</p>
       <p><strong>Historical note:</strong> Originally derived by Balthazar van der Pol (1926) to model oscillations in vacuum tube circuits.</p>
     </div>
@@ -885,8 +889,8 @@
     <div class="ref-body">
       <p><strong>In polar:</strong> ṙ = r(μ − r²), θ̇ = 1. <strong>Eigenvalues of linearization at origin:</strong> μ ± i — stable focus for μ &lt; 0, unstable for μ &gt; 0.</p>
       <p>The <em>canonical</em> form for a supercritical Hopf bifurcation. As μ increases through zero, the stable focus loses stability and a stable limit cycle is born at r = √μ.</p>
-      <p><strong>Lyapunov:</strong> V = x²+y² = r² gives dV/dt = 2r²(μ−r²). For μ &lt; 0: dV/dt &lt; 0 everywhere → global stability. For μ &gt; 0: dV/dt &lt; 0 for r &lt; √μ → c* = μ exactly (the ROA is the interior of the limit cycle).</p>
-      <p><strong>Key insight:</strong> This is one of the rare cases where the Lyapunov analysis gives the <em>exact</em> ROA boundary (the limit cycle itself).</p>
+      <p><strong>Lyapunov:</strong> V = x²+y² = r² gives dV/dt = 2r²(μ−r²). For μ &lt; 0: dV/dt &lt; 0 for all r &gt; 0, so the origin is globally asymptotically stable and V certifies it with no conservatism. For μ &gt; 0: dV/dt &gt; 0 for r &lt; √μ, so the origin is unstable (trajectories spiral outward to the stable limit cycle at r = √μ) and no Lyapunov function certifies it.</p>
+      <p><strong>Key insight:</strong> the μ &lt; 0 case is one of the rare instances where a plain quadratic certifies global stability exactly — dV/dt is strictly negative everywhere off the origin, so the certified region is the entire plane with no gap to the true basin.</p>
     </div>
   </div>
 
@@ -902,7 +906,7 @@
       <p><strong>Equilibria:</strong> stable at x = 2kπ (eigenvalues (−c ± √(c²−4))/2), saddles at x = (2k+1)π. c &lt; 2: stable focus; c = 2: critically damped node; c &gt; 2: overdamped node.</p>
       <p>A mechanical system (unit mass, unit length pendulum) with viscous damping c. State: x = angle, y = angular velocity.</p>
       <p><strong>Hamiltonian:</strong> H = (1−cos x) + ½y² = potential energy + kinetic energy. With damping: dH/dt = −cy² ≤ 0. The cross-terms cancel exactly due to the antisymmetry of Hamilton's equations — energy dissipation is the only survivor.</p>
-      <p><strong>ROA via LaSalle:</strong> c* = H(±π, 0) = 2. The level curve H = 2 is the separatrix of the undamped pendulum; the ROA of the origin is the basin inside it.</p>
+      <p><strong>ROA via LaSalle:</strong> with the energy function, c* = H(±π, 0) = 2, certifying the sublevel set {H &lt; 2} bounded by the undamped separatrix. The true basin (bounded by the stable manifolds of the saddles at ±π) is somewhat larger, but this energy estimate captures essentially all of it.</p>
     </div>
   </div>
 
@@ -946,7 +950,7 @@
     <div class="ref-body">
       <p>Adds proportional mortality c (constant per-capita death rate) to both species. <strong>Eigenvalues of linearization at origin:</strong> −c ± i — stable focus for all c &gt; 0.</p>
       <p><strong>Lyapunov:</strong> The same V = (x−ln(1+x)) + (y−ln(1+y)) now gives dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0. This mirrors the mechanical case: adding dissipation to a conservative system turns a first integral into a Lyapunov function.</p>
-      <p><strong>LaSalle:</strong> {dV/dt = 0} only at origin → origin is asymptotically stable. The ROA is bounded by the nearest point where V becomes undefined (x = −1 or y = −1, i.e., population extinction).</p>
+      <p><strong>LaSalle:</strong> {dV/dt = 0} only at origin → origin is asymptotically stable. The certified region via this V is bounded by where V becomes undefined (x = −1 or y = −1, i.e. population extinction).</p>
     </div>
   </div>
 
@@ -964,57 +968,22 @@
 
   <div class="ref-entry">
     <div class="ref-entry-head">
-      <span class="ref-entry-name">V = x² + y² (isotropic)</span>
-      <span class="ref-entry-tag">P = I</span>
+      <span class="ref-entry-name">V = x² + b·xy + c·y²  (general quadratic)</span>
+      <span class="ref-entry-tag">sliders: b, c</span>
     </div>
-    <div class="ref-formula">V = x² + y²,  ∇V = (2x, 2y)</div>
+    <div class="ref-formula">V = x² + b·xy + c·y²,  ∇V = (2x + by,  bx + 2cy)</div>
     <div class="ref-body">
-      <p>The simplest choice: level curves are circles. A good first guess for any system. Works well when the Jacobian's symmetric part is negative definite.</p>
-      <p><strong>From the Lyapunov equation:</strong> This is the solution P to A&#7488;P + PA = −2I when A = −I (identity system). For a general stable A, the "correct" P that solves A&#7488;P+PA = −I will typically be non-diagonal.</p>
-    </div>
-  </div>
-
-  <div class="ref-entry">
-    <div class="ref-entry-head">
-      <span class="ref-entry-name">V = x² + 2y²  and  V = 2x² + y²</span>
-      <span class="ref-entry-tag">diagonal P, stretched ellipse</span>
-    </div>
-    <div class="ref-formula">V = x²+2y²:  ∇V = (2x, 4y)   [more weight on y]
-V = 2x²+y²:  ∇V = (4x, 2y)   [more weight on x]</div>
-    <div class="ref-body">
-      <p>Diagonal quadratics with different weights. Stretching the ellipse in one direction can give a tighter (larger) or looser (smaller) ROA estimate depending on the system geometry.</p>
-    </div>
-  </div>
-
-  <div class="ref-entry">
-    <div class="ref-entry-head">
-      <span class="ref-entry-name">V = x² + ay²  (parameterized)</span>
-      <span class="ref-entry-tag">slider: a ∈ [0.25, 4]</span>
-    </div>
-    <div class="ref-formula">V = x² + ay²,  ∇V = (2x, 2ay)</div>
-    <div class="ref-body">
-      <p><strong>Aspect ratio:</strong> a = 1 → circle; a &gt; 1 → y-stretched ellipse; a &lt; 1 → x-stretched. Continuously varies the elliptic level curves. Exploring the slider reveals how much the certified ROA depends on this seemingly minor choice.</p>
-      <p><strong>Pedagogical use:</strong> For the stable node (eigenvalues −2, −1), different values of a give dramatically different ROA shapes, showing that the "right" P in the Lyapunov equation is not arbitrary.</p>
-    </div>
-  </div>
-
-  <div class="ref-entry">
-    <div class="ref-entry-head">
-      <span class="ref-entry-name">V = x² + bxy + y²  (cross-term)</span>
-      <span class="ref-entry-tag">slider: b ∈ (−2, 2)</span>
-    </div>
-    <div class="ref-formula">V = x² + bxy + y²,  ∇V = (2x+by, bx+2y)</div>
-    <div class="ref-body">
-      <p><strong>Positive definite iff |b| &lt; 2</strong> (det P = 1 − b²/4 &gt; 0). The cross-term bxy rotates the ellipse relative to the coordinate axes. As |b| → 2 the ellipse degenerates and V is no longer positive definite.</p>
-      <p><strong>Connection to Lyapunov matrix equation:</strong> For a system with A = [[a,b],[c,d]], solving A&#7488;P+PA = −I typically yields P with non-zero off-diagonal entries. This candidate represents exactly such a solution.</p>
-      <p><strong>Key insight:</strong> The cross-term candidate often gives a tighter ROA for systems whose eigenvectors are not aligned with the coordinate axes — e.g. the stable spiral.</p>
+      <p>This single family contains <em>every</em> quadratic Lyapunov candidate, written as V = x&#7488;Px with P = [[1, b/2], [b/2, c]]. The naming follows the usual quadratic convention ax² + bxy + cy² with the leading coefficient normalized to a = 1. It is positive definite exactly when c &gt; 0 and b² &lt; 4c (the determinant condition det P = c − b²/4 &gt; 0); outside that region V is not a valid candidate and the explorer hatches the plane as "V undefined".</p>
+      <p><strong>Why fixing the x² coefficient to 1 loses nothing:</strong> scaling V by a positive constant leaves the certified ROA identical (if V₂ = kV₁ then dV₂/dt = k·dV₁/dt has the same sign everywhere, and {V₂ ≤ kc} = {V₁ ≤ c} as sets). So every p·x² + q·xy + r·y² normalizes to this form, and the diagonal special cases are just b = 0: c = 1 is the isotropic V = x²+y² (circles), c &gt; 1 weights y, c &lt; 1 weights x. The cross-term b rotates the ellipse off the coordinate axes.</p>
+      <p><strong>Connection to the Lyapunov matrix equation:</strong> for a linear system ẋ = Ax, solving A&#7488;P + PA = −Q for positive definite Q yields a P that is generally <em>not</em> diagonal — the cross-term b is exactly that off-diagonal coupling. A tilted or stretched ellipse routinely certifies a larger ROA than the circle for systems whose flow is not aligned with the axes (the stable spiral, the damped pendulum).</p>
+      <p><strong>Presets</strong> in the Candidate Parameters panel jump to the named special cases (isotropic, y-weighted, x-weighted, cross-term); the sliders then move freely from there.</p>
     </div>
   </div>
 
   <div class="ref-callout">
-    <strong>Adjustable parameters and the region of attraction.</strong> For the two parameterized candidates above, changing the parameter (the weight a, or the cross-term b) reshapes the elliptic level curves of V. Because the certified ROA is the largest sublevel set {V ≤ c*} contained in {dV/dt &lt; 0}, this reshaping changes <em>how much of the true region of attraction the candidate can certify</em> — even though the system itself is unchanged.
+    <strong>The two sliders are the free entries of P — and the bridge to SOS.</strong> Choosing a Lyapunov function in this family <em>is</em> choosing the symmetric positive definite matrix P = [[1, b/2], [b/2, c]], and the certified ROA is the largest sublevel set {V ≤ c*} contained in {dV/dt &lt; 0}. Reshaping P changes how much of the true region of attraction the candidate can certify, even though the system is unchanged.
     <br><br>
-    The <strong>"Optimize parameter for largest ROA"</strong> button on the Explorer tab searches the parameter for the value that certifies the largest area. This makes a key point concrete: within a fixed family of candidates, finding the best certificate is a well-posed optimization. Enlarging the family — to higher-degree polynomials, or candidates with more free parameters — generally certifies more, which is the motivation for the sum-of-squares methods described in the Key Terms tab.
+    The <strong>"Optimize parameters for largest ROA"</strong> button searches the full (a, b) plane for the P that certifies the largest area. That two-dimensional search is, in miniature, exactly the semidefinite program at the heart of sum-of-squares methods: optimizing over the cone of positive definite matrices P to maximize the certified region. Enlarging the family — higher-degree polynomials, more free parameters — certifies more, which is precisely what SOS automates (see the Key Terms tab).
   </div>
 
   <div class="ref-group-title">Polynomial (Non-Quadratic)</div>
@@ -1275,7 +1244,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-body">
       <p>For a linear system ẋ = Ax, the quadratic V = x&#7488;Px (P symmetric positive definite) has dV/dt = x&#7488;(A&#7488;P + PA)x. For dV/dt to be ND we need A&#7488;P + PA = −Q for some PD matrix Q — this is the <strong>Lyapunov matrix equation</strong>.</p>
       <p>The equation always has a unique PD solution P for any PD Q if and only if A is Hurwitz (all eigenvalues have negative real part). Solving it for Q = I gives the "natural" Lyapunov function for the linear system. For nonlinear systems, this solution at the linearization gives a local Lyapunov function valid in a neighborhood of the origin.</p>
-      <p>The cross-term candidate V = x² + bxy + y² in the Explorer ★ represents exactly this structure: it is the general 2×2 symmetric positive definite quadratic, with b encoding the off-diagonal entry of P.</p>
+      <p>The general quadratic candidate V = x² + b·xy + c·y² in the Explorer ★ represents exactly this structure: it is the general 2×2 symmetric positive definite quadratic x&#7488;Px with P = [[1, b/2], [b/2, c]], the leading coefficient normalized to 1. Optimizing the two sliders is searching for the P that best certifies the region of attraction.</p>
     </div>
   </div>
 
@@ -1330,7 +1299,7 @@ With damping c:  dV/dt = −cy²</div>
       <p><strong>The reformulation:</strong> a polynomial p(x) is SOS if and only if it can be written p(x) = z(x)&#7488; Q z(x) for a positive semidefinite matrix Q, where z is a vector of monomials. Searching for such a Q is a <strong>semidefinite program</strong> (SDP) — solvable to global optimality in polynomial time.</p>
       <p><strong>Application to stability:</strong> parameterize V as a polynomial with unknown coefficients and require both V and −dV/dt to be SOS. This searches an entire family of candidates at once for one that certifies stability — automating the step that, done by hand, requires insight or luck. The fixed library and adjustable sliders in this tool are a manual, low-dimensional stand-in for that search.</p>
       <p><strong>Region of attraction:</strong> the certified ROA can be enlarged by jointly searching for V and the level c that maximize the size of {V ≤ c} subject to dV/dt &lt; 0 on that set. The set-containment conditions are handled with the <em>S-procedure</em>, which introduces multiplier polynomials (themselves SOS). Because V and the multipliers multiply each other, the problem is bilinear and is solved by alternating SDP solves — the standard V–s iteration.</p>
-      <p><strong>Relation to this tool:</strong> the "Optimize parameter for largest ROA" button performs the same kind of search in spirit, but over a single slider and by brute-force grid evaluation rather than convex optimization. Crucially, the tool's ROA is a <em>numerical estimate</em> from sampling the grid, not a proof; the value of SOS is that it produces an actual certificate — a guarantee that holds at every point, not just the sampled ones. Scaling beyond the lowest-degree polynomials, or handling non-polynomial dynamics (which must first be recast or approximated), is where dedicated SOS and optimization software becomes necessary.</p>
+      <p><strong>Relation to this tool:</strong> the "Optimize parameters for largest ROA" button performs the same kind of search in spirit — over the two free entries of the quadratic's matrix P, by brute-force grid evaluation rather than convex optimization. That two-parameter search is a hand-rolled, low-dimensional stand-in for the semidefinite program SOS solves over the cone of positive definite matrices. Crucially, the tool's ROA is a <em>numerical estimate</em> from sampling the grid, not a proof; the value of SOS is that it produces an actual certificate — a guarantee that holds at every point, not just the sampled ones. Scaling beyond the quadratic (to higher-degree polynomials), or handling non-polynomial dynamics (which must first be recast or approximated), is where dedicated SOS and optimization software becomes necessary.</p>
     </div>
   </div>
 
@@ -1415,7 +1384,7 @@ const SYSTEMS = [
   },
   {
     id: 'vanderpol',
-    name: 'Van der Pol (μ)',
+    name: 'Van der Pol (μ ∈ [−2, 2])',
     formula: 'ẋ = y\nẏ = μ(1−x²)y − x',
     note: 'μ > 0: origin unstable, stable limit cycle. μ < 0: origin stable spiral, no limit cycle. μ = 0: center.',
     domain: 4,
@@ -1459,7 +1428,7 @@ const SYSTEMS = [
   },
   {
     id: 'hopf',
-    name: 'Hopf Normal Form (μ)',
+    name: 'Hopf Normal Form (μ ∈ [−2, 2])',
     formula: 'ẋ = μx − y − x(x²+y²)\nẏ = x + μy − y(x²+y²)',
     note: 'Supercritical Hopf: μ<0 stable focus, μ>0 stable limit cycle at r=√μ, μ=0 weakly stable. In polar: ṙ=r(μ−r²), θ̇=1.',
     domain: 3,
@@ -1519,61 +1488,25 @@ function equilLabel(t) {
 
 const LYAPUNOV = [
   {
-    id: 'quad',
-    name: 'V = x² + y²',
-    formula: 'V = x² + y²\n∇V = (2x, 2y)',
-    V: (x,y,lp) => x*x + y*y,
-    dVdx: (x,y,lp) => 2*x,
-    dVdy: (x,y,lp) => 2*y,
-    params: []
-  },
-  {
-    id: 'ellip_y',
-    name: 'V = x² + 2y²',
-    formula: 'V = x² + 2y²\n∇V = (2x, 4y)',
-    V: (x,y,lp) => x*x + 2*y*y,
-    dVdx: (x,y,lp) => 2*x,
-    dVdy: (x,y,lp) => 4*y,
-    params: []
-  },
-  {
-    id: 'ellip_x',
-    name: 'V = 2x² + y²',
-    formula: 'V = 2x² + y²\n∇V = (4x, 2y)',
-    V: (x,y,lp) => 2*x*x + y*y,
-    dVdx: (x,y,lp) => 4*x,
-    dVdy: (x,y,lp) => 2*y,
-    params: []
-  },
-  {
-    id: 'weighted',
-    name: 'V = x² + ay²  (weighted)',
-    formula: 'V = x² + ay²\n∇V = (2x, 2ay)',
-    V: (x,y,lp) => x*x + lp.a*y*y,
-    dVdx: (x,y,lp) => 2*x,
-    dVdy: (x,y,lp) => 2*lp.a*y,
-    params: [{id:'a', label:'a', min:0.25, max:4, step:0.25, default:1}]
-  },
-  {
-    id: 'cross',
-    name: 'V = x² + xy + y²',
-    formula: 'V = x² + xy + y²\n∇V = (2x+y, x+2y)',
-    V: (x,y,lp) => x*x + x*y + y*y,
-    dVdx: (x,y,lp) => 2*x + y,
-    dVdy: (x,y,lp) => x + 2*y,
-    params: []
-  },
-  {
-    id: 'cross_b',
-    name: 'V = x² + bxy + y²  (cross-term)',
-    formula: 'V = x² + bxy + y²\n∇V = (2x+by, bx+2y)\n(positive definite iff |b| < 2)',
+    id: 'quad_general',
+    name: 'V = x² + b·xy + c·y²  (quadratic)',
+    formula: 'V = x² + b·xy + c·y²\n∇V = (2x + by,  bx + 2cy)\n(positive definite iff c > 0 and b² < 4c)',
     V: (x,y,lp) => {
-      const b = lp.b; const d = 1 - b*b/4;
-      return d > 0 ? x*x + b*x*y + y*y : Infinity;
+      const b = lp.b, c = lp.c;
+      return (c > 0 && b*b < 4*c) ? x*x + b*x*y + c*y*y : Infinity;
     },
     dVdx: (x,y,lp) => 2*x + lp.b*y,
-    dVdy: (x,y,lp) => lp.b*x + 2*y,
-    params: [{id:'b', label:'b', min:-1.8, max:1.8, step:0.1, default:0}]
+    dVdy: (x,y,lp) => lp.b*x + 2*lp.c*y,
+    params: [
+      {id:'b', label:'b', min:-3.8, max:3.8, step:0.1,  default:0},
+      {id:'c', label:'c', min:0.25, max:4,   step:0.05, default:1}
+    ],
+    presets: [
+      {label:'Isotropic  (x² + y²)',       b:0, c:1},
+      {label:'y-weighted  (x² + 2y²)',     b:0, c:2},
+      {label:'x-weighted  (x² + 0.5y²)',   b:0, c:0.5},
+      {label:'Cross-term  (x² + xy + y²)', b:1, c:1}
+    ]
   },
   {
     id: 'quartic',
@@ -1952,52 +1885,100 @@ function optimizeFamily() {
   const result = document.getElementById('optResult');
   if (!lyap.params || !lyap.params.length) return;
 
-  const GN_OPT = GN; // match the display grid so reported % equals the badge transition
-  const p = lyap.params[0]; // all parameterized candidates have a single parameter
-  const label = p.label;
+  // Show a status line and defer the heavy search so the message paints first.
+  result.style.display = '';
+  result.innerHTML = 'Searching the family for the largest certified ROA…';
+  setTimeout(() => runOptimizeSearch(lyap, result), 20);
+}
 
-  // baseline at current value
-  const base = evalCertArea(lyapParams, GN_OPT);
+function runOptimizeSearch(lyap, result) {
+  const linspace = (min, max, n) => {
+    const o = [];
+    for (let i = 0; i < n; i++) o.push(+(min + (max-min)*i/(n-1)).toFixed(6));
+    return o;
+  };
+  const clampSnap = (p, v) => {
+    let s = Math.round((v - p.min)/p.step)*p.step + p.min;
+    return Math.min(p.max, Math.max(p.min, +s.toFixed(6)));
+  };
 
-  // sweep the slider's discrete values
-  const vals = [];
-  for (let v = p.min; v <= p.max + 1e-9; v += p.step) vals.push(+v.toFixed(6));
+  // The certified ROA area as a function of (a,b) is ridge-like and has thin
+  // "trap" configurations (a sign-change cell grazes the origin and collapses c*).
+  // Traps are low-area, so a max-search at full resolution avoids them automatically.
+  // We must search at the DISPLAY resolution: coarse-grid area rankings disagree with
+  // the fine grid near these traps. Strategy: a coarse grid to locate the basin, then a
+  // local refinement at slider-step resolution to climb the ridge.
+  let best = { area: -1, combo: null, roaType: 'none' };
+  const consider = (combo) => {
+    const r = evalCertArea(combo, GN);
+    if (r.area > best.area) best = { area: r.area, combo: { ...combo }, roaType: r.roaType };
+  };
 
-  let best = { area: -1, val: lyapParams[p.id], roaType: 'none' };
-  for (const v of vals) {
-    const test = { ...lyapParams, [p.id]: v };
-    const res = evalCertArea(test, GN_OPT);
-    // prefer strictly larger area; on ties prefer the value closest to current
-    if (res.area > best.area) best = { area: res.area, val: v, roaType: res.roaType };
+  // Stage 1: coarse grid (11 samples per parameter) over the full ranges.
+  const coarse = lyap.params.map(p => linspace(p.min, p.max, 11));
+  (function rec(i, acc) {
+    if (i === lyap.params.length) { consider(acc); return; }
+    for (const v of coarse[i]) rec(i+1, { ...acc, [lyap.params[i].id]: v });
+  })(0, {});
+
+  // Stage 2: local refinement at slider-step resolution, ±4 steps around the basin.
+  if (best.combo) {
+    const center = best.combo;
+    (function rec(i, acc) {
+      if (i === lyap.params.length) { consider(acc); return; }
+      const p = lyap.params[i];
+      for (let k = -4; k <= 4; k++) {
+        const v = clampSnap(p, center[p.id] + k*p.step);
+        rec(i+1, { ...acc, [p.id]: v });
+      }
+    })(0, {});
   }
 
-  result.style.display = '';
-  if (best.area <= 0) {
-    result.innerHTML = `No certifiable bounded ROA in this family for the current system. Try a system with a stable origin.`;
+  if (!best.combo || best.area <= 0) {
+    result.innerHTML = 'No certifiable bounded ROA in this family for the current system. Try a system with a stable origin.';
     return;
   }
 
-  // apply the best value
-  lyapParams[p.id] = best.val;
-  const slider = document.getElementById(`lpslider-${p.id}`);
-  const valSpan = document.getElementById(`lpval-${p.id}`);
-  if (slider) slider.value = best.val;
-  if (valSpan) valSpan.textContent = best.val.toFixed(2);
+  // Snap the winner to slider steps and evaluate it and the current setting at full GN.
+  const applied = {};
+  lyap.params.forEach(p => { applied[p.id] = clampSnap(p, best.combo[p.id]); });
+  const base = evalCertArea(lyapParams, GN);
+  const bestFull = evalCertArea(applied, GN);
+
+  // Never make the certificate worse: if the search didn't beat the current setting,
+  // keep the current parameters and report that they are already near-optimal.
+  if (bestFull.area <= base.area) {
+    const desc = lyap.params.map(p => `${p.label} = ${(lyapParams[p.id]).toFixed(2)}`).join(', ');
+    result.innerHTML = `${desc} is already near-optimal in this family: it maximizes the area enclosed by the orange ROA boundary for the displayed domain.`;
+    return;
+  }
+
+  // Apply the winner and sync the UI (sliders + preset selector).
+  lyap.params.forEach(p => {
+    lyapParams[p.id] = applied[p.id];
+    const sl = document.getElementById(`lpslider-${p.id}`);
+    const vs = document.getElementById(`lpval-${p.id}`);
+    if (sl) sl.value = applied[p.id];
+    if (vs) vs.textContent = applied[p.id].toFixed(2);
+  });
+  const sel = document.getElementById('lyapPresetSelect');
+  if (sel && lyap.presets) {
+    const tol = 1e-6;
+    const m = lyap.presets.findIndex(pr =>
+      lyap.params.every(p => Math.abs((applied[p.id] ?? 0) - (pr[p.id] ?? 0)) < tol));
+    sel.value = m >= 0 ? String(m) : 'custom';
+  }
   clearTrajectories();
   scheduleRender();
 
-  // report relative to baseline
-  if (best.roaType === 'full') {
-    result.innerHTML = `Best ${label} = ${best.val.toFixed(2)}: dV/dt &lt; 0 across the whole displayed domain (ROA ⊇ domain).`;
+  const desc = lyap.params.map(p => `${p.label} = ${applied[p.id].toFixed(2)}`).join(', ');
+  if (bestFull.roaType === 'full') {
+    result.innerHTML = `Best: ${desc}. dV/dt &lt; 0 across the whole displayed domain (ROA ⊇ domain).`;
   } else if (base.area > 0) {
-    const pct = Math.round((best.area / base.area - 1) * 100);
-    if (pct <= 1) {
-      result.innerHTML = `${label} = ${best.val.toFixed(2)} is already near-optimal in this family: it maximizes the area enclosed by the orange ROA boundary for the displayed domain.`;
-    } else {
-      result.innerHTML = `Best ${label} = ${best.val.toFixed(2)}: the area enclosed by the orange ROA boundary (shown as "ROA area" in the assessment) is about ${pct}% larger than at the previous value.`;
-    }
+    const pct = Math.round((bestFull.area / base.area - 1) * 100);
+    result.innerHTML = `Best: ${desc}. The area enclosed by the orange ROA boundary (shown as "ROA area" in the assessment) is about ${pct}% larger than at the previous setting.`;
   } else {
-    result.innerHTML = `Best ${label} = ${best.val.toFixed(2)}: certifies a bounded ROA (the orange boundary) where the previous value certified none.`;
+    result.innerHTML = `Best: ${desc}. Certifies a bounded ROA (the orange boundary) where the previous setting certified none.`;
   }
 }
 
@@ -2768,32 +2749,78 @@ function updateLyapUI() {
   lyapParams = {};
   const sec = document.getElementById('lyapParamSection');
   const rows = document.getElementById('lyapParamRows');
+  const presetRow = document.getElementById('lyapPresetRow');
+  const presetSel = document.getElementById('lyapPresetSelect');
   rows.innerHTML = '';
-  if (l.params && l.params.length) {
-    sec.style.display = '';
-    l.params.forEach(p => {
-      lyapParams[p.id] = p.default;
-      const div = document.createElement('div');
-      div.className = 'param-row';
-      div.innerHTML = `
-        <div class="range-row">
-          <span class="param-label">${p.label} = <span id="lpval-${p.id}">${p.default}</span></span>
-        </div>
-        <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.default}" id="lpslider-${p.id}">
-      `;
-      rows.appendChild(div);
-      div.querySelector(`#lpslider-${p.id}`).addEventListener('input', ev => {
-        lyapParams[p.id] = parseFloat(ev.target.value);
-        document.getElementById(`lpval-${p.id}`).textContent = lyapParams[p.id].toFixed(2);
-        const or = document.getElementById('optResult');
-        if (or) { or.style.display = 'none'; or.innerHTML = ''; }
-        clearTrajectories();
-        scheduleRender();
-      });
-    });
-  } else {
+
+  if (!l.params || !l.params.length) {
     sec.style.display = 'none';
+    presetRow.style.display = 'none';
+    return;
   }
+
+  sec.style.display = '';
+
+  // Helper: when sliders move, sync the preset selector to a matching preset or "Custom".
+  function syncPresetSelector() {
+    if (!l.presets) return;
+    const tol = 1e-6;
+    const match = l.presets.findIndex(pr =>
+      l.params.every(p => Math.abs((lyapParams[p.id] ?? 0) - (pr[p.id] ?? 0)) < tol));
+    presetSel.value = match >= 0 ? String(match) : 'custom';
+  }
+
+  // Preset dropdown (if the candidate defines presets)
+  if (l.presets && l.presets.length) {
+    presetRow.style.display = '';
+    presetSel.innerHTML = l.presets.map((pr, i) => `<option value="${i}">${pr.label}</option>`).join('')
+                        + `<option value="custom">Custom</option>`;
+    presetSel.onchange = ev => {
+      const v = ev.target.value;
+      if (v === 'custom') return;
+      const pr = l.presets[+v];
+      l.params.forEach(p => {
+        if (pr[p.id] !== undefined) {
+          lyapParams[p.id] = pr[p.id];
+          const sl = document.getElementById(`lpslider-${p.id}`);
+          const vs = document.getElementById(`lpval-${p.id}`);
+          if (sl) sl.value = pr[p.id];
+          if (vs) vs.textContent = pr[p.id].toFixed(2);
+        }
+      });
+      const or = document.getElementById('optResult');
+      if (or) { or.style.display = 'none'; or.innerHTML = ''; }
+      clearTrajectories();
+      scheduleRender();
+    };
+  } else {
+    presetRow.style.display = 'none';
+  }
+
+  // Sliders
+  l.params.forEach(p => {
+    lyapParams[p.id] = p.default;
+    const div = document.createElement('div');
+    div.className = 'param-row';
+    div.innerHTML = `
+      <div class="range-row">
+        <span class="param-label">${p.label} = <span id="lpval-${p.id}">${p.default}</span></span>
+      </div>
+      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.default}" id="lpslider-${p.id}">
+    `;
+    rows.appendChild(div);
+    div.querySelector(`#lpslider-${p.id}`).addEventListener('input', ev => {
+      lyapParams[p.id] = parseFloat(ev.target.value);
+      document.getElementById(`lpval-${p.id}`).textContent = lyapParams[p.id].toFixed(2);
+      syncPresetSelector();
+      const or = document.getElementById('optResult');
+      if (or) { or.style.display = 'none'; or.innerHTML = ''; }
+      clearTrajectories();
+      scheduleRender();
+    });
+  });
+
+  syncPresetSelector(); // set initial selector state to match defaults
 }
 
 // ═══════════════════════════════════════════════════════════════════
