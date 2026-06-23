@@ -587,6 +587,127 @@
     line-height: 1.6;
     font-family: 'IBM Plex Mono', monospace;
   }
+  /* ── SOS code generator panel ── */
+  .sos-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 26px;
+    align-items: flex-end;
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sos-group { display: flex; gap: 14px 16px; align-items: flex-end; flex-wrap: wrap; }
+  .sos-field { display: flex; flex-direction: column; gap: 5px; }
+  .sos-field label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  /* touch- and hover-compatible help tooltip (JS-positioned, viewport-aware) */
+  .lbl-help {
+    border-bottom: 1px dashed var(--text-muted);
+    cursor: help;
+    outline: none;
+  }
+  .tip-bubble {
+    position: fixed;
+    z-index: 60;
+    width: max-content;
+    max-width: 240px;
+    background: var(--green);
+    color: var(--cream);
+    font-family: 'Outfit', sans-serif;
+    font-size: 11.5px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.4;
+    padding: 7px 10px;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.12s;
+    pointer-events: none;
+  }
+  .tip-bubble.show { opacity: 1; visibility: visible; }
+  .sos-field select, .sos-field input[type=number] {
+    width: auto;
+    min-width: 58px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+  .sos-field input[type=number] {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 8px;
+    color: var(--text);
+  }
+  .sos-field.wide select { min-width: 200px; }
+  .lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .lang-toggle button {
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    padding: 7px 16px;
+    border: none;
+    background: var(--cream);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .lang-toggle button.active { background: var(--green); color: var(--cream); font-weight: 500; }
+  .sos-caveat {
+    font-size: 12px;
+    color: #7a5a20;
+    background: #f0e8d5;
+    border: 1px solid #d8c090;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+    display: none;
+  }
+  .sos-code-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .sos-code-head .sos-fname {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .sos-code-btns { display: flex; gap: 8px; }
+  .sos-code-btns button {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    padding: 5px 14px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .sos-code-btns button:hover { background: var(--panel2); color: var(--text); border-color: #aaa; }
+  .sos-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--green);
+    background: #fbf9f4;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 560px;
+    overflow-y: auto;
+    tab-size: 2;
+  }
 </style>
 </head>
 <body>
@@ -608,11 +729,13 @@
     <button class="tab-btn" data-tab="systems">Systems Reference</button>
     <button class="tab-btn" data-tab="candidates">Lyapunov Reference</button>
     <button class="tab-btn" data-tab="terms">Key Terms</button>
+    <button class="tab-btn" data-tab="sos">Code for SOS Synthesis</button>
     <select class="tab-select" id="tabSelect">
       <option value="explorer">Explorer</option>
       <option value="systems">Systems Reference</option>
       <option value="candidates">Lyapunov Reference</option>
       <option value="terms">Key Terms</option>
+      <option value="sos">Code for SOS Synthesis</option>
     </select>
   </div>
 
@@ -1300,11 +1423,108 @@ With damping c:  dV/dt = −cy²</div>
       <p><strong>Application to stability:</strong> parameterize V as a polynomial with unknown coefficients and require both V and −dV/dt to be SOS. This searches an entire family of candidates at once for one that certifies stability — automating the step that, done by hand, requires insight or luck. The fixed library and adjustable sliders in this tool are a manual, low-dimensional stand-in for that search.</p>
       <p><strong>Region of attraction:</strong> the certified ROA can be enlarged by jointly searching for V and the level c that maximize the size of {V ≤ c} subject to dV/dt &lt; 0 on that set. The set-containment conditions are handled with the <em>S-procedure</em>, which introduces multiplier polynomials (themselves SOS). Because V and the multipliers multiply each other, the problem is bilinear and is solved by alternating SDP solves — the standard V–s iteration.</p>
       <p><strong>Relation to this tool:</strong> the "Optimize parameters for largest ROA" button performs the same kind of search in spirit — over the two free entries of the quadratic's matrix P, by brute-force grid evaluation rather than convex optimization. That two-parameter search is a hand-rolled, low-dimensional stand-in for the semidefinite program SOS solves over the cone of positive definite matrices. Crucially, the tool's ROA is a <em>numerical estimate</em> from sampling the grid, not a proof; the value of SOS is that it produces an actual certificate — a guarantee that holds at every point, not just the sampled ones. Scaling beyond the quadratic (to higher-degree polynomials), or handling non-polynomial dynamics (which must first be recast or approximated), is where dedicated SOS and optimization software becomes necessary.</p>
+      <p><strong>Try it:</strong> the <strong>SOS Code</strong> tab generates runnable MATLAB (SOSTOOLS) or Python (SumOfSquares.py) code for any of these systems, so the search above can be carried out as a real SDP rather than a grid scan.</p>
+      <p><strong>Software:</strong> MATLAB — SOSTOOLS (<a href="https://github.com/oxfordcontrol/SOSTOOLS" target="_blank" rel="noopener">github.com/oxfordcontrol/SOSTOOLS</a>, <a href="https://www.cds.caltech.edu/sostools/" target="_blank" rel="noopener">project page</a>); Python — SumOfSquares.py and the cross-language tutorial at <a href="https://sums-of-squares.github.io/sos/" target="_blank" rel="noopener">sums-of-squares.github.io</a>. For non-polynomial dynamics, the higher-order-derivative and Chebyshev-approximation approach of Han and Panagou (<em>Chebyshev approximation and higher order derivatives of Lyapunov functions for estimating the domain of attraction</em>, IEEE CDC 2017) is a practical route to recasting the vector field as a polynomial.</p>
     </div>
   </div>
 
 </div><!-- .ref-panel -->
 </div><!-- #panel-terms -->
+
+<!-- ═══ SOS CODE PANEL ═══ -->
+<div id="panel-sos" class="tab-panel">
+<div class="ref-panel">
+  <div class="ref-intro">
+    This tab writes runnable code that carries out the region-of-attraction search as a real
+    sum-of-squares (SOS) program, rather than the grid estimate used on the Explorer tab. SOS turns
+    "find a Lyapunov function" into a <strong>semidefinite program</strong> (SDP): a convex optimization
+    that searches a whole family of polynomial candidates at once and returns a genuine certificate, not a
+    sampled guess. Choose a system and a language, set the degrees, then copy or download the code and run
+    it in your own MATLAB or Python environment. The widget never calls a solver itself; it only writes the code.
+    <br><br>
+    The program assumes the equilibrium is already known to be asymptotically stable. That is not circular:
+    its job is not to re-prove stability from scratch but to <em>construct</em> an explicit Lyapunov function
+    and, more usefully, to <em>estimate the region of attraction</em> — how far from the equilibrium the
+    guarantee of convergence actually extends. Concretely it finds a positive definite V (degree d) whose
+    derivative dV/dt is negative throughout a disk of radius R around the equilibrium. A multiplier polynomial
+    (degree n) is what lets the decrease condition hold only inside that disk rather than everywhere, so the
+    multiplier and the region R work as a pair; with the region fixed, the whole thing is a single SDP. The
+    largest level set of V that fits inside the disk is then a certified inner estimate of the region of attraction.
+    <br><br>
+    The certificate is always built around the equilibrium at the origin. If the stable equilibrium of interest
+    is elsewhere, translate coordinates first so it sits at the origin (the Duffing system below is handled this
+    way); the comments in the generated code show the substitution.
+  </div>
+
+  <div class="sos-controls">
+    <div class="sos-group">
+      <div class="sos-field wide">
+        <label>System</label>
+        <select id="sosSystem"></select>
+      </div>
+      <div class="sos-field">
+        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the Taylor approximation used to turn any non-polynomial term in the dynamics into a polynomial. No effect on systems that are already polynomial.">approx k</span></label>
+        <input type="number" id="sosK" value="5" min="1" max="9" step="2">
+      </div>
+    </div>
+    <div class="sos-group">
+      <div class="sos-field">
+        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the polynomial Lyapunov function V. A higher degree is a more flexible certificate (and a larger semidefinite program), often certifying a bigger region.">V degree d</span></label>
+        <input type="number" id="sosD" value="4" min="2" max="8" step="2">
+      </div>
+      <div class="sos-field">
+        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the multiplier polynomial that lets V decrease only inside the region R rather than everywhere. A higher degree shapes that region more flexibly. Works together with R.">multiplier n</span></label>
+        <input type="number" id="sosN" value="2" min="0" max="6" step="2">
+      </div>
+      <div class="sos-field">
+        <label><span class="lbl-help" tabindex="0" data-tip="Radius of the disk around the equilibrium on which decrease of V is certified. Works together with the multiplier (n); the certificate is local to this disk.">region R</span></label>
+        <input type="number" id="sosR" value="1.2" min="0.2" max="6" step="0.1">
+      </div>
+    </div>
+    <div class="sos-group">
+      <div class="sos-field">
+        <label>Language</label>
+        <div class="lang-toggle" id="sosLang">
+          <button data-lang="matlab" class="active">MATLAB</button>
+          <button data-lang="python">Python</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sos-caveat" id="sosCaveat"></div>
+
+  <div class="sos-code-head">
+    <span class="sos-fname" id="sosFname">lyapunov_sos.m</span>
+    <div class="sos-code-btns">
+      <button id="sosCopy">Copy</button>
+      <button id="sosDownload">Download</button>
+    </div>
+  </div>
+  <div class="sos-code" id="sosCode"></div>
+
+  <div class="ref-callout" style="margin-top:18px;">
+    <strong>Parameters.</strong> <em>d</em> is the degree of the candidate Lyapunov polynomial V; a richer V
+    (larger d) is a more flexible certificate, and often certifies a larger region, at the cost of a bigger SDP.
+    <em>n</em> is the degree of the multiplier polynomial that allows dV/dt &lt; 0 to hold only inside the disk
+    of radius <em>R</em> rather than everywhere; <em>n</em> and <em>R</em> therefore work as a pair, and a larger
+    <em>n</em> lets the certified region take a less circular shape. <em>k</em> sets the degree of the Taylor
+    polynomialization applied to any non-polynomial term in the dynamics; it has no effect on systems that are
+    already polynomial. For the recast (non-polynomial) systems the resulting certificate is rigorous for the
+    <em>polynomial approximation</em> of the dynamics, which matches the true system only near the origin; see
+    Han and Panagou (CDC 2017) for the higher-order-derivative and Chebyshev treatment.
+  </div>
+
+  <div class="ref-further">
+    <div class="ref-further-title">SOS software</div>
+    <ul>
+      <li>MATLAB: SOSTOOLS — github.com/oxfordcontrol/SOSTOOLS · cds.caltech.edu/sostools</li>
+      <li>Python: SumOfSquares.py (pip install SumOfSquares) · sums-of-squares.github.io/sos</li>
+      <li>A strong SDP solver (MOSEK, SeDuMi, or SCS) is recommended; the solvers bundled by default can be fragile on stiff problems.</li>
+    </ul>
+  </div>
+</div><!-- .ref-panel -->
+</div><!-- #panel-sos -->
 
 </div><!-- .page-inner -->
 
@@ -2888,12 +3108,495 @@ document.getElementById('tabSelect').addEventListener('change', e => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
+//  SOS CODE GENERATOR  (string output only; no solving in the browser)
+// ═══════════════════════════════════════════════════════════════════
+// Each system stores its vector field with the parameter referenced by its
+// symbol name (declared as a variable in the emitted code) and sin(x1)
+// emitted as a named Taylor approximation. "^" is converted to "**" for
+// Python. Duffing is stored already shifted to a stable well (its origin is a
+// saddle); physF/equil hold the original dynamics and the well so the emitted
+// code can show the change of variables that produced the shifted polynomial.
+const SOS_SYS = {
+  stable_spiral:   { label:'Stable Spiral',              f:['-x1 + x2','-x1 - x2'],                                 param:null,              stable:true },
+  stable_node:     { label:'Stable Node',                f:['-2*x1','-x2'],                                         param:null,              stable:true },
+  cubic_drain:     { label:'Cubic Drain',                f:['-x1^3','-x2^3'],                                       param:null,              stable:true },
+  vanderpol:       { label:'Van der Pol (reverse-time)', f:['x2','mu*(1 - x1^2)*x2 - x1'],                          param:{sym:'mu',val:-1}, stable:true, rMax:1.2,
+                     caveat:'The origin is asymptotically stable only for mu < 0 (the reverse-time Van der Pol oscillator). The default mu = -1 is such a case; for mu > 0 the SOS program will be infeasible. The basin is also bounded, so R beyond about 1.2 (at the default settings) is infeasible.' },
+  hopf:            { label:'Hopf Normal Form',           f:['mu*x1 - x2 - x1*(x1^2 + x2^2)','x1 + mu*x2 - x2*(x1^2 + x2^2)'], param:{sym:'mu',val:-0.5}, stable:true,
+                     caveat:'The origin is asymptotically stable only for mu < 0. The default mu = -0.5 is such a case; for mu > 0 the origin is unstable and the SOS program will be infeasible.' },
+  pendulum:        { label:'Damped Pendulum',            f:['x2','-sin_approx - c*x2'],                             param:{sym:'c',val:0.5}, stable:true, nonpoly:true,
+                     caveat:'sin(x1) is non-polynomial; it is replaced below by sin_approx, its degree-k Taylor series about x1 = 0. The certificate is therefore rigorous for that polynomial approximation of the pendulum, which matches the true dynamics only near the origin. Raising k widens the range over which the approximation is faithful.' },
+  duffing:         { label:'Duffing (shifted to a well)', f:['x2','-2*x1 - 3*x1^2 - x1^3 - c*x2'],                  param:{sym:'c',val:0.5}, stable:true, shifted:true, rMax:0.9,
+                     physF:['z2','z1 - z1^3 - c*z2'], equil:'(1, 0)',
+                     caveat:'The origin of the Duffing double-well system is a saddle (unstable); its stable equilibria are the wells at (+/-1, 0). The dynamics below are centered on the right-hand well by a change of variables (derived in the comment just above them), and so the certified region is around that well. Because the original saddle sits a distance 1 from this well, the disk on which decrease is certified must stay inside the basin: use R < 1, since a larger R reaches past the saddle and makes the SDP infeasible.' },
+  predprey_damped: { label:'Predator-Prey (damped)',     f:['-x2 - x1*x2 - c*x1','x1 + x1*x2 - c*x2'],              param:{sym:'c',val:0.3}, stable:true, rMax:0.8,
+                     caveat:'With the default degrees, certifying decrease on a large disk is infeasible for this system; R >= 1 fails, so use a smaller R (or raise the V degree d or multiplier n to extend the feasible range).' }
+};
+const SOS_ORDER = ['stable_spiral','stable_node','cubic_drain','vanderpol','hopf','pendulum','duffing','predprey_damped'];
+
+function sosFact(n){ let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+function sosSinTaylor(v, k){
+  const terms = [];
+  for(let j=0; (2*j+1)<=k; j++){
+    const p = 2*j+1, den = sosFact(p), sgn = (j%2===0) ? '+' : '-';
+    if(p===1) terms.push((sgn==='+'?'':'-') + v);
+    else terms.push(sgn + ' ' + v + '^' + p + '/' + den);
+  }
+  return terms.join(' ').replace(/^\+ /,'');
+}
+function sosToLang(s, lang){ return (lang === 'python') ? s.replace(/\^/g, '**') : s; }
+// Word-wrap a comment body to a fixed column, prefixing each line.
+function sosWrap(text, prefix, width){
+  // Keep short math expressions on one line so the wrap never breaks them at an
+  // operator (e.g. "f(0) = 0", "x = z - x*", "(1, 0)"). A sentinel temporarily
+  // replaces the spaces inside such expressions; it is restored after wrapping.
+  const SEN = '\u0001';
+  const glued = text
+    // short parenthesized tuples/coordinates: "(1, 0)", "(x1, x2)", "(+/-1, 0)"
+    .replace(/\([^()]{1,12}\)/g, m => m.replace(/ /g, SEN))
+    // operator chains: token (op token)+, e.g. "f(0) = 0", "g(z) = f(z* + x)"
+    .replace(/[\w().,'*\/\u0001]+(?:\s*[-+=<>~]=?\s*[\w().,'*\/\u0001]+)+/g,
+             m => m.replace(/\s/g, SEN).length <= 26 ? m.replace(/ /g, SEN) : m);
+  const words = glued.split(/\s+/), lines = []; let cur = '';
+  for(const w of words){
+    if(cur && (prefix.length + cur.length + 1 + w.length) > width){ lines.push(prefix + cur); cur = w; }
+    else cur = cur ? cur + ' ' + w : w;
+  }
+  if(cur) lines.push(prefix + cur);
+  return lines.join('\n').split(SEN).join(' ');
+}
+// Shared explanation of where the equilibrium enters (it is the origin, by construction).
+function sosEquilNote(S, c){
+  if(S.shifted){
+    return sosWrap('After the change of variables above, the equilibrium of interest sits at the origin, which is what this program certifies: it requires f(0) = 0 and pins V(0) = 0; the equilibrium is therefore built into the problem rather than passed to the solver.', c + ' ', 72);
+  }
+  return sosWrap('This program certifies the equilibrium at the ORIGIN. It requires f(0) = 0 and searches for V with V(0) = 0; the equilibrium is therefore built into the problem rather than passed to the solver. To certify a different equilibrium x*, substitute x = z + x* and run the program on the shifted dynamics g(z) = f(z + x*).', c + ' ', 72);
+}
+// For systems whose stable equilibrium is not the origin: show, in a comment,
+// the original (physical) dynamics in z and the change of variables x = z - x*
+// that produces the shifted polynomial used in the code.
+function sosShiftDeriv(S, c){
+  if(!S.shifted) return '';
+  const w = t => sosWrap(t, c + ' ', 72);
+  return [
+    w('This system\'s stable equilibria are not at the origin. In the original (physical) coordinates z, the dynamics are'),
+    `${c}     z1' = ${S.physF[0]}`,
+    `${c}     z2' = ${S.physF[1]}`,
+    w(`with a stable equilibrium at z* = ${S.equil}. Centering on it by the change of variables x = z - ${S.equil} gives x' = g(x) = f(z* + x); expanding f about z* produces the polynomial coefficients in f(x) below. The variables stay named x so the result drops into routines that expect x.`)
+  ].join('\n') + '\n\n';
+}
+
+// Right-pad a value token (plus any trailing punctuation, like a MATLAB ';')
+// to a fixed field width so the inline comment that follows begins at a
+// constant column, independent of the value's width. This matters for R2,
+// which comes from toFixed(4) and is 6 or 7 characters wide depending on R.
+function sosCol(token, width){ return String(token).padEnd(width); }
+
+function genMATLAB(id, k, n, d, R){
+  const S = SOS_SYS[id];
+  const f = S.f.map(c => sosToLang(c, 'matlab'));
+  const R2 = (R*R).toFixed(4);
+  const cav = S.caveat ? sosWrap('NOTE: ' + S.caveat, '% ', 72) + '\n%\n' : '';
+  const paramDecl = S.param ? `${S.param.sym} = ${S.param.val};      % system parameter (change to explore other values)\n\n` : '';
+  const sinDecl = S.nonpoly
+    ? `% sin(x1) is non-polynomial; approximate it by its degree-${k} Taylor\n% series about x1 = 0 (faithful near the origin):\nsin_approx = ${sosSinTaylor('x1', k)};\n\n`
+    : '';
+  return `% ${'='.repeat(70)}
+% SOS region-of-attraction certificate  (MATLAB / SOSTOOLS 4.00)
+% System: ${S.label}
+% ${'='.repeat(70)}
+% SPDX-License-Identifier: MIT-0
+% This generated script is released under the MIT No Attribution license
+% (MIT-0): you may use, copy, modify, and distribute it for any purpose
+% without conditions, including without retaining this notice. It is
+% provided "as is", without warranty of any kind.
+% The Lyapunov Level-Set Explorer that generated it is separately licensed
+% (MIT); this notice covers only this emitted script.
+% ${'='.repeat(70)}
+% Find a Lyapunov function V (degree ${d}) that is positive definite and
+% strictly decreasing on the disk ||x||^2 <= R^2. A multiplier polynomial
+% relaxes the decrease condition to that disk only; with the region
+% fixed, this is a single semidefinite program (SDP).
+%
+% Setup: add SOSTOOLS (https://github.com/oxfordcontrol/SOSTOOLS) to the
+% MATLAB path, including its multipoly/ folder (which provides pvar), e.g.
+%   addpath(genpath('/path/to/SOSTOOLS'))
+% SOSTOOLS does NOT include an SDP solver; install one separately and put
+% it on the path: SeDuMi (https://github.com/sqlp/sedumi), SDPT3, or MOSEK.
+% Some SDP solvers ship with prebuilt MEX files. On macOS, these may be
+% blocked by Gatekeeper. One fix is to strip the quarantine flag from the
+% folder they are installed in. For example, if SeDuMi is installed in a
+% 'sedumi' folder on the MATLAB path, remove the quarantine (at your own
+% risk) with:
+%   sudo xattr -r -d com.apple.quarantine sedumi
+% Alternatively, rebuild the MEX files from source (e.g. with
+% install_sedumi -rebuild).
+% ${'='.repeat(70)}
+${cav}${sosEquilNote(S, '%')}
+
+clear; pvar x1 x2;
+vars = [x1; x2];
+
+${paramDecl}${sinDecl}${sosShiftDeriv(S,'%')}% --- dynamics  xdot = f(x) ---
+f = [ ${f[0]};
+      ${f[1]} ];
+
+d     = ${sosCol(d + ';', 10)}% degree of the Lyapunov polynomial V
+nmult = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt < 0 hold on the disk only)
+R2    = ${sosCol(R2 + ';', 10)}% region: certify decrease on the disk ||x||^2 <= R2
+epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin eps)
+
+prog = sosprogram(vars);
+[prog, V]   = sospolyvar(prog, monomials(vars, 2:d));      % V: degrees 2..d, and so V(0)=0
+[prog, lam] = sospolyvar(prog, monomials(vars, 0:nmult));  % region multiplier
+
+Vdot = diff(V, x1)*f(1) + diff(V, x2)*f(2);
+
+prog = sosineq(prog, V - epspd*(x1^2 + x2^2));             % V positive definite
+prog = sosineq(prog, lam);                                 % multiplier is SOS
+prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt < 0 on the disk
+
+prog = sossolve(prog);
+
+% Feasibility readout (mirrors the Python status print). sossolve stores
+% solver diagnostics in prog.solinfo.info; the available fields depend on
+% the solver, and so every access below is guarded with isfield.
+% pinf/dinf = 1 flag primal/dual infeasibility, but SeDuMi often leaves
+% them 0 on an infeasible problem and instead drives feasratio toward -1
+% (about +1 for a feasible problem, -1 for an infeasible one). The
+% infeasibility test therefore also keys off feasratio. numerr ~= 0 flags
+% numerical trouble, in which case V is unreliable.
+if isfield(prog, 'solinfo') && isfield(prog.solinfo, 'info')
+    in = prog.solinfo.info;
+    infeasible = (isfield(in, 'pinf') && in.pinf == 1) || ...
+                 (isfield(in, 'dinf') && in.dinf == 1) || ...
+                 (isfield(in, 'feasratio') && in.feasratio < 0.5);
+    if infeasible
+        warning(['SDP infeasible: no certificate exists for these settings ' ...
+                 '(an unstable parameter or d/n/R too small). ' ...
+                 'The V below is not valid.']);
+    elseif isfield(in, 'feasratio')
+        fprintf('Solver feasratio = %.3f (near +1: feasible).\\n', in.feasratio);
+    end
+    if isfield(in, 'numerr') && in.numerr ~= 0
+        warning('Solver reported numerical trouble (numerr = %d); treat V with caution.', in.numerr);
+    end
+end
+
+V_sol = sosgetsol(prog, V);
+% The multipoly @polynomial class has no disp method, and so disp(V_sol)
+% would print a property dump; char() yields the readable polynomial string.
+Vstr = char(V_sol); if iscell(Vstr), Vstr = Vstr{1}; end
+fprintf('Lyapunov function V(x) =\\n  %s\\n', Vstr);
+
+% ----------------------------------------------------------------------
+% Visualize: phase portrait, the synthesized V, and the certified ROA.
+% The largest level set of V that fits inside the disk is {V <= cstar}
+% with cstar = min over the circle ||x|| = R of V(x). Inside it V is
+% positive and strictly decreasing, and so {V <= cstar} is a certified
+% inner estimate of the region of attraction. (To enlarge the region itself,
+% alternate solving for V and for the multiplier on {V <= c}: the
+% bilinear V-s iteration.)
+%
+% Note: this is a feasibility problem with no objective, and the only
+% normalization is the one-sided margin V - epspd*||x||^2 >= 0, which bounds
+% V below but not its scale (if V is feasible, so is any alpha*V with alpha
+% >= 1). The solver therefore returns V up to an arbitrary positive scale,
+% and the numeric value of cstar inherits that scale: it can differ between
+% solvers (e.g. SeDuMi here vs. the Python backend) or settings even when
+% the certified region is the same. The region {V <= cstar} is scale
+% invariant ({alpha*V <= alpha*cstar} is the same set), and so it is the
+% meaningful output; do not read cstar as an absolute number.
+% ----------------------------------------------------------------------
+R  = sqrt(R2);
+th = linspace(0, 2*pi, 720);
+cstar = min(arrayfun(@(t) double(subs(V_sol, [x1; x2], [R*cos(t); R*sin(t)])), th));
+
+g = linspace(-1.6*R, 1.6*R, 60);
+[X1, X2] = meshgrid(g, g);
+F1 = arrayfun(@(a,b) double(subs(f(1),   [x1; x2], [a; b])), X1, X2);
+F2 = arrayfun(@(a,b) double(subs(f(2),   [x1; x2], [a; b])), X1, X2);
+Vg = arrayfun(@(a,b) double(subs(V_sol,  [x1; x2], [a; b])), X1, X2);
+
+figure; hold on; box on; axis equal;
+streamslice(X1, X2, F1, F2);                               % flow
+[~, hLev] = contour(X1, X2, Vg, 18, 'LineColor', [0.6 0.6 0.6], 'LineWidth', 0.4);
+[~, hRoa] = contour(X1, X2, Vg, [cstar cstar], 'r', 'LineWidth', 2);
+hDisk = plot(R*cos(th), R*sin(th), 'k--', 'LineWidth', 1);
+plot(0, 0, 'k.', 'MarkerSize', 16);                        % equilibrium at origin
+xlabel('x_1'); ylabel('x_2');
+title(['Certified ROA estimate:  V \\leq ', sprintf('%.4g', cstar)]);
+% The red and dashed curves are different objects: the red {V = c*} is the
+% ROA estimate itself; the dashed circle is only the disk on which decrease
+% was certified. c* = min of V on that circle, and so {V <= c*} is the
+% largest level set inscribed in the disk (tangent to it at that minimum).
+legend([hRoa hDisk hLev], ...
+       {'certified ROA estimate: V \\leq c*', ...
+        'decrease region: ||x|| = R', ...
+        'level sets of V'}, 'Location', 'northeastoutside');
+`;
+}
+
+function genPython(id, k, n, d, R){
+  const S = SOS_SYS[id];
+  const f = S.f.map(c => sosToLang(c, 'python'));
+  const R2 = (R*R).toFixed(4);
+  const cav = S.caveat ? sosWrap('NOTE: ' + S.caveat, '# ', 72) + '\n#\n' : '';
+  const paramDecl = S.param ? `${S.param.sym} = ${S.param.val}      # system parameter (change to explore other values)\n\n` : '';
+  const sinDecl = S.nonpoly
+    ? `# sin(x1) is non-polynomial; approximate it by its degree-${k} Taylor\n# series about x1 = 0 (faithful near the origin):\nsin_approx = ${sosToLang(sosSinTaylor('x1', k), 'python')}\n\n`
+    : '';
+  return `# ${'='.repeat(70)}
+# SOS region-of-attraction certificate  (Python / SumOfSquares.py)
+# System: ${S.label}
+# ${'='.repeat(70)}
+# SPDX-License-Identifier: MIT-0
+# This generated script is released under the MIT No Attribution license
+# (MIT-0): you may use, copy, modify, and distribute it for any purpose
+# without conditions, including without retaining this notice. It is
+# provided "as is", without warranty of any kind.
+# The Lyapunov Level-Set Explorer that generated it is separately licensed
+# (MIT); this notice covers only this emitted script.
+# ${'='.repeat(70)}
+# Find a Lyapunov function V (degree ${d}) that is positive definite and
+# strictly decreasing on the disk ||x||^2 <= R^2. A multiplier polynomial
+# relaxes the decrease condition to that disk only; with the region
+# fixed, this is a single semidefinite program (SDP).
+#
+#   pip install SumOfSquares sympy picos matplotlib
+#
+# Solver note: the cvxopt backend bundled with PICOS is fragile on stiff
+# SOS problems. Install MOSEK or SCS and pass solver=... to prob.solve()
+# for reliable results.
+# ${'='.repeat(70)}
+${cav}${sosEquilNote(S, '#')}
+
+import sys
+
+# Exit cleanly on Ctrl+C (e.g. during a long solve or while the plot window
+# is open) instead of dumping a traceback.
+def _on_interrupt(exctype, value, tb):
+    if issubclass(exctype, KeyboardInterrupt):
+        print('\\nInterrupted by user; exiting.', file=sys.stderr)
+        sys.exit(130)
+    sys.__excepthook__(exctype, value, tb)
+sys.excepthook = _on_interrupt
+
+import sympy as sp
+from SumOfSquares import SOSProblem, poly_variable
+
+x1, x2 = sp.symbols('x1 x2')
+xs = [x1, x2]
+
+${paramDecl}${sinDecl}${sosShiftDeriv(S,'#')}# --- dynamics  xdot = f(x) ---
+f = [ ${f[0]},
+      ${f[1]} ]
+
+d     = ${sosCol(d, 9)}# degree of the Lyapunov polynomial V
+nmult = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt < 0 hold on the disk only)
+R2    = ${sosCol(R2, 9)}# region: certify decrease on the disk ||x||^2 <= R2
+epspd = ${sosCol('1e-3', 9)}# positive-definiteness margin
+
+prob = SOSProblem()
+Vfull = poly_variable('V', xs, d)
+V = sum(t for t in Vfull.as_ordered_terms() if sp.total_degree(t, *xs) >= 2)  # V(0)=0
+Vdot = sum(sp.diff(V, xi)*fi for xi, fi in zip(xs, f))
+lam = poly_variable('lam', xs, nmult)
+
+prob.add_sos_constraint(V - epspd*(x1**2 + x2**2), xs)        # V positive definite
+prob.add_sos_constraint(lam, xs)                              # multiplier is SOS
+prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2), xs) # dV/dt < 0 on the disk
+
+# Solve. On an infeasible or numerically hard problem the cvxopt backend
+# raises rather than returning a status (mirrors the MATLAB feasibility
+# readout), so catch it and exit cleanly instead of dumping a traceback.
+try:
+    prob.solve()   # e.g. prob.solve(solver='mosek') if available
+except Exception as exc:
+    print('Solver failed:', exc, file=sys.stderr)
+    print('The SDP is infeasible or numerically too hard for these settings: '
+          'an unstable parameter, d/n too small, or a region R reaching outside '
+          'the basin of attraction (e.g. past a nearby saddle). No valid '
+          'certificate was produced; try a smaller R or larger d/n.',
+          file=sys.stderr)
+    sys.exit(1)
+
+print('status:', prob.status)
+if 'optimal' not in prob.status and 'feasible' not in prob.status:
+    print('WARNING: solver status is', repr(prob.status),
+          '- the V below may not be a valid certificate.', file=sys.stderr)
+
+# Extract the numeric Lyapunov function.
+V_sol = V
+for s in list(V.free_symbols):
+    if s in xs:
+        continue
+    V_sol = V_sol.subs(s, round(float(prob.sym_to_var(s).value), 6))
+print('V =', sp.expand(V_sol))
+
+# ----------------------------------------------------------------------
+# Visualize: phase portrait, the synthesized V, and the certified ROA.
+# The largest level set of V that fits inside the disk is {V <= cstar}
+# with cstar = min over the circle ||x|| = R of V(x). Inside it V is
+# positive and strictly decreasing, and so {V <= cstar} is a certified
+# inner estimate of the region of attraction. (To enlarge the region itself,
+# alternate solving for V and for the multiplier on {V <= c}: the
+# bilinear V-s iteration.)
+#
+# Note: this is a feasibility problem with no objective, and the only
+# normalization is the one-sided margin V - epspd*||x||^2 >= 0, which bounds V
+# below but not its scale (if V is feasible, so is any alpha*V with alpha
+# >= 1). The solver therefore returns V up to an arbitrary positive scale,
+# and the numeric value of cstar inherits that scale: it can differ between
+# solvers (e.g. the Python backend here vs. SeDuMi in MATLAB) or settings
+# even when the certified region is the same. The region {V <= cstar} is
+# scale invariant ({alpha*V <= alpha*cstar} is the same set), and so it is
+# the meaningful output; do not read cstar as an absolute number.
+# ----------------------------------------------------------------------
+import numpy as np
+import matplotlib.pyplot as plt
+
+R = R2 ** 0.5
+V_fn  = sp.lambdify((x1, x2), V_sol, 'numpy')
+f1_fn = sp.lambdify((x1, x2), f[0], 'numpy')
+f2_fn = sp.lambdify((x1, x2), f[1], 'numpy')
+
+th = np.linspace(0, 2*np.pi, 720)
+cstar = float(np.min(V_fn(R*np.cos(th), R*np.sin(th))))
+
+g = np.linspace(-1.6*R, 1.6*R, 400)
+X1, X2 = np.meshgrid(g, g)
+ones = np.ones_like(X1)
+Vg = V_fn(X1, X2) * ones
+
+fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
+ax.streamplot(X1, X2, f1_fn(X1, X2)*ones, f2_fn(X1, X2)*ones, density=1.1, color='0.7')
+ax.contour(X1, X2, Vg, levels=18, colors='0.6', linewidths=0.5)   # level sets of V
+ax.contour(X1, X2, Vg, levels=[cstar], colors='r', linewidths=2)  # ROA estimate {V = cstar}
+ax.plot(R*np.cos(th), R*np.sin(th), 'k--', lw=1)                  # decrease region ||x|| = R
+ax.plot(0, 0, 'k.', ms=11)                                        # equilibrium at origin
+# The red and dashed curves are different objects: the red {V = cstar} is the
+# ROA estimate itself; the dashed circle is only the disk on which decrease
+# was certified. cstar = min of V on that circle, and so {V <= cstar} is the
+# largest level set inscribed in the disk (tangent to it at that minimum).
+from matplotlib.lines import Line2D
+ax.legend(handles=[
+    Line2D([0], [0], color='r', lw=2, label=r'certified ROA estimate: $V \\leq c^*$'),
+    Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
+    Line2D([0], [0], color='0.6', lw=0.6, label=r'level sets of $V$'),
+], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
+ax.set_aspect('equal'); ax.set_xlabel('x1'); ax.set_ylabel('x2')
+ax.set_title(rf'Certified ROA estimate:  $V \\leq {cstar:.4g}$')
+plt.show()
+`;
+}
+
+let sosLang = 'matlab';
+function sosGenerate(){
+  const id = document.getElementById('sosSystem').value;
+  const d = parseInt(document.getElementById('sosD').value, 10);
+  const n = parseInt(document.getElementById('sosN').value, 10);
+  const k = parseInt(document.getElementById('sosK').value, 10);
+  const R = parseFloat(document.getElementById('sosR').value);
+  const code = (sosLang === 'matlab') ? genMATLAB(id,k,n,d,R) : genPython(id,k,n,d,R);
+  document.getElementById('sosCode').textContent = code;
+  document.getElementById('sosFname').textContent = (sosLang==='matlab') ? 'lyapunov_sos.m' : 'lyapunov_sos.py';
+  // caveat box
+  const S = SOS_SYS[id];
+  const cav = document.getElementById('sosCaveat');
+  // k field only meaningful for non-polynomial systems
+  document.getElementById('sosK').parentElement.style.opacity = S.nonpoly ? '1' : '0.4';
+  if (S.caveat) { cav.style.display = 'block'; cav.textContent = S.caveat; }
+  else { cav.style.display = 'none'; }
+}
+function initSOS(){
+  const sel = document.getElementById('sosSystem');
+  sel.innerHTML = SOS_ORDER.map(id => `<option value="${id}">${SOS_SYS[id].label}</option>`).join('');
+  document.querySelectorAll('#sosLang button').forEach(b => {
+    b.addEventListener('click', () => {
+      sosLang = b.dataset.lang;
+      document.querySelectorAll('#sosLang button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      sosGenerate();
+    });
+  });
+  ['sosD','sosN','sosK','sosR'].forEach(idn =>
+    document.getElementById(idn).addEventListener('input', sosGenerate));
+  // On system change, clamp the region R down to the new system's feasible
+  // maximum (if it has one) so the default demo is not infeasible out of the
+  // box. Only clamp down: a smaller user-set R is left alone, and the user can
+  // still slide R back up afterward to explore the (now graceful) infeasibility.
+  document.getElementById('sosSystem').addEventListener('change', () => {
+    const S = SOS_SYS[document.getElementById('sosSystem').value];
+    const rEl = document.getElementById('sosR');
+    if (S.rMax && parseFloat(rEl.value) > S.rMax) rEl.value = S.rMax;
+    sosGenerate();
+  });
+  document.getElementById('sosCopy').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('sosCode').textContent).then(() => {
+      const b = document.getElementById('sosCopy'); const t = b.textContent;
+      b.textContent = 'Copied'; setTimeout(() => b.textContent = t, 1200);
+    });
+  });
+  document.getElementById('sosDownload').addEventListener('click', () => {
+    const blob = new Blob([document.getElementById('sosCode').textContent], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = document.getElementById('sosFname').textContent;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  // Viewport-aware tooltips: one shared fixed bubble, positioned by JS so it
+  // never clips at the real screen edge. Works on hover, keyboard focus, and tap.
+  const tipBubble = document.createElement('div');
+  tipBubble.className = 'tip-bubble';
+  document.body.appendChild(tipBubble);
+  let tipOwner = null;
+  function showTip(el){
+    const tip = el.dataset.tip;
+    if(!tip) return;
+    tipOwner = el;
+    tipBubble.textContent = tip;
+    tipBubble.classList.add('show');           // make measurable
+    const pad = 8;
+    const r = el.getBoundingClientRect();
+    const bw = tipBubble.offsetWidth, bh = tipBubble.offsetHeight;
+    let left = r.left;
+    left = Math.max(pad, Math.min(left, window.innerWidth - pad - bw));
+    let top = r.top - bh - 8;                   // prefer above
+    if(top < pad) top = r.bottom + 8;           // flip below if no room
+    tipBubble.style.left = left + 'px';
+    tipBubble.style.top  = top + 'px';
+  }
+  function hideTip(el){
+    if(el && el !== tipOwner) return;
+    tipBubble.classList.remove('show');
+    tipOwner = null;
+  }
+  document.querySelectorAll('.lbl-help').forEach(el => {
+    el.addEventListener('mouseenter', () => showTip(el));
+    el.addEventListener('mouseleave', () => hideTip(el));
+    el.addEventListener('focus',      () => showTip(el));
+    el.addEventListener('blur',       () => hideTip(el));
+    el.addEventListener('click', ev => {
+      ev.stopPropagation();
+      if(tipOwner === el) hideTip(el); else showTip(el);
+    });
+  });
+  document.addEventListener('click', () => hideTip());
+  window.addEventListener('scroll', () => hideTip(), true);
+  window.addEventListener('resize', () => hideTip());
+  sosGenerate();
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════════════════════════
 setupHiDPI();
 populateSelects();
 updateSysUI();
 updateLyapUI();
+initSOS();
 scheduleRender();
 
 // Re-render if window moves to a screen with different DPR
