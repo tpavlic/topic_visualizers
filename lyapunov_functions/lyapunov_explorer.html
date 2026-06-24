@@ -81,6 +81,9 @@
     background: var(--green);
     color: var(--cream);
     padding: 14px 0 12px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
   }
   .site-header .page-inner {
     display: flex;
@@ -434,6 +437,9 @@
     overflow-y: hidden;       /* kill the vertical scrollbar */
     flex-shrink: 0;
     scrollbar-width: none;    /* Firefox: hide scrollbar track */
+    position: sticky;
+    top: var(--header-h, 52px);
+    z-index: 40;
   }
   .tab-bar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
   .tab-btn {
@@ -453,27 +459,29 @@
   }
   .tab-btn:hover { color: var(--text); }
   .tab-btn.active { color: var(--green); border-bottom-color: var(--green); background: var(--cream); }
-  /* Narrow-screen: hide buttons, show a <select> dropdown instead */
+  /* The buttons collapse into a <select> dropdown whenever they would overflow
+     the bar (toggled by JS via .tabs-collapsed), with a narrow-screen fallback. */
   .tab-select {
     display: none;
+    width: 100%;
+    padding: 7px 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    appearance: auto;
   }
+  .tab-bar.tabs-collapsed { padding: 8px 10px; }
+  .tab-bar.tabs-collapsed .tab-btn { display: none; }
+  .tab-bar.tabs-collapsed .tab-select { display: block; }
   @media (max-width: 480px) {
     .tab-bar { padding: 8px 10px; }
-    .tab-btn  { display: none; }
-    .tab-select {
-      display: block;
-      width: 100%;
-      padding: 7px 10px;
-      font-family: 'Outfit', sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
-      background: var(--cream);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      cursor: pointer;
-      appearance: auto;
-    }
+    .tab-btn { display: none; }
+    .tab-select { display: block; }
   }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
@@ -3089,25 +3097,72 @@ document.getElementById('clearTrajBtn').addEventListener('click', clearTrajector
 //  TAB SWITCHING
 // ═══════════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tab = btn.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('panel-' + tab).classList.add('active');
-    document.getElementById('tabSelect').value = tab;
-    if (tab === 'explorer') scheduleRender();
+  btn.addEventListener('click', () => goToTab(btn.dataset.tab));
+});
+
+document.getElementById('tabSelect').addEventListener('change', e => goToTab(e.target.value));
+
+function goToTab(tab, scrollToTop){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('panel-' + tab);
+  if (panel) panel.classList.add('active');
+  const sel = document.getElementById('tabSelect');
+  if (sel) sel.value = tab;
+  if (tab === 'explorer') scheduleRender();
+  if (scrollToTop) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// In-text links that jump to another tab (scroll up so the target reads from its start).
+document.querySelectorAll('[data-goto]').forEach(el => {
+  el.addEventListener('click', () => goToTab(el.dataset.goto, true));
+});
+
+// In-text links that scroll to a section within a tab (activating its tab first if needed).
+document.querySelectorAll('[data-scrollto]').forEach(el => {
+  el.addEventListener('click', () => {
+    const target = document.getElementById(el.dataset.scrollto);
+    if (!target) return;
+    const panel = target.closest('.tab-panel');
+    if (panel && !panel.classList.contains('active')) goToTab(panel.id.replace('panel-', ''));
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 });
 
-document.getElementById('tabSelect').addEventListener('change', e => {
-  const tab = e.target.value;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
-  document.getElementById('panel-' + tab).classList.add('active');
-  if (tab === 'explorer') scheduleRender();
-});
+// Park the sticky tab bar just beneath the sticky header, tracking its height.
+// --sticky-h is the combined header + tab-bar height, used as a scroll offset
+// so in-page anchor jumps land below both sticky bars rather than under them.
+function setHeaderHeight(){
+  const h  = document.querySelector('.site-header');
+  const tb = document.querySelector('.tab-bar');
+  const hh = h  ? h.offsetHeight  : 0;
+  const th = tb ? tb.offsetHeight : 0;
+  document.documentElement.style.setProperty('--header-h', hh + 'px');
+  document.documentElement.style.setProperty('--sticky-h', (hh + th) + 'px');
+}
+
+// Collapse the tab buttons into the dropdown whenever they would overflow the
+// bar, independent of how many tabs there are or how wide their labels render.
+const _tabBar  = document.querySelector('.tab-bar');
+const _tabBtns = [...document.querySelectorAll('.tab-btn')];
+let _tabsNeed = 0;
+function fitTabs(){
+  if (!_tabBar) return;
+  if (!_tabBar.classList.contains('tabs-collapsed')) {
+    const w = _tabBtns.reduce((s, b) => s + b.offsetWidth, 0);
+    if (w > 0) _tabsNeed = w;   // remember the natural width while expanded
+  }
+  if (_tabsNeed && _tabBar.clientWidth < _tabsNeed + 2) _tabBar.classList.add('tabs-collapsed');
+  else _tabBar.classList.remove('tabs-collapsed');
+}
+
+function onResize(){ setHeaderHeight(); fitTabs(); }
+onResize();
+window.addEventListener('resize', onResize);
+// Web fonts can load after first paint and change the tab widths; re-fit then.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(onResize);
 
 // ═══════════════════════════════════════════════════════════════════
 //  SOS CODE GENERATOR  (string output only; no solving in the browser)
