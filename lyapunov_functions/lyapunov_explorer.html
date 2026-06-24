@@ -3302,10 +3302,18 @@ function genMATLAB(id, k, n, d, R){
 % Find a Lyapunov function V (degree ${d}) that is positive definite and
 % non-increasing (dV/dt <= 0) on the disk ||x||^2 <= R^2. A multiplier
 % polynomial relaxes the decrease condition to that disk only; with the
-% region fixed, this is a single semidefinite program (SDP). Asymptotic
-% stability then follows from strict decrease away from the origin (LaSalle);
-% this SDP imposes no strict-decrease margin on dV/dt, which is what lets
-% degenerate equilibria (e.g. the cubic drain) be certified.
+% region fixed, this is a single semidefinite program (SDP). This SDP
+% imposes no strict-decrease margin on dV/dt, which is what keeps degenerate
+% equilibria like the cubic drain feasible.
+%
+% Convergence to the origin is not guaranteed by this SDP, though it does
+% hold for every example system here. In general, convergence holds when
+% dV/dt < 0 for all x ~= 0. When dV/dt also vanishes away from the origin,
+% convergence still holds over a compact, positively invariant neighborhood
+% D of the origin provided the largest invariant set within
+% {x in D : dV/dt = 0} is just the origin (LaSalle's invariance principle).
+% For each example system here, one of these two conditions is met, so
+% convergence -- not merely stability -- is assured.
 %
 % Setup: add SOSTOOLS (https://github.com/oxfordcontrol/SOSTOOLS) to the
 % MATLAB path, including its multipoly/ folder (which provides pvar), e.g.
@@ -3482,10 +3490,18 @@ function genPython(id, k, n, d, R){
 # Find a Lyapunov function V (degree ${d}) that is positive definite and
 # non-increasing (dV/dt <= 0) on the disk ||x||^2 <= R^2. A multiplier
 # polynomial relaxes the decrease condition to that disk only; with the
-# region fixed, this is a single semidefinite program (SDP). Asymptotic
-# stability then follows from strict decrease away from the origin (LaSalle);
-# this SDP imposes no strict-decrease margin on dV/dt, which is what lets
-# degenerate equilibria (e.g. the cubic drain) be certified.
+# region fixed, this is a single semidefinite program (SDP). This SDP
+# imposes no strict-decrease margin on dV/dt, which is what keeps degenerate
+# equilibria like the cubic drain feasible.
+#
+# Convergence to the origin is not guaranteed by this SDP, though it does
+# hold for every example system here. In general, convergence holds when
+# dV/dt < 0 for all x != 0. When dV/dt also vanishes away from the origin,
+# convergence still holds over a compact, positively invariant neighborhood
+# D of the origin provided the largest invariant set within
+# {x in D : dV/dt = 0} is just the origin (LaSalle's invariance principle).
+# For each example system here, one of these two conditions is met, so
+# convergence -- not merely stability -- is assured.
 #
 #   pip install SumOfSquares sympy picos matplotlib
 #
