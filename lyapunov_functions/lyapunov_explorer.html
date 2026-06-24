@@ -1536,7 +1536,7 @@ With damping c:  dV/dt = −cy²</div>
     <ul>
       <li><strong>d (Lyapunov degree)</strong> sets how expressive V may be. A higher d can certify a larger region but builds a bigger, slower SDP; start low (2 or 4) and raise it only when needed.</li>
       <li><strong>R (certification disk)</strong> is the fixed disk ‖x‖ ≤ R on which decrease is required. You choose it rather than the solver, and the certified estimate always lies inside this circle. A larger R asks for more, but once the disk reaches past the true basin, for instance a nearby saddle, the problem turns infeasible.</li>
-      <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee, since a feasible solve certifies dV/dt &lt; 0 across the whole disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.</li>
+      <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee, since a feasible solve certifies dV/dt ≤ 0 across the disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.</li>
       <li><strong>k (approximation degree)</strong> is the Taylor degree used to polynomialize any non-polynomial term in the dynamics, with no effect on already-polynomial systems. For a recast system, the certificate is rigorous for that polynomial approximation, which matches the true dynamics only near the origin (see Han and Panagou, CDC 2017).</li>
       <li><strong>Positive-definiteness floor.</strong> V is forced positive definite by requiring V − ε‖x‖² to be SOS, a <em>quadratic</em> lower bound. This presumes the equilibrium admits a Lyapunov function with a positive-definite quadratic part, which holds when the linearization is non-degenerate. For a degenerate (non-hyperbolic) equilibrium whose only certificates are inherently higher order, that quadratic floor can be too strong; raise d and, in the generated code, replace ε‖x‖² with a higher-degree positive-definite form such as ε‖x‖⁴.</li>
       <li><strong>If the solve is infeasible,</strong> shrink R, or raise d or n. Infeasibility does not prove the region is unstable; a fixed-degree SOS test can simply fail to certify a region that is in fact fine.</li>
@@ -3300,9 +3300,12 @@ function genMATLAB(id, k, n, d, R){
 % (MIT); this notice covers only this emitted script.
 % ${'='.repeat(70)}
 % Find a Lyapunov function V (degree ${d}) that is positive definite and
-% strictly decreasing on the disk ||x||^2 <= R^2. A multiplier polynomial
-% relaxes the decrease condition to that disk only; with the region
-% fixed, this is a single semidefinite program (SDP).
+% non-increasing (dV/dt <= 0) on the disk ||x||^2 <= R^2. A multiplier
+% polynomial relaxes the decrease condition to that disk only; with the
+% region fixed, this is a single semidefinite program (SDP). Asymptotic
+% stability then follows from strict decrease away from the origin (LaSalle);
+% this SDP imposes no strict-decrease margin on dV/dt, which is what lets
+% degenerate equilibria (e.g. the cubic drain) be certified.
 %
 % Setup: add SOSTOOLS (https://github.com/oxfordcontrol/SOSTOOLS) to the
 % MATLAB path, including its multipoly/ folder (which provides pvar), e.g.
@@ -3328,7 +3331,7 @@ f = [ ${f[0]};
       ${f[1]} ];
 
 d     = ${sosCol(d + ';', 10)}% degree of the Lyapunov polynomial V
-nmult = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt < 0 hold on the disk only)
+nmult = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
 R2    = ${sosCol(R2 + ';', 10)}% region: certify decrease on the disk ||x||^2 <= R2
 epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin eps)
 
@@ -3477,9 +3480,12 @@ function genPython(id, k, n, d, R){
 # (MIT); this notice covers only this emitted script.
 # ${'='.repeat(70)}
 # Find a Lyapunov function V (degree ${d}) that is positive definite and
-# strictly decreasing on the disk ||x||^2 <= R^2. A multiplier polynomial
-# relaxes the decrease condition to that disk only; with the region
-# fixed, this is a single semidefinite program (SDP).
+# non-increasing (dV/dt <= 0) on the disk ||x||^2 <= R^2. A multiplier
+# polynomial relaxes the decrease condition to that disk only; with the
+# region fixed, this is a single semidefinite program (SDP). Asymptotic
+# stability then follows from strict decrease away from the origin (LaSalle);
+# this SDP imposes no strict-decrease margin on dV/dt, which is what lets
+# degenerate equilibria (e.g. the cubic drain) be certified.
 #
 #   pip install SumOfSquares sympy picos matplotlib
 #
@@ -3511,7 +3517,7 @@ f = [ ${f[0]},
       ${f[1]} ]
 
 d     = ${sosCol(d, 9)}# degree of the Lyapunov polynomial V
-nmult = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt < 0 hold on the disk only)
+nmult = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
 R2    = ${sosCol(R2, 9)}# region: certify decrease on the disk ||x||^2 <= R2
 epspd = ${sosCol('1e-3', 9)}# positive-definiteness margin
 
