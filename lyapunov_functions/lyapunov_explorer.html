@@ -500,6 +500,13 @@
     padding-bottom: 16px;
     border-bottom: 1px solid var(--border);
   }
+  .ref-intro.section-lede {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 14px;
+  }
+  /* Anchored sections sit below the sticky header + tab bar when jumped to. */
+  #sos-synthesis { scroll-margin-top: calc(var(--sticky-h, 96px) + 8px); }
   .ref-group-title {
     font-size: 0.68rem;
     font-weight: 700;
@@ -575,6 +582,13 @@
   .sos-guide ul { margin: 7px 0 0; padding-left: 20px; }
   .sos-guide li { margin-bottom: 6px; }
   .sos-guide li:last-child { margin-bottom: 0; }
+  .tab-link {
+    color: var(--orange);
+    cursor: pointer;
+    border-bottom: 1px dotted var(--orange);
+    font-weight: 500;
+  }
+  .tab-link:hover { color: var(--green); border-bottom-color: var(--green); }
   .ref-callout strong { color: var(--text); }
   .ref-further {
     margin-top: 20px;
@@ -910,7 +924,7 @@
 <div id="panel-systems" class="tab-panel">
 <div class="ref-panel">
   <div class="ref-intro">
-    A catalog of the dynamical systems available in the Explorer, grouped by family. For each system the linearization, equilibrium type, physical interpretation (where applicable), and suggested Lyapunov candidates are noted.
+    A catalog of the dynamical systems available in the Explorer, grouped by family. For each system the linearization, equilibrium type, physical interpretation (where applicable), and suggested Lyapunov candidates are noted. Some candidates have a principled origin, such as an energy or a structural argument; others are simply what worked, since for many systems finding V is guess and check, the difficulty that the <span class="tab-link" data-goto="sos">Code for SOS Synthesis</span> tab automates.
   </div>
 
   <div class="ref-group-title">Linear Systems — behavior fully determined by eigenvalues of A</div>
@@ -1030,6 +1044,10 @@
 
   <div class="ref-group-title">Mechanical / Physical Systems</div>
 
+  <div class="ref-intro section-lede">
+    For a mechanical or physical system, the total energy is a principled first guess for a Lyapunov function rather than something to search for. The Hamiltonian H = T + U (kinetic plus potential energy) is positive definite about a stable equilibrium that sits at an energy minimum, and along trajectories dH/dt = −(dissipation) ≤ 0, because a passive system can only shed stored energy. A damped mechanical system therefore hands you V ∝ H almost for free, and the only work left is reading off the sublevel set it certifies. The two examples below follow this pattern; the energy argument behind it is developed on the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
+  </div>
+
   <div class="ref-entry">
     <div class="ref-entry-head">
       <span class="ref-entry-name">Damped Pendulum (c)</span>
@@ -1040,6 +1058,7 @@
       <p><strong>Equilibria:</strong> stable at x = 2kπ (eigenvalues (−c ± √(c²−4))/2), saddles at x = (2k+1)π. c &lt; 2: stable focus; c = 2: critically damped node; c &gt; 2: overdamped node.</p>
       <p>A mechanical system (unit mass, unit length pendulum) with viscous damping c. State: x = angle, y = angular velocity.</p>
       <p><strong>Hamiltonian:</strong> H = (1−cos x) + ½y² = potential energy + kinetic energy. With damping: dH/dt = −cy² ≤ 0. The cross-terms cancel exactly due to the antisymmetry of Hamilton's equations — energy dissipation is the only survivor.</p>
+      <p><strong>Lyapunov:</strong> The candidate is the energy itself, V = H = (1−cos x) + ½y², proportional to the Hamiltonian. It is positive definite about the hanging equilibrium, and dV/dt = −cy² ≤ 0, which makes V a Lyapunov function whenever c &gt; 0. The decrease is nonstrict (it vanishes on the whole line y = 0), and so asymptotic stability follows from LaSalle rather than from strict decrease.</p>
       <p><strong>ROA via LaSalle:</strong> with the energy function, c* = H(±π, 0) = 2, certifying the sublevel set {H &lt; 2} bounded by the undamped separatrix. The true basin (bounded by the stable manifolds of the saddles at ±π) is somewhat larger, but this energy estimate captures essentially all of it.</p>
     </div>
   </div>
@@ -1056,11 +1075,16 @@
       <p><strong>Eigenvalues of linearization at (±1, 0):</strong> (−c ± √(c²−8))/2 — stable focus for c &lt; 2√2 ≈ 2.83, stable node for c &gt; 2√2.</p>
       <p>A damped particle in a double-well potential. Used in structural mechanics to model snap-through buckling.</p>
       <p><strong>Hamiltonian:</strong> H = ¼(1−x²)² + ½y². Level curves of H are closed around each well for H &lt; ¼ (inside the homoclinic orbit through the saddle at origin).</p>
+      <p><strong>Lyapunov:</strong> About either well the candidate is again the energy, V = H = ¼(1−x²)² + ½y², proportional to the Hamiltonian and normalized so that it vanishes at the well. It is positive definite there, and dV/dt = −cy² ≤ 0, and so LaSalle gives asymptotic stability of that well for c &gt; 0. The estimate is local: the relevant sublevel set is the part of {H &lt; ¼} surrounding one well, bounded by the homoclinic orbit through the saddle at the origin.</p>
       <p><strong>Multiple basins:</strong> initial conditions may converge to different wells depending on which side of the stable/unstable manifold of the origin they start on.</p>
     </div>
   </div>
 
   <div class="ref-group-title">Ecological / Population Dynamics</div>
+
+  <div class="ref-intro section-lede">
+    Population models can carry the same energy logic as mechanical systems. Where individuals only move between states, the population itself is conserved, with births acting as a source and deaths as dissipation. Lotka-Volterra predator-prey is less direct, because its birth and death terms do not cancel: in place of a conserved head count it has a first integral, a combination of both populations held constant along every orbit, that plays the role the Hamiltonian plays in mechanics. That first integral is positive definite about the coexistence equilibrium, the natural Lyapunov candidate; adding damping turns it into a strict Lyapunov function, dV/dt ≤ 0, exactly as dissipation does for a mechanical system. That is why the predator-prey candidate sits in the Energy Functions group of the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
+  </div>
 
   <div class="ref-entry">
     <div class="ref-entry-head">
@@ -1096,6 +1120,10 @@
 <div class="ref-panel">
   <div class="ref-intro">
     A catalog of Lyapunov function candidates available in the Explorer. A <em>Lyapunov function</em> for the origin must be positive definite (V(0)=0, V&gt;0 elsewhere) and have V̇=∇V·f ≤ 0 along trajectories. The choice of candidate profoundly affects what stability information can be extracted.
+  </div>
+
+  <div class="ref-callout">
+    <strong>When there is no rationale.</strong> The candidates here each come with a story: an energy, a first integral, or a structural shortcut such as solving AᵀP + PA = −Q for a quadratic. Many systems offer no such story, and choosing V becomes guess and check: propose a form, test whether dV/dt ≤ 0, and adjust. That difficulty is what motivates computational synthesis, in which the search for V is handed to an optimizer. The sum-of-squares method on the <span class="tab-link" data-goto="sos">Code for SOS Synthesis</span> tab does exactly this, and it is developed at the <span class="tab-link" data-scrollto="sos-synthesis">foot of this tab</span>.
   </div>
 
   <div class="ref-group-title">Quadratic Forms — V = x&#7488;Px, level curves are ellipses</div>
@@ -1184,6 +1212,21 @@ With damping c:  dV/dt = −cy²</div>
       <p><strong>Undamped:</strong> dV/dt = 0 everywhere — V is a first integral (conserved quantity). Level curves = population cycles.</p>
       <p><strong>With damping c:</strong> dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0. Exactly mirrors the mechanical case: damping extracts the ecologically conserved quantity, driving populations to equilibrium.</p>
       <p><strong>Information-theoretic interpretation:</strong> V is related to the Kullback-Leibler divergence between the current population state and the equilibrium — a measure of "surprise" or distance from equilibrium in an information sense.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title" id="sos-synthesis">Computational Lyapunov Synthesis</div>
+
+  <div class="ref-entry">
+    <div class="ref-entry-head"><span class="ref-entry-name">Sum-of-Squares (SOS) Methods</span></div>
+    <div class="ref-body">
+      <p>A computational approach to <em>constructing</em> Lyapunov functions and certifying regions of attraction, rather than guessing a candidate and checking it by hand. The starting observation: verifying that a polynomial is non-negative everywhere is NP-hard in general, but verifying that it is a <strong>sum of squares</strong> of other polynomials — which is a sufficient condition for non-negativity — is a convex feasibility problem.</p>
+      <p><strong>The reformulation:</strong> a polynomial p(x) is SOS if and only if it can be written p(x) = z(x)&#7488; Q z(x) for a positive semidefinite matrix Q, where z is a vector of monomials. Searching for such a Q is a <strong>semidefinite program</strong> (SDP) — solvable to global optimality in polynomial time.</p>
+      <p><strong>Application to stability:</strong> parameterize V as a polynomial with unknown coefficients and require both V and −dV/dt to be SOS. This searches an entire family of candidates at once for one that certifies stability — automating the step that, done by hand, requires insight or luck. The fixed library and adjustable sliders in this tool are a manual, low-dimensional stand-in for that search.</p>
+      <p><strong>Region of attraction:</strong> the certified ROA can be enlarged by jointly searching for V and the level c that maximize the size of {V ≤ c} subject to dV/dt &lt; 0 on that set. The set-containment conditions are handled with the <em>S-procedure</em>, which introduces multiplier polynomials (themselves SOS). Because V and the multipliers multiply each other, the problem is bilinear and is solved by alternating SDP solves — the standard V–s iteration.</p>
+      <p><strong>Relation to this tool:</strong> the "Optimize parameters for largest ROA" button performs the same kind of search in spirit — over the two free entries of the quadratic's matrix P, by brute-force grid evaluation rather than convex optimization. That two-parameter search is a hand-rolled, low-dimensional stand-in for the semidefinite program SOS solves over the cone of positive definite matrices. Crucially, the tool's ROA is a <em>numerical estimate</em> from sampling the grid, not a proof; the value of SOS is that it produces an actual certificate — a guarantee that holds at every point, not just the sampled ones. Scaling beyond the quadratic (to higher-degree polynomials), or handling non-polynomial dynamics (which must first be recast or approximated), is where dedicated SOS and optimization software becomes necessary.</p>
+      <p><strong>Try it:</strong> the <span class="tab-link" data-goto="sos">Code for SOS Synthesis</span> tab generates runnable MATLAB (SOSTOOLS) or Python (SumOfSquares.py) code for any of these systems, and so the search above can be carried out as a real SDP rather than a grid scan.</p>
+      <p><strong>Software:</strong> MATLAB — SOSTOOLS (<a href="https://github.com/oxfordcontrol/SOSTOOLS" target="_blank" rel="noopener">github.com/oxfordcontrol/SOSTOOLS</a>, <a href="https://www.cds.caltech.edu/sostools/" target="_blank" rel="noopener">project page</a>); Python — SumOfSquares.py and the cross-language tutorial at <a href="https://sums-of-squares.github.io/sos/" target="_blank" rel="noopener">sums-of-squares.github.io</a>. For non-polynomial dynamics, the higher-order-derivative and Chebyshev-approximation approach of Han and Panagou (<em>Chebyshev approximation and higher order derivatives of Lyapunov functions for estimating the domain of attraction</em>, IEEE CDC 2017) is a practical route to recasting the vector field as a polynomial.</p>
     </div>
   </div>
 
@@ -1421,21 +1464,6 @@ With damping c:  dV/dt = −cy²</div>
           <li>Spong, Hutchinson &amp; Vidyasagar (2006) — <em>Robot Modeling and Control</em>, Ch. 9 (PBC for robot manipulators)</li>
         </ul>
       </div>
-    </div>
-  </div>
-
-  <div class="ref-group-title">Computational Lyapunov Synthesis</div>
-
-  <div class="ref-entry">
-    <div class="ref-entry-head"><span class="ref-entry-name">Sum-of-Squares (SOS) Methods</span></div>
-    <div class="ref-body">
-      <p>A computational approach to <em>constructing</em> Lyapunov functions and certifying regions of attraction, rather than guessing a candidate and checking it by hand. The starting observation: verifying that a polynomial is non-negative everywhere is NP-hard in general, but verifying that it is a <strong>sum of squares</strong> of other polynomials — which is a sufficient condition for non-negativity — is a convex feasibility problem.</p>
-      <p><strong>The reformulation:</strong> a polynomial p(x) is SOS if and only if it can be written p(x) = z(x)&#7488; Q z(x) for a positive semidefinite matrix Q, where z is a vector of monomials. Searching for such a Q is a <strong>semidefinite program</strong> (SDP) — solvable to global optimality in polynomial time.</p>
-      <p><strong>Application to stability:</strong> parameterize V as a polynomial with unknown coefficients and require both V and −dV/dt to be SOS. This searches an entire family of candidates at once for one that certifies stability — automating the step that, done by hand, requires insight or luck. The fixed library and adjustable sliders in this tool are a manual, low-dimensional stand-in for that search.</p>
-      <p><strong>Region of attraction:</strong> the certified ROA can be enlarged by jointly searching for V and the level c that maximize the size of {V ≤ c} subject to dV/dt &lt; 0 on that set. The set-containment conditions are handled with the <em>S-procedure</em>, which introduces multiplier polynomials (themselves SOS). Because V and the multipliers multiply each other, the problem is bilinear and is solved by alternating SDP solves — the standard V–s iteration.</p>
-      <p><strong>Relation to this tool:</strong> the "Optimize parameters for largest ROA" button performs the same kind of search in spirit — over the two free entries of the quadratic's matrix P, by brute-force grid evaluation rather than convex optimization. That two-parameter search is a hand-rolled, low-dimensional stand-in for the semidefinite program SOS solves over the cone of positive definite matrices. Crucially, the tool's ROA is a <em>numerical estimate</em> from sampling the grid, not a proof; the value of SOS is that it produces an actual certificate — a guarantee that holds at every point, not just the sampled ones. Scaling beyond the quadratic (to higher-degree polynomials), or handling non-polynomial dynamics (which must first be recast or approximated), is where dedicated SOS and optimization software becomes necessary.</p>
-      <p><strong>Try it:</strong> the <strong>SOS Code</strong> tab generates runnable MATLAB (SOSTOOLS) or Python (SumOfSquares.py) code for any of these systems, so the search above can be carried out as a real SDP rather than a grid scan.</p>
-      <p><strong>Software:</strong> MATLAB — SOSTOOLS (<a href="https://github.com/oxfordcontrol/SOSTOOLS" target="_blank" rel="noopener">github.com/oxfordcontrol/SOSTOOLS</a>, <a href="https://www.cds.caltech.edu/sostools/" target="_blank" rel="noopener">project page</a>); Python — SumOfSquares.py and the cross-language tutorial at <a href="https://sums-of-squares.github.io/sos/" target="_blank" rel="noopener">sums-of-squares.github.io</a>. For non-polynomial dynamics, the higher-order-derivative and Chebyshev-approximation approach of Han and Panagou (<em>Chebyshev approximation and higher order derivatives of Lyapunov functions for estimating the domain of attraction</em>, IEEE CDC 2017) is a practical route to recasting the vector field as a polynomial.</p>
     </div>
   </div>
 
