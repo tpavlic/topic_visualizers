@@ -3346,7 +3346,7 @@ Vdot = diff(V, x1)*f(1) + diff(V, x2)*f(2);
 % with a higher-degree positive-definite form, e.g. epspd*(x1^2 + x2^2)^2.
 prog = sosineq(prog, V - epspd*(x1^2 + x2^2));             % V positive definite
 prog = sosineq(prog, lam);                                 % multiplier is SOS
-prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt < 0 on the disk
+prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt <= 0 on the disk
 
 prog = sossolve(prog);
 
@@ -3529,7 +3529,7 @@ lam = poly_variable('lam', xs, nmult)
 # with a higher-degree positive-definite form, e.g. epspd*(x1**2 + x2**2)**2.
 prob.add_sos_constraint(V - epspd*(x1**2 + x2**2), xs)        # V positive definite
 prob.add_sos_constraint(lam, xs)                              # multiplier is SOS
-prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2), xs) # dV/dt < 0 on the disk
+prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2), xs) # dV/dt <= 0 on the disk
 
 # Solve. On an infeasible or numerically hard problem the cvxopt backend may
 # raise rather than return a status, so catch that and fall through to a
