@@ -1538,6 +1538,7 @@ With damping c:  dV/dt = −cy²</div>
       <li><strong>R (certification disk)</strong> is the fixed disk ‖x‖ ≤ R on which decrease is required. You choose it rather than the solver, and the certified estimate always lies inside this circle. A larger R asks for more, but once the disk reaches past the true basin, for instance a nearby saddle, the problem turns infeasible.</li>
       <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee, since a feasible solve certifies dV/dt &lt; 0 across the whole disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.</li>
       <li><strong>k (approximation degree)</strong> is the Taylor degree used to polynomialize any non-polynomial term in the dynamics, with no effect on already-polynomial systems. For a recast system, the certificate is rigorous for that polynomial approximation, which matches the true dynamics only near the origin (see Han and Panagou, CDC 2017).</li>
+      <li><strong>Positive-definiteness floor.</strong> V is forced positive definite by requiring V − ε‖x‖² to be SOS, a <em>quadratic</em> lower bound. This presumes the equilibrium admits a Lyapunov function with a positive-definite quadratic part, which holds when the linearization is non-degenerate. For a degenerate (non-hyperbolic) equilibrium whose only certificates are inherently higher order, that quadratic floor can be too strong; raise d and, in the generated code, replace ε‖x‖² with a higher-degree positive-definite form such as ε‖x‖⁴.</li>
       <li><strong>If the solve is infeasible,</strong> shrink R, or raise d or n. Infeasibility does not prove the region is unstable; a fixed-degree SOS test can simply fail to certify a region that is in fact fine.</li>
     </ul>
   </div>
@@ -3337,84 +3338,116 @@ prog = sosprogram(vars);
 
 Vdot = diff(V, x1)*f(1) + diff(V, x2)*f(2);
 
+% V is forced positive definite with a QUADRATIC lower bound, epspd*||x||^2.
+% That presumes the equilibrium admits a Lyapunov function with a
+% positive-definite quadratic part (the usual case when the linearization is
+% non-degenerate). For a degenerate (non-hyperbolic) equilibrium whose only
+% certificates are higher order, raise d and replace this quadratic floor
+% with a higher-degree positive-definite form, e.g. epspd*(x1^2 + x2^2)^2.
 prog = sosineq(prog, V - epspd*(x1^2 + x2^2));             % V positive definite
 prog = sosineq(prog, lam);                                 % multiplier is SOS
 prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt < 0 on the disk
 
 prog = sossolve(prog);
 
-% Feasibility readout (mirrors the Python status print). sossolve stores
-% solver diagnostics in prog.solinfo.info; the available fields depend on
-% the solver, and so every access below is guarded with isfield.
-% pinf/dinf = 1 flag primal/dual infeasibility, but SeDuMi often leaves
-% them 0 on an infeasible problem and instead drives feasratio toward -1
-% (about +1 for a feasible problem, -1 for an infeasible one). The
-% infeasibility test therefore also keys off feasratio. numerr ~= 0 flags
-% numerical trouble, in which case V is unreliable.
+% --- Feasibility check ---------------------------------------------------
+% sossolve stores SeDuMi diagnostics in prog.solinfo.info; field availability
+% depends on the solver, and so every access below is guarded with isfield.
+% pinf/dinf = 1 flag primal/dual infeasibility, but SeDuMi often leaves them
+% 0 on an infeasible problem and instead drives feasratio toward -1 (about +1
+% for a feasible problem, -1 for an infeasible one), and so the test keys off
+% feasratio too. numerr ~= 0 flags numerical trouble, in which case the
+% certificate is unreliable even when the problem is feasible.
+feasible = true;
 if isfield(prog, 'solinfo') && isfield(prog.solinfo, 'info')
     in = prog.solinfo.info;
-    infeasible = (isfield(in, 'pinf') && in.pinf == 1) || ...
-                 (isfield(in, 'dinf') && in.dinf == 1) || ...
-                 (isfield(in, 'feasratio') && in.feasratio < 0.5);
-    if infeasible
-        warning(['SDP infeasible: no certificate exists for these settings ' ...
-                 '(an unstable parameter or d/n/R too small). ' ...
-                 'The V below is not valid.']);
-    elseif isfield(in, 'feasratio')
-        fprintf('Solver feasratio = %.3f (near +1: feasible).\\n', in.feasratio);
+    if (isfield(in, 'pinf') && in.pinf == 1) || ...
+       (isfield(in, 'dinf') && in.dinf == 1) || ...
+       (isfield(in, 'feasratio') && in.feasratio < 0.5)
+        feasible = false;
     end
     if isfield(in, 'numerr') && in.numerr ~= 0
-        warning('Solver reported numerical trouble (numerr = %d); treat V with caution.', in.numerr);
+        warning('Solver reported numerical trouble (numerr = %d); treat the result with caution.', in.numerr);
+    end
+    if feasible && isfield(in, 'feasratio')
+        fprintf('Solver feasratio = %.3f (near +1: feasible).\\n', in.feasratio);
     end
 end
 
-V_sol = sosgetsol(prog, V);
-% The multipoly @polynomial class has no disp method, and so disp(V_sol)
-% would print a property dump; char() yields the readable polynomial string.
-Vstr = char(V_sol); if iscell(Vstr), Vstr = Vstr{1}; end
-fprintf('Lyapunov function V(x) =\\n  %s\\n', Vstr);
-
 % ----------------------------------------------------------------------
-% Visualize: phase portrait, the synthesized V, and the certified ROA.
-% The largest level set of V that fits inside the disk is {V <= cstar}
-% with cstar = min over the circle ||x|| = R of V(x). Inside it V is
-% positive and strictly decreasing, and so {V <= cstar} is a certified
-% inner estimate of the region of attraction. (To enlarge the region itself,
-% alternate solving for V and for the multiplier on {V <= c}: the
-% bilinear V-s iteration.)
-%
-% Note: this is a feasibility problem with no objective, and the only
-% normalization is the one-sided margin V - epspd*||x||^2 >= 0, which bounds
-% V below but not its scale (if V is feasible, so is any alpha*V with alpha
-% >= 1). The solver therefore returns V up to an arbitrary positive scale,
-% and the numeric value of cstar inherits that scale: it can differ between
-% solvers (e.g. SeDuMi here vs. the Python backend) or settings even when
-% the certified region is the same. The region {V <= cstar} is scale
-% invariant ({alpha*V <= alpha*cstar} is the same set), and so it is the
-% meaningful output; do not read cstar as an absolute number.
+% Visualize. The phase portrait is drawn either way; the Lyapunov function
+% and the certified ROA are drawn ONLY when a valid certificate was found.
+% The largest level set of V inside the disk is {V <= cstar} with
+% cstar = min over the circle ||x|| = R of V(x). Only the CONNECTED COMPONENT
+% of that sublevel set containing the origin is the certified region, and it
+% lies inside ||x|| <= R by construction. (To enlarge the region itself,
+% alternate solving for V and the multiplier on {V <= c}: the V-s iteration.)
 % ----------------------------------------------------------------------
 R  = sqrt(R2);
 th = linspace(0, 2*pi, 720);
-cstar = min(arrayfun(@(t) double(subs(V_sol, [x1; x2], [R*cos(t); R*sin(t)])), th));
-
-g = linspace(-1.6*R, 1.6*R, 60);
+g  = linspace(-1.6*R, 1.6*R, 60);
 [X1, X2] = meshgrid(g, g);
-F1 = arrayfun(@(a,b) double(subs(f(1),   [x1; x2], [a; b])), X1, X2);
-F2 = arrayfun(@(a,b) double(subs(f(2),   [x1; x2], [a; b])), X1, X2);
-Vg = arrayfun(@(a,b) double(subs(V_sol,  [x1; x2], [a; b])), X1, X2);
+F1 = arrayfun(@(a,b) double(subs(f(1), [x1; x2], [a; b])), X1, X2);
+F2 = arrayfun(@(a,b) double(subs(f(2), [x1; x2], [a; b])), X1, X2);
 
 figure; hold on; box on; axis equal;
-streamslice(X1, X2, F1, F2);                               % flow
-[~, hLev] = contour(X1, X2, Vg, 18, 'LineColor', [0.6 0.6 0.6], 'LineWidth', 0.4);
-[~, hRoa] = contour(X1, X2, Vg, [cstar cstar], 'r', 'LineWidth', 2);
+streamslice(X1, X2, F1, F2);                              % flow
 hDisk = plot(R*cos(th), R*sin(th), 'k--', 'LineWidth', 1);
-plot(0, 0, 'k.', 'MarkerSize', 16);                        % equilibrium at origin
+% Snap the axes to the grid with equal units. Without fixed limits, a wide
+% figure plus "axis equal" expands the x-limits to fill the box and letterboxes
+% the flow field with empty margins; this keeps the box tight to the data.
+axis([-1.6*R, 1.6*R, -1.6*R, 1.6*R]);
 xlabel('x_1'); ylabel('x_2');
+
+if ~feasible
+    % Failsafe: no valid certificate, and so draw no Lyapunov function and no
+    % ROA estimate. A bogus V can produce spurious cstar level sets, including
+    % pieces outside the disk, that certify nothing. Only the equilibrium at
+    % the origin is marked.
+    warning(['SDP infeasible: no certificate exists for these settings ' ...
+             '(an unstable parameter, d/n too small, or R reaching past the ' ...
+             'basin boundary). Showing the phase portrait only; no ROA is certified.']);
+    plot(0, 0, 'k.', 'MarkerSize', 16);                  % equilibrium at origin
+    title('SDP infeasible -- no ROA certificate');
+    legend(hDisk, {'decrease region: ||x|| = R'}, 'Location', 'northeastoutside');
+    return
+end
+
+% Feasible: read off V (the @polynomial class has no disp method, and so
+% char() yields the readable polynomial string) and report it.
+V_sol = sosgetsol(prog, V);
+Vstr = char(V_sol); if iscell(Vstr), Vstr = Vstr{1}; end
+fprintf('Lyapunov function V(x) =\\n  %s\\n', Vstr);
+
+% Evaluate V on a fine grid so the contours are smooth. A per-point subs() is
+% too slow to refine, and so build an element-wise handle from the polynomial
+% string (vectorize turns ^ * / into .^ .* ./); evaluating it on a mesh is
+% cheap. (The flow above stays on the coarse grid; streamslice interpolates.)
+Vfun = str2func(['@(x1,x2) ', vectorize(Vstr)]);
+gv = linspace(-1.6*R, 1.6*R, 400);
+[VX1, VX2] = meshgrid(gv, gv);
+Vg = Vfun(VX1, VX2);
+
+% Clip the certified ROA curve to the disk: only the part of {V <= cstar}
+% inside ||x|| <= R is certified. Setting V OUTSIDE the disk to a large value
+% (not NaN) drops any spurious far-field pieces of the cstar level set while
+% keeping the curve smooth: NaN makes contour skip every boundary cell, which
+% shatters a curve that hugs ||x|| = R (e.g. an isotropic V) into fragments.
+%
+% The numeric value of cstar is not meaningful on its own: with no objective
+% and only the one-sided bound V - epspd*||x||^2 >= 0, the solver returns V up
+% to an arbitrary positive scale (any alpha*V with alpha >= 1 is also
+% feasible), and cstar scales with it. The set {V <= cstar} is scale
+% invariant, and so it, not the number, is the result.
+cstar = min(Vfun(R*cos(th), R*sin(th)));
+Vclip = Vg; Vclip(VX1.^2 + VX2.^2 > R2) = max(Vg(:)) + 1;
+
+[~, hLev] = contour(VX1, VX2, Vg, 18, 'LineColor', [0.6 0.6 0.6], 'LineWidth', 0.4);
+[~, hRoa] = contour(VX1, VX2, Vclip, [cstar cstar], 'r', 'LineWidth', 2);
+plot(0, 0, 'k.', 'MarkerSize', 16);                      % equilibrium at origin
 title(['Certified ROA estimate:  V \\leq ', sprintf('%.4g', cstar)]);
-% The red and dashed curves are different objects: the red {V = c*} is the
-% ROA estimate itself; the dashed circle is only the disk on which decrease
-% was certified. c* = min of V on that circle, and so {V <= c*} is the
-% largest level set inscribed in the disk (tangent to it at that minimum).
+% The red curve is the certified ROA boundary (only its part inside the disk
+% is meaningful); the dashed circle is the disk on which decrease was certified.
 legend([hRoa hDisk hLev], ...
        {'certified ROA estimate: V \\leq c*', ...
         'decrease region: ||x|| = R', ...
@@ -3488,90 +3521,105 @@ V = sum(t for t in Vfull.as_ordered_terms() if sp.total_degree(t, *xs) >= 2)  # 
 Vdot = sum(sp.diff(V, xi)*fi for xi, fi in zip(xs, f))
 lam = poly_variable('lam', xs, nmult)
 
+# V is forced positive definite with a QUADRATIC lower bound, epspd*||x||^2.
+# That presumes the equilibrium admits a Lyapunov function with a
+# positive-definite quadratic part (the usual case when the linearization is
+# non-degenerate). For a degenerate (non-hyperbolic) equilibrium whose only
+# certificates are higher order, raise d and replace this quadratic floor
+# with a higher-degree positive-definite form, e.g. epspd*(x1**2 + x2**2)**2.
 prob.add_sos_constraint(V - epspd*(x1**2 + x2**2), xs)        # V positive definite
 prob.add_sos_constraint(lam, xs)                              # multiplier is SOS
 prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2), xs) # dV/dt < 0 on the disk
 
-# Solve. On an infeasible or numerically hard problem the cvxopt backend
-# raises rather than returning a status (mirrors the MATLAB feasibility
-# readout), so catch it and exit cleanly instead of dumping a traceback.
+# Solve. On an infeasible or numerically hard problem the cvxopt backend may
+# raise rather than return a status, so catch that and fall through to a
+# phase-portrait-only plot (mirroring the MATLAB failsafe) instead of dumping
+# a traceback. feasible gates whether a certificate is drawn below.
+feasible = True
 try:
     prob.solve()   # e.g. prob.solve(solver='mosek') if available
+    print('status:', prob.status)
+    if 'optimal' not in prob.status and 'feasible' not in prob.status:
+        feasible = False
 except Exception as exc:
     print('Solver failed:', exc, file=sys.stderr)
-    print('The SDP is infeasible or numerically too hard for these settings: '
-          'an unstable parameter, d/n too small, or a region R reaching outside '
-          'the basin of attraction (e.g. past a nearby saddle). No valid '
-          'certificate was produced; try a smaller R or larger d/n.',
+    feasible = False
+
+if not feasible:
+    print('No valid certificate: the SDP is infeasible or numerically too hard '
+          'for these settings (an unstable parameter, d/n too small, or R past '
+          'the basin boundary). Showing the phase portrait only; no ROA is certified.',
           file=sys.stderr)
-    sys.exit(1)
 
-print('status:', prob.status)
-if 'optimal' not in prob.status and 'feasible' not in prob.status:
-    print('WARNING: solver status is', repr(prob.status),
-          '- the V below may not be a valid certificate.', file=sys.stderr)
-
-# Extract the numeric Lyapunov function.
-V_sol = V
-for s in list(V.free_symbols):
-    if s in xs:
-        continue
-    V_sol = V_sol.subs(s, round(float(prob.sym_to_var(s).value), 6))
-print('V =', sp.expand(V_sol))
+# Extract the numeric Lyapunov function (only meaningful when feasible).
+if feasible:
+    V_sol = V
+    for s in list(V.free_symbols):
+        if s in xs:
+            continue
+        V_sol = V_sol.subs(s, round(float(prob.sym_to_var(s).value), 6))
+    print('V =', sp.expand(V_sol))
 
 # ----------------------------------------------------------------------
-# Visualize: phase portrait, the synthesized V, and the certified ROA.
-# The largest level set of V that fits inside the disk is {V <= cstar}
-# with cstar = min over the circle ||x|| = R of V(x). Inside it V is
-# positive and strictly decreasing, and so {V <= cstar} is a certified
-# inner estimate of the region of attraction. (To enlarge the region itself,
-# alternate solving for V and for the multiplier on {V <= c}: the
-# bilinear V-s iteration.)
+# Visualize. The phase portrait is drawn either way; the Lyapunov function
+# and the certified ROA are drawn ONLY when a valid certificate was found.
+# The largest level set of V inside the disk is {V <= cstar} with
+# cstar = min over the circle ||x|| = R of V(x). Only the connected component
+# of that sublevel set containing the origin is the certified region, and it
+# lies inside ||x|| <= R by construction. (To enlarge the region itself,
+# alternate solving for V and the multiplier on {V <= c}: the V-s iteration.)
 #
-# Note: this is a feasibility problem with no objective, and the only
-# normalization is the one-sided margin V - epspd*||x||^2 >= 0, which bounds V
-# below but not its scale (if V is feasible, so is any alpha*V with alpha
-# >= 1). The solver therefore returns V up to an arbitrary positive scale,
-# and the numeric value of cstar inherits that scale: it can differ between
-# solvers (e.g. the Python backend here vs. SeDuMi in MATLAB) or settings
-# even when the certified region is the same. The region {V <= cstar} is
-# scale invariant ({alpha*V <= alpha*cstar} is the same set), and so it is
-# the meaningful output; do not read cstar as an absolute number.
+# The numeric value of cstar is not meaningful on its own: with no objective
+# and only the one-sided bound V - epspd*||x||^2 >= 0, the solver returns V up
+# to an arbitrary positive scale (any alpha*V with alpha >= 1 is also
+# feasible), and cstar scales with it. The set {V <= cstar} is scale
+# invariant, and so it, not the number, is the result.
 # ----------------------------------------------------------------------
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 R = R2 ** 0.5
-V_fn  = sp.lambdify((x1, x2), V_sol, 'numpy')
 f1_fn = sp.lambdify((x1, x2), f[0], 'numpy')
 f2_fn = sp.lambdify((x1, x2), f[1], 'numpy')
 
 th = np.linspace(0, 2*np.pi, 720)
-cstar = float(np.min(V_fn(R*np.cos(th), R*np.sin(th))))
-
-g = np.linspace(-1.6*R, 1.6*R, 400)
+g  = np.linspace(-1.6*R, 1.6*R, 400)
 X1, X2 = np.meshgrid(g, g)
 ones = np.ones_like(X1)
-Vg = V_fn(X1, X2) * ones
 
 fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
 ax.streamplot(X1, X2, f1_fn(X1, X2)*ones, f2_fn(X1, X2)*ones, density=1.1, color='0.7')
-ax.contour(X1, X2, Vg, levels=18, colors='0.6', linewidths=0.5)   # level sets of V
-ax.contour(X1, X2, Vg, levels=[cstar], colors='r', linewidths=2)  # ROA estimate {V = cstar}
 ax.plot(R*np.cos(th), R*np.sin(th), 'k--', lw=1)                  # decrease region ||x|| = R
 ax.plot(0, 0, 'k.', ms=11)                                        # equilibrium at origin
-# The red and dashed curves are different objects: the red {V = cstar} is the
-# ROA estimate itself; the dashed circle is only the disk on which decrease
-# was certified. cstar = min of V on that circle, and so {V <= cstar} is the
-# largest level set inscribed in the disk (tangent to it at that minimum).
-from matplotlib.lines import Line2D
-ax.legend(handles=[
-    Line2D([0], [0], color='r', lw=2, label=r'certified ROA estimate: $V \\leq c^*$'),
-    Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
-    Line2D([0], [0], color='0.6', lw=0.6, label=r'level sets of $V$'),
-], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
-ax.set_aspect('equal'); ax.set_xlabel('x1'); ax.set_ylabel('x2')
-ax.set_title(rf'Certified ROA estimate:  $V \\leq {cstar:.4g}$')
+ax.set_aspect('equal')
+ax.set_xlim(-1.6*R, 1.6*R); ax.set_ylim(-1.6*R, 1.6*R)           # tight, no letterbox
+ax.set_xlabel('x1'); ax.set_ylabel('x2')
+
+if feasible:
+    V_fn  = sp.lambdify((x1, x2), V_sol, 'numpy')
+    cstar = float(np.min(V_fn(R*np.cos(th), R*np.sin(th))))
+    Vg    = V_fn(X1, X2) * ones
+    # Clip the ROA curve to the disk: only the part of {V <= cstar} inside
+    # ||x|| <= R is certified. Filling V OUTSIDE the disk with a large value
+    # (not NaN) drops spurious far-field pieces while keeping the curve smooth;
+    # NaN makes contour skip boundary cells and shatters a curve that hugs
+    # ||x|| = R (e.g. an isotropic V) into fragments.
+    Vclip = np.where(X1**2 + X2**2 <= R2, Vg, Vg.max() + 1)
+    ax.contour(X1, X2, Vg,    levels=18,      colors='0.6', linewidths=0.5)  # level sets of V
+    ax.contour(X1, X2, Vclip, levels=[cstar], colors='r',   linewidths=2)    # certified ROA (in disk)
+    ax.legend(handles=[
+        Line2D([0], [0], color='r', lw=2, label=r'certified ROA estimate: $V \\leq c^*$'),
+        Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
+        Line2D([0], [0], color='0.6', lw=0.6, label=r'level sets of $V$'),
+    ], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
+    ax.set_title(rf'Certified ROA estimate:  $V \\leq {cstar:.4g}$')
+else:
+    ax.legend(handles=[
+        Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
+    ], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
+    ax.set_title('SDP infeasible -- no ROA certificate')
+
 plt.show()
 `;
 }
