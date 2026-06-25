@@ -2552,7 +2552,7 @@ function render() {
     ctx.font = "bold 11px 'IBM Plex Mono', monospace";
     const lbl = 'ROA \u2287 displayed domain';
     const tw2 = ctx.measureText(lbl).width;
-    ctx.fillStyle = 'rgba(244,240,232,0.85)';
+    ctx.fillStyle = 'rgb(244,240,232)';
     ctx.beginPath();
     ctx.roundRect(LW/2 - tw2/2 - 4, 10, tw2 + 8, 16, 3);
     ctx.fill();
