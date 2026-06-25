@@ -3416,7 +3416,8 @@ end
 
 % ----------------------------------------------------------------------
 % Visualize. The phase portrait is drawn either way; the Lyapunov function
-% and the certified ROA are drawn ONLY when a valid certificate was found.
+% and the certified invariant region are drawn ONLY when a valid certificate
+% was found.
 % The largest level set of V inside the disk is {V <= cstar} with
 % cstar = min over the circle ||x|| = R of V(x). Only the CONNECTED COMPONENT
 % of that sublevel set containing the origin is the certified region, and it
@@ -3440,14 +3441,14 @@ xlabel('x_1'); ylabel('x_2');
 
 if ~feasible
     % Failsafe: no valid certificate, and so draw no Lyapunov function and no
-    % ROA estimate. A bogus V can produce spurious cstar level sets, including
-    % pieces outside the disk, that certify nothing. Only the equilibrium at
-    % the origin is marked.
+    % invariant region. A bogus V can produce spurious cstar level sets,
+    % including pieces outside the disk, that certify nothing. Only the
+    % equilibrium at the origin is marked.
     warning(['SDP infeasible: no certificate exists for these settings ' ...
              '(an unstable parameter, d/n too small, or R reaching past the ' ...
-             'basin boundary). Showing the phase portrait only; no ROA is certified.']);
+             'basin boundary). Showing the phase portrait only; nothing is certified.']);
     plot(0, 0, 'k.', 'MarkerSize', 16);                  % equilibrium at origin
-    title('SDP infeasible -- no ROA certificate');
+    title('SDP infeasible -- no certificate');
     legend(hDisk, {'decrease region: ||x|| = R'}, 'Location', 'northeastoutside');
     return
 end
@@ -3460,7 +3461,7 @@ gv = linspace(-1.6*R, 1.6*R, 400);
 [VX1, VX2] = meshgrid(gv, gv);
 Vg = Vfun(VX1, VX2);
 
-% Clip the certified ROA curve to the disk: only the part of {V <= cstar}
+% Clip the certified region's boundary to the disk: only the part of {V <= cstar}
 % inside ||x|| <= R is certified. Setting V OUTSIDE the disk to a large value
 % (not NaN) drops any spurious far-field pieces of the cstar level set while
 % keeping the curve smooth: NaN makes contour skip every boundary cell, which
@@ -3477,11 +3478,14 @@ Vclip = Vg; Vclip(VX1.^2 + VX2.^2 > R^2) = max(Vg(:)) + 1;
 [~, hLev] = contour(VX1, VX2, Vg, 18, 'LineColor', [0.6 0.6 0.6], 'LineWidth', 0.4);
 [~, hRoa] = contour(VX1, VX2, Vclip, [cstar cstar], 'r', 'LineWidth', 2);
 plot(0, 0, 'k.', 'MarkerSize', 16);                      % equilibrium at origin
-title(['Certified ROA estimate:  V \\leq ', sprintf('%.4g', cstar)]);
-% The red curve is the certified ROA boundary (only its part inside the disk
-% is meaningful); the dashed circle is the disk on which decrease was certified.
+title(['Certified invariant region:  V \\leq ', sprintf('%.4g', cstar)]);
+% The red curve bounds the certified invariant region (only its part inside the
+% disk is meaningful); the dashed circle is the disk on which decrease was
+% certified. This set is forward-invariant (trajectories cannot leave it) and
+% the origin is stable; it is a region of attraction only once convergence is
+% argued separately (strict decrease away from the origin, or LaSalle).
 legend([hRoa hDisk hLev], ...
-       {'certified ROA estimate: V \\leq c*', ...
+       {'certified invariant region: V \\leq c*', ...
         'decrease region: ||x|| = R', ...
         'level sets of V'}, 'Location', 'northeastoutside');
 `;
@@ -3609,7 +3613,7 @@ except Exception as exc:
 if not feasible:
     print('No valid certificate: the SDP is infeasible or numerically too hard '
           'for these settings (an unstable parameter, d/n too small, or R past '
-          'the basin boundary). Showing the phase portrait only; no ROA is certified.',
+          'the basin boundary). Showing the phase portrait only; nothing is certified.',
           file=sys.stderr)
 
 # Extract the numeric Lyapunov function (only meaningful when feasible).
@@ -3623,7 +3627,8 @@ if feasible:
 
 # ----------------------------------------------------------------------
 # Visualize. The phase portrait is drawn either way; the Lyapunov function
-# and the certified ROA are drawn ONLY when a valid certificate was found.
+# and the certified invariant region are drawn ONLY when a valid certificate
+# was found.
 # The largest level set of V inside the disk is {V <= cstar} with
 # cstar = min over the circle ||x|| = R of V(x). Only the connected component
 # of that sublevel set containing the origin is the certified region, and it
@@ -3660,25 +3665,25 @@ if feasible:
     V_fn  = sp.lambdify((x1, x2), V_sol, 'numpy')
     cstar = float(np.min(V_fn(R*np.cos(th), R*np.sin(th))))
     Vg    = V_fn(X1, X2) * ones
-    # Clip the ROA curve to the disk: only the part of {V <= cstar} inside
-    # ||x|| <= R is certified. Filling V OUTSIDE the disk with a large value
-    # (not NaN) drops spurious far-field pieces while keeping the curve smooth;
-    # NaN makes contour skip boundary cells and shatters a curve that hugs
-    # ||x|| = R (e.g. an isotropic V) into fragments.
+    # Clip the certified region's boundary to the disk: only the part of
+    # {V <= cstar} inside ||x|| <= R is certified. Filling V OUTSIDE the disk
+    # with a large value (not NaN) drops spurious far-field pieces while keeping
+    # the curve smooth; NaN makes contour skip boundary cells and shatters a
+    # curve that hugs ||x|| = R (e.g. an isotropic V) into fragments.
     Vclip = np.where(X1**2 + X2**2 <= R**2, Vg, Vg.max() + 1)
     ax.contour(X1, X2, Vg,    levels=18,      colors='0.6', linewidths=0.5)  # level sets of V
-    ax.contour(X1, X2, Vclip, levels=[cstar], colors='r',   linewidths=2)    # certified ROA (in disk)
+    ax.contour(X1, X2, Vclip, levels=[cstar], colors='r',   linewidths=2)    # certified region (in disk)
     ax.legend(handles=[
-        Line2D([0], [0], color='r', lw=2, label=r'certified ROA estimate: $V \\leq c^*$'),
+        Line2D([0], [0], color='r', lw=2, label=r'certified invariant region: $V \\leq c^*$'),
         Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
         Line2D([0], [0], color='0.6', lw=0.6, label=r'level sets of $V$'),
     ], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
-    ax.set_title(rf'Certified ROA estimate:  $V \\leq {cstar:.4g}$')
+    ax.set_title(rf'Certified invariant region:  $V \\leq {cstar:.4g}$')
 else:
     ax.legend(handles=[
         Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
     ], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
-    ax.set_title('SDP infeasible -- no ROA certificate')
+    ax.set_title('SDP infeasible -- no certificate')
 
 plt.show()
 `;
