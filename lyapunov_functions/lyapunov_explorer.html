@@ -2542,26 +2542,6 @@ function render() {
     }
   }
 
-  // If ROA covers the full displayed domain, annotate that
-  if (showROA && roaType === 'full') {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(201,125,53,0.7)';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([9, 5]);
-    ctx.strokeRect(6, 6, LW-12, LH-12);
-    ctx.font = "bold 11px 'IBM Plex Mono', monospace";
-    const lbl = 'ROA \u2287 displayed domain';
-    const tw2 = ctx.measureText(lbl).width;
-    ctx.fillStyle = 'rgb(244,240,232)';
-    ctx.beginPath();
-    ctx.roundRect(LW/2 - tw2/2 - 4, 10, tw2 + 8, 16, 3);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(162,90,20,1)';
-    ctx.textAlign = 'center';
-    ctx.fillText(lbl, LW/2, 22);
-    ctx.restore();
-  }
-
   // ── Trajectories ──
   for (const traj of trajectories) {
     ctx.save();
@@ -2703,6 +2683,27 @@ function render() {
       }
       ctx.restore();
     }
+  }
+
+  // Overlay, drawn last so the vector field and equilibria do not paint over
+  // it: if the ROA covers the full displayed domain, frame and label it.
+  if (showROA && roaType === 'full') {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(201,125,53,0.7)';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([9, 5]);
+    ctx.strokeRect(6, 6, LW-12, LH-12);
+    ctx.font = "bold 11px 'IBM Plex Mono', monospace";
+    const lbl = 'ROA ⊇ displayed domain';
+    const tw2 = ctx.measureText(lbl).width;
+    ctx.fillStyle = 'rgb(244,240,232)';
+    ctx.beginPath();
+    ctx.roundRect(LW/2 - tw2/2 - 4, 10, tw2 + 8, 16, 3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(162,90,20,1)';
+    ctx.textAlign = 'center';
+    ctx.fillText(lbl, LW/2, 22);
+    ctx.restore();
   }
 
   // Assessment
