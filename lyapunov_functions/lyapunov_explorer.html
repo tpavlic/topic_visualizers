@@ -3370,29 +3370,41 @@ prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt <= 0 on the d
 % is higher-order than quadratic; match the margin degree to the decay order.
 
 prog = sossolve(prog);
+R    = sqrt(R2);
 
-% --- Feasibility check ---------------------------------------------------
-% sossolve stores SeDuMi diagnostics in prog.solinfo.info; field availability
-% depends on the solver, and so every access below is guarded with isfield.
-% pinf/dinf = 1 flag primal/dual infeasibility, but SeDuMi often leaves them
-% 0 on an infeasible problem and instead drives feasratio toward -1 (about +1
-% for a feasible problem, -1 for an infeasible one), and so the test keys off
-% feasratio too. numerr ~= 0 flags numerical trouble, in which case the
-% certificate is unreliable even when the problem is feasible.
-feasible = true;
-if isfield(prog, 'solinfo') && isfield(prog.solinfo, 'info')
-    in = prog.solinfo.info;
-    if (isfield(in, 'pinf') && in.pinf == 1) || ...
-       (isfield(in, 'dinf') && in.dinf == 1) || ...
-       (isfield(in, 'feasratio') && in.feasratio < 0.5)
-        feasible = false;
-    end
-    if isfield(in, 'numerr') && in.numerr ~= 0
+% Read off the candidate certificate V (the @polynomial class has no disp
+% method, so char() gives the readable polynomial string) and build a fast
+% element-wise handle for it (vectorize turns ^ * / into .^ .* ./).
+V_sol = sosgetsol(prog, V);
+Vstr  = char(V_sol); if iscell(Vstr), Vstr = Vstr{1}; end
+Vfun  = str2func(['@(x1,x2) ', vectorize(Vstr)]);
+
+% --- Feasibility check (robust to the SDP solver) ------------------------
+% When SeDuMi's diagnostics are present (the SOSTOOLS default solver), use
+% them: feasratio ~ +1 feasible / ~ -1 infeasible, pinf/dinf flag
+% infeasibility, numerr ~= 0 flags numerical trouble. For any OTHER solver
+% those fields are absent, so fall back to verifying the certificate itself on
+% the disk -- exactly the Lyapunov conditions the plot claims (V >= epspd*||x||^2
+% and dV/dt <= 0), sampled with a relative tolerance. That keeps the check
+% independent of which solver SOSTOOLS used.
+in = struct();
+if isfield(prog, 'solinfo') && isfield(prog.solinfo, 'info'), in = prog.solinfo.info; end
+if isfield(in, 'feasratio')                                  % SeDuMi diagnostics
+    feasible = ~((isfield(in,'pinf') && in.pinf == 1) || ...
+                 (isfield(in,'dinf') && in.dinf == 1) || in.feasratio < 0.5);
+    if isfield(in,'numerr') && in.numerr ~= 0
         warning('Solver reported numerical trouble (numerr = %d); treat the result with caution.', in.numerr);
     end
-    if feasible && isfield(in, 'feasratio')
-        fprintf('Solver feasratio = %.3f (near +1: feasible).\\n', in.feasratio);
-    end
+    if feasible, fprintf('Solver feasratio = %.3f (near +1: feasible).\\n', in.feasratio); end
+else                                                         % any other solver: verify V directly
+    Vdstr = char(diff(V_sol, x1)*f(1) + diff(V_sol, x2)*f(2));
+    if iscell(Vdstr), Vdstr = Vdstr{1}; end
+    Vdfun = str2func(['@(x1,x2) ', vectorize(Vdstr)]);
+    gg = linspace(-R, R, 80); [Gx, Gy] = meshgrid(gg, gg); Din = Gx.^2 + Gy.^2 <= R2;
+    Vd = Vdfun(Gx(Din), Gy(Din)); V0 = Vfun(Gx(Din), Gy(Din)); tol = 1e-3;   % relative
+    feasible = (max(Vd) <= tol*max(abs(Vd))) && ...
+               (min(V0 - epspd*(Gx(Din).^2 + Gy(Din).^2)) >= -tol*max(abs(V0)));
+    fprintf('Certificate verified directly on the disk (solver-agnostic): %d\\n', feasible);
 end
 
 % ----------------------------------------------------------------------
@@ -3404,7 +3416,6 @@ end
 % lies inside ||x|| <= R by construction. (To enlarge the region itself,
 % alternate solving for V and the multiplier on {V <= c}: the V-s iteration.)
 % ----------------------------------------------------------------------
-R  = sqrt(R2);
 th = linspace(0, 2*pi, 720);
 g  = linspace(-1.6*R, 1.6*R, 60);
 [X1, X2] = meshgrid(g, g);
@@ -3434,17 +3445,10 @@ if ~feasible
     return
 end
 
-% Feasible: read off V (the @polynomial class has no disp method, and so
-% char() yields the readable polynomial string) and report it.
-V_sol = sosgetsol(prog, V);
-Vstr = char(V_sol); if iscell(Vstr), Vstr = Vstr{1}; end
+% Feasible: report V (already extracted above) and evaluate it on a fine grid
+% so the contours are smooth -- the flow stays on the coarse grid above, which
+% streamslice interpolates.
 fprintf('Lyapunov function V(x) =\\n  %s\\n', Vstr);
-
-% Evaluate V on a fine grid so the contours are smooth. A per-point subs() is
-% too slow to refine, and so build an element-wise handle from the polynomial
-% string (vectorize turns ^ * / into .^ .* ./); evaluating it on a mesh is
-% cheap. (The flow above stays on the coarse grid; streamslice interpolates.)
-Vfun = str2func(['@(x1,x2) ', vectorize(Vstr)]);
 gv = linspace(-1.6*R, 1.6*R, 400);
 [VX1, VX2] = meshgrid(gv, gv);
 Vg = Vfun(VX1, VX2);
