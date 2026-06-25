@@ -3343,6 +3343,14 @@ nmult = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt <= 0 hold o
 R     = ${sosCol(Rstr + ';', 10)}% region radius: certify decrease on the disk ||x|| <= R
 epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin eps)
 
+% Keep the decrease polynomial -Vdot - lam*(R^2 - ||x||^2) even-degree: an
+% odd-degree polynomial is never SOS. deg(Vdot) = (d-1) + deg(f); when that is
+% odd -- i.e. f has even degree, such as a quadratic field (predator-prey) --
+% raise the multiplier degree so its term dominates and the total stays even.
+% Recomputed from f, so editing the dynamics above stays correct automatically.
+degVdot = (d - 1) + f.maxdeg;
+if mod(degVdot, 2) == 1, nmult = max(nmult, degVdot - 1); end
+
 prog = sosprogram(vars);
 [prog, V]   = sospolyvar(prog, monomials(vars, 2:d));      % V: degrees 2..d, and so V(0)=0
 [prog, lam] = sospolyvar(prog, monomials(vars, 0:nmult));  % region multiplier
@@ -3548,6 +3556,15 @@ d     = ${sosCol(d, 9)}# degree of the Lyapunov polynomial V
 nmult = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
 R     = ${sosCol(Rstr, 9)}# region radius: certify decrease on the disk ||x|| <= R
 epspd = ${sosCol('1e-3', 9)}# positive-definiteness margin
+
+# Keep the decrease polynomial -Vdot - lam*(R**2 - ||x||**2) even-degree: an
+# odd-degree polynomial is never SOS. deg(Vdot) = (d-1) + deg(f); when that is
+# odd -- i.e. f has even degree, such as a quadratic field (predator-prey) --
+# raise the multiplier degree so its term dominates and the total stays even.
+# Recomputed from f, so editing the dynamics above stays correct automatically.
+deg_f = max(sp.total_degree(sp.expand(fi), *xs) for fi in f)
+if ((d - 1) + deg_f) % 2 == 1:
+    nmult = max(nmult, (d - 1) + deg_f - 1)
 
 prob = SOSProblem()
 Vfull = poly_variable('V', xs, d)
