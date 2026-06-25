@@ -3282,7 +3282,7 @@ function sosCol(token, width){ return String(token).padEnd(width); }
 function genMATLAB(id, k, n, d, R){
   const S = SOS_SYS[id];
   const f = S.f.map(c => sosToLang(c, 'matlab'));
-  const R2 = (R*R).toFixed(4);
+  const Rstr = +R.toFixed(4);
   const cav = S.caveat ? sosWrap('NOTE: ' + S.caveat, '% ', 72) + '\n%\n' : '';
   const paramDecl = S.param ? `${S.param.sym} = ${S.param.val};      % system parameter (change to explore other values)\n\n` : '';
   const sinDecl = S.nonpoly
@@ -3340,8 +3340,9 @@ f = [ ${f[0]};
 
 d     = ${sosCol(d + ';', 10)}% degree of the Lyapunov polynomial V
 nmult = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
-R2    = ${sosCol(R2 + ';', 10)}% region: certify decrease on the disk ||x||^2 <= R2
+R     = ${sosCol(Rstr + ';', 10)}% region radius: certify decrease on the disk ||x|| <= R
 epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin eps)
+R2    = ${sosCol('R^2;', 10)}% squared radius, used in the SOS constraints below
 
 prog = sosprogram(vars);
 [prog, V]   = sospolyvar(prog, monomials(vars, 2:d));      % V: degrees 2..d, and so V(0)=0
@@ -3370,7 +3371,6 @@ prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt <= 0 on the d
 % is higher-order than quadratic; match the margin degree to the decay order.
 
 prog = sossolve(prog);
-R    = sqrt(R2);
 
 % Read off the candidate certificate V (the @polynomial class has no disp
 % method, so char() gives the readable polynomial string) and build a fast
@@ -3483,7 +3483,7 @@ legend([hRoa hDisk hLev], ...
 function genPython(id, k, n, d, R){
   const S = SOS_SYS[id];
   const f = S.f.map(c => sosToLang(c, 'python'));
-  const R2 = (R*R).toFixed(4);
+  const Rstr = +R.toFixed(4);
   const cav = S.caveat ? sosWrap('NOTE: ' + S.caveat, '# ', 72) + '\n#\n' : '';
   const paramDecl = S.param ? `${S.param.sym} = ${S.param.val}      # system parameter (change to explore other values)\n\n` : '';
   const sinDecl = S.nonpoly
@@ -3547,8 +3547,9 @@ f = [ ${f[0]},
 
 d     = ${sosCol(d, 9)}# degree of the Lyapunov polynomial V
 nmult = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
-R2    = ${sosCol(R2, 9)}# region: certify decrease on the disk ||x||^2 <= R2
+R     = ${sosCol(Rstr, 9)}# region radius: certify decrease on the disk ||x|| <= R
 epspd = ${sosCol('1e-3', 9)}# positive-definiteness margin
+R2    = ${sosCol('R**2', 9)}# squared radius, used in the SOS constraints below
 
 prob = SOSProblem()
 Vfull = poly_variable('V', xs, d)
@@ -3624,7 +3625,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-R = R2 ** 0.5
 f1_fn = sp.lambdify((x1, x2), f[0], 'numpy')
 f2_fn = sp.lambdify((x1, x2), f[1], 'numpy')
 
