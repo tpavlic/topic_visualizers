@@ -1223,6 +1223,7 @@ With damping c:  dV/dt = −cy²</div>
       <p>A computational approach to <em>constructing</em> Lyapunov functions and certifying regions of attraction, rather than guessing a candidate and checking it by hand. The starting observation: verifying that a polynomial is non-negative everywhere is NP-hard in general, but verifying that it is a <strong>sum of squares</strong> of other polynomials — which is a sufficient condition for non-negativity — is a convex feasibility problem.</p>
       <p><strong>The reformulation:</strong> a polynomial p(x) is SOS if and only if it can be written p(x) = z(x)&#7488; Q z(x) for a positive semidefinite matrix Q, where z is a vector of monomials. Searching for such a Q is a <strong>semidefinite program</strong> (SDP) — solvable to global optimality in polynomial time.</p>
       <p><strong>Application to stability:</strong> parameterize V as a polynomial with unknown coefficients and require both V and −dV/dt to be SOS. This searches an entire family of candidates at once for one that certifies stability — automating the step that, done by hand, requires insight or luck. The fixed library and adjustable sliders in this tool are a manual, low-dimensional stand-in for that search.</p>
+      <p><strong>Strict versus non-strict decrease (what to change for the general case):</strong> requiring only −dV/dt to be SOS certifies dV/dt ≤ 0, which proves stability and makes the sublevel set forward-invariant — but not asymptotic stability on its own. Convergence then needs the strict-decrease-or-LaSalle step (trivial for the systems here, a genuine check in general). To have the SDP certify asymptotic stability <em>directly</em>, add a strict margin: require −dV/dt − ε‖x‖² to be SOS, forcing dV/dt ≤ −ε‖x‖² &lt; 0 away from the origin (in fact exponential stability) and removing the need for LaSalle. The trade is feasibility: a quadratic margin is infeasible for a non-hyperbolic equilibrium whose decrease is higher-order — the Cubic Drain ★, with dV/dt ∝ −‖x‖⁴ — so the minimal non-strict form is what keeps such systems in reach. In general you slide the work between a stronger SDP and a shorter hand argument: a quadratic margin for hyperbolic equilibria, a higher-degree margin matched to the decay order, or the non-strict form plus LaSalle when that order is unknown. The generated code uses the non-strict form and points out the one-line change that adds a margin.</p>
       <p><strong>Region of attraction:</strong> the certified ROA can be enlarged by jointly searching for V and the level c that maximize the size of {V ≤ c} subject to dV/dt &lt; 0 on that set. The set-containment conditions are handled with the <em>S-procedure</em>, which introduces multiplier polynomials (themselves SOS). Because V and the multipliers multiply each other, the problem is bilinear and is solved by alternating SDP solves — the standard V–s iteration.</p>
       <p><strong>Relation to this tool:</strong> the "Optimize parameters for largest ROA" button performs the same kind of search in spirit — over the two free entries of the quadratic's matrix P, by brute-force grid evaluation rather than convex optimization. That two-parameter search is a hand-rolled, low-dimensional stand-in for the semidefinite program SOS solves over the cone of positive definite matrices. Crucially, the tool's ROA is a <em>numerical estimate</em> from sampling the grid, not a proof; the value of SOS is that it produces an actual certificate — a guarantee that holds at every point, not just the sampled ones. Scaling beyond the quadratic (to higher-degree polynomials), or handling non-polynomial dynamics (which must first be recast or approximated), is where dedicated SOS and optimization software becomes necessary.</p>
       <p><strong>Try it:</strong> the <span class="tab-link" data-goto="sos">Code for SOS Synthesis</span> tab generates runnable MATLAB (SOSTOOLS) or Python (SumOfSquares.py) code for any of these systems, and so the search above can be carried out as a real SDP rather than a grid scan.</p>
@@ -3358,6 +3359,16 @@ prog = sosineq(prog, V - epspd*(x1^2 + x2^2));             % V positive definite
 prog = sosineq(prog, lam);                                 % multiplier is SOS
 prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt <= 0 on the disk
 
+% The decrease constraint above is non-strict (dV/dt <= 0), so it certifies
+% stability and an invariant region but leaves convergence to the LaSalle /
+% strict-decrease check noted above. To make the SDP certify asymptotic
+% stability directly (no extra step), add a strict margin -- replace the line
+% above with, for some eps2 > 0:
+%   prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2) - eps2*(x1^2 + x2^2));
+% which forces dV/dt <= -eps2*||x||^2 < 0 off the origin. The trade: this is
+% infeasible for non-hyperbolic equilibria (e.g. xdot = -x^3), whose decrease
+% is higher-order than quadratic; match the margin degree to the decay order.
+
 prog = sossolve(prog);
 
 % --- Feasibility check ---------------------------------------------------
@@ -3550,6 +3561,16 @@ lam = poly_variable('lam', xs, nmult)
 prob.add_sos_constraint(V - epspd*(x1**2 + x2**2), xs)        # V positive definite
 prob.add_sos_constraint(lam, xs)                              # multiplier is SOS
 prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2), xs) # dV/dt <= 0 on the disk
+
+# The decrease constraint above is non-strict (dV/dt <= 0), so it certifies
+# stability and an invariant region but leaves convergence to the LaSalle /
+# strict-decrease check noted above. To make the SDP certify asymptotic
+# stability directly (no extra step), add a strict margin -- replace the line
+# above with, for some eps2 > 0:
+#   prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2) - eps2*(x1**2 + x2**2), xs)
+# which forces dV/dt <= -eps2*||x||^2 < 0 off the origin. The trade: this is
+# infeasible for non-hyperbolic equilibria (e.g. xdot = -x^3), whose decrease
+# is higher-order than quadratic; match the margin degree to the decay order.
 
 # Solve. On an infeasible or numerically hard problem the cvxopt backend may
 # raise rather than return a status, so catch that and fall through to a
