@@ -76,6 +76,14 @@ For a new `my_demo.html`, the checklist is:
 
 ---
 
+## See also
+
+Other projects by the same author that visitors here may find complementary:
+
+* [Bio-Inspired AI & Optimization — Course Visualizations](https://tpavlic.github.io/asu-bioinspired-ai-and-optimization/) — supplemental interactive explorers for *IEE/CSE 598: Bio-Inspired AI and Optimization* at Arizona State University, spanning genetic algorithms, swarm intelligence, neural networks, and other bio-inspired methods.
+* [Notes, Documents, & Guides](https://github.com/tpavlic/docs-and-guides) — Markdown-formatted notes and instructional guides on a variety of fundamental and applied science and engineering topics.
+* [Lectures and short video tutorials](https://www.youtube.com/@TedPavlic) on YouTube, including the [Office Hours](https://www.youtube.com/playlist?list=PLXBbGVSkQJqEFKCGlTbzBnvf96DRJ6_gi) playlist.
+
 ## License
 
 Released under the [MIT License](LICENSE).
