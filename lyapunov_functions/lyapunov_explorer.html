@@ -3275,8 +3275,8 @@ function sosShiftDeriv(S, c){
 
 // Right-pad a value token (plus any trailing punctuation, like a MATLAB ';')
 // to a fixed field width so the inline comment that follows begins at a
-// constant column, independent of the value's width. This matters for R2,
-// which comes from toFixed(4) and is 6 or 7 characters wide depending on R.
+// constant column, independent of the value's width (e.g. the emitted R can
+// be "1.2" or "1.25", and the degrees are single digits).
 function sosCol(token, width){ return String(token).padEnd(width); }
 
 function genMATLAB(id, k, n, d, R){
@@ -3342,7 +3342,6 @@ d     = ${sosCol(d + ';', 10)}% degree of the Lyapunov polynomial V
 nmult = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
 R     = ${sosCol(Rstr + ';', 10)}% region radius: certify decrease on the disk ||x|| <= R
 epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin eps)
-R2    = ${sosCol('R^2;', 10)}% squared radius, used in the SOS constraints below
 
 prog = sosprogram(vars);
 [prog, V]   = sospolyvar(prog, monomials(vars, 2:d));      % V: degrees 2..d, and so V(0)=0
@@ -3358,14 +3357,14 @@ Vdot = diff(V, x1)*f(1) + diff(V, x2)*f(2);
 % with a higher-degree positive-definite form, e.g. epspd*(x1^2 + x2^2)^2.
 prog = sosineq(prog, V - epspd*(x1^2 + x2^2));             % V positive definite
 prog = sosineq(prog, lam);                                 % multiplier is SOS
-prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2));      % dV/dt <= 0 on the disk
+prog = sosineq(prog, -Vdot - lam*(R^2 - x1^2 - x2^2));     % dV/dt <= 0 on the disk
 
 % The decrease constraint above is non-strict (dV/dt <= 0), so it certifies
 % stability and an invariant region but leaves convergence to the LaSalle /
 % strict-decrease check noted above. To make the SDP certify asymptotic
 % stability directly (no extra step), add a strict margin -- replace the line
 % above with, for some eps2 > 0:
-%   prog = sosineq(prog, -Vdot - lam*(R2 - x1^2 - x2^2) - eps2*(x1^2 + x2^2));
+%   prog = sosineq(prog, -Vdot - lam*(R^2 - x1^2 - x2^2) - eps2*(x1^2 + x2^2));
 % which forces dV/dt <= -eps2*||x||^2 < 0 off the origin. The trade: this is
 % infeasible for non-hyperbolic equilibria (e.g. xdot = -x^3), whose decrease
 % is higher-order than quadratic; match the margin degree to the decay order.
@@ -3400,7 +3399,7 @@ else                                                         % any other solver:
     Vdstr = char(diff(V_sol, x1)*f(1) + diff(V_sol, x2)*f(2));
     if iscell(Vdstr), Vdstr = Vdstr{1}; end
     Vdfun = str2func(['@(x1,x2) ', vectorize(Vdstr)]);
-    gg = linspace(-R, R, 80); [Gx, Gy] = meshgrid(gg, gg); Din = Gx.^2 + Gy.^2 <= R2;
+    gg = linspace(-R, R, 80); [Gx, Gy] = meshgrid(gg, gg); Din = Gx.^2 + Gy.^2 <= R^2;
     Vd = Vdfun(Gx(Din), Gy(Din)); V0 = Vfun(Gx(Din), Gy(Din)); tol = 1e-3;   % relative
     feasible = (max(Vd) <= tol*max(abs(Vd))) && ...
                (min(V0 - epspd*(Gx(Din).^2 + Gy(Din).^2)) >= -tol*max(abs(V0)));
@@ -3465,7 +3464,7 @@ Vg = Vfun(VX1, VX2);
 % feasible), and cstar scales with it. The set {V <= cstar} is scale
 % invariant, and so it, not the number, is the result.
 cstar = min(Vfun(R*cos(th), R*sin(th)));
-Vclip = Vg; Vclip(VX1.^2 + VX2.^2 > R2) = max(Vg(:)) + 1;
+Vclip = Vg; Vclip(VX1.^2 + VX2.^2 > R^2) = max(Vg(:)) + 1;
 
 [~, hLev] = contour(VX1, VX2, Vg, 18, 'LineColor', [0.6 0.6 0.6], 'LineWidth', 0.4);
 [~, hRoa] = contour(VX1, VX2, Vclip, [cstar cstar], 'r', 'LineWidth', 2);
@@ -3549,7 +3548,6 @@ d     = ${sosCol(d, 9)}# degree of the Lyapunov polynomial V
 nmult = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
 R     = ${sosCol(Rstr, 9)}# region radius: certify decrease on the disk ||x|| <= R
 epspd = ${sosCol('1e-3', 9)}# positive-definiteness margin
-R2    = ${sosCol('R**2', 9)}# squared radius, used in the SOS constraints below
 
 prob = SOSProblem()
 Vfull = poly_variable('V', xs, d)
@@ -3565,14 +3563,14 @@ lam = poly_variable('lam', xs, nmult)
 # with a higher-degree positive-definite form, e.g. epspd*(x1**2 + x2**2)**2.
 prob.add_sos_constraint(V - epspd*(x1**2 + x2**2), xs)        # V positive definite
 prob.add_sos_constraint(lam, xs)                              # multiplier is SOS
-prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2), xs) # dV/dt <= 0 on the disk
+prob.add_sos_constraint(-Vdot - lam*(R**2 - x1**2 - x2**2), xs) # dV/dt <= 0 on the disk
 
 # The decrease constraint above is non-strict (dV/dt <= 0), so it certifies
 # stability and an invariant region but leaves convergence to the LaSalle /
 # strict-decrease check noted above. To make the SDP certify asymptotic
 # stability directly (no extra step), add a strict margin -- replace the line
 # above with, for some eps2 > 0:
-#   prob.add_sos_constraint(-Vdot - lam*(R2 - x1**2 - x2**2) - eps2*(x1**2 + x2**2), xs)
+#   prob.add_sos_constraint(-Vdot - lam*(R**2 - x1**2 - x2**2) - eps2*(x1**2 + x2**2), xs)
 # which forces dV/dt <= -eps2*||x||^2 < 0 off the origin. The trade: this is
 # infeasible for non-hyperbolic equilibria (e.g. xdot = -x^3), whose decrease
 # is higher-order than quadratic; match the margin degree to the decay order.
@@ -3650,7 +3648,7 @@ if feasible:
     # (not NaN) drops spurious far-field pieces while keeping the curve smooth;
     # NaN makes contour skip boundary cells and shatters a curve that hugs
     # ||x|| = R (e.g. an isotropic V) into fragments.
-    Vclip = np.where(X1**2 + X2**2 <= R2, Vg, Vg.max() + 1)
+    Vclip = np.where(X1**2 + X2**2 <= R**2, Vg, Vg.max() + 1)
     ax.contour(X1, X2, Vg,    levels=18,      colors='0.6', linewidths=0.5)  # level sets of V
     ax.contour(X1, X2, Vclip, levels=[cstar], colors='r',   linewidths=2)    # certified ROA (in disk)
     ax.legend(handles=[
