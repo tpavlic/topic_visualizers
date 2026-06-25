@@ -1083,17 +1083,17 @@
   <div class="ref-group-title">Ecological / Population Dynamics</div>
 
   <div class="ref-intro section-lede">
-    Population models can carry the same energy logic as mechanical systems. Where individuals only move between states, the population itself is conserved, with births acting as a source and deaths as dissipation. Lotka-Volterra predator-prey is less direct, because its birth and death terms do not cancel: in place of a conserved head count it has a first integral, a combination of both populations held constant along every orbit, that plays the role the Hamiltonian plays in mechanics. That first integral is positive definite about the coexistence equilibrium, the natural Lyapunov candidate; adding damping turns it into a strict Lyapunov function, dV/dt ≤ 0, exactly as dissipation does for a mechanical system. That is why the predator-prey candidate sits in the Energy Functions group of the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
+    Population models can carry the same energy logic as mechanical systems. Where individuals only move between states, the population itself is conserved, with births acting as a source and deaths as dissipation. Lotka–Volterra predator–prey is less direct, because its birth and death terms do not cancel: in place of a conserved head count it has a first integral, a combination of both populations held constant along every orbit, that plays the role the Hamiltonian plays in mechanics. That first integral is positive definite about the coexistence equilibrium, the natural Lyapunov candidate; adding damping turns it into a strict Lyapunov function, dV/dt ≤ 0, exactly as dissipation does for a mechanical system. That is why the predator–prey candidate sits in the Energy Functions group of the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
   </div>
 
   <div class="ref-entry">
     <div class="ref-entry-head">
-      <span class="ref-entry-name">Predator-Prey Undamped</span>
+      <span class="ref-entry-name">Predator–Prey Undamped</span>
       <span class="ref-entry-tag conservative">conservative center</span>
     </div>
     <div class="ref-formula">ẋ = −y − xy,  ẏ = x + xy</div>
     <div class="ref-body">
-      <p>Lotka-Volterra prey-predator dynamics, translated so the coexistence equilibrium is at the origin (x = prey deviation, y = predator deviation). <strong>Eigenvalues of linearization at origin:</strong> ±i — a center in the linear approximation.</p>
+      <p>Lotka–Volterra prey–predator dynamics, translated so the coexistence equilibrium is at the origin (x = prey deviation, y = predator deviation). <strong>Eigenvalues of linearization at origin:</strong> ±i — a center in the linear approximation.</p>
       <p><strong>Conserved quantity:</strong> V = (x − ln(1+x)) + (y − ln(1+y)) satisfies dV/dt = 0 identically — it is a <em>first integral</em>, playing the same role as the Hamiltonian in a mechanical system. Level curves of V are the closed orbits (population cycles).</p>
       <p><strong>Interpretation:</strong> This is a non-mechanical example of a Hamiltonian-like conserved quantity arising from ecology. The "energy" here is an information-theoretic quantity (related to Kullback-Leibler divergence from equilibrium populations).</p>
     </div>
@@ -1101,7 +1101,7 @@
 
   <div class="ref-entry">
     <div class="ref-entry-head">
-      <span class="ref-entry-name">Predator-Prey Damped (c)</span>
+      <span class="ref-entry-name">Predator–Prey Damped (c)</span>
       <span class="ref-entry-tag stable">stable focus at origin</span>
     </div>
     <div class="ref-formula">ẋ = −y − xy − c·x,  ẏ = x + xy − c·y</div>
@@ -1203,12 +1203,12 @@ With damping c:  dV/dt = −cy²</div>
   <div class="ref-entry">
     <div class="ref-entry-head">
       <span class="ref-entry-name">V = (x − ln(1+x)) + (y − ln(1+y))</span>
-      <span class="ref-entry-tag conservative">predator-prey energy</span>
+      <span class="ref-entry-tag conservative">predator–prey energy</span>
     </div>
     <div class="ref-formula">V = (x−ln(1+x)) + (y−ln(1+y)),  valid for x,y &gt; −1
 ∇V = (x/(1+x),  y/(1+y))</div>
     <div class="ref-body">
-      <p>The natural Lyapunov function for the centered Lotka-Volterra system. Note that t − ln(1+t) ≥ 0 for all t &gt; −1 with equality only at t = 0 — so V is positive definite near the origin.</p>
+      <p>The natural Lyapunov function for the centered Lotka–Volterra system. Note that t − ln(1+t) ≥ 0 for all t &gt; −1 with equality only at t = 0 — so V is positive definite near the origin.</p>
       <p><strong>Undamped:</strong> dV/dt = 0 everywhere — V is a first integral (conserved quantity). Level curves = population cycles.</p>
       <p><strong>With damping c:</strong> dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0. Exactly mirrors the mechanical case: damping extracts the ecologically conserved quantity, driving populations to equilibrium.</p>
       <p><strong>Information-theoretic interpretation:</strong> V is related to the Kullback-Leibler divergence between the current population state and the equilibrium — a measure of "surprise" or distance from equilibrium in an information sense.</p>
@@ -1315,7 +1315,7 @@ With damping c:  dV/dt = −cy²</div>
       <p>Classification of a 2D equilibrium by the eigenvalues λ₁, λ₂ of its Jacobian:</p>
       <p><strong>Node:</strong> both eigenvalues real, same sign. Stable node (Re &lt; 0 ★), unstable node (Re &gt; 0). Trajectories approach/leave tangent to the slow eigenvector.</p>
       <p><strong>Focus (Spiral):</strong> complex conjugate eigenvalues (λ = α ± βi). Stable focus (α &lt; 0 ★), unstable focus (α &gt; 0 ★). Trajectories spiral in or out.</p>
-      <p><strong>Center:</strong> purely imaginary eigenvalues (λ = ±βi). Closed orbits, Lyapunov stable only. SHO ★, undamped predator-prey ★.</p>
+      <p><strong>Center:</strong> purely imaginary eigenvalues (λ = ±βi). Closed orbits, Lyapunov stable only. SHO ★, undamped predator–prey ★.</p>
       <p><strong>Saddle:</strong> real eigenvalues of opposite sign ★. Has a stable manifold (trajectories converging to it) and an unstable manifold (trajectories leaving). Always unstable.</p>
     </div>
   </div>
@@ -1395,7 +1395,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">First Integral (Conserved Quantity)</span></div>
     <div class="ref-body">
       <p>A function V with dV/dt = 0 identically along all trajectories. Level curves of V are exactly the system's orbits. A first integral proves Lyapunov stability but cannot prove asymptotic stability — the largest invariant set in {dV/dt = 0} is the entire phase space.</p>
-      <p>The Hamiltonian H of an undamped mechanical system is a first integral ★ (SHO, undamped pendulum, undamped predator-prey). Adding dissipation breaks the conservation: dV/dt = −D ≤ 0, turning a first integral into a Lyapunov function.</p>
+      <p>The Hamiltonian H of an undamped mechanical system is a first integral ★ (SHO, undamped pendulum, undamped predator–prey). Adding dissipation breaks the conservation: dV/dt = −D ≤ 0, turning a first integral into a Lyapunov function.</p>
     </div>
   </div>
 
@@ -1434,7 +1434,7 @@ With damping c:  dV/dt = −cy²</div>
       <p>A dynamical system is <strong>Hamiltonian</strong> if it can be written as ẋ = ∂H/∂p, ṗ = −∂H/∂x for a scalar function H(x, p) called the <strong>Hamiltonian</strong> (usually total energy: H = T + U = kinetic + potential).</p>
       <p>The defining property is exact conservation: dH/dt = (∂H/∂x)ẋ + (∂H/∂p)ṗ = (∂H/∂x)(∂H/∂p) + (∂H/∂p)(−∂H/∂x) = 0. The two terms cancel identically — a consequence of the antisymmetric (symplectic) structure of Hamilton's equations.</p>
       <p>This means H is always a first integral ★. Adding dissipation breaks the cancellation and leaves dH/dt = −D ≤ 0 (where D ≥ 0 is the dissipation), turning the Hamiltonian into a Lyapunov function for the damped system.</p>
-      <p><strong>Examples in the Explorer ★:</strong> SHO (H = ½x² + ½y²), undamped pendulum (H = (1−cos x) + ½y²), undamped predator-prey (H = (x−ln(1+x)) + (y−ln(1+y))), Duffing (H = ¼(1−x²)² + ½y²). Each becomes a Lyapunov function when its corresponding damped version is selected.</p>
+      <p><strong>Examples in the Explorer ★:</strong> SHO (H = ½x² + ½y²), undamped pendulum (H = (1−cos x) + ½y²), undamped predator–prey (H = (x−ln(1+x)) + (y−ln(1+y))), Duffing (H = ¼(1−x²)² + ½y²). Each becomes a Lyapunov function when its corresponding damped version is selected.</p>
     </div>
   </div>
 
@@ -1705,9 +1705,9 @@ const SYSTEMS = [
   },
   {
     id: 'predprey_undamped',
-    name: 'Predator-Prey Undamped',
+    name: 'Predator–Prey Undamped',
     formula: 'ẋ = −y − xy\nẏ = x + xy',
-    note: 'Lotka-Volterra centered at coexistence equilibrium. Conservative: V=(x−ln(1+x))+(y−ln(1+y)) is a first integral. Eigenvalues ±i.',
+    note: 'Lotka–Volterra centered at coexistence equilibrium. Conservative: V=(x−ln(1+x))+(y−ln(1+y)) is a first integral. Eigenvalues ±i.',
     domain: 2.5,
     f: (x,y,p) => [-y - x*y, x + x*y],
     equil: [[0, 0, 'center']],
@@ -1715,7 +1715,7 @@ const SYSTEMS = [
   },
   {
     id: 'predprey_damped',
-    name: 'Predator-Prey Damped (c)',
+    name: 'Predator–Prey Damped (c)',
     formula: 'ẋ = −y − xy − c·x\nẏ = x + xy − c·y',
     note: 'Adds proportional mortality c to both species. With V = (x−ln(1+x)) + (y−ln(1+y)) (the conserved quantity of the undamped model), dV/dt = −c[x²/(1+x) + y²/(1+y)] ≤ 0.',
     domain: 2.5,
@@ -3216,7 +3216,7 @@ const SOS_SYS = {
   duffing:         { label:'Duffing (shifted to a well)', f:['x2','-2*x1 - 3*x1^2 - x1^3 - c*x2'],                  param:{sym:'c',val:0.5}, stable:true, shifted:true, rMax:0.9,
                      physF:['z2','z1 - z1^3 - c*z2'], equil:'(1, 0)',
                      caveat:'The origin of the Duffing double-well system is a saddle (unstable); its stable equilibria are the wells at (+/-1, 0). The dynamics below are centered on the right-hand well by a change of variables (derived in the comment just above them), and so the certified region is around that well. Because the original saddle sits a distance 1 from this well, the disk on which decrease is certified must stay inside the basin: use R < 1, since a larger R reaches past the saddle and makes the SDP infeasible.' },
-  predprey_damped: { label:'Predator-Prey (damped)',     f:['-x2 - x1*x2 - c*x1','x1 + x1*x2 - c*x2'],              param:{sym:'c',val:0.3}, stable:true, rMax:0.8,
+  predprey_damped: { label:'Predator–Prey (damped)',     f:['-x2 - x1*x2 - c*x1','x1 + x1*x2 - c*x2'],              param:{sym:'c',val:0.3}, stable:true, rMax:0.8,
                      caveat:'With the default degrees, certifying decrease on a large disk is infeasible for this system; R >= 1 fails, so use a smaller R (or raise the V degree d or multiplier n to extend the feasible range).' }
 };
 const SOS_ORDER = ['stable_spiral','stable_node','cubic_drain','vanderpol','hopf','pendulum','duffing','predprey_damped'];
@@ -3290,7 +3290,7 @@ function genMATLAB(id, k, n, d, R){
     : '';
   return `% ${'='.repeat(70)}
 % SOS region-of-attraction certificate  (MATLAB / SOSTOOLS 4.00)
-% System: ${S.label}
+% System: ${S.label.replace(/–/g, '-')}
 % ${'='.repeat(70)}
 % SPDX-License-Identifier: MIT-0
 % This generated script is released under the MIT No Attribution license
@@ -3498,7 +3498,7 @@ function genPython(id, k, n, d, R){
     : '';
   return `# ${'='.repeat(70)}
 # SOS region-of-attraction certificate  (Python / SumOfSquares.py)
-# System: ${S.label}
+# System: ${S.label.replace(/–/g, '-')}
 # ${'='.repeat(70)}
 # SPDX-License-Identifier: MIT-0
 # This generated script is released under the MIT No Attribution license
