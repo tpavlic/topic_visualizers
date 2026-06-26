@@ -3863,7 +3863,7 @@ X1, X2 = np.meshgrid(g, g)
 ones = np.ones_like(X1)
 
 fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
-ax.streamplot(X1, X2, f1_fn(X1, X2)*ones, f2_fn(X1, X2)*ones, density=1.1, color='0.7')
+ax.streamplot(X1, X2, f1_fn(X1, X2)*ones, f2_fn(X1, X2)*ones, density=1.1, color='0.78')
 ax.plot(R*np.cos(th), R*np.sin(th), 'k--', lw=1)                  # decrease region ||x|| = R
 ax.plot(0, 0, 'k.', ms=11)                                        # equilibrium at origin
 ax.set_aspect('equal')
@@ -3880,12 +3880,12 @@ if feasible:
     # the curve smooth; NaN makes contour skip boundary cells and shatters a
     # curve that hugs ||x|| = R (e.g. an isotropic V) into fragments.
     Vclip = np.where(X1**2 + X2**2 <= R**2, Vg, Vg.max() + 1)
-    ax.contour(X1, X2, Vg,    levels=18,      colors='0.6', linewidths=0.5)  # level sets of V
-    ax.contour(X1, X2, Vclip, levels=[cstar], colors='r',   linewidths=2)    # certified region (in disk)
+    ax.contour(X1, X2, Vg,    levels=18,      colors='steelblue', linewidths=0.9)  # level sets of V
+    ax.contour(X1, X2, Vclip, levels=[cstar], colors='r',         linewidths=2)    # certified region (in disk)
     ax.legend(handles=[
         Line2D([0], [0], color='r', lw=2, label=r'certified invariant region: $V \\leq c^*$'),
         Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
-        Line2D([0], [0], color='0.6', lw=0.6, label=r'level sets of $V$'),
+        Line2D([0], [0], color='steelblue', lw=0.9, label=r'level sets of $V$'),
     ], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
     ax.set_title(rf'Certified invariant region:  $V \\leq {cstar:.4g}$')
 else:
