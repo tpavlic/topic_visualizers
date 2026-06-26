@@ -3473,7 +3473,7 @@ function genMATLAB(id, k, n, d, R){
     ? `% sin(x1) is non-polynomial; approximate it by its degree-${k} Taylor\n% series about x1 = 0 (faithful near the origin):\nsin_approx = ${sosSinTaylor('x1', k)};\n\n`
     : '';
   return `% ${'='.repeat(70)}
-% SOS region-of-attraction certificate  (MATLAB / SOSTOOLS 4.00)
+% Example application of SOS stability analysis  (MATLAB / SOSTOOLS 4.00)
 % System: ${S.label.replace(/–/g, '-')}
 % ${'='.repeat(70)}
 % SPDX-License-Identifier: MIT-0
@@ -3697,7 +3697,7 @@ function genPython(id, k, n, d, R){
     ? `# sin(x1) is non-polynomial; approximate it by its degree-${k} Taylor\n# series about x1 = 0 (faithful near the origin):\nsin_approx = ${sosToLang(sosSinTaylor('x1', k), 'python')}\n\n`
     : '';
   return `# ${'='.repeat(70)}
-# SOS region-of-attraction certificate  (Python / SumOfSquares.py)
+# Example application of SOS stability analysis  (Python / SumOfSquares.py)
 # System: ${S.label.replace(/–/g, '-')}
 # ${'='.repeat(70)}
 # SPDX-License-Identifier: MIT-0
