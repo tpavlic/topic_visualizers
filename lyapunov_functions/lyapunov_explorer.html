@@ -1584,32 +1584,34 @@ With damping c:  dV/dt = −cy²</div>
     </div>
   </div>
 
-  <div class="ref-group-title">4. The two finishing arguments</div>
+  <div class="ref-group-title">4. Finishing convergence</div>
   <div class="ref-entry">
     <div class="ref-body">
-      <p>For every system in the catalog the non-strict certificate is finished one of two ways. Most systems
-      already have strict decrease that the SDP simply did not assert; only the genuinely dissipative pair
-      needs LaSalle's invariance principle proper.</p>
-      <p><strong>Strict decrease holds (most systems).</strong> Stable Spiral, Stable Node, Cubic Drain ★,
-      reverse-time Van der Pol ★, Hopf ★ (μ &lt; 0), and damped Predator–Prey ★. For these, dV/dt is already
-      negative for x ≠ 0; the non-strict SDP simply never claimed it — for the Cubic Drain because the decay
-      is quartic rather than quadratic. The finishing step is a one-line observation that dV/dt &lt; 0 away
-      from the origin, which directly gives asymptotic stability.</p>
-      <p><strong>LaSalle's invariance principle (the dissipative pair).</strong> Damped Pendulum ★ and
-      Duffing ★ about a well. With the energy V, dV/dt = −c·y² ≤ 0 vanishes on the whole line y = 0, not only
-      at the origin, and so strict decrease genuinely fails. LaSalle closes the gap: the largest invariant
-      set inside {dV/dt = 0} is just the origin, and so every trajectory in the certified sublevel set still
-      converges there.</p>
-      <p>The Explorer tab's dV/dt color map shows the distinction at a glance. A region that reads as
-      "decreasing" everywhere but the origin is the strict case; a system whose dV/dt vanishes along an
-      entire curve is the LaSalle case.</p>
+      <p>The default template on the <span class="tab-link" data-goto="sos">SOS Code</span> tab proves only
+      dV/dt ≤ 0 for the polynomial V it finds, which gives stability and an invariant region but not
+      convergence. Two routes supply the rest, and which one applies is a property of the Lyapunov function,
+      not of the system: every system here already has a region of attraction worked out by energy or LaSalle
+      arguments on the <span class="tab-link" data-goto="explorer">Explorer</span> and Reference tabs, with no
+      SOS at all.</p>
+      <p><strong>Tighten the SDP.</strong> Re-add a strict margin (section 1). Every equilibrium in the
+      catalog except the Cubic Drain ★ is hyperbolic, and a quadratic margin then certifies convergence
+      outright. The Cubic Drain is non-hyperbolic, and its quartic decay needs a quartic margin to match
+      (section 2); the SDP still certifies it. The non-strict default exists to dodge this per-system tuning,
+      not because the SDP cannot certify these systems.</p>
+      <p><strong>Argue by hand.</strong> Leave the certificate non-strict and establish convergence
+      separately. For a V whose dV/dt is already negative away from the origin, that is a one-line
+      observation. For a V whose dV/dt vanishes on more than the origin — the textbook case being the energy
+      function on the Damped Pendulum ★ and the Duffing ★ wells, where dV/dt = −c·y² is zero along y = 0 —
+      LaSalle's invariance principle applies, and the largest invariant set inside {dV/dt = 0} reduces to the
+      origin. That LaSalle step belongs to the energy function, not to the pendulum: handed to the SDP with a
+      margin, the same system admits a different V that needs no such step.</p>
     </div>
   </div>
 
   <div class="ref-group-title">5. Enlarging the certified region</div>
   <div class="ref-entry">
     <div class="ref-body">
-      <p>This tool certifies the largest level set of V that fits inside a fixed disk of radius R, and so the
+      <p>The generated SOS code certifies the largest level set of V that fits inside a fixed disk of radius R, and so the
       disk you pick caps how big the certified region can be. A more powerful approach also searches over the
       region itself — enlarging the certified set and re-fitting V to it in turns — but that is a harder,
       iterative optimization and an advanced topic, developed in the references on this tab. The generated
@@ -1617,31 +1619,11 @@ With damping c:  dV/dt = −cy²</div>
     </div>
   </div>
 
-  <div class="ref-group-title">6. What this becomes in the code</div>
-  <div class="ref-entry">
-    <div class="ref-body">
-      <p>The <span class="tab-link" data-goto="sos">SOS Code</span> tab emits exactly the three constraints
-      of step 3, with the equilibrium translated to the origin, any non-polynomial term Taylor-expanded, and
-      a feasibility check that falls back to verifying the certificate directly when the solver's diagnostics
-      are absent. Two comments in the generated script tie back to this tab:</p>
-      <ul>
-        <li>a header note stating that the SDP certifies dV/dt ≤ 0 only, and listing the same two finishing
-        arguments to check for the system at hand;</li>
-        <li>the one-line change that restores the conventional strict form — replace the derivative
-        constraint with −dV/dt − λ·(R² − ‖x‖²) − ε₂‖x‖² SOS — together with the warning that it is infeasible
-        for the Cubic Drain and that the margin degree must match the decay order.</li>
-      </ul>
-      <p>So the generated code is the non-strict template by default, and the conventional strict certificate
-      is one commented edit away.</p>
-    </div>
-  </div>
-
   <div class="ref-callout">
     <strong>In one line.</strong> The textbook SOS program certifies asymptotic stability outright by forcing
-    dV/dt ≤ −ℓ₂(x) &lt; 0; this tool instead certifies dV/dt ≤ 0 with a uniform template and finishes
-    convergence with a short per-system argument — strict decrease for most systems, LaSalle for the
-    dissipative pendulum and Duffing well — trading a stronger SDP for a one-line hand step so that one piece
-    of code covers degenerate cases such as the Cubic Drain.
+    dV/dt ≤ −ℓ₂(x) &lt; 0; the SOS code this tool generates instead certifies dV/dt ≤ 0 with a single template
+    that covers the whole catalog, the degenerate Cubic Drain included, and leaves convergence to a short
+    follow-up — a tightened SDP or a one-line hand argument.
   </div>
 
   <div class="ref-further">
@@ -2347,7 +2329,7 @@ function runOptimizeSearch(lyap, result) {
 
   // The certified ROA area as a function of (a,b) is ridge-like and has thin
   // "trap" configurations (a sign-change cell grazes the origin and collapses c*).
-  // Traps are low-area, so a max-search at full resolution avoids them automatically.
+  // Traps are low-area, and so a max-search at full resolution avoids them automatically.
   // We must search at the DISPLAY resolution: coarse-grid area rankings disagree with
   // the fine grid near these traps. Strategy: a coarse grid to locate the basin, then a
   // local refinement at slider-step resolution to climb the ridge.
@@ -3392,7 +3374,7 @@ const SOS_SYS = {
   stable_node:     { label:'Stable Node',                f:['-2*x1','-x2'],                                         param:null,              stable:true },
   cubic_drain:     { label:'Cubic Drain',                f:['-x1^3','-x2^3'],                                       param:null,              stable:true },
   vanderpol:       { label:'Van der Pol (reverse-time)', f:['x2','mu*(1 - x1^2)*x2 - x1'],                          param:{sym:'mu',val:-1}, stable:true, rMax:1.2,
-                     caveat:'The origin is asymptotically stable only for mu < 0 (the reverse-time Van der Pol oscillator). The default mu = -1 is such a case; for mu > 0 the SOS program will be infeasible. The basin is also bounded, so R beyond about 1.2 (at the default settings) is infeasible.' },
+                     caveat:'The origin is asymptotically stable only for mu < 0 (the reverse-time Van der Pol oscillator). The default mu = -1 is such a case; for mu > 0 the SOS program will be infeasible. The basin is also bounded, and so R beyond about 1.2 (at the default settings) is infeasible.' },
   hopf:            { label:'Hopf Normal Form',           f:['mu*x1 - x2 - x1*(x1^2 + x2^2)','x1 + mu*x2 - x2*(x1^2 + x2^2)'], param:{sym:'mu',val:-0.5}, stable:true,
                      caveat:'The origin is asymptotically stable only for mu < 0. The default mu = -0.5 is such a case; for mu > 0 the origin is unstable and the SOS program will be infeasible.' },
   pendulum:        { label:'Damped Pendulum',            f:['x2','-sin_approx - c*x2'],                             param:{sym:'c',val:0.5}, stable:true, nonpoly:true,
@@ -3401,7 +3383,7 @@ const SOS_SYS = {
                      physF:['z2','z1 - z1^3 - c*z2'], equil:'(1, 0)',
                      caveat:'The origin of the Duffing double-well system is a saddle (unstable); its stable equilibria are the wells at (+/-1, 0). The dynamics below are centered on the right-hand well by a change of variables (derived in the comment just above them), and so the certified region is around that well. Because the original saddle sits a distance 1 from this well, the disk on which decrease is certified must stay inside the basin: use R < 1, since a larger R reaches past the saddle and makes the SDP infeasible.' },
   predprey_damped: { label:'Predator–Prey (damped)',     f:['-x2 - x1*x2 - c*x1','x1 + x1*x2 - c*x2'],              param:{sym:'c',val:0.3}, stable:true, rMax:0.8,
-                     caveat:'With the default degrees, certifying decrease on a large disk is infeasible for this system; R >= 1 fails, so use a smaller R (or raise the V degree d or multiplier n to extend the feasible range).' }
+                     caveat:'With the default degrees, certifying decrease on a large disk is infeasible for this system; R >= 1 fails, and so use a smaller R (or raise the V degree d or multiplier n to extend the feasible range).' }
 };
 const SOS_ORDER = ['stable_spiral','stable_node','cubic_drain','vanderpol','hopf','pendulum','duffing','predprey_damped'];
 
@@ -3492,7 +3474,7 @@ function genMATLAB(id, k, n, d, R){
 % FORMULATION (why this is the non-strict test): the conventional SOS program
 % for ASYMPTOTIC stability also pins a positive-definite margin on the
 % derivative, requiring -dV/dt - L2(x) to be SOS for some positive definite
-% L2, so the solver proves convergence outright. This script OMITS that margin
+% L2, and so the solver proves convergence outright. This script OMITS that margin
 % and certifies only dV/dt <= 0, on purpose: a quadratic margin is infeasible
 % for a non-hyperbolic equilibrium whose decrease is higher order (e.g.
 % xdot = -x^3, quartic decrease near 0), and so omitting it lets ONE template
@@ -3541,7 +3523,7 @@ epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin ep
 % odd-degree polynomial is never SOS. deg(Vdot) = (d-1) + deg(f); when that is
 % odd -- i.e. f has even degree, such as a quadratic field (predator-prey) --
 % raise the multiplier degree so its term dominates and the total stays even.
-% Recomputed from f, so editing the dynamics above stays correct automatically.
+% Recomputed from f, and so editing the dynamics above stays correct automatically.
 degVdot = (d - 1) + f.maxdeg;
 if mod(degVdot, 2) == 1, nmult = max(nmult, degVdot - 1); end
 
@@ -3577,7 +3559,7 @@ prog = sosineq(prog, -Vdot - lam*(R^2 - x1^2 - x2^2));     % dV/dt <= 0 on the d
 prog = sossolve(prog);
 
 % Read off the candidate certificate V (the @polynomial class has no disp
-% method, so char() gives the readable polynomial string) and build a fast
+% method, and so char() gives the readable polynomial string) and build a fast
 % element-wise handle for it (vectorize turns ^ * / into .^ .* ./).
 V_sol = sosgetsol(prog, V);
 Vstr  = char(V_sol); if iscell(Vstr), Vstr = Vstr{1}; end
@@ -3587,7 +3569,7 @@ Vfun  = str2func(['@(x1,x2) ', vectorize(Vstr)]);
 % When SeDuMi's diagnostics are present (the SOSTOOLS default solver), use
 % them: feasratio ~ +1 feasible / ~ -1 infeasible, pinf/dinf flag
 % infeasibility, numerr ~= 0 flags numerical trouble. For any OTHER solver
-% those fields are absent, so fall back to verifying the certificate itself on
+% those fields are absent, and so fall back to verifying the certificate itself on
 % the disk -- exactly the Lyapunov conditions the plot claims (V >= epspd*||x||^2
 % and dV/dt <= 0), sampled with a relative tolerance. That keeps the check
 % independent of which solver SOSTOOLS used.
@@ -3716,7 +3698,7 @@ function genPython(id, k, n, d, R){
 # FORMULATION (why this is the non-strict test): the conventional SOS program
 # for ASYMPTOTIC stability also pins a positive-definite margin on the
 # derivative, requiring -dV/dt - L2(x) to be SOS for some positive definite
-# L2, so the solver proves convergence outright. This script OMITS that margin
+# L2, and so the solver proves convergence outright. This script OMITS that margin
 # and certifies only dV/dt <= 0, on purpose: a quadratic margin is infeasible
 # for a non-hyperbolic equilibrium whose decrease is higher order (e.g.
 # xdot = -x^3, quartic decrease near 0), and so omitting it lets ONE template
@@ -3772,7 +3754,7 @@ epspd = ${sosCol('1e-3', 9)}# positive-definiteness margin
 # odd-degree polynomial is never SOS. deg(Vdot) = (d-1) + deg(f); when that is
 # odd -- i.e. f has even degree, such as a quadratic field (predator-prey) --
 # raise the multiplier degree so its term dominates and the total stays even.
-# Recomputed from f, so editing the dynamics above stays correct automatically.
+# Recomputed from f, and so editing the dynamics above stays correct automatically.
 deg_f = max(sp.total_degree(sp.expand(fi), *xs) for fi in f)
 if ((d - 1) + deg_f) % 2 == 1:
     nmult = max(nmult, (d - 1) + deg_f - 1)
