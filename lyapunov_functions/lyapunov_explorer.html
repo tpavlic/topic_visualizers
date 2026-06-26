@@ -1608,17 +1608,12 @@ With damping c:  dV/dt = −cy²</div>
 
   <div class="ref-group-title">5. Enlarging the certified region</div>
   <div class="ref-entry">
-    <div class="ref-entry-head"><span class="ref-entry-name">The V–s iteration</span></div>
     <div class="ref-body">
-      <p>With R fixed, everything above is a single SDP, and the certified region is the largest sublevel set
-      {V ≤ c} that fits inside the disk — the connected component through the origin, taken at
-      c* = min over ‖x‖ = R of V. To grow the certificate past that, treat both V and the level c as unknowns
-      and maximize the size of {V ≤ c} subject to dV/dt &lt; 0 on that set. Those set-containment conditions
-      need their own SOS multipliers, and because V and the multipliers multiply each other the problem is no
-      longer one SDP but <strong>bilinear</strong>; it is solved by alternating — fix V and solve for the
-      multipliers, then fix the multipliers and solve for V — the standard <strong>V–s iteration</strong>.
-      The generated code stops at the single-SDP, fixed-R version; the V–s iteration is the natural next step
-      once a real solver is in the loop.</p>
+      <p>This tool certifies the largest level set of V that fits inside a fixed disk of radius R, and so the
+      disk you pick caps how big the certified region can be. A more powerful approach also searches over the
+      region itself — enlarging the certified set and re-fitting V to it in turns — but that is a harder,
+      iterative optimization and an advanced topic, developed in the references on this tab. The generated
+      code stops at the simpler fixed-R version.</p>
     </div>
   </div>
 
@@ -1682,10 +1677,6 @@ With damping c:  dV/dt = −cy²</div>
     certificate is built around the origin, and so coordinates must be translated first if the stable equilibrium of
     interest is elsewhere (the Duffing system below is handled this way); the generated comments show the
     substitution.
-    <br><br>
-    The MATLAB code is split into <code>%%</code> sections and the Python into <code># %%</code> cells, so you
-    can fold and jump between blocks — for instance straight to the SOS-constraint setup — in the MATLAB
-    Editor, Spyder, or VS Code, and run a block at a time.
   </div>
 
   <div class="sos-controls">
@@ -3627,7 +3618,8 @@ end
 % cstar = min over the circle ||x|| = R of V(x). Only the CONNECTED COMPONENT
 % of that sublevel set containing the origin is the certified region, and it
 % lies inside ||x|| <= R by construction. (To enlarge the region itself,
-% alternate solving for V and the multiplier on {V <= c}: the V-s iteration.)
+% alternate between improving the region and re-fitting V to it -- an
+% iterative optimization beyond this fixed-R script.)
 th = linspace(0, 2*pi, 720);
 g  = linspace(-1.6*R, 1.6*R, 60);
 [X1, X2] = meshgrid(g, g);
@@ -3850,7 +3842,8 @@ if feasible:
 # cstar = min over the circle ||x|| = R of V(x). Only the connected component
 # of that sublevel set containing the origin is the certified region, and it
 # lies inside ||x|| <= R by construction. (To enlarge the region itself,
-# alternate solving for V and the multiplier on {V <= c}: the V-s iteration.)
+# alternate between improving the region and re-fitting V to it -- an
+# iterative optimization beyond this fixed-R script.)
 #
 # The numeric value of cstar is not meaningful on its own: with no objective
 # and only the one-sided bound V - epspd*||x||^2 >= 0, the solver returns V up
