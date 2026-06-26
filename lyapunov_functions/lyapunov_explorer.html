@@ -1246,7 +1246,7 @@ With damping c:  dV/dt = −cy²</div>
   <div class="ref-entry">
     <div class="ref-entry-head"><span class="ref-entry-name">From candidate to certificate</span></div>
     <div class="ref-body">
-      <p>Parameterize V as a polynomial with unknown coefficients and require V and −dV/dt each to dominate a fixed positive definite function (each of V − ℓ₁ and −dV/dt − ℓ₂ is SOS). When feasible, the program returns a V whose existence certifies asymptotic stability, searching a whole family of candidates at once rather than testing them one by one. The one choice that matters in practice is how strictly to enforce the decrease: a strict margin ℓ₂ certifies convergence outright but is infeasible for degenerate cases such as the Cubic Drain ★, and so this tool drops it and finishes convergence with a short per-system argument. That trade-off, and the one-line change that restores the strict form, is developed on the <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab.</p>
+      <p>Parameterize V as a polynomial with unknown coefficients and require V and −dV/dt each to dominate a fixed positive definite function (each of V − ℓ₁ and −dV/dt − ℓ₂ is SOS). When feasible, the program returns a V whose existence certifies asymptotic stability, searching a whole family of candidates at once rather than testing them one by one. The one choice that matters in practice is how strictly to enforce the decrease: a strict margin ℓ₂ certifies convergence outright but is infeasible for degenerate cases such as the Cubic Drain, and so this tool drops it and finishes convergence with a short per-system argument. That trade-off, and the one-line change that restores the strict form, is developed on the <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab.</p>
     </div>
   </div>
 
@@ -1283,7 +1283,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Lyapunov Stable</span><span class="ref-entry-tag conservative">neutral</span></div>
     <div class="ref-body">
       <p>An equilibrium x* is <strong>Lyapunov stable</strong> if trajectories that start close to x* stay close for all future time. Formally: for every ε &gt; 0 there exists δ &gt; 0 such that ‖x(0)−x*‖ &lt; δ ⟹ ‖x(t)−x*‖ &lt; ε for all t ≥ 0.</p>
-      <p>This is a <em>boundedness</em> condition — it rules out trajectories that drift away, but does not require convergence. A center (e.g. the SHO ★) is Lyapunov stable but not asymptotically stable.</p>
+      <p>This is a <em>boundedness</em> condition — it rules out trajectories that drift away, but does not require convergence. A center (e.g. the SHO&nbsp;★) is Lyapunov stable but not asymptotically stable.</p>
     </div>
   </div>
 
@@ -1291,14 +1291,14 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Asymptotically Stable</span><span class="ref-entry-tag stable">convergent</span></div>
     <div class="ref-body">
       <p>An equilibrium x* is <strong>asymptotically stable</strong> if it is Lyapunov stable <em>and</em> trajectories starting sufficiently close to x* converge to x* as t → ∞. The set of initial conditions from which convergence occurs is the <strong>region of attraction</strong> (ROA).</p>
-      <p>Asymptotic stability is strictly stronger than Lyapunov stability. All the stable spirals, nodes, and foci in the Explorer ★ are asymptotically stable.</p>
+      <p>Asymptotic stability is strictly stronger than Lyapunov stability. All the stable spirals, nodes, and foci in the Explorer&nbsp;★ are asymptotically stable.</p>
     </div>
   </div>
 
   <div class="ref-entry">
     <div class="ref-entry-head"><span class="ref-entry-name">Globally Asymptotically Stable (GAS)</span><span class="ref-entry-tag stable">global</span></div>
     <div class="ref-body">
-      <p>An equilibrium is <strong>globally asymptotically stable</strong> if it is asymptotically stable and its region of attraction is the entire state space. The Cubic Drain ★ and Stable Spiral ★ are GAS; the Damped Pendulum ★ is only locally asymptotically stable (the ROA is bounded by the separatrix).</p>
+      <p>An equilibrium is <strong>globally asymptotically stable</strong> if it is asymptotically stable and its region of attraction is the entire state space. The Cubic Drain&nbsp;★ and Stable Spiral&nbsp;★ are GAS; the Damped Pendulum&nbsp;★ is only locally asymptotically stable (the ROA is bounded by the separatrix).</p>
       <p>For a GAS equilibrium, a strict Lyapunov function with dV/dt &lt; 0 everywhere certifies global convergence directly, without needing to compute the ROA boundary.</p>
     </div>
   </div>
@@ -1307,14 +1307,14 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Exponentially Stable</span><span class="ref-entry-tag stable">strongest</span></div>
     <div class="ref-body">
       <p>An equilibrium x* is <strong>exponentially stable</strong> if ‖x(t)−x*‖ ≤ ke<sup>−αt</sup>‖x(0)−x*‖ for positive constants k, α. This is the strongest form: it specifies an <em>exponential rate</em> of convergence.</p>
-      <p>Asymptotic stability does not imply exponential stability in general — the Cubic Drain ★ is GAS but converges at a polynomial rate (not exponential) because its Jacobian at the origin is zero.</p>
+      <p>Asymptotic stability does not imply exponential stability in general — the Cubic Drain&nbsp;★ is GAS but converges at a polynomial rate (not exponential) because its Jacobian at the origin is zero.</p>
     </div>
   </div>
 
   <div class="ref-entry">
     <div class="ref-entry-head"><span class="ref-entry-name">Unstable</span><span class="ref-entry-tag unstable">divergent</span></div>
     <div class="ref-body">
-      <p>An equilibrium that is not Lyapunov stable. Trajectories starting arbitrarily close can escape to any distance. Unstable foci ★, saddle points ★, and the origin of the Duffing system ★ are all unstable.</p>
+      <p>An equilibrium that is not Lyapunov stable. Trajectories starting arbitrarily close can escape to any distance. Unstable foci&nbsp;★, saddle points&nbsp;★, and the origin of the Duffing system&nbsp;★ are all unstable.</p>
       <p>Note the distinction between a <em>saddle</em> (some trajectories approach, some escape — along the stable/unstable manifolds) and an <em>unstable focus</em> (all nearby trajectories spiral away).</p>
     </div>
   </div>
@@ -1339,10 +1339,10 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Node, Focus, Center, Saddle</span></div>
     <div class="ref-body">
       <p>Classification of a 2D equilibrium by the eigenvalues λ₁, λ₂ of its Jacobian:</p>
-      <p><strong>Node:</strong> both eigenvalues real, same sign. Stable node (Re &lt; 0 ★), unstable node (Re &gt; 0). Trajectories approach/leave tangent to the slow eigenvector.</p>
-      <p><strong>Focus (Spiral):</strong> complex conjugate eigenvalues (λ = α ± βi). Stable focus (α &lt; 0 ★), unstable focus (α &gt; 0 ★). Trajectories spiral in or out.</p>
-      <p><strong>Center:</strong> purely imaginary eigenvalues (λ = ±βi). Closed orbits, Lyapunov stable only. SHO ★, undamped predator–prey ★.</p>
-      <p><strong>Saddle:</strong> real eigenvalues of opposite sign ★. Has a stable manifold (trajectories converging to it) and an unstable manifold (trajectories leaving). Always unstable.</p>
+      <p><strong>Node:</strong> both eigenvalues real, same sign. Stable node (Re &lt; 0&nbsp;★), unstable node (Re &gt; 0). Trajectories approach/leave tangent to the slow eigenvector.</p>
+      <p><strong>Focus (Spiral):</strong> complex conjugate eigenvalues (λ = α ± βi). Stable focus (α &lt; 0&nbsp;★), unstable focus (α &gt; 0&nbsp;★). Trajectories spiral in or out.</p>
+      <p><strong>Center:</strong> purely imaginary eigenvalues (λ = ±βi). Closed orbits, Lyapunov stable only. SHO&nbsp;★, undamped predator–prey&nbsp;★.</p>
+      <p><strong>Saddle:</strong> real eigenvalues of opposite sign&nbsp;★. Has a stable manifold (trajectories converging to it) and an unstable manifold (trajectories leaving). Always unstable.</p>
     </div>
   </div>
 
@@ -1350,7 +1350,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Limit Cycle</span></div>
     <div class="ref-body">
       <p>An isolated closed orbit — one that nearby trajectories spiral toward (stable limit cycle) or away from (unstable). Unlike the closed orbits of a center, a limit cycle is an isolated trajectory that attracts (or repels) nearby ones.</p>
-      <p>The Van der Pol oscillator ★ (μ &gt; 0) and Hopf Normal Form ★ (μ &gt; 0) both have stable limit cycles. No quadratic Lyapunov function can certify stability of the limit cycle itself, though one can certify the ROA around the unstable origin.</p>
+      <p>The Van der Pol oscillator&nbsp;★ (μ &gt; 0) and Hopf Normal Form&nbsp;★ (μ &gt; 0) both have stable limit cycles. No quadratic Lyapunov function can certify stability of the limit cycle itself, though one can certify the ROA around the unstable origin.</p>
     </div>
   </div>
 
@@ -1358,7 +1358,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Hopf Bifurcation</span></div>
     <div class="ref-body">
       <p>A bifurcation in which a stable equilibrium loses stability as a parameter crosses a critical value, with a limit cycle being born simultaneously. In a <strong>supercritical</strong> Hopf bifurcation the born limit cycle is stable; in a <strong>subcritical</strong> one it is unstable.</p>
-      <p>The Hopf Normal Form ★ is the canonical example: at μ = 0 the origin changes from stable focus to unstable focus, and a stable limit cycle grows from it for μ &gt; 0 with radius r = √μ.</p>
+      <p>The Hopf Normal Form&nbsp;★ is the canonical example: at μ = 0 the origin changes from stable focus to unstable focus, and a stable limit cycle grows from it for μ &gt; 0 with radius r = √μ.</p>
     </div>
   </div>
 
@@ -1367,7 +1367,7 @@ With damping c:  dV/dt = −cy²</div>
   <div class="ref-entry">
     <div class="ref-entry-head"><span class="ref-entry-name">Invariant Set</span></div>
     <div class="ref-body">
-      <p>A set S is <strong>positively invariant</strong> if every trajectory that starts in S stays in S for all t ≥ 0. It is <strong>invariant</strong> (two-sided) if this holds for t ∈ ℝ. A sublevel set {V ≤ c} where dV/dt ≤ 0 on its boundary is positively invariant — this is the key mechanism behind LaSalle's principle ★.</p>
+      <p>A set S is <strong>positively invariant</strong> if every trajectory that starts in S stays in S for all t ≥ 0. It is <strong>invariant</strong> (two-sided) if this holds for t ∈ ℝ. A sublevel set {V ≤ c} where dV/dt ≤ 0 on its boundary is positively invariant — this is the key mechanism behind LaSalle's principle&nbsp;★.</p>
     </div>
   </div>
 
@@ -1376,7 +1376,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-body">
       <p>For a saddle point x*, the <strong>stable manifold</strong> W<sup>s</sup> is the set of all initial conditions whose trajectories converge to x* as t → +∞; the <strong>unstable manifold</strong> W<sup>u</sup> is the set converging to x* as t → −∞ (i.e. diverging forward in time).</p>
       <p>For a linear saddle, W<sup>s</sup> and W<sup>u</sup> are the eigenspaces of the negative and positive eigenvalues respectively. Nonlinearly, they are smooth curves tangent to those eigenspaces at x*.</p>
-      <p>The stable manifold of the saddle at (±π, 0) in the Damped Pendulum ★ forms the separatrix bounding the ROA of the origin.</p>
+      <p>The stable manifold of the saddle at (±π, 0) in the Damped Pendulum&nbsp;★ forms the separatrix bounding the ROA of the origin.</p>
     </div>
   </div>
 
@@ -1384,7 +1384,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Separatrix</span></div>
     <div class="ref-body">
       <p>A curve (or surface) in phase space that divides regions of qualitatively different long-term behavior. In 2D, a separatrix is typically the stable manifold of a saddle point.</p>
-      <p>In the Damped Pendulum ★, the separatrix separates initial conditions that converge to the origin (pendulum coming to rest upright) from those that wrap around to adjacent equilibria (pendulum going over the top). The Lyapunov analysis correctly identifies V = 2 as the energy level of this separatrix.</p>
+      <p>In the Damped Pendulum&nbsp;★, the separatrix separates initial conditions that converge to the origin (pendulum coming to rest upright) from those that wrap around to adjacent equilibria (pendulum going over the top). The Lyapunov analysis correctly identifies V = 2 as the energy level of this separatrix.</p>
     </div>
   </div>
 
@@ -1393,7 +1393,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-body">
       <p>A <strong>homoclinic orbit</strong> is a trajectory that connects a saddle point to itself — it lies in both the stable and unstable manifold of the same equilibrium. It forms a loop enclosing one basin of attraction.</p>
       <p>A <strong>heteroclinic orbit</strong> (or <em>heteroclinic connection</em>) connects two different saddle points — it lies in the unstable manifold of one and the stable manifold of the other.</p>
-      <p>The Duffing Double-Well ★ has a pair of homoclinic orbits through the origin (the figure-eight shaped separatrix visible at c = 0). The undamped pendulum ★ has homoclinic orbits through each saddle at x = ±π.</p>
+      <p>The Duffing Double-Well&nbsp;★ has a pair of homoclinic orbits through the origin (the figure-eight shaped separatrix visible at c = 0). The undamped pendulum&nbsp;★ has homoclinic orbits through each saddle at x = ±π.</p>
       <p>With damping (c &gt; 0), these become the separatrices bounding the ROA of each well: trajectories starting inside converge to the well, those outside escape to another equilibrium.</p>
     </div>
   </div>
@@ -1421,7 +1421,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">First Integral (Conserved Quantity)</span></div>
     <div class="ref-body">
       <p>A function V with dV/dt = 0 identically along all trajectories. Level curves of V are exactly the system's orbits. A first integral proves Lyapunov stability but cannot prove asymptotic stability — the largest invariant set in {dV/dt = 0} is the entire phase space.</p>
-      <p>The Hamiltonian H of an undamped mechanical system is a first integral ★ (SHO, undamped pendulum, undamped predator–prey). Adding dissipation breaks the conservation: dV/dt = −D ≤ 0, turning a first integral into a Lyapunov function.</p>
+      <p>The Hamiltonian H of an undamped mechanical system is a first integral&nbsp;★ (SHO, undamped pendulum, undamped predator–prey). Adding dissipation breaks the conservation: dV/dt = −D ≤ 0, turning a first integral into a Lyapunov function.</p>
     </div>
   </div>
 
@@ -1429,7 +1429,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Region of Attraction (ROA)</span></div>
     <div class="ref-body">
       <p>The set of all initial conditions x(0) from which the trajectory converges to the equilibrium: ROA = {x : x(t) → x* as t → ∞}. For a GAS equilibrium the ROA is all of ℝⁿ; for a locally stable one it is some proper subset.</p>
-      <p>Lyapunov analysis gives <em>certified inner approximations</em> of the ROA: any sublevel set {V ≤ c} that lies entirely in {dV/dt &lt; 0} is positively invariant and contained in the true ROA. The orange dashed boundary in the Explorer ★ marks the largest such set certifiable with the chosen V.</p>
+      <p>Lyapunov analysis gives <em>certified inner approximations</em> of the ROA: any sublevel set {V ≤ c} that lies entirely in {dV/dt &lt; 0} is positively invariant and contained in the true ROA. The orange dashed boundary in the Explorer&nbsp;★ marks the largest such set certifiable with the chosen V.</p>
     </div>
   </div>
 
@@ -1438,7 +1438,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-body">
       <p>Extends asymptotic stability conclusions to cases where dV/dt ≤ 0 (semi-definite) rather than dV/dt &lt; 0 (definite).</p>
       <p><strong>Statement:</strong> Let Ω be a compact positively invariant set. Let E = {x ∈ Ω : dV/dt(x) = 0}. Let M be the largest invariant set contained in E. Then every trajectory starting in Ω converges to M as t → ∞.</p>
-      <p><strong>How it's applied:</strong> if M = {0} (the only invariant trajectory in {dV/dt = 0} is the equilibrium itself), then the origin is asymptotically stable for all initial conditions in Ω. This handles, e.g., the Damped Pendulum ★ where dV/dt = −cy² is zero on the entire y = 0 axis, but no trajectory other than the equilibrium can stay on that axis.</p>
+      <p><strong>How it's applied:</strong> if M = {0} (the only invariant trajectory in {dV/dt = 0} is the equilibrium itself), then the origin is asymptotically stable for all initial conditions in Ω. This handles, e.g., the Damped Pendulum&nbsp;★ where dV/dt = −cy² is zero on the entire y = 0 axis, but no trajectory other than the equilibrium can stay on that axis.</p>
       <p>LaSalle's principle strictly generalizes Lyapunov's theorem: whenever dV/dt is ND, the set E = {0} trivially and LaSalle recovers the same conclusion.</p>
     </div>
   </div>
@@ -1448,7 +1448,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-body">
       <p>For a linear system ẋ = Ax, the quadratic V = x&#7488;Px (P symmetric positive definite) has dV/dt = x&#7488;(A&#7488;P + PA)x. For dV/dt to be ND we need A&#7488;P + PA = −Q for some PD matrix Q — this is the <strong>Lyapunov matrix equation</strong>.</p>
       <p>The equation always has a unique PD solution P for any PD Q if and only if A is Hurwitz (all eigenvalues have negative real part). Solving it for Q = I gives the "natural" Lyapunov function for the linear system. For nonlinear systems, this solution at the linearization gives a local Lyapunov function valid in a neighborhood of the origin.</p>
-      <p>The general quadratic candidate V = x² + b·xy + c·y² in the Explorer ★ represents exactly this structure: it is the general 2×2 symmetric positive definite quadratic x&#7488;Px with P = [[1, b/2], [b/2, c]], the leading coefficient normalized to 1. Optimizing the two sliders is searching for the P that best certifies the region of attraction.</p>
+      <p>The general quadratic candidate V = x² + b·xy + c·y² in the Explorer&nbsp;★ represents exactly this structure: it is the general 2×2 symmetric positive definite quadratic x&#7488;Px with P = [[1, b/2], [b/2, c]], the leading coefficient normalized to 1. Optimizing the two sliders is searching for the P that best certifies the region of attraction.</p>
     </div>
   </div>
 
@@ -1459,8 +1459,8 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-body">
       <p>A dynamical system is <strong>Hamiltonian</strong> if it can be written as ẋ = ∂H/∂p, ṗ = −∂H/∂x for a scalar function H(x, p) called the <strong>Hamiltonian</strong> (usually total energy: H = T + U = kinetic + potential).</p>
       <p>The defining property is exact conservation: dH/dt = (∂H/∂x)ẋ + (∂H/∂p)ṗ = (∂H/∂x)(∂H/∂p) + (∂H/∂p)(−∂H/∂x) = 0. The two terms cancel identically — a consequence of the antisymmetric (symplectic) structure of Hamilton's equations.</p>
-      <p>This means H is always a first integral ★. Adding dissipation breaks the cancellation and leaves dH/dt = −D ≤ 0 (where D ≥ 0 is the dissipation), turning the Hamiltonian into a Lyapunov function for the damped system.</p>
-      <p><strong>Examples in the Explorer ★:</strong> SHO (H = ½x² + ½y²), undamped pendulum (H = (1−cos x) + ½y²), undamped predator–prey (H = (x−ln(1+x)) + (y−ln(1+y))), Duffing (H = ¼(1−x²)² + ½y²). Each becomes a Lyapunov function when its corresponding damped version is selected.</p>
+      <p>This means H is always a first integral&nbsp;★. Adding dissipation breaks the cancellation and leaves dH/dt = −D ≤ 0 (where D ≥ 0 is the dissipation), turning the Hamiltonian into a Lyapunov function for the damped system.</p>
+      <p><strong>Examples in the Explorer&nbsp;★:</strong> SHO (H = ½x² + ½y²), undamped pendulum (H = (1−cos x) + ½y²), undamped predator–prey (H = (x−ln(1+x)) + (y−ln(1+y))), Duffing (H = ¼(1−x²)² + ½y²). Each becomes a Lyapunov function when its corresponding damped version is selected.</p>
     </div>
   </div>
 
@@ -1468,7 +1468,7 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-entry-head"><span class="ref-entry-name">Passive System / Passivity</span></div>
     <div class="ref-body">
       <p>A system with input u and output y is <strong>passive</strong> if there exists a non-negative storage function V(x) ≥ 0 such that the energy balance inequality holds: dV/dt ≤ u&#7488;y. In words: the rate of change of stored energy is at most the externally supplied power u&#7488;y — the system cannot generate energy internally.</p>
-      <p>When u = 0 (autonomous), this reduces to dV/dt ≤ 0 — the storage function V is a Lyapunov function. All the Hamiltonian-based Lyapunov functions in the Explorer ★ are storage functions for passive systems.</p>
+      <p>When u = 0 (autonomous), this reduces to dV/dt ≤ 0 — the storage function V is a Lyapunov function. All the Hamiltonian-based Lyapunov functions in the Explorer&nbsp;★ are storage functions for passive systems.</p>
       <p><strong>Passivity and Lyapunov stability are deeply linked:</strong> a passive system with a positive definite storage function and zero-state observability (the output y = 0 implies x → 0) is asymptotically stable. This is essentially LaSalle's principle in input-output language.</p>
       <p><strong>Key benefit:</strong> passivity is preserved under <em>negative feedback interconnection</em> — connecting two passive systems in feedback gives a passive composite system. This makes passivity a powerful framework for stability analysis of complex networked systems (power grids, multi-robot systems, biomechanical models).</p>
     </div>
@@ -1480,7 +1480,7 @@ With damping c:  dV/dt = −cy²</div>
       <p><strong>Passivity-based control</strong> designs a controller by shaping the system's energy function rather than canceling its natural dynamics. The two key steps are:</p>
       <p><strong>1. Energy shaping:</strong> find a control law that makes the closed-loop system behave as if its Hamiltonian were a modified H<sub>d</sub>(x) with a minimum at the desired equilibrium x*. This modifies the potential energy landscape so the system "wants" to rest at x*.</p>
       <p><strong>2. Damping injection:</strong> add a dissipative term so that dH<sub>d</sub>/dt ≤ 0 with equality only at x*. This ensures convergence via LaSalle's principle.</p>
-      <p><strong>Concrete example (pendulum ★):</strong> The uncontrolled pendulum with damping c already satisfies dH/dt = −cy² ≤ 0, with H = (1−cos x) + ½y². LaSalle certifies that the only invariant set in {y = 0} is the origin x = 0 (the hanging equilibrium). To instead stabilize the inverted position (x = π), one would reshape H<sub>d</sub> to have a minimum there — this is the "swing-up and balance" problem in robotics.</p>
+      <p><strong>Concrete example (pendulum&nbsp;★):</strong> The uncontrolled pendulum with damping c already satisfies dH/dt = −cy² ≤ 0, with H = (1−cos x) + ½y². LaSalle certifies that the only invariant set in {y = 0} is the origin x = 0 (the hanging equilibrium). To instead stabilize the inverted position (x = π), one would reshape H<sub>d</sub> to have a minimum there — this is the "swing-up and balance" problem in robotics.</p>
       <p><strong>Why PBC instead of feedback linearization?</strong> Feedback linearization cancels the system's nonlinearities exactly, requiring precise knowledge of the model and often demanding large control effort. PBC works <em>with</em> the system's natural dynamics; it is inherently robust and often requires less energy.</p>
       <div class="ref-further" style="margin-top:10px">
         <div class="ref-further-title">Further Reading</div>
@@ -1548,7 +1548,7 @@ With damping c:  dV/dt = −cy²</div>
       <p>A quadratic margin ℓ₂ = ε‖x‖² demands that V decrease at least quadratically near the equilibrium.
       That holds whenever the linearization is non-degenerate, a hyperbolic equilibrium, which covers most
       systems. It fails at a <strong>non-hyperbolic</strong> equilibrium whose decrease is inherently higher
-      order. The Cubic Drain ★ (ẋ = −x³) is the clean example: with V = ‖x‖², its derivative is
+      order. The Cubic Drain (ẋ = −x³) is the clean example: with V = ‖x‖², its derivative is
       dV/dt = −2(x₁⁴ + x₂⁴), strictly negative for x ≠ 0 yet bounded below by no multiple of ‖x‖².
       Requiring −dV/dt − ε‖x‖² to be SOS is then <em>infeasible</em>, even though the origin is perfectly
       asymptotically stable.</p>
@@ -1594,14 +1594,14 @@ With damping c:  dV/dt = −cy²</div>
       arguments on the <span class="tab-link" data-goto="explorer">Explorer</span> and Reference tabs, with no
       SOS at all.</p>
       <p><strong>Tighten the SDP.</strong> Re-add a strict margin (section 1). Every equilibrium in the
-      catalog except the Cubic Drain ★ is hyperbolic, and a quadratic margin then certifies convergence
+      catalog except the Cubic Drain is hyperbolic, and a quadratic margin then certifies convergence
       outright. The Cubic Drain is non-hyperbolic, and its quartic decay needs a quartic margin to match
       (section 2); the SDP still certifies it. The non-strict default exists to dodge this per-system tuning,
       not because the SDP cannot certify these systems.</p>
       <p><strong>Argue by hand.</strong> Leave the certificate non-strict and establish convergence
       separately. For a V whose dV/dt is already negative away from the origin, that is a one-line
       observation. For a V whose dV/dt vanishes on more than the origin — the textbook case being the energy
-      function on the Damped Pendulum ★ and the Duffing ★ wells, where dV/dt = −c·y² is zero along y = 0 —
+      function on the Damped Pendulum and the Duffing wells, where dV/dt = −c·y² is zero along y = 0 —
       LaSalle's invariance principle applies, and the largest invariant set inside {dV/dt = 0} reduces to the
       origin. That LaSalle step belongs to the energy function, not to the pendulum: handed to the SDP with a
       margin, the same system admits a different V that needs no such step.</p>
@@ -1616,6 +1616,23 @@ With damping c:  dV/dt = −cy²</div>
       region itself — enlarging the certified set and re-fitting V to it in turns — but that is a harder,
       iterative optimization and an advanced topic, developed in the references on this tab. The generated
       code stops at the simpler fixed-R version.</p>
+    </div>
+  </div>
+
+  <div class="ref-group-title">6. Non-polynomial systems</div>
+  <div class="ref-entry">
+    <div class="ref-body">
+      <p>SOS requires the system to have a polynomial vector field. For systems with non-polynomial terms —
+      like sin(x₁) in the Damped Pendulum — those terms can be replaced by their degree-k Taylor
+      polynomials before applying the SOS method. However, the certificate is then rigorous for that
+      approximation, not the true system, and the two agree only near the origin. On its own the SDP therefore
+      proposes a candidate, not a proof about the real dynamics — and for a hyperbolic equilibrium that adds
+      little to the linearization.</p>
+      <p>Two routes restore rigor: bound the Taylor remainder and carry a strict margin large enough to absorb
+      it, which keeps the decrease valid once the true f is substituted back (<a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Han and Panagou, CDC 2017</a>); or
+      recast the nonlinearity exactly, as in using trigonometric identities (e.g., s² + c² = 1 when s = sin x
+      and c = cos x) to convert a non-polynomial system into a polynomial system with no approximation to
+      bound. The generated code does neither; it stops at the Taylor step.</p>
     </div>
   </div>
 
@@ -1634,6 +1651,7 @@ With damping c:  dV/dt = −cy²</div>
       <li>Jarvis-Wloszek, Feeley, Tan, Sun & Packard (2003) — <a href="https://doi.org/10.1109/CDC.2003.1272309" target="_blank" rel="noopener">Some controls applications of sum of squares programming</a>, <em>IEEE CDC</em></li>
       <li>Tan & Packard (2008) — <a href="https://doi.org/10.1109/TAC.2007.914221" target="_blank" rel="noopener">Stability region analysis using polynomial and composite polynomial Lyapunov functions and sum-of-squares programming</a>, <em>IEEE TAC</em></li>
       <li>Topcu, Packard & Seiler (2008) — <a href="https://doi.org/10.1016/j.automatica.2008.03.010" target="_blank" rel="noopener">Local stability analysis using simulations and sum-of-squares programming</a>, <em>Automatica</em></li>
+      <li>Han & Panagou (2017) — <a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Chebyshev approximation and higher order derivatives of Lyapunov functions for estimating the domain of attraction</a>, <em>IEEE CDC</em></li>
       <li>Khalil (2002) — <em>Nonlinear Systems</em>, Ch. 4: Lyapunov stability and the invariance principle</li>
     </ul>
   </div>
@@ -1657,7 +1675,7 @@ With damping c:  dV/dt = −cy²</div>
     <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab explains why, how it differs from
     the conventional strict certificate, and the one-line change that recovers the strict form. The
     certificate is built around the origin, and so coordinates must be translated first if the stable equilibrium of
-    interest is elsewhere (the Duffing system below is handled this way); the generated comments show the
+    interest is elsewhere. The Duffing system below is handled this way, and its generated comments show the
     substitution.
   </div>
 
@@ -1703,7 +1721,7 @@ With damping c:  dV/dt = −cy²</div>
       <li><strong>d (Lyapunov degree)</strong> sets how expressive V may be. A higher d can certify a larger region but builds a bigger, slower SDP; start low (2 or 4) and raise it only when needed.</li>
       <li><strong>R (certification disk)</strong> is the fixed disk ‖x‖ ≤ R on which decrease is required. You choose it rather than the solver, and the certified estimate always lies inside this circle. A larger R asks for more, but once the disk reaches past the true basin, for instance a nearby saddle, the problem turns infeasible.</li>
       <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee, since a feasible SDP certifies dV/dt ≤ 0 across the disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.</li>
-      <li><strong>k (approximation degree)</strong> is the Taylor degree used to polynomialize any non-polynomial term in the dynamics, with no effect on already-polynomial systems. For a recast system, the certificate is rigorous for that polynomial approximation, which matches the true dynamics only near the origin (see Han and Panagou, CDC 2017).</li>
+      <li><strong>k (approximation degree)</strong> is the Taylor degree used to polynomialize any non-polynomial term in the dynamics, with no effect on already-polynomial systems. For a recast system, the certificate is rigorous for that polynomial approximation, which matches the true dynamics only near the origin (see <a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Han and Panagou, CDC 2017</a>).</li>
       <li><strong>Positive-definiteness floor.</strong> V is forced positive definite by requiring V − ε‖x‖² to be SOS, a <em>quadratic</em> lower bound. This presumes the equilibrium admits a Lyapunov function with a positive-definite quadratic part, which holds when the linearization is non-degenerate. For a degenerate (non-hyperbolic) equilibrium whose only certificates are inherently higher order, that quadratic floor can be too strong; raise d and, in the generated code, replace ε‖x‖² with a higher-degree positive-definite form such as ε‖x‖⁴.</li>
       <li><strong>If the SDP is infeasible,</strong> shrink R, or raise d or n. Infeasibility does not prove the region is unstable; a fixed-degree SOS test can simply fail to certify a region that is in fact fine.</li>
     </ul>
@@ -3378,7 +3396,7 @@ const SOS_SYS = {
   hopf:            { label:'Hopf Normal Form',           f:['mu*x1 - x2 - x1*(x1^2 + x2^2)','x1 + mu*x2 - x2*(x1^2 + x2^2)'], param:{sym:'mu',val:-0.5}, stable:true,
                      caveat:'The origin is asymptotically stable only for mu < 0. The default mu = -0.5 is such a case; for mu > 0 the origin is unstable and the SOS program will be infeasible.' },
   pendulum:        { label:'Damped Pendulum',            f:['x2','-sin_approx - c*x2'],                             param:{sym:'c',val:0.5}, stable:true, nonpoly:true,
-                     caveat:'sin(x1) is non-polynomial; it is replaced below by sin_approx, its degree-k Taylor series about x1 = 0. The certificate is therefore rigorous for that polynomial approximation of the pendulum, which matches the true dynamics only near the origin. Raising k widens the range over which the approximation is faithful.' },
+                     caveat:'sin(x1) is non-polynomial; it is replaced below by sin_approx, its degree-k Taylor series about x1 = 0. The certificate is therefore rigorous for that polynomial approximation of the pendulum, which matches the true dynamics only near the origin. Raising k widens the range over which the approximation is faithful, but the result is still only a candidate for the true pendulum: certifying it for the true system needs either a bound on the Taylor remainder (with a strict margin to absorb it) or an exact recasting of sin and cos as polynomial states.' },
   duffing:         { label:'Duffing (shifted to a well)', f:['x2','-2*x1 - 3*x1^2 - x1^3 - c*x2'],                  param:{sym:'c',val:0.5}, stable:true, shifted:true, rMax:0.9,
                      physF:['z2','z1 - z1^3 - c*z2'], equil:'(1, 0)',
                      caveat:'The origin of the Duffing double-well system is a saddle (unstable); its stable equilibria are the wells at (+/-1, 0). The dynamics below are centered on the right-hand well by a change of variables (derived in the comment just above them), and so the certified region is around that well. Because the original saddle sits a distance 1 from this well, the disk on which decrease is certified must stay inside the basin: use R < 1, since a larger R reaches past the saddle and makes the SDP infeasible.' },
