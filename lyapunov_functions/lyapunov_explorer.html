@@ -569,6 +569,17 @@
   .ref-body p { margin-bottom: 4px; }
   .ref-body strong { color: var(--text); }
   .ref-body em { font-style: italic; }
+  /* Offset "display" equations: monospace, upright (variables are never
+     italicized elsewhere in the widget), with roomier spacing so the symbols
+     do not crowd together. */
+  .ref-math {
+    margin: 12px 0;
+    padding-left: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9em;
+    line-height: 1.85;
+    color: var(--text);
+  }
   .ref-callout {
     background: #f0efe6;
     border-left: 3px solid var(--orange);
@@ -582,15 +593,19 @@
   .sos-guide ul { margin: 7px 0 0; padding-left: 20px; }
   .sos-guide li { margin-bottom: 6px; }
   .sos-guide li:last-child { margin-bottom: 0; }
+  /* In-page tab navigation. A solid underline marks it as a link (like the
+     external links below); the broken underline is reserved for tooltips
+     (.lbl-help) so the two are not confused. The medium weight keeps internal
+     tab jumps distinguishable from external links. */
   .tab-link {
     color: var(--orange);
     cursor: pointer;
-    border-bottom: 1px dotted var(--orange);
+    text-decoration: underline;
+    text-underline-offset: 2px;
     font-weight: 500;
   }
-  .tab-link:hover { color: var(--green); border-bottom-color: var(--green); }
-  /* External (navigating) links inside the reference panels; distinct from the
-     dotted internal .tab-link by using a solid underline. */
+  .tab-link:hover { color: var(--green); }
+  /* External (navigating) links inside the reference panels. */
   .ref-further a, .ref-body a, .ref-callout a, .ref-intro a {
     color: var(--orange);
     text-decoration: underline;
@@ -681,6 +696,13 @@
     color: var(--text);
   }
   .sos-field.wide select { min-width: 200px; }
+  .sos-field label.sos-checkbox {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'Outfit', sans-serif; font-size: 12.5px;
+    text-transform: none; letter-spacing: 0; font-weight: 400;
+    color: var(--text); cursor: pointer; padding: 6px 0;
+  }
+  .sos-field label.sos-checkbox input { cursor: pointer; margin: 0; }
   .lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
   .lang-toggle button {
     font-family: 'Outfit', sans-serif;
@@ -934,7 +956,7 @@
 <div id="panel-systems" class="tab-panel">
 <div class="ref-panel">
   <div class="ref-intro">
-    A catalog of the dynamical systems available in the <span class="tab-link" data-goto="explorer">Explorer</span>, grouped by family. For each system the linearization, equilibrium type, physical interpretation (where applicable), and suggested Lyapunov candidates are noted. Some candidates have a principled origin, such as an energy or a structural argument; others are simply what worked, since for many systems finding V is guess and check, the difficulty that the <span class="tab-link" data-goto="sos">SOS Code</span> tab automates.
+    A catalog of the dynamical systems available in the <span class="tab-link" data-goto="explorer">Explorer</span>, grouped by family. For each system the linearization, equilibrium type, physical interpretation (where applicable), and suggested Lyapunov candidates are noted. Some candidates have a principled origin, such as an energy or a structural argument; others are simply what worked because for many systems finding V is guess and check, the difficulty that the <span class="tab-link" data-goto="sos">SOS Code</span> tab automates.
   </div>
 
   <div class="ref-group-title">Linear Systems — behavior fully determined by eigenvalues of A</div>
@@ -1055,7 +1077,7 @@
   <div class="ref-group-title">Mechanical / Physical Systems</div>
 
   <div class="ref-intro section-lede">
-    For a mechanical or physical system, the total energy is a principled first guess for a Lyapunov function rather than something to search for. The Hamiltonian H = T + U (kinetic plus potential energy) is positive definite about a stable equilibrium that sits at an energy minimum, and along trajectories dH/dt = −(dissipation) ≤ 0, because a passive system can only shed stored energy. A damped mechanical system therefore hands you V ∝ H almost for free, and the only work left is reading off the sublevel set it certifies. The two examples below follow this pattern; the energy argument behind it is developed on the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
+    For a mechanical or physical system, the total energy is a principled first guess for a Lyapunov function rather than something to search for. The Hamiltonian H = T + U (kinetic plus potential energy) is positive definite about a stable equilibrium that sits at an energy minimum, and along trajectories dH/dt = −(dissipation) ≤ 0 because a passive system can only shed stored energy. A damped mechanical system therefore hands you V ∝ H almost for free, and the only work left is reading off the sublevel set it certifies. The two examples below follow this pattern; the energy argument behind it is developed on the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
   </div>
 
   <div class="ref-entry">
@@ -1093,7 +1115,7 @@
   <div class="ref-group-title">Ecological / Population Dynamics</div>
 
   <div class="ref-intro section-lede">
-    Population models can carry the same energy logic as mechanical systems. Where individuals only move between states, the population itself is conserved, with births acting as a source and deaths as dissipation. Lotka–Volterra predator–prey is less direct, because its birth and death terms do not cancel: in place of a conserved head count it has a first integral, a combination of both populations held constant along every orbit, that plays the role the Hamiltonian plays in mechanics. That first integral is positive definite about the coexistence equilibrium, the natural Lyapunov candidate; adding damping turns it into a strict Lyapunov function, dV/dt ≤ 0, exactly as dissipation does for a mechanical system. That is why the predator–prey candidate sits in the Energy Functions group of the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
+    Population models can carry the same energy logic as mechanical systems. Where individuals only move between states, the population itself is conserved, with births acting as a source and deaths as dissipation. Lotka–Volterra predator–prey is less direct because its birth and death terms do not cancel: in place of a conserved head count it has a first integral, a combination of both populations held constant along every orbit, that plays the role the Hamiltonian plays in mechanics. That first integral is positive definite about the coexistence equilibrium, the natural Lyapunov candidate; adding damping turns it into a strict Lyapunov function, dV/dt ≤ 0, exactly as dissipation does for a mechanical system. That is why the predator–prey candidate sits in the Energy Functions group of the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
   </div>
 
   <div class="ref-entry">
@@ -1526,15 +1548,15 @@ With damping c:  dV/dt = −cy²</div>
       <p>The textbook SOS encoding of <em>asymptotic</em> stability mirrors Lyapunov's theorem term for term.
       Parameterize V as a polynomial with unknown coefficients and impose two SOS constraints, each holding a
       quantity above a fixed positive definite function ℓ:</p>
-      <p style="margin:8px 0; padding-left:16px; font-style:italic;">
+      <p class="ref-math">
         V − ℓ₁(x) &nbsp;is SOS&nbsp;&nbsp;&nbsp;(V is positive definite)<br>
         −dV/dt − ℓ₂(x) &nbsp;is SOS&nbsp;&nbsp;&nbsp;(dV/dt is negative definite)
       </p>
       <p>with ℓ₁, ℓ₂ positive definite, most often ℓ = ε‖x‖². The second constraint forces
       dV/dt ≤ −ℓ₂(x) &lt; 0 for every x ≠ 0, which is strict decrease, and so asymptotic stability — in fact
       exponential stability, for a quadratic ℓ₂ — follows directly, with no further argument.
-      This is the default in the SOS-synthesis literature: Parrilo's thesis, Papachristodoulou and Prajna,
-      and the region-of-attraction line of Jarvis-Wloszek, Tan, Packard, and Topcu all carry a positive
+      This is the default in the SOS-synthesis literature: <a href="https://www.cds.caltech.edu/~doyle/hot/thesis.pdf" target="_blank" rel="noopener">Parrilo (2000)</a>, <a href="https://doi.org/10.1109/CDC.2002.1184414" target="_blank" rel="noopener">Papachristodoulou and Prajna (2002)</a>,
+      and the region-of-attraction work of <a href="https://doi.org/10.1109/CDC.2003.1272309" target="_blank" rel="noopener">Jarvis-Wloszek et al. (2003)</a>, <a href="https://doi.org/10.1109/TAC.2007.914221" target="_blank" rel="noopener">Tan and Packard (2008)</a>, and <a href="https://doi.org/10.1016/j.automatica.2008.03.010" target="_blank" rel="noopener">Topcu, Packard, and Seiler (2008)</a> all carry a positive
       definite margin on the derivative, as does the Lyapunov example in the SOSTOOLS user's guide. The
       attraction of this form is a <strong>self-contained</strong> certificate: the solver proves
       convergence, not merely non-increase.</p>
@@ -1565,10 +1587,10 @@ With damping c:  dV/dt = −cy²</div>
     <div class="ref-body">
       <p>To run one template across the whole catalog, the Cubic Drain included, without per-system margin
       tuning, the generated code drops ℓ₂ from the derivative constraint and asks only for</p>
-      <p style="margin:8px 0; padding-left:16px; font-style:italic;">
+      <p class="ref-math">
         V − ε‖x‖² is SOS,&nbsp;&nbsp;&nbsp; λ is SOS,&nbsp;&nbsp;&nbsp; −dV/dt − λ·(R² − ‖x‖²) is SOS.
       </p>
-      <p>V stays positive definite — a quadratic floor is fine on the V side, since the degenerate decay
+      <p>V stays positive definite — a quadratic floor is fine on the V side because the degenerate decay
       lives in dV/dt, not in V — while the derivative is held only to dV/dt ≤ 0 on the disk ‖x‖ ≤ R. The
       multiplier λ is the <strong>S-procedure</strong>: instead of demanding −dV/dt ≥ 0 everywhere, the code
       demands −dV/dt − λ·(R² − ‖x‖²) ≥ 0 with λ itself SOS, and so the bound is forced only where
@@ -1611,11 +1633,34 @@ With damping c:  dV/dt = −cy²</div>
   <div class="ref-group-title">5. Enlarging the certified region</div>
   <div class="ref-entry">
     <div class="ref-body">
-      <p>The generated SOS code certifies the largest level set of V that fits inside a fixed disk of radius R, and so the
-      disk you pick caps how big the certified region can be. A more powerful approach also searches over the
-      region itself — enlarging the certified set and re-fitting V to it in turns — but that is a harder,
-      iterative optimization and an advanced topic, developed in the references on this tab. The generated
-      code stops at the simpler fixed-R version.</p>
+      <p>The SOS program certifies the largest level set of V that fits inside a disk of radius R, and the disk
+      caps how big the certified region can be. Two routes push past a single hand-picked disk, and they trade
+      off differently.</p>
+      <p><strong>Alternating (V–s) iteration.</strong> The textbook route searches over the region itself,
+      enlarging the certified set and re-fitting V to it in alternation: fix V and grow the multipliers and the
+      level, then fix those and re-solve for V, and repeat. Each half is a convex SDP, but the product of V and
+      the multiplier makes the joint problem bilinear and non-convex, and the iteration can stall in a local
+      optimum and depends on where it starts. This is the standard approach of <a href="https://doi.org/10.1109/TAC.2007.914221" target="_blank" rel="noopener">Tan and Packard (2008)</a>
+      and <a href="https://doi.org/10.1016/j.automatica.2008.03.010" target="_blank" rel="noopener">Topcu, Packard, and Seiler (2008)</a>.</p>
+      <p><strong>Bisection on the region radius.</strong> A simpler alternative keeps every step convex and
+      searches a single scalar instead. Hold the formulation fixed and bisect on R: solve the convex SDP at a
+      trial radius, grow R while it stays feasible, and shrink it when it does not, converging to the largest
+      disk the certificate can cover. Each evaluation re-finds V from scratch – the Lyapunov function is never
+      iterated against the multiplier – and feasibility is monotone in R, which makes the bisection well posed
+      because a disk that is certifiable stays certifiable when shrunk. Driving R toward the true basin boundary
+      this way forces the SDP's V close to what converse Lyapunov theory guarantees exists: <a href="https://doi.org/10.2307/1969955" target="_blank" rel="noopener">Massera's theorem (1956)</a>
+      says an asymptotically stable system admits a smooth Lyapunov function whose sublevel sets fill the basin,
+      and the largest-disk certificate is the degree-limited SOS approximation of it. The construction is not
+      literally unique because many converse integrands work, and V here is capped at degree d, but in practice
+      the bisection recovers very nearly the full basin with far less tuning than the alternating iteration. It
+      is the same move as the <span class="tab-link" data-goto="explorer">Explorer</span> tab's
+      <strong>"Optimize parameters for largest ROA"</strong> button, which searches the quadratic's two free
+      parameters for the largest certified area; here, the scalar searched is the region radius rather than the
+      shape of V.</p>
+      <p>The generated code takes the bisection route by default: its <code>auto_R</code> flag wraps the single
+      convex program in exactly this search, and turning it off certifies the single fixed disk R instead. Enlarging the
+      region beyond the largest disk, reshaping it to follow the flow rather than a circle, returns to the
+      non-convex territory of the alternating method.</p>
     </div>
   </div>
 
@@ -1629,7 +1674,7 @@ With damping c:  dV/dt = −cy²</div>
       proposes a candidate, not a proof about the real dynamics — and for a hyperbolic equilibrium that adds
       little to the linearization.</p>
       <p>Two routes restore rigor: bound the Taylor remainder and carry a strict margin large enough to absorb
-      it, which keeps the decrease valid once the true f is substituted back (<a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Han and Panagou, CDC 2017</a>); or
+      it, which keeps the decrease valid once the true f is substituted back (<a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Han and Panagou, 2017</a>); or
       recast the nonlinearity exactly, as in using trigonometric identities (e.g., s² + c² = 1 when s = sin x
       and c = cos x) to convert a non-polynomial system into a polynomial system with no approximation to
       bound. The generated code does neither; it stops at the Taylor step.</p>
@@ -1637,10 +1682,12 @@ With damping c:  dV/dt = −cy²</div>
   </div>
 
   <div class="ref-callout">
-    <strong>In one line.</strong> The textbook SOS program certifies asymptotic stability outright by forcing
+    <strong>Quick summary.</strong> The textbook SOS program certifies asymptotic stability outright by forcing
     dV/dt ≤ −ℓ₂(x) &lt; 0; the SOS code this tool generates instead certifies dV/dt ≤ 0 with a single template
     that covers the whole catalog, the degenerate Cubic Drain included, and leaves convergence to a short
-    follow-up — a tightened SDP or a one-line hand argument.
+    follow-up — a tightened SDP or a one-line hand argument. Two further choices are built into that code: by
+    default it grows the disk to the largest certifiable region by bisection on R (the auto_R switch), and it
+    handles a non-polynomial field by polynomializing it with a degree-k Taylor expansion.
   </div>
 
   <div class="ref-further">
@@ -1652,6 +1699,7 @@ With damping c:  dV/dt = −cy²</div>
       <li>Tan & Packard (2008) — <a href="https://doi.org/10.1109/TAC.2007.914221" target="_blank" rel="noopener">Stability region analysis using polynomial and composite polynomial Lyapunov functions and sum-of-squares programming</a>, <em>IEEE TAC</em></li>
       <li>Topcu, Packard & Seiler (2008) — <a href="https://doi.org/10.1016/j.automatica.2008.03.010" target="_blank" rel="noopener">Local stability analysis using simulations and sum-of-squares programming</a>, <em>Automatica</em></li>
       <li>Han & Panagou (2017) — <a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Chebyshev approximation and higher order derivatives of Lyapunov functions for estimating the domain of attraction</a>, <em>IEEE CDC</em></li>
+      <li>Massera (1956) — <a href="https://doi.org/10.2307/1969955" target="_blank" rel="noopener">Contributions to Stability Theory</a>, <em>Annals of Mathematics</em> 64, 182–206</li>
       <li>Khalil (2002) — <em>Nonlinear Systems</em>, Ch. 4: Lyapunov stability and the invariance principle</li>
     </ul>
   </div>
@@ -1670,7 +1718,10 @@ With damping c:  dV/dt = −cy²</div>
     The emitted program finds a positive definite V (degree d) and certifies dV/dt ≤ 0 on a disk of radius R
     about the equilibrium, with a multiplier polynomial (degree n) confining the decrease condition to that
     disk. The largest level set of V inside the disk is then a certified, forward-invariant inner estimate of
-    the region of attraction. This is the <em>non-strict</em> formulation: convergence to the equilibrium is
+    the region of attraction. With <strong>auto-grow R</strong> on (the default), the emitted code wraps that
+    single convex program in a <strong>bisection on R</strong>, returning the largest disk on which the SDP
+    stays feasible rather than the one disk you typed; each step solves one convex program, and V is re-found at
+    every radius. This is the <em>non-strict</em> formulation: convergence to the equilibrium is
     finished by a short per-system argument rather than by the SDP itself. The
     <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab explains why, how it differs from
     the conventional strict certificate, and the one-line change that recovers the strict form. The
@@ -1700,8 +1751,12 @@ With damping c:  dV/dt = −cy²</div>
         <input type="number" id="sosN" value="2" min="0" max="6" step="2">
       </div>
       <div class="sos-field">
-        <label><span class="lbl-help" tabindex="0" data-tip="Radius of the disk around the equilibrium on which decrease of V is certified. Works together with the multiplier (n); the certificate is local to this disk.">region R</span></label>
+        <label><span class="lbl-help" tabindex="0" data-tip="Radius of the disk around the equilibrium on which decrease of V is certified. With auto-grow on, this is the starting radius; bisection searches outward from it for the largest certifiable disk. Works together with the multiplier (n).">region R</span></label>
         <input type="number" id="sosR" value="1.2" min="0.2" max="6" step="0.1">
+      </div>
+      <div class="sos-field">
+        <label><span class="lbl-help" tabindex="0" data-tip="Wrap the convex program in a bisection on R: search for the largest disk on which the SDP stays feasible, instead of certifying the single fixed disk R. Each step solves one convex program; V is re-found at every radius. The emitted code keeps an auto_R flag you can flip off to recover the single fixed-R version.">auto-grow R</span></label>
+        <label class="sos-checkbox"><input type="checkbox" id="sosAutoR" checked> bisection on R</label>
       </div>
     </div>
     <div class="sos-group">
@@ -1719,9 +1774,10 @@ With damping c:  dV/dt = −cy²</div>
     <strong>Rules of thumb for the degrees.</strong>
     <ul>
       <li><strong>d (Lyapunov degree)</strong> sets how expressive V may be. A higher d can certify a larger region but builds a bigger, slower SDP; start low (2 or 4) and raise it only when needed.</li>
-      <li><strong>R (certification disk)</strong> is the fixed disk ‖x‖ ≤ R on which decrease is required. You choose it rather than the solver, and the certified estimate always lies inside this circle. A larger R asks for more, but once the disk reaches past the true basin, for instance a nearby saddle, the problem turns infeasible.</li>
-      <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee, since a feasible SDP certifies dV/dt ≤ 0 across the disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.</li>
-      <li><strong>k (approximation degree)</strong> is the Taylor degree used to polynomialize any non-polynomial term in the dynamics, with no effect on already-polynomial systems. For a recast system, the certificate is rigorous for that polynomial approximation, which matches the true dynamics only near the origin (see <a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Han and Panagou, CDC 2017</a>).</li>
+      <li><strong>R (certification disk)</strong> is the disk ‖x‖ ≤ R on which decrease is required, and the certified estimate always lies inside this circle. A larger R asks for more, but once the disk reaches past the true basin, for instance a nearby saddle, the problem turns infeasible. With <strong>auto-grow R</strong> off, R is fixed and you choose it; with auto-grow on, R is only a starting radius and the bisection searches outward from it for the largest certifiable disk.</li>
+      <li><strong>Auto-grow R (bisection)</strong> turns the single fixed-R version into a one-dimensional search for the largest certifiable disk. It is the practical way to push the certificate toward the true basin boundary: every step stays a convex program, and V is re-optimized at each radius rather than iterated against the multiplier. The emitted code keeps an <code>auto_R</code> flag, and so the same script switches back to the single fixed disk by setting it false. The <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab places this beside the alternating method it replaces.</li>
+      <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee because a feasible SDP certifies dV/dt ≤ 0 across the disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.</li>
+      <li><strong>k (approximation degree)</strong> is the Taylor degree used to polynomialize any non-polynomial term in the dynamics, with no effect on already-polynomial systems. For a recast system, the certificate is rigorous for that polynomial approximation, which matches the true dynamics only near the origin (see <a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Han and Panagou, 2017</a>).</li>
       <li><strong>Positive-definiteness floor.</strong> V is forced positive definite by requiring V − ε‖x‖² to be SOS, a <em>quadratic</em> lower bound. This presumes the equilibrium admits a Lyapunov function with a positive-definite quadratic part, which holds when the linearization is non-degenerate. For a degenerate (non-hyperbolic) equilibrium whose only certificates are inherently higher order, that quadratic floor can be too strong; raise d and, in the generated code, replace ε‖x‖² with a higher-degree positive-definite form such as ε‖x‖⁴.</li>
       <li><strong>If the SDP is infeasible,</strong> shrink R, or raise d or n. Infeasibility does not prove the region is unstable; a fixed-degree SOS test can simply fail to certify a region that is in fact fine.</li>
     </ul>
@@ -3399,7 +3455,7 @@ const SOS_SYS = {
                      caveat:'sin(x1) is non-polynomial; it is replaced below by sin_approx, its degree-k Taylor series about x1 = 0. The certificate is therefore rigorous for that polynomial approximation of the pendulum, which matches the true dynamics only near the origin. Raising k widens the range over which the approximation is faithful, but the result is still only a candidate for the true pendulum: certifying it for the true system needs either a bound on the Taylor remainder (with a strict margin to absorb it) or an exact recasting of sin and cos as polynomial states.' },
   duffing:         { label:'Duffing (shifted to a well)', f:['x2','-2*x1 - 3*x1^2 - x1^3 - c*x2'],                  param:{sym:'c',val:0.5}, stable:true, shifted:true, rMax:0.9,
                      physF:['z2','z1 - z1^3 - c*z2'], equil:'(1, 0)',
-                     caveat:'The origin of the Duffing double-well system is a saddle (unstable); its stable equilibria are the wells at (+/-1, 0). The dynamics below are centered on the right-hand well by a change of variables (derived in the comment just above them), and so the certified region is around that well. Because the original saddle sits a distance 1 from this well, the disk on which decrease is certified must stay inside the basin: use R < 1, since a larger R reaches past the saddle and makes the SDP infeasible.' },
+                     caveat:'The origin of the Duffing double-well system is a saddle (unstable); its stable equilibria are the wells at (+/-1, 0). The dynamics below are centered on the right-hand well by a change of variables (derived in the comment just above them), and so the certified region is around that well. Because the original saddle sits a distance 1 from this well, the disk on which decrease is certified must stay inside the basin: use R < 1; a larger R reaches past the saddle and makes the SDP infeasible.' },
   predprey_damped: { label:'Predator–Prey (damped)',     f:['-x2 - x1*x2 - c*x1','x1 + x1*x2 - c*x2'],              param:{sym:'c',val:0.3}, stable:true, rMax:0.8,
                      caveat:'With the default degrees, certifying decrease on a large disk is infeasible for this system; R >= 1 fails, and so use a smaller R (or raise the V degree d or multiplier n to extend the feasible range).' }
 };
@@ -3463,7 +3519,7 @@ function sosShiftDeriv(S, c){
 // be "1.2" or "1.25", and the degrees are single digits).
 function sosCol(token, width){ return String(token).padEnd(width); }
 
-function genMATLAB(id, k, n, d, R){
+function genMATLAB(id, k, n, d, R, autoR){
   const S = SOS_SYS[id];
   const f = S.f.map(c => sosToLang(c, 'matlab'));
   const Rstr = +R.toFixed(4);
@@ -3486,8 +3542,11 @@ function genMATLAB(id, k, n, d, R){
 % ${'='.repeat(70)}
 % Find a Lyapunov function V (degree ${d}) that is positive definite and
 % non-increasing (dV/dt <= 0) on the disk ||x||^2 <= R^2. A multiplier
-% polynomial relaxes the decrease condition to that disk only; with the
-% region fixed, this is a single semidefinite program (SDP).
+% polynomial relaxes the decrease condition to that disk only; for a fixed
+% region this is a single semidefinite program (SDP). With auto_R = true
+% (set below) an outer bisection searches the largest disk on which that SDP
+% stays feasible -- one convex program per step, V re-found at each radius --
+% pushing the certificate toward the true basin boundary.
 %
 % FORMULATION (why this is the non-strict test): the conventional SOS program
 % for ASYMPTOTIC stability also pins a positive-definite margin on the
@@ -3531,11 +3590,12 @@ ${paramDecl}${sinDecl}${sosShiftDeriv(S,'%')}% --- dynamics  xdot = f(x) ---
 f = [ ${f[0]};
       ${f[1]} ];
 
-%% Build the SOS program (degrees, V, and the multiplier)
-d     = ${sosCol(d + ';', 10)}% degree of the Lyapunov polynomial V
-nmult = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
-R     = ${sosCol(Rstr + ';', 10)}% region radius: certify decrease on the disk ||x|| <= R
-epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin eps)
+%% Build the SOS program (degrees, V, the multiplier, and the region mode)
+d      = ${sosCol(d + ';', 10)}% degree of the Lyapunov polynomial V
+nmult  = ${sosCol(n + ';', 10)}% degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
+R      = ${sosCol(Rstr + ';', 10)}% region radius: with auto_R, the starting disk ||x|| <= R
+epspd  = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin eps)
+auto_R = ${sosCol((autoR ? 'true' : 'false') + ';', 10)}% true: grow the disk by bisection; false: certify the fixed disk R
 
 % Keep the decrease polynomial -Vdot - lam*(R^2 - ||x||^2) even-degree: an
 % odd-degree polynomial is never SOS. deg(Vdot) = (d-1) + deg(f); when that is
@@ -3545,115 +3605,91 @@ epspd = ${sosCol('1e-3;', 10)}% positive-definiteness margin (not the builtin ep
 degVdot = (d - 1) + f.maxdeg;
 if mod(degVdot, 2) == 1, nmult = max(nmult, degVdot - 1); end
 
-prog = sosprogram(vars);
-[prog, V]   = sospolyvar(prog, monomials(vars, 2:d));      % V: degrees 2..d, and so V(0)=0
-[prog, lam] = sospolyvar(prog, monomials(vars, 0:nmult));  % region multiplier
+%% Certify a region -- a single fixed disk, or the largest disk by bisection
+% sos_certify (local function below) builds and solves ONE convex SDP for a fixed
+% radius. With auto_R the search is handed to grow_region, a bisection that
+% returns the largest disk on which that SDP stays feasible: feasibility is
+% monotone in R, and so a single threshold exists and the bisection converges to
+% it, re-finding V at each radius rather than iterating it against the multiplier.
+%
+% auto_R is a compile-time constant, and so the Code Analyzer marks whichever
+% branch is not taken as unreachable. The file-scope %#ok<*UNRCH> below declares
+% that intentional, and so the flag can be flipped without the pragma moving.
+if auto_R  %#ok<*UNRCH>
+    fprintf('Growing the certified disk by bisection on R:\\n');
+    [Rcert, V_sol, feasible, numerr] = grow_region(vars, x1, x2, f, d, nmult, epspd, R);
+else
+    Rcert = R;
+    [feasible, V_sol, numerr] = sos_certify(vars, x1, x2, f, d, nmult, epspd, Rcert);
+end
 
-Vdot = diff(V, x1)*f(1) + diff(V, x2)*f(2);
+% Surface numerical trouble once, for the radius actually certified, rather than
+% on every probe the bisection makes near the feasibility boundary, where the
+% SDP is naturally ill-conditioned and such reports are expected.
+if feasible && numerr ~= 0
+    warning('SeDuMi reported numerical trouble at the certified radius (numerr = %d); treat the certificate with caution.', numerr);
+end
 
-%% Lyapunov conditions -- the SOS constraints
-% V is forced positive definite with a QUADRATIC lower bound, epspd*||x||^2.
-% That presumes the equilibrium admits a Lyapunov function with a
-% positive-definite quadratic part (the usual case when the linearization is
-% non-degenerate). For a degenerate (non-hyperbolic) equilibrium whose only
-% certificates are higher order, raise d and replace this quadratic floor
-% with a higher-degree positive-definite form, e.g. epspd*(x1^2 + x2^2)^2.
-prog = sosineq(prog, V - epspd*(x1^2 + x2^2));             % V positive definite
-prog = sosineq(prog, lam);                                 % multiplier is SOS
-prog = sosineq(prog, -Vdot - lam*(R^2 - x1^2 - x2^2));     % dV/dt <= 0 on the disk
-
-% The decrease constraint above is non-strict (dV/dt <= 0), and so it certifies
-% stability and an invariant region but leaves convergence to the LaSalle /
-% strict-decrease check noted above. To recover the CONVENTIONAL strict form,
-% in which the SDP certifies asymptotic stability directly with no extra step,
-% restore the positive-definite margin L2: replace the line above with, for
-% some eps2 > 0,
-%   prog = sosineq(prog, -Vdot - lam*(R^2 - x1^2 - x2^2) - eps2*(x1^2 + x2^2));
-% which forces dV/dt <= -eps2*||x||^2 < 0 off the origin. The trade: this is
-% infeasible for non-hyperbolic equilibria (e.g. xdot = -x^3), whose decrease
-% is higher-order than quadratic; match the margin degree to the decay order.
-
-%% Solve and read off the certificate
-prog = sossolve(prog);
-
-% Read off the candidate certificate V (the @polynomial class has no disp
-% method, and so char() gives the readable polynomial string) and build a fast
-% element-wise handle for it (vectorize turns ^ * / into .^ .* ./).
-V_sol = sosgetsol(prog, V);
-Vstr  = char(V_sol); if iscell(Vstr), Vstr = Vstr{1}; end
-Vfun  = str2func(['@(x1,x2) ', vectorize(Vstr)]);
-
-%% Feasibility check  (robust to the SDP solver)
-% When SeDuMi's diagnostics are present (the SOSTOOLS default solver), use
-% them: feasratio ~ +1 feasible / ~ -1 infeasible, pinf/dinf flag
-% infeasibility, numerr ~= 0 flags numerical trouble. For any OTHER solver
-% those fields are absent, and so fall back to verifying the certificate itself on
-% the disk -- exactly the Lyapunov conditions the plot claims (V >= epspd*||x||^2
-% and dV/dt <= 0), sampled with a relative tolerance. That keeps the check
-% independent of which solver SOSTOOLS used.
-in = struct();
-if isfield(prog, 'solinfo') && isfield(prog.solinfo, 'info'), in = prog.solinfo.info; end
-if isfield(in, 'feasratio')                                  % SeDuMi diagnostics
-    feasible = ~((isfield(in,'pinf') && in.pinf == 1) || ...
-                 (isfield(in,'dinf') && in.dinf == 1) || in.feasratio < 0.5);
-    if isfield(in,'numerr') && in.numerr ~= 0
-        warning('Solver reported numerical trouble (numerr = %d); treat the result with caution.', in.numerr);
-    end
-    if feasible, fprintf('Solver feasratio = %.3f (near +1: feasible).\\n', in.feasratio); end
-else                                                         % any other solver: verify V directly
-    Vdstr = char(diff(V_sol, x1)*f(1) + diff(V_sol, x2)*f(2));
-    if iscell(Vdstr), Vdstr = Vdstr{1}; end
-    Vdfun = str2func(['@(x1,x2) ', vectorize(Vdstr)]);
-    gg = linspace(-R, R, 80); [Gx, Gy] = meshgrid(gg, gg); Din = Gx.^2 + Gy.^2 <= R^2;
-    Vd = Vdfun(Gx(Din), Gy(Din)); V0 = Vfun(Gx(Din), Gy(Din)); tol = 1e-3;   % relative
-    feasible = (max(Vd) <= tol*max(abs(Vd))) && ...
-               (min(V0 - epspd*(Gx(Din).^2 + Gy(Din).^2)) >= -tol*max(abs(V0)));
-    fprintf('Certificate verified directly on the disk (solver-agnostic): %d\\n', feasible);
+% --- results (a blank line and a '==>' prefix set these apart from the search) ---
+% char() gives V as a readable string (the @polynomial class has no disp method);
+% vectorize turns ^ * / into .^ .* ./ for a fast element-wise plotting handle.
+fprintf('\\n');
+if feasible
+    Vstr = char(V_sol);
+    if iscell(Vstr), Vstr = Vstr{1}; end   % char() returns char for a scalar polynomial; the guard is kept for safety
+    Vfun = str2func(['@(x1,x2) ', vectorize(Vstr)]);
+    if auto_R, fprintf('==> Largest certified disk: R = %.4f\\n\\n', Rcert); end
+    fprintf('==> V(x) = %s\\n\\n', Vstr);
+else
+    fprintf(['==> No certificate found for these settings (an unstable parameter, ' ...
+             'too small d or n, or R past the basin boundary). Phase portrait only.\\n\\n']);
 end
 
 %% Visualize
 % The phase portrait is drawn either way; the Lyapunov function and the
 % certified invariant region are drawn ONLY when a valid certificate was found.
 % The largest level set of V inside the disk is {V <= cstar} with
-% cstar = min over the circle ||x|| = R of V(x). Only the CONNECTED COMPONENT
+% cstar = min over the circle ||x|| = Rcert of V(x). Only the CONNECTED COMPONENT
 % of that sublevel set containing the origin is the certified region, and it
-% lies inside ||x|| <= R by construction. (To enlarge the region itself,
-% alternate between improving the region and re-fitting V to it -- an
-% iterative optimization beyond this fixed-R script.)
+% lies inside ||x|| <= Rcert by construction. With auto_R the radius Rcert is
+% already grown to the largest certifiable disk; enlarging the certified set
+% further means searching over the region SHAPE (not just its radius) and
+% re-fitting V to it, a harder non-convex iteration beyond this script.
 th = linspace(0, 2*pi, 720);
-g  = linspace(-1.6*R, 1.6*R, 60);
+g  = linspace(-1.6*Rcert, 1.6*Rcert, 60);
 [X1, X2] = meshgrid(g, g);
 F1 = arrayfun(@(a,b) double(subs(f(1), [x1; x2], [a; b])), X1, X2);
 F2 = arrayfun(@(a,b) double(subs(f(2), [x1; x2], [a; b])), X1, X2);
 
+fprintf('==> Plotting results.\\n');
 figure; hold on; box on; axis equal;
 streamslice(X1, X2, F1, F2);                              % flow
-hDisk = plot(R*cos(th), R*sin(th), 'k--', 'LineWidth', 1);
+hDisk = plot(Rcert*cos(th), Rcert*sin(th), 'k--', 'LineWidth', 1);
 % Snap the axes to the grid with equal units. Without fixed limits, a wide
 % figure plus "axis equal" expands the x-limits to fill the box and letterboxes
 % the flow field with empty margins; this keeps the box tight to the data.
-axis([-1.6*R, 1.6*R, -1.6*R, 1.6*R]);
+axis([-1.6*Rcert, 1.6*Rcert, -1.6*Rcert, 1.6*Rcert]);
 xlabel('x_1'); ylabel('x_2');
+
+% Label the dashed circle with the radius actually used, so the certified disk
+% is read straight off the legend. Rcert is set either way -- the grown radius
+% with auto_R on, the fixed R with it off -- and so this works in both modes.
+diskLabel = sprintf('decrease region: ||x|| = R = %.3f', Rcert);
 
 if ~feasible
     % Failsafe: no valid certificate, and so draw no Lyapunov function and no
-    % invariant region. A bogus V can produce spurious cstar level sets,
-    % including pieces outside the disk, that certify nothing. Only the
-    % equilibrium at the origin is marked.
-    warning(['SDP infeasible: no certificate exists for these settings ' ...
-             '(an unstable parameter, d/n too small, or R reaching past the ' ...
-             'basin boundary). Showing the phase portrait only; nothing is certified.']);
+    % invariant region (the "no certificate" note was already printed above). A
+    % bogus V can produce spurious cstar level sets, including pieces outside the
+    % disk, that certify nothing. Only the equilibrium at the origin is marked.
     plot(0, 0, 'k.', 'MarkerSize', 16);                  % equilibrium at origin
     title('SDP infeasible -- no certificate');
-    legend(hDisk, {'decrease region: ||x|| = R'}, 'Location', 'northeastoutside');
+    legend(hDisk, {diskLabel}, 'Location', 'northeastoutside');
     return
 end
 
-% Feasible: report V (already extracted above) and evaluate it on a fine grid
-% so the contours are smooth -- the flow stays on the coarse grid above, which
-% streamslice interpolates.
-fprintf('Lyapunov function V(x) =\\n  %s\\n', Vstr);
-gv = linspace(-1.6*R, 1.6*R, 400);
+% Feasible: V was reported above; evaluate it on a fine grid so the contours are
+% smooth -- the flow stays on the coarse grid above, which streamslice interpolates.
+gv = linspace(-1.6*Rcert, 1.6*Rcert, 400);
 [VX1, VX2] = meshgrid(gv, gv);
 Vg = Vfun(VX1, VX2);
 
@@ -3668,8 +3704,8 @@ Vg = Vfun(VX1, VX2);
 % to an arbitrary positive scale (any alpha*V with alpha >= 1 is also
 % feasible), and cstar scales with it. The set {V <= cstar} is scale
 % invariant, and so it, not the number, is the result.
-cstar = min(Vfun(R*cos(th), R*sin(th)));
-Vclip = Vg; Vclip(VX1.^2 + VX2.^2 > R^2) = max(Vg(:)) + 1;
+cstar = min(Vfun(Rcert*cos(th), Rcert*sin(th)));
+Vclip = Vg; Vclip(VX1.^2 + VX2.^2 > Rcert^2) = max(Vg(:)) + 1;
 
 [~, hLev] = contour(VX1, VX2, Vg, 18, 'LineColor', [0.6 0.6 0.6], 'LineWidth', 0.4);
 [~, hRoa] = contour(VX1, VX2, Vclip, [cstar cstar], 'r', 'LineWidth', 2);
@@ -3682,12 +3718,125 @@ title(['Certified invariant region:  V \\leq ', sprintf('%.4g', cstar)]);
 % argued separately (strict decrease away from the origin, or LaSalle).
 legend([hRoa hDisk hLev], ...
        {'certified invariant region: V \\leq c*', ...
-        'decrease region: ||x|| = R', ...
+        diskLabel, ...
         'level sets of V'}, 'Location', 'northeastoutside');
+
+%% ${'='.repeat(67)}
+%% Local functions
+%% ${'='.repeat(67)}
+function [feasible, V_sol, numerr] = sos_certify(vars, x1, x2, f, d, nmult, epspd, R)
+% Build and solve the single convex SDP for the fixed disk ||x|| <= R; return
+% whether a certificate was found and the Lyapunov polynomial V. This is the
+% NON-STRICT test: V positive definite and dV/dt <= 0 on the disk, with no
+% margin on the derivative. To recover the CONVENTIONAL strict form, in which
+% the SDP certifies asymptotic stability directly, add a positive-definite
+% margin to the decrease line below: for some eps2 > 0, subtract
+% eps2*(x1^2 + x2^2) from its argument, forcing dV/dt <= -eps2*||x||^2 < 0 off
+% the origin. The trade: that is infeasible for non-hyperbolic equilibria
+% (e.g. xdot = -x^3), whose decrease is higher-order than quadratic; match the
+% margin degree to the decay order.
+%
+% numerr (third output) carries SeDuMi's numerical-trouble flag up to the
+% caller, which reports it once for the radius finally certified instead of on
+% every probe of the search.
+numerr = 0;
+% Announce the probe before solving so the radius being attempted is visible
+% while the solver runs; the outcome completes this same line below.
+fprintf('  R = %7.4f   solving... ', R);
+prog = sosprogram(vars);
+[prog, V]   = sospolyvar(prog, monomials(vars, 2:d));      % V: degrees 2..d, and so V(0)=0
+[prog, lam] = sospolyvar(prog, monomials(vars, 0:nmult));  % region multiplier
+Vdot = diff(V, x1)*f(1) + diff(V, x2)*f(2);
+% V is forced positive definite with a QUADRATIC lower bound, epspd*||x||^2;
+% for a degenerate equilibrium whose only certificates are higher order, replace
+% it with a higher-degree positive-definite form, e.g. epspd*(x1^2 + x2^2)^2.
+prog = sosineq(prog, V - epspd*(x1^2 + x2^2));             % V positive definite
+prog = sosineq(prog, lam);                                 % multiplier is SOS
+prog = sosineq(prog, -Vdot - lam*(R^2 - x1^2 - x2^2));     % dV/dt <= 0 on the disk
+% Solve quietly: evalc swallows the SDP solver's own console log (e.g. SeDuMi's
+% per-iteration table) so the run shows the clean per-radius status lines below
+% instead of a screen of solver output. A hard problem can still make the solver
+% error out rather than return a status; catch that, report this radius as
+% infeasible, and let the bisection move on instead of aborting the whole run.
+try
+    evalc('prog = sossolve(prog);');
+catch
+    fprintf('infeasible (solver did not converge)\\n');
+    feasible = false; V_sol = []; return;
+end
+V_sol = sosgetsol(prog, V);
+
+% Feasibility, robust to the SDP solver. When SeDuMi's diagnostics are present
+% (the SOSTOOLS default) use them: feasratio ~ +1 feasible / ~ -1 infeasible,
+% pinf/dinf flag infeasibility, numerr ~= 0 flags numerical trouble. For any
+% OTHER solver those fields are absent, and so verify the certificate directly
+% on the disk -- exactly the Lyapunov conditions the plot claims -- sampled with
+% a relative tolerance, keeping the check independent of which solver was used.
+in = struct();
+if isfield(prog, 'solinfo') && isfield(prog.solinfo, 'info'), in = prog.solinfo.info; end
+if isfield(in, 'feasratio')                                  % SeDuMi diagnostics
+    feasible = ~((isfield(in,'pinf') && in.pinf == 1) || ...
+                 (isfield(in,'dinf') && in.dinf == 1) || in.feasratio < 0.5);
+    if isfield(in, 'numerr'), numerr = in.numerr; end
+else                                                         % any other solver: verify V directly
+    Vdfun = str2func(['@(x1,x2) ', vectorize(char(diff(V_sol, x1)*f(1) + diff(V_sol, x2)*f(2)))]);
+    Vfun  = str2func(['@(x1,x2) ', vectorize(char(V_sol))]);
+    gg = linspace(-R, R, 80); [Gx, Gy] = meshgrid(gg, gg); Din = Gx.^2 + Gy.^2 <= R^2;
+    Vd = Vdfun(Gx(Din), Gy(Din)); V0 = Vfun(Gx(Din), Gy(Din)); tol = 1e-3;   % relative
+    feasible = (max(Vd) <= tol*max(abs(Vd))) && ...
+               (min(V0 - epspd*(Gx(Din).^2 + Gy(Din).^2)) >= -tol*max(abs(V0)));
+end
+
+if feasible
+    fprintf('certified\\n');
+else
+    fprintf('infeasible\\n');
+end
+end
+
+function [Rcert, V_sol, feasible, numerr] = grow_region(vars, x1, x2, f, d, nmult, epspd, R0)
+% Bisection on the disk radius: return the largest R on which sos_certify is
+% still feasible (feasibility is monotone in R, see the note above). Bracket
+% first -- expand R0 upward by doubling, to a cap, while feasible, or shrink it
+% while infeasible -- then bisect between a feasible Rlo and an infeasible Rhi.
+% Starting above the feasible range is fine: the shrink branch brings R back
+% inside it, and the final bisection still climbs to the LARGEST feasible disk
+% (not merely the first one that works). numerr tracks the certificate kept.
+Rcap = 8*R0; maxit = 40;
+[feasible, V_sol, numerr] = sos_certify(vars, x1, x2, f, d, nmult, epspd, R0);
+if feasible
+    Rlo = R0; Rhi = R0; Rt = R0;
+    while Rt < Rcap
+        Rt = min(2*Rt, Rcap);
+        [fe, Vt, ne] = sos_certify(vars, x1, x2, f, d, nmult, epspd, Rt);
+        if fe
+            Rlo = Rt; V_sol = Vt; numerr = ne;
+            if Rt >= Rcap, Rhi = Rt; break; end   % hit the cap; treat it as the limit
+        else
+            Rhi = Rt; break;
+        end
+    end
+else
+    Rhi = R0; Rlo = 0; Rt = R0;                    % R0 infeasible: shrink to find a feasible Rlo
+    for i = 1:maxit
+        Rt = Rt/2;
+        [fe, Vt, ne] = sos_certify(vars, x1, x2, f, d, nmult, epspd, Rt);
+        if fe, Rlo = Rt; V_sol = Vt; numerr = ne; feasible = true; break; else, Rhi = Rt; end
+    end
+    if ~feasible, Rcert = R0; return; end          % nothing certifiable; caller draws portrait only
+end
+for i = 1:maxit                                    % bisect the bracket [Rlo (feasible), Rhi (infeasible)]
+    if (Rhi - Rlo) <= 1e-3 * Rhi, break; end
+    Rm = 0.5*(Rlo + Rhi);
+    [fe, Vt, ne] = sos_certify(vars, x1, x2, f, d, nmult, epspd, Rm);
+    if fe, Rlo = Rm; V_sol = Vt; numerr = ne; else, Rhi = Rm; end
+end
+Rcert = Rlo; feasible = true;
+end
 `;
 }
 
-function genPython(id, k, n, d, R){
+function genPython(id, k, n, d, R, autoR){
   const S = SOS_SYS[id];
   const f = S.f.map(c => sosToLang(c, 'python'));
   const Rstr = +R.toFixed(4);
@@ -3710,8 +3859,11 @@ function genPython(id, k, n, d, R){
 # ${'='.repeat(70)}
 # Find a Lyapunov function V (degree ${d}) that is positive definite and
 # non-increasing (dV/dt <= 0) on the disk ||x||^2 <= R^2. A multiplier
-# polynomial relaxes the decrease condition to that disk only; with the
-# region fixed, this is a single semidefinite program (SDP).
+# polynomial relaxes the decrease condition to that disk only; for a fixed
+# region this is a single semidefinite program (SDP). With auto_R = True
+# (set below) an outer bisection searches the largest disk on which that SDP
+# stays feasible -- one convex program per step, V re-found at each radius --
+# pushing the certificate toward the true basin boundary.
 #
 # FORMULATION (why this is the non-strict test): the conventional SOS program
 # for ASYMPTOTIC stability also pins a positive-definite margin on the
@@ -3733,9 +3885,12 @@ function genPython(id, k, n, d, R){
 #
 #   pip install SumOfSquares sympy picos matplotlib
 #
-# Solver note: the cvxopt backend bundled with PICOS is fragile on stiff
-# SOS problems. Install MOSEK or SCS and pass solver=... to prob.solve()
-# for reliable results.
+# Solver note: the cvxopt backend bundled with PICOS is fragile on stiff SOS
+# problems -- it can hang near the feasibility boundary, where a mature SDP
+# solver returns cleanly. This script auto-selects the most robust backend PICOS
+# can see (MOSEK, then SCS, then cvxopt). For speed and reliability install one
+# of the better ones (e.g. MOSEK with a license, or a PICOS-compatible SCS) and
+# it will be picked up; check what PICOS sees with picos.available_solvers().
 # ${'='.repeat(70)}
 ${cav}${sosEquilNote(S, '#')}
 
@@ -3753,6 +3908,31 @@ sys.excepthook = _on_interrupt
 
 import sympy as sp
 from SumOfSquares import SOSProblem, poly_variable
+import picos
+import signal
+
+# Pick the most robust SDP backend PICOS can see. The usual default, cvxopt, is
+# fragile on stiff SOS problems; MOSEK and SCS are far more reliable near the
+# feasibility boundary. Prefer those when present, and fall back to cvxopt.
+SOLVER = next((s for s in ('mosek', 'scs', 'cvxopt') if s in picos.available_solvers()),
+              'cvxopt')
+print('SDP backend: %s   (PICOS sees: %s)' % (SOLVER, ', '.join(picos.available_solvers())))
+
+# Guard against an SDP backend that HANGS on a stiff problem. The cvxopt backend
+# bundled with PICOS can spin indefinitely inside solve() on some radii (no
+# exception, no return) where a better solver would just report infeasibility,
+# and a try/except cannot catch a hang. A per-solve wall-clock alarm interrupts
+# it so the search marks that radius infeasible and moves on. SIGALRM is POSIX-
+# only; on Windows the alarm is skipped, so install MOSEK or SCS there.
+SOLVE_TIMEOUT = 10   # seconds allowed per SDP solve (raise if a legitimate solve needs longer)
+_HAS_ALARM = hasattr(signal, 'SIGALRM')
+class _SolveTimeout(Exception):
+    pass
+def _on_solve_timeout(signum, frame):
+    raise _SolveTimeout
+if _HAS_ALARM:
+    signal.signal(signal.SIGALRM, _on_solve_timeout)
+_SOLVE_NOTE = ' (%d s timeout)' % SOLVE_TIMEOUT if _HAS_ALARM else ''   # shown while a solve runs
 
 # %% Setup -- symbols, parameters, and dynamics
 x1, x2 = sp.symbols('x1 x2')
@@ -3762,11 +3942,12 @@ ${paramDecl}${sinDecl}${sosShiftDeriv(S,'#')}# --- dynamics  xdot = f(x) ---
 f = [ ${f[0]},
       ${f[1]} ]
 
-# %% Build the SOS program (degrees, V, and the multiplier)
-d     = ${sosCol(d, 9)}# degree of the Lyapunov polynomial V
-nmult = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
-R     = ${sosCol(Rstr, 9)}# region radius: certify decrease on the disk ||x|| <= R
-epspd = ${sosCol('1e-3', 9)}# positive-definiteness margin
+# %% Build the SOS program (degrees, V, the multiplier, and the region mode)
+d      = ${sosCol(d, 9)}# degree of the Lyapunov polynomial V
+nmult  = ${sosCol(n, 9)}# degree of the multiplier (lets dV/dt <= 0 hold on the disk only)
+R      = ${sosCol(Rstr, 9)}# region radius: with auto_R, the starting disk ||x|| <= R
+epspd  = ${sosCol('1e-3', 9)}# positive-definiteness margin
+auto_R = ${sosCol(autoR ? 'True' : 'False', 9)}# True: grow the disk by bisection; False: certify the fixed disk R
 
 # Keep the decrease polynomial -Vdot - lam*(R**2 - ||x||**2) even-degree: an
 # odd-degree polynomial is never SOS. deg(Vdot) = (d-1) + deg(f); when that is
@@ -3777,73 +3958,136 @@ deg_f = max(sp.total_degree(sp.expand(fi), *xs) for fi in f)
 if ((d - 1) + deg_f) % 2 == 1:
     nmult = max(nmult, (d - 1) + deg_f - 1)
 
-prob = SOSProblem()
-Vfull = poly_variable('V', xs, d)
-V = sum(t for t in Vfull.as_ordered_terms() if sp.total_degree(t, *xs) >= 2)  # V(0)=0
-Vdot = sum(sp.diff(V, xi)*fi for xi, fi in zip(xs, f))
-lam = poly_variable('lam', xs, nmult)
-
-# %% Lyapunov conditions -- the SOS constraints
-# V is forced positive definite with a QUADRATIC lower bound, epspd*||x||^2.
-# That presumes the equilibrium admits a Lyapunov function with a
-# positive-definite quadratic part (the usual case when the linearization is
-# non-degenerate). For a degenerate (non-hyperbolic) equilibrium whose only
-# certificates are higher order, raise d and replace this quadratic floor
-# with a higher-degree positive-definite form, e.g. epspd*(x1**2 + x2**2)**2.
-prob.add_sos_constraint(V - epspd*(x1**2 + x2**2), xs)        # V positive definite
-prob.add_sos_constraint(lam, xs)                              # multiplier is SOS
-prob.add_sos_constraint(-Vdot - lam*(R**2 - x1**2 - x2**2), xs) # dV/dt <= 0 on the disk
-
-# The decrease constraint above is non-strict (dV/dt <= 0), and so it certifies
-# stability and an invariant region but leaves convergence to the LaSalle /
-# strict-decrease check noted above. To recover the CONVENTIONAL strict form,
-# in which the SDP certifies asymptotic stability directly with no extra step,
-# restore the positive-definite margin L2: replace the line above with, for
-# some eps2 > 0,
-#   prob.add_sos_constraint(-Vdot - lam*(R**2 - x1**2 - x2**2) - eps2*(x1**2 + x2**2), xs)
-# which forces dV/dt <= -eps2*||x||^2 < 0 off the origin. The trade: this is
-# infeasible for non-hyperbolic equilibria (e.g. xdot = -x^3), whose decrease
-# is higher-order than quadratic; match the margin degree to the decay order.
-
-# %% Solve and read off the certificate
-# Solve. On an infeasible or numerically hard problem the cvxopt backend may
-# raise rather than return a status, and so catch that and fall through to a
-# phase-portrait-only plot (mirroring the MATLAB failsafe) instead of dumping
-# a traceback. feasible gates whether a certificate is drawn below.
-feasible = True
-try:
-    prob.solve()   # e.g. prob.solve(solver='mosek') if available
-    print('status:', prob.status)
-    if 'optimal' not in prob.status and 'feasible' not in prob.status:
-        feasible = False
-except Exception as exc:
-    print('Solver failed:', exc, file=sys.stderr)
-    feasible = False
-
-if not feasible:
-    print('No valid certificate: the SDP is infeasible or numerically too hard '
-          'for these settings (an unstable parameter, d/n too small, or R past '
-          'the basin boundary). Showing the phase portrait only; nothing is certified.',
-          file=sys.stderr)
-
-# Extract the numeric Lyapunov function (only meaningful when feasible).
-if feasible:
+# %% Certify a region -- a single fixed disk, or the largest disk by bisection
+# certify(R) builds and solves ONE convex SDP for the fixed disk ||x|| <= R:
+# find V (positive definite) and a multiplier lam with dV/dt <= 0 on the disk.
+# It returns (feasible, V_sol), with V_sol the numeric Lyapunov polynomial.
+def certify(R):
+    # Announce the probe before solving and flush, so the radius being attempted
+    # is visible while the solver runs (a stiff solve can take up to the timeout
+    # to return); the outcome completes this same line below.
+    print('  R = %7.4f   solving%s... ' % (R, _SOLVE_NOTE), end='', flush=True)
+    prob = SOSProblem()
+    Vfull = poly_variable('V', xs, d)
+    V = sum(t for t in Vfull.as_ordered_terms() if sp.total_degree(t, *xs) >= 2)  # V(0)=0
+    Vdot = sum(sp.diff(V, xi)*fi for xi, fi in zip(xs, f))
+    lam = poly_variable('lam', xs, nmult)
+    # V is forced positive definite with a QUADRATIC lower bound, epspd*||x||^2;
+    # for a degenerate equilibrium whose only certificates are higher order,
+    # replace it with a higher-degree form, e.g. epspd*(x1**2 + x2**2)**2.
+    prob.add_sos_constraint(V - epspd*(x1**2 + x2**2), xs)          # V positive definite
+    prob.add_sos_constraint(lam, xs)                               # multiplier is SOS
+    prob.add_sos_constraint(-Vdot - lam*(R**2 - x1**2 - x2**2), xs)  # dV/dt <= 0 on the disk
+    # NON-STRICT decrease (dV/dt <= 0). To recover the CONVENTIONAL strict form,
+    # in which the SDP certifies asymptotic stability directly, add a margin for
+    # some eps2 > 0: subtract eps2*(x1**2 + x2**2) from the last argument, forcing
+    # dV/dt <= -eps2*||x||^2 < 0 off the origin. That is infeasible for
+    # non-hyperbolic equilibria (e.g. xdot = -x^3); match the margin to the decay.
+    # A stiff problem may make the backend raise, return a non-optimal status, or
+    # hang (the cvxopt fallback especially). The alarm bounds the solve; raising,
+    # timing out, or a non-optimal status are all reported as a clean one-line
+    # infeasible status (not the solver's raw traceback) so the search moves on.
+    # A robust backend (MOSEK/SCS, selected above when available) avoids most of
+    # these and removes the timeouts.
+    try:
+        if _HAS_ALARM:
+            signal.setitimer(signal.ITIMER_REAL, SOLVE_TIMEOUT)
+        prob.solve(solver=SOLVER)
+        ok = ('optimal' in prob.status or 'feasible' in prob.status)
+    except _SolveTimeout:
+        print('infeasible (solver timed out)')
+        return False, None
+    except Exception:
+        print('infeasible (solver did not converge)')
+        return False, None
+    finally:
+        if _HAS_ALARM:
+            signal.setitimer(signal.ITIMER_REAL, 0)   # cancel the alarm
+    if not ok:
+        print('infeasible')
+        return False, None
     V_sol = V
     for s in list(V.free_symbols):
         if s in xs:
             continue
         V_sol = V_sol.subs(s, round(float(prob.sym_to_var(s).value), 6))
-    print('V =', sp.expand(V_sol))
+    print('certified')
+    return True, sp.expand(V_sol)
+
+# Bisection on the disk radius: return the largest R on which certify is still
+# feasible. Feasibility is monotone in R -- if (V, lam) certify a disk they also
+# certify any smaller one because the term lam*(R**2 - ||x||**2) added when
+# shrinking is itself SOS -- and so a single threshold exists and bisection
+# converges to it. Bracket first (expand R0 upward by doubling while feasible, or shrink it
+# while infeasible), then bisect between a feasible Rlo and an infeasible Rhi.
+def grow_region(R0):
+    Rcap = 8*R0
+    feasible, V_sol = certify(R0)
+    if feasible:
+        Rlo, Rhi, Rt = R0, R0, R0
+        while Rt < Rcap:
+            Rt = min(2*Rt, Rcap)
+            fe, Vt = certify(Rt)
+            if fe:
+                Rlo, V_sol = Rt, Vt
+                if Rt >= Rcap:
+                    Rhi = Rt; break        # hit the cap; treat it as the limit
+            else:
+                Rhi = Rt; break
+    else:
+        Rhi, Rlo = R0, 0.0                  # R0 infeasible: shrink to find a feasible Rlo
+        Rt = R0
+        for _ in range(40):
+            Rt /= 2
+            fe, Vt = certify(Rt)
+            if fe:
+                Rlo, V_sol, feasible = Rt, Vt, True
+                break
+            Rhi = Rt
+        if not feasible:
+            return R0, None, False          # nothing certifiable; caller draws portrait only
+    for _ in range(40):                     # bisect [Rlo (feasible), Rhi (infeasible)]
+        if Rhi - Rlo <= 1e-3 * Rhi:
+            break
+        Rm = 0.5*(Rlo + Rhi)
+        fe, Vt = certify(Rm)
+        if fe:
+            Rlo, V_sol = Rm, Vt
+        else:
+            Rhi = Rm
+    return Rlo, V_sol, True
+
+# %% Solve: grow the disk by bisection (auto_R), or certify the fixed disk R
+if auto_R:
+    print('Growing the certified disk by bisection on R:')
+    Rcert, V_sol, feasible = grow_region(R)
+else:
+    feasible, V_sol = certify(R)
+    Rcert = R
+
+# --- results (a blank line and a '==>' prefix set these apart from the search) ---
+print()
+if feasible:
+    if auto_R:
+        print('==> Largest certified disk: R = %.4f' % Rcert)
+        print()
+    print('==> V =', V_sol)
+    print()
+else:
+    print('==> No certificate found for these settings (an unstable parameter, '
+          'too small d or n, or R past the basin boundary). Phase portrait only.')
+    print()
 
 # %% Visualize
 # The phase portrait is drawn either way; the Lyapunov function and the
 # certified invariant region are drawn ONLY when a valid certificate was found.
 # The largest level set of V inside the disk is {V <= cstar} with
-# cstar = min over the circle ||x|| = R of V(x). Only the connected component
+# cstar = min over the circle ||x|| = Rcert of V(x). Only the connected component
 # of that sublevel set containing the origin is the certified region, and it
-# lies inside ||x|| <= R by construction. (To enlarge the region itself,
-# alternate between improving the region and re-fitting V to it -- an
-# iterative optimization beyond this fixed-R script.)
+# lies inside ||x|| <= Rcert by construction. With auto_R the radius Rcert is
+# already grown to the largest certifiable disk; enlarging the certified set
+# further means searching over the region SHAPE (not just its radius) and
+# re-fitting V to it, a harder non-convex iteration beyond this script.
 #
 # The numeric value of cstar is not meaningful on its own: with no objective
 # and only the one-sided bound V - epspd*||x||^2 >= 0, the solver returns V up
@@ -3858,42 +4102,45 @@ f1_fn = sp.lambdify((x1, x2), f[0], 'numpy')
 f2_fn = sp.lambdify((x1, x2), f[1], 'numpy')
 
 th = np.linspace(0, 2*np.pi, 720)
-g  = np.linspace(-1.6*R, 1.6*R, 400)
+g  = np.linspace(-1.6*Rcert, 1.6*Rcert, 400)
 X1, X2 = np.meshgrid(g, g)
 ones = np.ones_like(X1)
 
 fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
 ax.streamplot(X1, X2, f1_fn(X1, X2)*ones, f2_fn(X1, X2)*ones, density=1.1, color='0.78')
-ax.plot(R*np.cos(th), R*np.sin(th), 'k--', lw=1)                  # decrease region ||x|| = R
+ax.plot(Rcert*np.cos(th), Rcert*np.sin(th), 'k--', lw=1)          # decrease region ||x|| = Rcert
 ax.plot(0, 0, 'k.', ms=11)                                        # equilibrium at origin
 ax.set_aspect('equal')
-ax.set_xlim(-1.6*R, 1.6*R); ax.set_ylim(-1.6*R, 1.6*R)           # tight, no letterbox
+ax.set_xlim(-1.6*Rcert, 1.6*Rcert); ax.set_ylim(-1.6*Rcert, 1.6*Rcert)   # tight, no letterbox
 ax.set_xlabel('x1'); ax.set_ylabel('x2')
 
 if feasible:
     V_fn  = sp.lambdify((x1, x2), V_sol, 'numpy')
-    cstar = float(np.min(V_fn(R*np.cos(th), R*np.sin(th))))
+    cstar = float(np.min(V_fn(Rcert*np.cos(th), Rcert*np.sin(th))))
     Vg    = V_fn(X1, X2) * ones
     # Clip the certified region's boundary to the disk: only the part of
-    # {V <= cstar} inside ||x|| <= R is certified. Filling V OUTSIDE the disk
+    # {V <= cstar} inside ||x|| <= Rcert is certified. Filling V OUTSIDE the disk
     # with a large value (not NaN) drops spurious far-field pieces while keeping
     # the curve smooth; NaN makes contour skip boundary cells and shatters a
-    # curve that hugs ||x|| = R (e.g. an isotropic V) into fragments.
-    Vclip = np.where(X1**2 + X2**2 <= R**2, Vg, Vg.max() + 1)
+    # curve that hugs ||x|| = Rcert (e.g. an isotropic V) into fragments.
+    Vclip = np.where(X1**2 + X2**2 <= Rcert**2, Vg, Vg.max() + 1)
     ax.contour(X1, X2, Vg,    levels=18,      colors='steelblue', linewidths=0.9)  # level sets of V
     ax.contour(X1, X2, Vclip, levels=[cstar], colors='r',         linewidths=2)    # certified region (in disk)
     ax.legend(handles=[
         Line2D([0], [0], color='r', lw=2, label=r'certified invariant region: $V \\leq c^*$'),
-        Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
+        Line2D([0], [0], color='k', ls='--', lw=1, label=rf'decrease region: $\\Vert x \\Vert = R = {Rcert:.3f}$'),
         Line2D([0], [0], color='steelblue', lw=0.9, label=r'level sets of $V$'),
     ], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
     ax.set_title(rf'Certified invariant region:  $V \\leq {cstar:.4g}$')
 else:
     ax.legend(handles=[
-        Line2D([0], [0], color='k', ls='--', lw=1, label=r'decrease region: $\\Vert x \\Vert = R$'),
+        Line2D([0], [0], color='k', ls='--', lw=1, label=rf'decrease region: $\\Vert x \\Vert = R = {Rcert:.3f}$'),
     ], loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0., fontsize=9)
     ax.set_title('SDP infeasible -- no certificate')
 
+# plt.show() BLOCKS until the figure window is closed; this note keeps a quiet
+# console from looking locked up if the window opens behind another or off-screen.
+print('==> Plotting results. Close the figure or interrupt to exit.')
 plt.show()
 `;
 }
@@ -3910,7 +4157,8 @@ function sosGenerate(){
   const n = parseInt(document.getElementById('sosN').value, 10);
   const k = parseInt(document.getElementById('sosK').value, 10);
   const R = parseFloat(document.getElementById('sosR').value);
-  const code = (sosLang === 'matlab') ? genMATLAB(id,k,n,d,R) : genPython(id,k,n,d,R);
+  const autoR = document.getElementById('sosAutoR').checked;
+  const code = (sosLang === 'matlab') ? genMATLAB(id,k,n,d,R,autoR) : genPython(id,k,n,d,R,autoR);
   document.getElementById('sosCode').textContent = code;
   document.getElementById('sosFname').textContent = (sosLang==='matlab') ? 'lyapunov_sos.m' : 'lyapunov_sos.py';
   // caveat box
@@ -3938,6 +4186,7 @@ function initSOS(){
   });
   ['sosD','sosN','sosK','sosR'].forEach(idn =>
     document.getElementById(idn).addEventListener('input', sosGenerate));
+  document.getElementById('sosAutoR').addEventListener('change', sosGenerate);
   // On system change, clamp the region R down to the new system's feasible
   // maximum (if it has one) so the default demo is not infeasible out of the
   // box. Only clamp down: a smaller user-set R is left alone, and the user can
