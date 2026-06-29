@@ -654,6 +654,10 @@
     text-transform: uppercase;
     color: var(--text-muted);
   }
+  /* variable letters in a label stay lowercase (f, k, d, n) so they read as the
+     same symbols used in the tooltips, rules, and generated code; R and V are
+     left as is because both are capital symbols in the math */
+  .sos-field label .sos-var { text-transform: none; }
   /* touch- and hover-compatible help tooltip (JS-positioned, viewport-aware) */
   .lbl-help {
     border-bottom: 1px dashed var(--text-muted);
@@ -1733,22 +1737,22 @@ With damping c:  dV/dt = −cy²</div>
   <div class="sos-controls">
     <div class="sos-group">
       <div class="sos-field wide">
-        <label>System</label>
+        <label>System <span class="sos-var">f</span></label>
         <select id="sosSystem"></select>
       </div>
       <div class="sos-field">
-        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the Taylor approximation used to turn any non-polynomial term in the dynamics into a polynomial. No effect on systems that are already polynomial.">approx k</span></label>
+        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the Taylor approximation used to turn any non-polynomial term in the dynamics into a polynomial. No effect on systems that are already polynomial.">approx <span class="sos-var">k</span></span></label>
         <input type="number" id="sosK" value="5" min="1" max="9" step="2">
       </div>
     </div>
     <div class="sos-group">
       <div class="sos-field">
-        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the polynomial Lyapunov function V. A higher degree is a more flexible certificate (and a larger semidefinite program), often certifying a bigger region.">V degree d</span></label>
+        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the polynomial Lyapunov function V. A higher degree is a more flexible certificate (and a larger semidefinite program), often certifying a bigger region. It steps by 2 because the top-degree part of V must be positive definite, and an odd-degree leading form cannot be; even degrees are the meaningful settings.">V degree <span class="sos-var">d</span></span></label>
         <input type="number" id="sosD" value="4" min="2" max="8" step="2">
       </div>
       <div class="sos-field">
-        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the multiplier polynomial that lets V decrease only inside the region R rather than everywhere. A higher degree shapes that region more flexibly. Works together with R.">multiplier n</span></label>
-        <input type="number" id="sosN" value="2" min="0" max="6" step="2">
+        <label><span class="lbl-help" tabindex="0" data-tip="Degree of the multiplier polynomial that lets V decrease only inside the region R rather than everywhere. A higher degree shapes that region more flexibly. The control seeds the degree-balanced value n* = deg(dV/dt) - 2 = (d-1) + deg(f) - 2 whenever d, the system, or k changes; departing from it is rarely needed. Works together with R.">multiplier <span class="sos-var">n</span></span></label>
+        <input type="number" id="sosN" value="2" min="0" max="14" step="2">
       </div>
       <div class="sos-field">
         <label><span class="lbl-help" tabindex="0" data-tip="Radius of the disk around the equilibrium on which decrease of V is certified. With auto-grow on, this is the starting radius; bisection searches outward from it for the largest certifiable disk. Works together with the multiplier (n).">region R</span></label>
@@ -1771,12 +1775,20 @@ With damping c:  dV/dt = −cy²</div>
   </div>
 
   <div class="ref-callout sos-guide">
-    <strong>Rules of thumb for the degrees.</strong>
+    <strong>Rules of thumb for setting SOS parameters.</strong>
     <ul>
-      <li><strong>d (Lyapunov degree)</strong> sets how expressive V may be. A higher d can certify a larger region but builds a bigger, slower SDP; start low (2 or 4) and raise it only when needed.</li>
+      <li><strong>d (Lyapunov degree)</strong> sets how expressive V may be. A higher d can certify a larger region but builds a bigger, slower SDP; start low (2 or 4) and raise it only when needed.
+        <ul>
+          <li><em>Even degrees only.</em> The control steps by 2 because the top-degree part of V must be positive definite, and an odd-degree leading form cannot be; even degrees are the meaningful settings, and an odd d is worth setting by hand only to watch it fail.</li>
+        </ul>
+      </li>
       <li><strong>R (certification disk)</strong> is the disk ‖x‖ ≤ R on which decrease is required, and the certified estimate always lies inside this circle. A larger R asks for more, but once the disk reaches past the true basin, for instance a nearby saddle, the problem turns infeasible. With <strong>auto-grow R</strong> off, R is fixed and you choose it; with auto-grow on, R is only a starting radius and the bisection searches outward from it for the largest certifiable disk.</li>
       <li><strong>Auto-grow R (bisection)</strong> turns the single fixed-R version into a one-dimensional search for the largest certifiable disk. It is the practical way to push the certificate toward the true basin boundary: every step stays a convex program, and V is re-optimized at each radius rather than iterated against the multiplier. The emitted code keeps an <code>auto_R</code> flag, and so the same script switches back to the single fixed disk by setting it false. The <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab places this beside the alternating method it replaces.</li>
-      <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee because a feasible SDP certifies dV/dt ≤ 0 across the disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.</li>
+      <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee because a feasible SDP certifies dV/dt ≤ 0 across the disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.
+        <ul>
+          <li><em>Balanced choice.</em> Set n = deg(dV/dt) − 2 because the disk constraint R² − ‖x‖² has degree 2, and so a multiplier of that degree lets the term λ·(R² − ‖x‖²) reach the top-degree part of dV/dt rather than sit below it. With deg(dV/dt) = (d − 1) + deg(f), the widget computes this n* and seeds the multiplier control with it whenever d, the system, or k changes. You rarely need to depart from it: a smaller n often leaves the SDP infeasible, and a larger one only enlarges the program. When (d − 1) + deg(f) is odd, as it is for the predator–prey field, the bare decrease polynomial cannot be SOS, and so n* rounds up to the next even degree (an SOS multiplier must have even degree); the generated code applies the same parity guard.</li>
+        </ul>
+      </li>
       <li><strong>k (approximation degree)</strong> is the Taylor degree used to polynomialize any non-polynomial term in the dynamics, with no effect on already-polynomial systems. For a recast system, the certificate is rigorous for that polynomial approximation, which matches the true dynamics only near the origin (see <a href="https://doi.org/10.1109/CDC.2017.8263816" target="_blank" rel="noopener">Han and Panagou, 2017</a>).</li>
       <li><strong>Positive-definiteness floor.</strong> V is forced positive definite by requiring V − ε‖x‖² to be SOS, a <em>quadratic</em> lower bound. This presumes the equilibrium admits a Lyapunov function with a positive-definite quadratic part, which holds when the linearization is non-degenerate. For a degenerate (non-hyperbolic) equilibrium whose only certificates are inherently higher order, that quadratic floor can be too strong; raise d and, in the generated code, replace ε‖x‖² with a higher-degree positive-definite form such as ε‖x‖⁴.</li>
       <li><strong>If the SDP is infeasible,</strong> shrink R, or raise d or n. Infeasibility does not prove the region is unstable; a fixed-degree SOS test can simply fail to certify a region that is in fact fine.</li>
@@ -3444,19 +3456,19 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(onResize);
 // saddle); physF/equil hold the original dynamics and the well so the emitted
 // code can show the change of variables that produced the shifted polynomial.
 const SOS_SYS = {
-  stable_spiral:   { label:'Stable Spiral',              f:['-x1 + x2','-x1 - x2'],                                 param:null,              stable:true },
-  stable_node:     { label:'Stable Node',                f:['-2*x1','-x2'],                                         param:null,              stable:true },
-  cubic_drain:     { label:'Cubic Drain',                f:['-x1^3','-x2^3'],                                       param:null,              stable:true },
-  vanderpol:       { label:'Van der Pol (reverse-time)', f:['x2','mu*(1 - x1^2)*x2 - x1'],                          param:{sym:'mu',val:-1}, stable:true, rMax:1.2,
+  stable_spiral:   { label:'Stable Spiral',              f:['-x1 + x2','-x1 - x2'], degf:1,                                 param:null,              stable:true },
+  stable_node:     { label:'Stable Node',                f:['-2*x1','-x2'], degf:1,                                         param:null,              stable:true },
+  cubic_drain:     { label:'Cubic Drain',                f:['-x1^3','-x2^3'], degf:3,                                       param:null,              stable:true },
+  vanderpol:       { label:'Van der Pol (reverse-time)', f:['x2','mu*(1 - x1^2)*x2 - x1'], degf:3,                          param:{sym:'mu',val:-1}, stable:true, rMax:1.2,
                      caveat:'The origin is asymptotically stable only for mu < 0 (the reverse-time Van der Pol oscillator). The default mu = -1 is such a case; for mu > 0 the SOS program will be infeasible. The basin is also bounded, and so R beyond about 1.2 (at the default settings) is infeasible.' },
-  hopf:            { label:'Hopf Normal Form',           f:['mu*x1 - x2 - x1*(x1^2 + x2^2)','x1 + mu*x2 - x2*(x1^2 + x2^2)'], param:{sym:'mu',val:-0.5}, stable:true,
+  hopf:            { label:'Hopf Normal Form',           f:['mu*x1 - x2 - x1*(x1^2 + x2^2)','x1 + mu*x2 - x2*(x1^2 + x2^2)'], degf:3, param:{sym:'mu',val:-0.5}, stable:true,
                      caveat:'The origin is asymptotically stable only for mu < 0. The default mu = -0.5 is such a case; for mu > 0 the origin is unstable and the SOS program will be infeasible.' },
   pendulum:        { label:'Damped Pendulum',            f:['x2','-sin_approx - c*x2'],                             param:{sym:'c',val:0.5}, stable:true, nonpoly:true,
                      caveat:'sin(x1) is non-polynomial; it is replaced below by sin_approx, its degree-k Taylor series about x1 = 0. The certificate is therefore rigorous for that polynomial approximation of the pendulum, which matches the true dynamics only near the origin. Raising k widens the range over which the approximation is faithful, but the result is still only a candidate for the true pendulum: certifying it for the true system needs either a bound on the Taylor remainder (with a strict margin to absorb it) or an exact recasting of sin and cos as polynomial states.' },
-  duffing:         { label:'Duffing (shifted to a well)', f:['x2','-2*x1 - 3*x1^2 - x1^3 - c*x2'],                  param:{sym:'c',val:0.5}, stable:true, shifted:true, rMax:0.9,
+  duffing:         { label:'Duffing (shifted to a well)', f:['x2','-2*x1 - 3*x1^2 - x1^3 - c*x2'], degf:3,                  param:{sym:'c',val:0.5}, stable:true, shifted:true, rMax:0.9,
                      physF:['z2','z1 - z1^3 - c*z2'], equil:'(1, 0)',
                      caveat:'The origin of the Duffing double-well system is a saddle (unstable); its stable equilibria are the wells at (+/-1, 0). The dynamics below are centered on the right-hand well by a change of variables (derived in the comment just above them), and so the certified region is around that well. Because the original saddle sits a distance 1 from this well, the disk on which decrease is certified must stay inside the basin: use R < 1; a larger R reaches past the saddle and makes the SDP infeasible.' },
-  predprey_damped: { label:'Predator–Prey (damped)',     f:['-x2 - x1*x2 - c*x1','x1 + x1*x2 - c*x2'],              param:{sym:'c',val:0.3}, stable:true, rMax:0.8,
+  predprey_damped: { label:'Predator–Prey (damped)',     f:['-x2 - x1*x2 - c*x1','x1 + x1*x2 - c*x2'], degf:2,              param:{sym:'c',val:0.3}, stable:true, rMax:0.8,
                      caveat:'With the default degrees, certifying decrease on a large disk is infeasible for this system; R >= 1 fails, and so use a smaller R (or raise the V degree d or multiplier n to extend the feasible range).' }
 };
 const SOS_ORDER = ['stable_spiral','stable_node','cubic_drain','vanderpol','hopf','pendulum','duffing','predprey_damped'];
@@ -4151,6 +4163,25 @@ let sosLang = 'matlab';
 // a shared scroll offset would otherwise drop you at an unrelated spot (e.g. the
 // bottom of the shorter file) after a switch.
 const sosScroll = { matlab: 0, python: 0 };
+// Degree-balanced multiplier degree n* = deg(dV/dt) - 2. The disk constraint
+// R^2 - ||x||^2 has degree 2, and so this is the multiplier degree whose term
+// reaches the top-degree part of dV/dt. deg(dV/dt) = (d-1) + deg(f); the
+// pendulum is the one non-polynomial system, where deg(f) is the Taylor degree
+// k. An SOS multiplier must have even degree, and so an odd result rounds up,
+// which matches the parity guard in the generated code.
+function sosNStar(S, d, k){
+  const degf = S.nonpoly ? k : S.degf;
+  let n = (d - 1) + degf - 2;
+  if (n < 0) n = 0;
+  if (n % 2 !== 0) n += 1;
+  return n;
+}
+function sosSeedN(){
+  const S = SOS_SYS[document.getElementById('sosSystem').value];
+  const d = parseInt(document.getElementById('sosD').value, 10);
+  const k = parseInt(document.getElementById('sosK').value, 10);
+  document.getElementById('sosN').value = sosNStar(S, d, k);
+}
 function sosGenerate(){
   const id = document.getElementById('sosSystem').value;
   const d = parseInt(document.getElementById('sosD').value, 10);
@@ -4184,8 +4215,12 @@ function initSOS(){
       codeEl.scrollTop = sosScroll[sosLang];             // restore the incoming view
     });
   });
-  ['sosD','sosN','sosK','sosR'].forEach(idn =>
+  // n and R regenerate in place; d and k also reseed the balanced n* first, and
+  // so a manual n persists until d, k, or the system changes.
+  ['sosN','sosR'].forEach(idn =>
     document.getElementById(idn).addEventListener('input', sosGenerate));
+  ['sosD','sosK'].forEach(idn =>
+    document.getElementById(idn).addEventListener('input', () => { sosSeedN(); sosGenerate(); }));
   document.getElementById('sosAutoR').addEventListener('change', sosGenerate);
   // On system change, clamp the region R down to the new system's feasible
   // maximum (if it has one) so the default demo is not infeasible out of the
@@ -4195,6 +4230,7 @@ function initSOS(){
     const S = SOS_SYS[document.getElementById('sosSystem').value];
     const rEl = document.getElementById('sosR');
     if (S.rMax && parseFloat(rEl.value) > S.rMax) rEl.value = S.rMax;
+    sosSeedN();                                        // new system: reseed balanced n*
     sosScroll.matlab = sosScroll.python = 0;            // new system: both listings change, start at top
     sosGenerate();
     document.getElementById('sosCode').scrollTop = 0;
@@ -4253,6 +4289,7 @@ function initSOS(){
   document.addEventListener('click', () => hideTip());
   window.addEventListener('scroll', () => hideTip(), true);
   window.addEventListener('resize', () => hideTip());
+  sosSeedN();
   sosGenerate();
 }
 
