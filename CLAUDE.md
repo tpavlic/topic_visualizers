@@ -169,7 +169,7 @@ Update the **Current demos** list below to include the new demo.
 ### Nonlinear Systems
 
 - **Lyapunov Level-Set Explorer** — `lyapunov_functions/lyapunov_explorer.html`
-  Interactive exploration of Lyapunov functions and level-set curves for common nonlinear dynamical systems.
+  Interactive exploration of Lyapunov functions and level-set curves for common nonlinear dynamical systems, plus sum-of-squares synthesis that builds the semidefinite program and exports runnable MATLAB and Python code.
 
 - **Multi-Scroll Attractors & Hyperchaos** — `chaos/multiscroll_hyperchaos.html`
   Interactive primer on multi-scroll chaotic attractors and hyperchaos, with applications to image encryption.
