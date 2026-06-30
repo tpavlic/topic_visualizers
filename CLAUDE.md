@@ -96,7 +96,7 @@ At the very bottom of `<body>`, before `</body>`, add:
 ```html
 <footer id="back-link-footer" style="max-width:CONTENT_MAX_WIDTH;margin:0 auto;padding:0 CONTENT_HPAD 1.5rem;">
   <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
-    <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+    <a href="../" style="color:PAGE_LINK_COLOR;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
   </div>
 </footer>
 <script>
@@ -105,6 +105,14 @@ if (window.self !== window.top) { var f = document.getElementById('back-link-foo
 ```
 
 The `<script>` hides the footer when the page is embedded in a Canvas LMS iframe.
+
+**Set the back-link color to the page's own link color.** Replace `PAGE_LINK_COLOR` with the
+literal hex that the demo uses for its prominent hyperlinks (the `a` color, e.g. the
+`.ref-body a` / `--accent` / `--orange` color), so the back-link reads as one of the page's
+links rather than a foreign green. Use a literal hex, not the widget's CSS variable, so the
+footer stays self-contained and survives re-pasting the widget source. Pick a shade with
+adequate contrast on the footer's background. Existing demos: jacobian `#e07a23`, lyapunov
+`#c97d35`, chaos `#2a5a8c`, survival `#2a5a8c`.
 
 **Match the page's content width.** Replace `CONTENT_MAX_WIDTH` and `CONTENT_HPAD` with the
 `max-width` and horizontal `padding` of the demo's main centered content container (e.g.
