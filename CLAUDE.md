@@ -74,12 +74,14 @@ Inside `<head>`, include all of the following, filling in the actual values:
 </head>
 ```
 
-**Ampersands in OG/Twitter `content` titles:** use a literal `&`, not the `&amp;` entity, in
-the `og:title`, `twitter:title`, and description `content` attributes. Although `&amp;` is the
-technically correct HTML encoding (parsers decode it in attribute values), many card scrapers —
-Slack's notably — read the `content` string without decoding entities and display the literal
+**Ampersands in metadata strings (page `<title>`, OG/Twitter `content`):** use a literal `&`,
+not the `&amp;` entity, in the page `<title>` and in the `og:title`, `twitter:title`, and
+description `content` attributes. Although `&amp;` is the technically correct HTML encoding
+(parsers decode it in attribute values, and in the `<title>` text), many card scrapers —
+Slack's notably — read the raw string without decoding entities and display the literal
 `&amp;`. A bare `&` followed by a space is not an ambiguous ampersand, so it stays valid HTML.
-(The page `<title>` already renders a literal `&` fine.)
+Body headings (`<h1>`/`<h2>`) are not scraped, so the entity is harmless there, but prefer the
+literal `&` for consistency within a file.
 
 **Twitter/X image requirements** (stricter than other platforms):
 
