@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nullclines &amp; Jacobian Linearization Explorer — interactive explainer</title>
+<meta name="description" content="Interactive explorer of how nullclines locate equilibria, what the Jacobian linearization reveals about their stability, and what the nullcline geometry can and cannot show on its own.">
+
+<!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Nullclines & Jacobian Linearization Explorer — interactive explainer">
+<meta property="og:description" content="Interactive explorer of how nullclines locate equilibria, what the Jacobian linearization reveals about their stability, and what the nullcline geometry can and cannot show on its own.">
+<meta property="og:image" content="https://tpavlic.github.io/topic_visualizers/jacobian_linearization/nullclines-jacobian-explorer-preview.png">
+<meta property="og:image:width" content="1974">
+<meta property="og:image:height" content="856">
+<meta property="og:url" content="https://tpavlic.github.io/topic_visualizers/jacobian_linearization/nullclines-jacobian-explorer.html">
+<meta property="fb:app_id" content="2385695445236853">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Nullclines & Jacobian Linearization Explorer — interactive explainer">
+<meta name="twitter:description" content="Interactive explorer of how nullclines locate equilibria, what the Jacobian linearization reveals about their stability, and what the nullcline geometry can and cannot show on its own.">
+<meta name="twitter:image" content="https://tpavlic.github.io/topic_visualizers/jacobian_linearization/nullclines-jacobian-explorer-preview.png">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-P0S68QRGVP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-P0S68QRGVP');
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+  :root{
+    --cream:#f5eee1;
+    --cream-2:#efe6d6;
+    --panel:#fbf6ec;
+    --ink:#20402f;
+    --ink-soft:#3d5a4b;
+    --line:#cdbfa8;
+    --line-soft:#e0d4bf;
+    --orange:#e07a23;
+    --orange-soft:#f0a55c;
+    --xnull:#1f5fa8;     /* x-nullcline (f=0) */
+    --ynull:#a8341f;     /* y-nullcline (g=0) */
+    --traj:#20402f;
+    --evec:#556677;
+    --field:#9a8f78;
+    --shadow:0 1px 0 #fff inset, 0 2px 10px rgba(31,64,53,.08);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Outfit',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px}
+
+  header h1{
+    font-weight:700;font-size:clamp(20px,3.2vw,30px);
+    margin:0 0 4px;letter-spacing:-.01em;
+  }
+  header p.sub{margin:0 0 6px;color:var(--ink-soft);max-width:74ch}
+
+  /* tabs */
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 16px}
+  .tab{
+    font-family:'Outfit';font-weight:600;font-size:14px;
+    background:var(--panel);color:var(--ink-soft);
+    border:1px solid var(--line);border-radius:10px;
+    padding:8px 14px;cursor:pointer;transition:.12s;
+  }
+  .tab:hover{border-color:var(--orange-soft)}
+  .tab.active{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+
+  /* wide: phase spans the left column; params, readout, td stack on the right */
+  /* wide: phase on the left, parameters then trace–determinant on the right, equilibria full width at the bottom */
+  .grid{
+    display:grid;gap:18px;align-items:start;
+    grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);
+    grid-template-areas:
+      "phase   params"
+      "phase   td"
+      "readout readout";
+  }
+  .gi-phase{grid-area:phase}
+  .gi-params{grid-area:params}
+  .gi-readout{grid-area:readout}
+  .gi-td{grid-area:td}
+
+  /* intermediate: trace–determinant beside the phase portrait under the sliders; readout spreads full width below */
+  @media (max-width:1040px){
+    .grid{
+      grid-template-columns:1fr 1fr;
+      grid-template-areas:
+        "params  params"
+        "phase   td"
+        "readout readout";
+    }
+  }
+
+  /* narrow: single column, parameters right under the description, then the phase portrait */
+  @media (max-width:720px){
+    .grid{
+      grid-template-columns:1fr;
+      grid-template-areas:
+        "params"
+        "phase"
+        "readout"
+        "td";
+    }
+  }
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:14px;
+  }
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--ink-soft);margin:0 0 10px;font-weight:600}
+
+  .canvas-host{position:relative}
+  canvas#phase{width:100%;height:auto;display:block;border-radius:10px;
+    background:var(--cream-2);border:1px solid var(--line-soft);cursor:crosshair}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:8px}
+  .paramtip{margin:2px 0 14px;padding:9px 11px;border-radius:8px;background:#f0a55c22;border-left:3px solid var(--orange);font-size:12.5px;color:var(--ink-soft);line-height:1.45}
+  .keypoint{margin:14px 0 2px;padding:9px 11px;border-radius:8px;background:#f0a55c22;border-left:3px solid var(--orange);font-size:12.5px;color:var(--ink-soft);line-height:1.45}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:14px 18px;margin-top:12px;align-items:center}
+  .chk{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink-soft);cursor:pointer;user-select:none}
+  .chk input{accent-color:var(--orange);width:15px;height:15px}
+  .btn{
+    font-family:'Outfit';font-weight:600;font-size:13px;
+    background:var(--cream-2);border:1px solid var(--line);color:var(--ink);
+    border-radius:9px;padding:6px 12px;cursor:pointer;transition:.12s;
+  }
+  .btn:hover{border-color:var(--orange);color:var(--orange)}
+
+  /* sliders */
+  .slider{margin:12px 0}
+  .slider .lab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+  .slider .lab .nm{color:var(--ink)}
+  .slider .lab .vl{font-family:'IBM Plex Mono';color:var(--orange);font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--ink)}
+
+  .desc{font-size:13.5px;color:var(--ink-soft);margin:2px 0 12px}
+
+  /* readout */
+  .mono{font-family:'IBM Plex Mono';font-size:13px}
+  #readout{display:grid;gap:12px;align-items:start;
+    grid-template-columns:repeat(auto-fit, minmax(min(100%, 360px), 1fr))}
+  .eq{border:1px solid var(--line-soft);border-radius:10px;padding:10px 11px;background:var(--cream)}
+  .eq .pt{font-family:'IBM Plex Mono';font-weight:600;font-size:13.5px;color:var(--ink)}
+  .eq .cls{float:right;font-family:'Outfit';font-weight:600;font-size:12px;padding:2px 8px;border-radius:20px;cursor:help}
+  .eq table{width:100%;border-collapse:collapse;margin-top:8px}
+  .eq td{font-family:'IBM Plex Mono';font-size:12.5px;padding:2px 4px;color:var(--ink-soft)}
+  .eq td.k{color:var(--ink);width:36%}
+
+  /* tooltips on abbreviated terms */
+  .tip{border-bottom:1px dotted var(--orange);cursor:help;position:relative}
+  .tip.plain{border-bottom:none}
+  .htip{border-bottom:1px dotted var(--orange);cursor:help;position:relative}
+  @media (hover: none){
+    /* on touch there is no hover; a tap shows the same text through the floating tooltip, so suppress the CSS variant to avoid a duplicate */
+    .tip:hover::after,.tip:focus::after,.tip:hover::before,.tip:focus::before{content:none}
+  }
+  sub,sup{font-size:.72em;line-height:0;position:relative;vertical-align:baseline}
+  sub{bottom:-.28em}
+  sup{top:-.45em}
+  .tip:hover::after,.tip:focus::after{
+    content:attr(data-tip);position:absolute;left:0;bottom:150%;
+    background:var(--ink);color:var(--cream);
+    font-family:'Outfit',sans-serif;font-size:12px;font-weight:400;line-height:1.45;
+    padding:8px 10px;border-radius:8px;width:max-content;max-width:270px;white-space:normal;
+    z-index:30;box-shadow:0 5px 16px rgba(31,64,53,.28);pointer-events:none}
+  .tip:hover::before,.tip:focus::before{
+    content:'';position:absolute;left:8px;bottom:150%;
+    border:6px solid transparent;border-top-color:var(--ink);
+    transform:translateY(100%);z-index:31;pointer-events:none}
+
+  .swatchrow{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--ink-soft);margin-top:6px}
+  .sw{display:inline-flex;align-items:center;gap:6px}
+  .sw i{width:16px;height:3px;border-radius:2px;display:inline-block}
+  .sw i.dash{height:0;border-top:3px dashed}
+  .sw i.oval{width:18px;height:11px;border:2px dashed;border-radius:50%;background:transparent}
+  .sw i.dot{width:9px;height:9px;border-radius:50%}
+
+  /* equation banner */
+  .eqbanner{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:11px 16px;margin:0 0 16px;box-shadow:var(--shadow);
+    display:flex;gap:14px 28px;flex-wrap:wrap;align-items:center}
+  .eqbanner .eqs{display:flex;flex-direction:column;gap:5px}
+  .eqbanner .row{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--ink);white-space:nowrap}
+  .eqbanner .lhs{color:var(--orange);font-weight:600;margin-right:4px;display:inline-block;min-width:2.2em;text-align:right}
+  .eqbanner sup{font-size:.72em}
+  .eqbanner .pnote{font-family:'Outfit';font-size:12.5px;color:var(--ink-soft);max-width:46ch;white-space:normal}
+  .eqbanner .jacsym{display:inline-flex;align-items:center;gap:8px;
+    font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink)}
+  .eqbanner .jlab{color:var(--orange);font-weight:600}
+  .mtx{display:inline-flex;align-items:stretch;gap:3px}
+  .mtx .brk{width:5px;border:1.5px solid var(--ink-soft)}
+  .mtx .brk.l{border-right:none;border-radius:2px 0 0 2px}
+  .mtx .brk.r{border-left:none;border-radius:0 2px 2px 0}
+  .mtx .cells{display:grid;grid-template-columns:auto auto;gap:3px 16px;padding:3px 5px;align-items:center}
+  .mtx .cells span{white-space:nowrap}
+
+  /* TD plane inset */
+  .tdwrap{margin-top:0}
+  canvas#td{width:100%;height:auto;display:block;border-radius:10px;background:var(--cream);border:1px solid var(--line-soft)}
+
+  /* notes */
+  details.notes{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 16px;box-shadow:var(--shadow)}
+  details.notes>summary{cursor:pointer;font-weight:600;padding:12px 0;list-style:none;color:var(--ink)}
+  details.notes>summary::-webkit-details-marker{display:none}
+  details.notes>summary::before{content:'▸ ';color:var(--orange)}
+  details.notes[open]>summary::before{content:'▾ '}
+  .notes-body{padding:0 0 16px;max-width:80ch}
+  .notes-body p{margin:.6em 0;color:var(--ink-soft)}
+  .notes-body code,.eqn{font-family:'IBM Plex Mono';font-size:13px;background:var(--cream-2);
+    padding:1px 5px;border-radius:5px;color:var(--ink)}
+  .eqblock{font-family:'IBM Plex Mono';background:var(--cream-2);border:1px solid var(--line-soft);
+    border-radius:8px;padding:10px 12px;margin:10px 0;font-size:13px;color:var(--ink);overflow-x:auto}
+  .notes-body h3{font-size:14px;margin:16px 0 4px;color:var(--ink)}
+  .legendkey{color:var(--orange);font-weight:600}
+
+  /* cartoon figures and compact in-card explainers */
+  .cartoon{display:block;width:100%;max-width:400px;height:auto;margin:8px auto 2px}
+  .cap{font-size:12.5px;color:var(--ink-soft);margin:4px 0 2px}
+  details.explain{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
+  details.explain>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-soft);list-style:none}
+  details.explain>summary::-webkit-details-marker{display:none}
+  details.explain>summary::before{content:'▸ ';color:var(--orange)}
+  details.explain[open]>summary::before{content:'▾ '}
+  details.explain .exp-body{padding-top:4px}
+  details.notes details.explain{margin-top:12px}
+
+  /* always-visible explainer joined to a plot */
+  .explainer{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
+  .explainer .exp-head{font-size:12.5px;font-weight:600;color:var(--ink-soft);margin:0 0 2px}
+  .explainer p{font-size:12.5px;color:var(--ink-soft);margin:7px 0 2px}
+  .explainer ul{margin:6px 0 2px;padding-left:18px;font-size:12.5px;color:var(--ink-soft)}
+  .explainer li{margin:4px 0}
+  .explainer ul ul{margin:3px 0 5px}
+  .explainer li b{color:var(--ink);font-weight:600}
+
+  /* credit and footer */
+  .credit{font-size:12px;color:var(--ink-soft);margin:0}
+  .foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line-soft);
+    text-align:center;font-size:12px;color:var(--ink-soft)}
+  .credit a,.foot a{color:var(--orange);text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Nullclines &amp; Jacobian Linearization Explorer</h1>
+    <p class="sub">Where equilibria live, what the linearization says about them, and what the nullcline geometry can and cannot reveal on its own. Click anywhere on the plane to launch a trajectory.</p>
+    <p class="credit">&copy; 2026 Theodore P. Pavlic (<a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT License</a>)</p>
+  </header>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="eqbanner" id="eqbanner"></div>
+
+  <div id="sysDesc" class="desc"></div>
+
+  <div class="grid">
+    <div class="card canvas-host gi-phase">
+      <canvas id="phase" width="760" height="620"></canvas>
+      <div class="toolbar" id="toggles">
+        <label class="chk"><input type="checkbox" id="t_null" checked> nullclines</label>
+        <label class="chk"><input type="checkbox" id="t_field" checked> vector field</label>
+        <label class="chk"><input type="checkbox" id="t_evec" checked> eigenvectors</label>
+        <label class="chk"><input type="checkbox" id="t_eq" checked> equilibria</label>
+        <label class="chk"><input type="checkbox" id="t_back"> integrate backward too</label>
+        <button class="btn" id="clearTraj">clear trajectories</button>
+      </div>
+      <div class="swatchrow">
+        <span class="sw"><i style="background:var(--xnull)"></i> x-nullcline (&#7819; = 0)</span>
+        <span class="sw"><i style="background:var(--ynull)"></i> y-nullcline (&#7823; = 0)</span>
+        <span class="sw"><i class="dash" style="border-color:var(--evec)"></i> eigenvectors (real &lambda;)</span>
+        <span class="sw"><i class="oval" style="border-color:var(--evec)"></i> rotation oval (complex &lambda;)</span>
+        <span class="sw"><i style="background:var(--traj)"></i> trajectory</span>
+        <span class="sw"><i class="dot" style="background:var(--orange)"></i> initial condition</span>
+      </div>
+      <p class="cap"><b>Click the plane to show trajectories.</b> A few of them reveal behavior the nullclines alone hide, like the fast-slow jumps of FitzHugh&ndash;Nagumo once its time-scale separation sharpens. The initial-condition dots stay fixed as the sliders move, and so the same starting points carry across parameter changes for easy comparison.</p>
+      <div class="explainer">
+        <div class="exp-head">How to read a phase plane from its nullclines</div>
+        <svg class="cartoon" viewBox="0 0 360 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to read nullclines">
+          <defs>
+            <marker id="ahy" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 z" fill="#a8341f"/>
+            </marker>
+            <marker id="ahx" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 z" fill="#1f5fa8"/>
+            </marker>
+          </defs>
+          <rect x="8" y="8" width="344" height="234" rx="8" fill="#efe6d6" stroke="#e0d4bf"/>
+          <line x1="20" y1="125" x2="340" y2="125" stroke="#cdbfa8" stroke-width="1"/>
+          <line x1="180" y1="18" x2="180" y2="232" stroke="#cdbfa8" stroke-width="1"/>
+          <text x="334" y="120" font-size="12" fill="#7a6a4a" font-family="'IBM Plex Mono',monospace" text-anchor="end">x</text>
+          <text x="186" y="29" font-size="12" fill="#7a6a4a" font-family="'IBM Plex Mono',monospace">y</text>
+          <line x1="40" y1="80" x2="320" y2="180" stroke="#1f5fa8" stroke-width="2.4"/>
+          <line x1="70" y1="210" x2="300" y2="60" stroke="#a8341f" stroke-width="2.4"/>
+          <line x1="110" y1="122" x2="110" y2="88" stroke="#a8341f" stroke-width="1.6" marker-end="url(#ahy)"/>
+          <line x1="270" y1="145" x2="270" y2="179" stroke="#a8341f" stroke-width="1.6" marker-end="url(#ahy)"/>
+          <line x1="137" y1="177" x2="103" y2="177" stroke="#1f5fa8" stroke-width="1.6" marker-end="url(#ahx)"/>
+          <line x1="238" y1="89" x2="272" y2="89" stroke="#1f5fa8" stroke-width="1.6" marker-end="url(#ahx)"/>
+          <circle cx="188" cy="133" r="6" fill="#efe6d6" stroke="#c46a1a" stroke-width="2.2"/>
+          <text x="320" y="194" font-size="13" fill="#1f5fa8" font-family="'IBM Plex Mono',monospace" text-anchor="end">&#7819; = 0</text>
+          <text x="298" y="52" font-size="13" fill="#a8341f" font-family="'IBM Plex Mono',monospace" text-anchor="end">&#7823; = 0</text>
+          <text x="182" y="172" font-size="12" fill="#c2630f" font-weight="600" font-family="'Outfit',sans-serif">equilibrium</text>
+        </svg>
+        <p class="cap">In the figure, the blue line is the x-nullcline <span class="eqn">&#7819; = 0</span> and the red line is the y-nullcline <span class="eqn">&#7823; = 0</span>. The flow arrows take the color of the rate that drives them: on the blue <span class="eqn">&#7819; = 0</span> line only y changes, which colors those arrows red (the <span class="eqn">&#7823;</span> color), and on the red <span class="eqn">&#7823; = 0</span> line only x changes, which colors those arrows blue (the <span class="eqn">&#7819;</span> color). The open orange circle marks the equilibrium where the two nullclines cross, and the faint gray lines are the coordinate axes.</p>
+        <p>Nullclines are the curves where one rate is zero. On the blue x-nullcline <span class="eqn">&#7819; = 0</span>, and so the flow there can only point straight up or down; on the red y-nullcline <span class="eqn">&#7823; = 0</span>, and so it points straight left or right. The two curves carve the plane into regions where <span class="eqn">&#7819;</span> and <span class="eqn">&#7823;</span> each keep one sign, and stepping across a nullcline flips that one component. Where the curves cross, both rates vanish at once, which is an equilibrium. The vector-field arrows in the plot show which way the flow actually runs in each region. In this example, the nullclines combined with the direction of flow across them are consistent with an unstable equilibrium (drawn here as an open circle) because the arrows point away from the crossing on every side. They do not settle whether it is an unstable node or an unstable focus; that distinction turns on the discriminant (the trace and determinant) and not on the crossing geometry.</p>
+        <p>The angle at which the nullclines cross hints at the type of equilibrium but does not fix its stability. Their relative steepness feeds the determinant, which separates saddles (negative determinant) from nodes and foci (positive). What the angle cannot give is the trace, and the trace is what decides stable versus unstable. A stable focus and an unstable one can share the exact same pair of nullclines, and so reading stability off the picture takes the flow arrows, not the angle. The linear tab shows this directly: hold both slopes fixed and slide a row gain, and the focus flips stability while the nullclines stay put.</p>
+      </div>
+    </div>
+
+    <div class="card gi-params" id="ctrlCard">
+      <h2>Parameters</h2>
+      <div class="paramtip" id="hint"></div>
+      <div id="sliders"></div>
+    </div>
+
+    <div class="card gi-readout">
+      <h2>Equilibria &amp; linearization</h2>
+      <div id="readout"></div>
+    </div>
+
+    <div class="card tdwrap gi-td" id="tdCard">
+      <h2>Trace&ndash;determinant plane</h2>
+      <canvas id="td" width="360" height="300"></canvas>
+      <div class="hint">Each dot is an equilibrium, and its position determines its stability; dots are color coded by their stability classification. The frame is held fixed, and so the parabola stays put as the sliders move; an equilibrium pushed past the frame is pinned to the nearest edge with a small arrow toward its true position. See below for how to read this plane.</div>
+      <div class="explainer">
+        <div class="exp-head">How to read this trace&ndash;determinant plane</div>
+          <svg class="cartoon" viewBox="0 0 360 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of the trace–determinant plane">
+            <rect x="8" y="8" width="344" height="254" rx="8" fill="#efe6d6" stroke="#e0d4bf"/>
+            <rect x="9" y="9" width="171" height="190" fill="#2f7d4f" opacity="0.07"/>
+            <rect x="180" y="9" width="171" height="190" fill="#c46a1a" opacity="0.07"/>
+            <rect x="9" y="199" width="342" height="62" fill="#7a2fae" opacity="0.10"/>
+            <line x1="16" y1="199" x2="344" y2="199" stroke="#b6a888" stroke-width="1.3"/>
+            <line x1="180" y1="16" x2="180" y2="254" stroke="#b6a888" stroke-width="1.3"/>
+            <path d="M64,24 Q180,374 296,24" fill="none" stroke="#b08a52" stroke-width="1.6"/>
+            <text x="349" y="19" font-size="10.5" fill="#8a6a32" font-family="'Outfit',sans-serif" text-anchor="end">tr&#178; &#8722; 4 det = 0</text>
+            <g>
+              <text x="340" y="194" font-size="12" fill="#7a6a4a" font-family="'IBM Plex Mono',monospace" text-anchor="end">tr</text>
+              <rect x="320" y="183" width="24" height="16" fill="transparent" pointer-events="all" role="img" aria-label="Trace of the Jacobian." data-tip="Trace of the Jacobian."/>
+            </g>
+            <g>
+              <text x="186" y="24" font-size="12" fill="#7a6a4a" font-family="'IBM Plex Mono',monospace">det</text>
+              <rect x="184" y="13" width="30" height="15" fill="transparent" pointer-events="all" role="img" aria-label="Determinant of the Jacobian." data-tip="Determinant of the Jacobian."/>
+            </g>
+            <g>
+              <circle cx="118" cy="65" r="6" fill="#2f7d4f" stroke="#20402f" stroke-width="1"/>
+              <text x="150" y="58" font-size="12" fill="#2f7d4f" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">stable</text>
+              <text x="150" y="72" font-size="12" fill="#2f7d4f" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">focus</text>
+              <rect x="106" y="47" width="74" height="32" fill="transparent" pointer-events="all" role="img" aria-label="Stable focus: trajectories spiral inward, circling the point as they decay toward it." data-tip="Stable focus: trajectories spiral inward, circling the point as they decay toward it."/>
+            </g>
+            <g>
+              <circle cx="246" cy="65" r="6" fill="none" stroke="#c46a1a" stroke-width="2.2"/>
+              <text x="214" y="58" font-size="12" fill="#c46a1a" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">unstable</text>
+              <text x="214" y="72" font-size="12" fill="#c46a1a" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">focus</text>
+              <rect x="184" y="47" width="74" height="32" fill="transparent" pointer-events="all" role="img" aria-label="Unstable focus: trajectories spiral outward, circling the point as they move away from it." data-tip="Unstable focus: trajectories spiral outward, circling the point as they move away from it."/>
+            </g>
+            <g>
+              <circle cx="46" cy="157" r="6" fill="#2f7d4f" stroke="#20402f" stroke-width="1"/>
+              <text x="78" y="150" font-size="12" fill="#2f7d4f" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">stable</text>
+              <text x="78" y="164" font-size="12" fill="#2f7d4f" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">node</text>
+              <rect x="36" y="139" width="70" height="32" fill="transparent" pointer-events="all" role="img" aria-label="Stable node: trajectories curve straight in toward the point from every direction, without circling." data-tip="Stable node: trajectories curve straight in toward the point from every direction, without circling."/>
+            </g>
+            <g>
+              <circle cx="320" cy="157" r="6" fill="none" stroke="#c46a1a" stroke-width="2.2"/>
+              <text x="286" y="150" font-size="12" fill="#c46a1a" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">unstable</text>
+              <text x="286" y="164" font-size="12" fill="#c46a1a" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">node</text>
+              <rect x="256" y="139" width="74" height="32" fill="transparent" pointer-events="all" role="img" aria-label="Unstable node: trajectories run straight out from the point in every direction, without circling." data-tip="Unstable node: trajectories run straight out from the point in every direction, without circling."/>
+            </g>
+            <g>
+              <circle cx="180" cy="108" r="6" fill="none" stroke="#2f7d4f" stroke-width="2.2"/>
+              <text x="170" y="112" font-size="12" fill="#2f7d4f" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="end">center</text>
+              <rect x="134" y="97" width="58" height="22" fill="transparent" pointer-events="all" role="img" aria-label="Center: trajectories form closed loops that circle the point forever, neither approaching nor leaving." data-tip="Center: trajectories form closed loops that circle the point forever, neither approaching nor leaving."/>
+            </g>
+            <g>
+              <circle cx="112" cy="234" r="6" fill="none" stroke="#7a2fae" stroke-width="2.2"/>
+              <text x="184" y="234" font-size="12.5" fill="#7a2fae" font-family="'Outfit',sans-serif" font-weight="600" text-anchor="middle">saddle (det &lt; 0)</text>
+              <rect x="100" y="222" width="142" height="20" fill="transparent" pointer-events="all" role="img" aria-label="Saddle: trajectories approach along one direction and are flung away along another, sweeping past the point." data-tip="Saddle: trajectories approach along one direction and are flung away along another, sweeping past the point."/>
+            </g>
+          </svg>
+          <p class="cap">In the map and in both plots, color marks stability (green stable, orange unstable, and purple saddle), and fill marks attraction: a filled dot is an attractor, and an open dot is not. A center is the boundary case, stable but not attracting, and so it appears as an open green dot.</p>
+          <p class="cap">The two axes are the trace (horizontal) and determinant (vertical) of the Jacobian J. The eigenvalues of J are the roots of its characteristic equation det(J &minus; &lambda;I) = 0, which for a 2&times;2 matrix is &lambda;&sup2; &minus; (tr)&lambda; + det = 0, and so the two eigenvalues sum to the <span class="tip" tabindex="0" data-tip="For a 2&times;2 matrix, the sum of the two diagonal entries (top-left + bottom-right).">trace</span> and multiply to the <span class="tip" tabindex="0" data-tip="For a 2&times;2 matrix, the product of the main diagonal minus the product of the off-diagonal: (top-left)(bottom-right) &minus; (top-right)(bottom-left).">determinant</span>. The quantity (tr&sup2; &minus; 4 det) is the discriminant of that quadratic, exactly like (b&sup2; &minus; 4ac) in the quadratic formula. An equilibrium is stable only when both eigenvalues have negative real parts, and the five regions all follow from that:</p>
+          <ul>
+            <li><b>det &lt; 0 &rarr; saddle</b> (below the horizontal axis): the eigenvalues are real with opposite signs, one positive and one negative, and so their product, the determinant, is negative. One direction attracts and another repels.</li>
+            <li><b>det &gt; 0 &rarr; node or focus.</b> The eigenvalues now share a sign or arrive as a complex pair, and so the trace settles stability:
+              <ul>
+                <li>below the parabola, (tr&sup2; &minus; 4 det) &gt; 0: two real eigenvalues of the same sign &ndash; a <b>stable node</b> when tr &lt; 0, an <b>unstable node</b> when tr &gt; 0.</li>
+                <li>inside the parabola, (tr&sup2; &minus; 4 det) &lt; 0: a complex pair with real part tr/2 &ndash; a <b>stable focus</b> when tr &lt; 0, an <b>unstable focus</b> when tr &gt; 0, and a <b>center</b> when tr = 0 (purely imaginary).</li>
+              </ul>
+            </li>
+          </ul>
+          <p class="cap">Far to the left or right, where the trace magnitude is large, the equilibrium falls below the parabola, and the eigenvalues are real because (tr&sup2; &minus; 4 det) grows with tr&sup2;. A very negative trace then drives both roots negative (firmly stable), and a very positive trace drives both positive (firmly unstable), which is why the node and focus halves split stable from unstable.</p>
+          <div class="keypoint"><b>Key point:</b> The Jacobian linearization only describes the behavior within a small neighborhood of the equilibrium. In nonlinear systems, the global behavior can be more complex (e.g., stable limit cycles that completely surround unstable nodes).</div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">&copy; 2026 Theodore P. Pavlic (<a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT License</a>)</footer>
+</div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ *
+ *  Engine: numerical Jacobian, equilibria (Newton from a seed grid),
+ *  marching-squares nullclines, RK4 trajectories, 2x2 spectrum.
+ * ------------------------------------------------------------------ */
+
+// ---- system definitions ----
+const SYSTEMS = {
+  linear: {
+    name: "Tunable linear",
+    eq: '<span class="row"><span class="lhs">\u1E8B =</span> p (y \u2212 s<sub>f</sub> x)</span><span class="row"><span class="lhs">\u1E8F =</span> q (y \u2212 s<sub>g</sub> x)</span>',
+    pnote: "p and q scale each equation (the row gains); s<sub>f</sub> and s<sub>g</sub> are the nullcline slopes through the origin.",
+    jac: ["\u2212p s<sub>f</sub>", "p", "\u2212q s<sub>g</sub>", "q"],
+    desc: "Two straight nullclines through the origin. Set the slopes (the angle), then sweep a row gain: the trace crosses zero and stability flips while the nullclines stay put.",
+    tip: "Tip: slide row gain p or q across their full ranges to arbitrarily change the stability of the equilibrium at the origin without ever changing the nullclines.",
+    win: {xmin:-3, xmax:3, ymin:-3, ymax:3},
+    tdWin: {Tmax:6, Dmin:-6, Dmax:10},
+    params: [
+      {key:"sf", label:"x-nullcline slope  s<sub>f</sub>", min:-3, max:3, step:0.05, val:1.0},
+      {key:"sg", label:"y-nullcline slope  s<sub>g</sub>", min:-3, max:3, step:0.05, val:2.5},
+      {key:"p",  label:"row gain  p  (changes stability but not nullclines)", min:-2.5, max:2.5, step:0.05, val:1.6},
+      {key:"q",  label:"row gain  q  (changes stability but not nullclines)", min:-2.5, max:2.5, step:0.05, val:1.0},
+    ],
+    // f = p (y - sf x), g = q (y - sg x)
+    f:(x,y,P)=> P.p*(y - P.sf*x),
+    g:(x,y,P)=> P.q*(y - P.sg*x),
+    showTD:true,
+  },
+
+  lv: {
+    name: "Lotka–Volterra competition",
+    eq: '<span class="row"><span class="lhs">\u1E8B =</span> x (1 \u2212 x \u2212 a\u2081\u2082 y)</span><span class="row"><span class="lhs">\u1E8F =</span> y (1 \u2212 y \u2212 a\u2082\u2081 x)</span>',
+    pnote: "a\u2081\u2082 and a\u2082\u2081 are the interspecific competition strengths; growth rates and carrying capacities are normalized to 1.",
+    jac: ["1 \u2212 2x \u2212 a\u2081\u2082 y", "\u2212a\u2081\u2082 x", "\u2212a\u2082\u2081 y", "1 \u2212 2y \u2212 a\u2082\u2081 x"],
+    desc: "Signs are fixed by the ecology, and so here the relative steepness of the nullclines does decide the interior equilibrium: stable coexistence when both crossings are weak, a saddle when both are strong.",
+    win: {xmin:-0.15, xmax:1.45, ymin:-0.15, ymax:1.45},
+    tdWin: {Tmax:2.6, Dmin:-1.2, Dmax:1.8},
+    params: [
+      {key:"a12", label:"effect of y on x  a\u2081\u2082", min:0, max:2.2, step:0.02, val:0.6},
+      {key:"a21", label:"effect of x on y  a\u2082\u2081", min:0, max:2.2, step:0.02, val:0.7},
+    ],
+    f:(x,y,P)=> x*(1 - x - P.a12*y),
+    g:(x,y,P)=> y*(1 - y - P.a21*x),
+    showTD:true,
+  },
+
+  fhn: {
+    name: "FitzHugh–Nagumo",
+    eq: '<span class="row"><span class="lhs">\u1E8B =</span> x \u2212 x<sup>3</sup>/3 \u2212 y + I<sub>ext</sub></span><span class="row"><span class="lhs">\u1E8F =</span> \u03b5 (x + a \u2212 b y)</span>',
+    pnote: "x is the fast (voltage-like) variable, y the slow recovery variable; I<sub>ext</sub> is the input current and \u03b5 sets the time-scale separation.",
+    jac: ["1 \u2212 x\u00b2", "\u22121", "\u03b5", "\u2212\u03b5 b"],
+    desc: "A cubic nullcline and a line. For a range of input current, the lone equilibrium is unstable, yet a stable limit cycle surrounds it. Shrinking \u03b5 sharpens the time-scale separation: trajectories hug the cubic slow manifold, then jump.",
+    win: {xmin:-2.6, xmax:2.6, ymin:-1.2, ymax:2.2},
+    tdWin: {Tmax:3, Dmin:-0.4, Dmax:2.3},
+    params: [
+      {key:"I",  label:"input current  I<sub>ext</sub>", min:-0.5, max:1.6, step:0.01, val:0.5},
+      {key:"eps",label:"time-scale  \u03b5  (smaller = stiffer)", min:0.02, max:0.5, step:0.005, val:0.08},
+      {key:"a",  label:"a", min:0.2, max:1.2, step:0.01, val:0.7},
+      {key:"b",  label:"b", min:0.2, max:1.2, step:0.01, val:0.8},
+    ],
+    f:(x,y,P)=> x - x*x*x/3 - y + P.I,        // v
+    g:(x,y,P)=> P.eps*(x + P.a - P.b*y),       // w
+    showTD:true,
+    slowManifold:(P)=> (x)=> x - x*x*x/3 + P.I, // cubic v-nullcline as a curve
+  },
+};
+
+let curKey = "linear";
+let sys = SYSTEMS[curKey];
+let P = {};
+function loadParams(){ P = {}; sys.params.forEach(s=> P[s.key]=s.val); }
+loadParams();
+
+// ---- numerics ----
+function jacobian(x,y){
+  const h=1e-5;
+  const fx=(sys.f(x+h,y,P)-sys.f(x-h,y,P))/(2*h);
+  const fy=(sys.f(x,y+h,P)-sys.f(x,y-h,P))/(2*h);
+  const gx=(sys.g(x+h,y,P)-sys.g(x-h,y,P))/(2*h);
+  const gy=(sys.g(x,y+h,P)-sys.g(x,y-h,P))/(2*h);
+  return [[fx,fy],[gx,gy]];
+}
+
+function newton(x0,y0){
+  let x=x0,y=y0;
+  for(let i=0;i<60;i++){
+    const fv=sys.f(x,y,P), gv=sys.g(x,y,P);
+    if(Math.abs(fv)<1e-11 && Math.abs(gv)<1e-11) break;
+    const J=jacobian(x,y);
+    const det=J[0][0]*J[1][1]-J[0][1]*J[1][0];
+    if(Math.abs(det)<1e-12) return null;
+    const dx=( J[1][1]*fv - J[0][1]*gv)/det;
+    const dy=(-J[1][0]*fv + J[0][0]*gv)/det;
+    x-=dx; y-=dy;
+    if(!isFinite(x)||!isFinite(y)) return null;
+    if(Math.hypot(dx,dy)<1e-12) break;
+  }
+  if(Math.abs(sys.f(x,y,P))>1e-6 || Math.abs(sys.g(x,y,P))>1e-6) return null;
+  return [x,y];
+}
+
+function findEquilibria(){
+  // Seed Newton over a region half a window-span wider on each side, so an equilibrium that has drifted off-screen is still found, and keep every converged root instead of clipping to the window. The trace–determinant plane and the readout then retain equilibria that leave the phase view; newton() rejects non-converged points, and so only true roots survive.
+  const w=sys.win, eqs=[];
+  const N=14, mx=(w.xmax-w.xmin)*0.5, my=(w.ymax-w.ymin)*0.5;
+  for(let i=0;i<=N;i++) for(let j=0;j<=N;j++){
+    const x0=w.xmin-mx+(w.xmax-w.xmin+2*mx)*i/N;
+    const y0=w.ymin-my+(w.ymax-w.ymin+2*my)*j/N;
+    const r=newton(x0,y0);
+    if(!r) continue;
+    const [x,y]=r;
+    if(!eqs.some(e=>Math.hypot(e[0]-x,e[1]-y)<1e-4)) eqs.push([x,y]);
+    if(eqs.length>=30) return eqs;   // guard against a degenerate continuum of equilibria
+  }
+  return eqs;
+}
+
+function spectrum(J){
+  const a=J[0][0],b=J[0][1],c=J[1][0],d=J[1][1];
+  const tr=a+d, det=a*d-b*c, disc=tr*tr-4*det;
+  // a discriminant within tol of zero is a repeated real eigenvalue; treating tiny negative
+  // roundoff as real keeps a degenerate node from flickering into a spurious focus
+  const tol=1e-9+1e-6*(tr*tr+Math.abs(det));
+  const isComplex=disc<-tol;
+  const out={tr,det,disc,complex:isComplex,evals:[],evecs:[]};
+  if(!isComplex){
+    const s=Math.sqrt(Math.max(0,disc));
+    const l1=(tr+s)/2, l2=(tr-s)/2;
+    out.evals=[{re:l1,im:0},{re:l2,im:0}];
+    const scalarLike=Math.abs(b)<1e-7&&Math.abs(c)<1e-7&&Math.abs(a-d)<1e-7;
+    out.star=Math.abs(disc)<=tol&&scalarLike;
+    if(out.star) out.evecs=[[1,0],[0,1]];
+    else [l1,l2].forEach(l=>{
+      let vx,vy;
+      if(Math.abs(b)>1e-9){ vx=b; vy=l-a; }
+      else if(Math.abs(c)>1e-9){ vx=l-d; vy=c; }
+      else { vx=(Math.abs(a-l)<1e-9)?1:0; vy=(Math.abs(d-l)<1e-9)?1:0; if(vx===0&&vy===0)vx=1; }
+      const n=Math.hypot(vx,vy)||1; out.evecs.push([vx/n,vy/n]);
+    });
+  } else {
+    const re=tr/2, im=Math.sqrt(-disc)/2;
+    out.evals=[{re,im},{re,im:-im}];
+    // eigenvector v = vr + i vi for lambda = re + i im
+    let vr, vi;
+    if(Math.abs(b)>1e-9){ vr=[b, re-a]; vi=[0, im]; }
+    else if(Math.abs(c)>1e-9){ vr=[re-d, c]; vi=[im, 0]; }
+    else { vr=[1,0]; vi=[0,1]; }
+    out.evr=vr; out.evi=vi;
+  }
+  return out;
+}
+
+function classify(sp){
+  const {tr,det,disc,complex,star}=sp;
+  if(Math.abs(det)<1e-7) return {label:"non-hyperbolic", color:"#7a6a4a"};
+  if(det<0) return {label:"saddle", color:"#7a2fae"};
+  if(complex){
+    if(Math.abs(tr)<1e-6) return {label:"center", color:"#2f7d4f"};
+    return tr<0 ? {label:"stable focus", color:"#2f7d4f"} : {label:"unstable focus", color:"#c46a1a"};
+  }
+  const tol=1e-9+1e-6*(tr*tr+Math.abs(det));
+  if(Math.abs(disc)<=tol) return {label:(tr<0?"stable":"unstable")+(star?" star node":" degenerate node"), color:tr<0?"#2f7d4f":"#c46a1a"};
+  return tr<0 ? {label:"stable node", color:"#2f7d4f"} : {label:"unstable node", color:"#c46a1a"};
+}
+// short explanations for the stability-class pills, shown on hover in the equilibria cards
+const LBL_TIPS = {
+  "saddle":"Real eigenvalues of opposite sign (negative determinant). One direction attracts and another repels, and so trajectories approach along one and are flung out along the other.",
+  "center":"A purely imaginary eigenvalue pair (zero trace, positive determinant). Trajectories form closed loops around the point, neither approaching nor leaving, and so it is stable but not attracting.",
+  "stable focus":"A complex eigenvalue pair with negative real part. Trajectories spiral inward, circling the point as they decay toward it.",
+  "unstable focus":"A complex eigenvalue pair with positive real part. Trajectories spiral outward, circling the point as they move away from it.",
+  "stable node":"Two real negative eigenvalues. Trajectories curve straight in from every direction, without circling.",
+  "unstable node":"Two real positive eigenvalues. Trajectories run straight out in every direction, without circling.",
+  "stable star node":"A repeated negative eigenvalue with a full set of eigenvectors (the Jacobian is a negative multiple of the identity). Every direction is an eigendirection, and so trajectories approach radially in straight lines.",
+  "unstable star node":"A repeated positive eigenvalue with a full set of eigenvectors (the Jacobian is a positive multiple of the identity). Every direction is an eigendirection, and so trajectories leave radially in straight lines.",
+  "stable degenerate node":"A repeated negative eigenvalue with only one eigenvector (the discriminant is zero, but the Jacobian is not a scalar multiple of the identity). Trajectories approach tangent to that single eigendirection.",
+  "unstable degenerate node":"A repeated positive eigenvalue with only one eigenvector (the discriminant is zero, but the Jacobian is not a scalar multiple of the identity). Trajectories leave tangent to that single eigendirection.",
+  "non-hyperbolic":"The determinant is essentially zero, and so at least one eigenvalue is zero. The linearization is inconclusive here, and the nonlinear terms decide the behavior."
+};
+
+// ---- canvas / transforms ----
+const cv=document.getElementById('phase'), ctx=cv.getContext('2d');
+const tdcv=document.getElementById('td'), tdx=tdcv.getContext('2d');
+let DPR=Math.max(1,window.devicePixelRatio||1);
+let W=cv.width, H=cv.height;
+let trajectories=[];
+
+function fitCanvas(){
+  DPR=Math.max(1,window.devicePixelRatio||1);
+  // phase: size the backing store to the displayed size times DPR so it stays crisp on HiDPI
+  const dispW=cv.clientWidth || Math.max(200, cv.parentElement.clientWidth-28);
+  cv.style.height=Math.round(dispW*0.82)+"px";
+  cv.width=Math.round(cv.clientWidth*DPR); cv.height=Math.round(cv.clientHeight*DPR);
+  W=cv.width; H=cv.height;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // trace–determinant plane: same HiDPI treatment
+  const tdW=tdcv.clientWidth || Math.max(180, tdcv.parentElement.clientWidth-28);
+  tdcv.style.height=Math.round(tdW*0.6)+"px";
+  tdcv.width=Math.round(tdcv.clientWidth*DPR); tdcv.height=Math.round(tdcv.clientHeight*DPR);
+  tdx.setTransform(DPR,0,0,DPR,0,0);
+  draw();
+}
+
+function cssDims(c){ return {w:parseFloat(c.style.height? c.clientWidth:c.width), h:parseFloat(c.style.height)||c.height}; }
+function vw(){ return cv.clientWidth; }
+function vh(){ return cv.clientHeight; }
+
+function X2px(x){ const w=sys.win; return (x-w.xmin)/(w.xmax-w.xmin)*vw(); }
+function Y2px(y){ const w=sys.win; return vh()-(y-w.ymin)/(w.ymax-w.ymin)*vh(); }
+function px2X(px){ const w=sys.win; return w.xmin+px/vw()*(w.xmax-w.xmin); }
+function px2Y(py){ const w=sys.win; return w.ymin+(vh()-py)/vh()*(w.ymax-w.ymin); }
+
+// ---- drawing ----
+function clearBg(){
+  ctx.clearRect(0,0,vw(),vh());
+}
+
+function drawGridAxes(){
+  const w=sys.win;
+  ctx.lineWidth=1;
+  ctx.strokeStyle="#e3d7c0";
+  const step=niceStep(w.xmax-w.xmin);
+  for(let gx=Math.ceil(w.xmin/step)*step; gx<=w.xmax; gx+=step){
+    ctx.beginPath(); ctx.moveTo(X2px(gx),0); ctx.lineTo(X2px(gx),vh()); ctx.stroke();
+  }
+  const stepy=niceStep(w.ymax-w.ymin);
+  for(let gy=Math.ceil(w.ymin/stepy)*stepy; gy<=w.ymax; gy+=stepy){
+    ctx.beginPath(); ctx.moveTo(0,Y2px(gy)); ctx.lineTo(vw(),Y2px(gy)); ctx.stroke();
+  }
+  // axes
+  ctx.strokeStyle="#b6a888"; ctx.lineWidth=1.4;
+  if(w.ymin<0&&w.ymax>0){ ctx.beginPath(); ctx.moveTo(0,Y2px(0)); ctx.lineTo(vw(),Y2px(0)); ctx.stroke(); }
+  if(w.xmin<0&&w.xmax>0){ ctx.beginPath(); ctx.moveTo(X2px(0),0); ctx.lineTo(X2px(0),vh()); ctx.stroke(); }
+  ctx.fillStyle="#7a6a4a"; ctx.font="500 12px 'IBM Plex Mono', monospace";
+  ctx.fillText("x", vw()-14, Y2px(0)>14?Y2px(0)-6:16);
+  ctx.fillText("y", X2px(0)+6>vw()-14? X2px(0)-14:X2px(0)+6, 14);
+}
+function niceStep(range){
+  const raw=range/6, mag=Math.pow(10,Math.floor(Math.log10(raw))), n=raw/mag;
+  const m = n<1.5?1 : n<3?2 : n<7?5 : 10;
+  return m*mag;
+}
+
+function drawField(){
+  if(!toggle('t_field')) return;
+  const w=sys.win, n=21;
+  ctx.strokeStyle="rgba(154,143,120,.85)"; ctx.fillStyle="rgba(154,143,120,.85)";
+  ctx.lineWidth=1;
+  const dx=(w.xmax-w.xmin)/n, dy=(w.ymax-w.ymin)/n;
+  const L=Math.min(vw(),vh())/n*0.42;
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++){
+    const x=w.xmin+dx*(i+0.5), y=w.ymin+dy*(j+0.5);
+    const fx=sys.f(x,y,P), fy=sys.g(x,y,P);
+    const m=Math.hypot(fx,fy); if(m<1e-9) continue;
+    const ux=fx/m, uy=fy/m;
+    const px=X2px(x), py=Y2px(y);
+    const ex=px+ux*L, ey=py-uy*L;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(ex,ey); ctx.stroke();
+    // arrowhead
+    const ang=Math.atan2(ey-py,ex-px), ah=L*0.32;
+    ctx.beginPath();
+    ctx.moveTo(ex,ey);
+    ctx.lineTo(ex-ah*Math.cos(ang-0.4), ey-ah*Math.sin(ang-0.4));
+    ctx.lineTo(ex-ah*Math.cos(ang+0.4), ey-ah*Math.sin(ang+0.4));
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+// marching squares zero contour of h(x,y)
+function drawZeroContour(h, color, width){
+  const w=sys.win, n=170;
+  const dx=(w.xmax-w.xmin)/n, dy=(w.ymax-w.ymin)/n;
+  ctx.strokeStyle=color; ctx.lineWidth=width; ctx.lineJoin="round";
+  ctx.beginPath();
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++){
+    const x0=w.xmin+dx*i, x1=x0+dx, y0=w.ymin+dy*j, y1=y0+dy;
+    const v00=h(x0,y0), v10=h(x1,y0), v11=h(x1,y1), v01=h(x0,y1);
+    const pts=[];
+    const interp=(xa,ya,va,xb,yb,vb)=>{ const t=va/(va-vb); return [xa+(xb-xa)*t, ya+(yb-ya)*t]; };
+    if((v00>0)!==(v10>0)) pts.push(interp(x0,y0,v00,x1,y0,v10));
+    if((v10>0)!==(v11>0)) pts.push(interp(x1,y0,v10,x1,y1,v11));
+    if((v11>0)!==(v01>0)) pts.push(interp(x1,y1,v11,x0,y1,v01));
+    if((v01>0)!==(v00>0)) pts.push(interp(x0,y1,v01,x0,y0,v00));
+    if(pts.length>=2){
+      ctx.moveTo(X2px(pts[0][0]),Y2px(pts[0][1]));
+      ctx.lineTo(X2px(pts[1][0]),Y2px(pts[1][1]));
+      if(pts.length===4){
+        ctx.moveTo(X2px(pts[2][0]),Y2px(pts[2][1]));
+        ctx.lineTo(X2px(pts[3][0]),Y2px(pts[3][1]));
+      }
+    }
+  }
+  ctx.stroke();
+}
+
+function drawNullclines(){
+  if(!toggle('t_null')) return;
+  drawZeroContour((x,y)=>sys.f(x,y,P), getCss('--xnull'), 2.4);
+  drawZeroContour((x,y)=>sys.g(x,y,P), getCss('--ynull'), 2.4);
+}
+
+function rk4step(x,y,dt){
+  const f=(a,b)=>sys.f(a,b,P), g=(a,b)=>sys.g(a,b,P);
+  const k1x=f(x,y), k1y=g(x,y);
+  const k2x=f(x+0.5*dt*k1x, y+0.5*dt*k1y), k2y=g(x+0.5*dt*k1x, y+0.5*dt*k1y);
+  const k3x=f(x+0.5*dt*k2x, y+0.5*dt*k2y), k3y=g(x+0.5*dt*k2x, y+0.5*dt*k2y);
+  const k4x=f(x+dt*k3x, y+dt*k3y), k4y=g(x+dt*k3x, y+dt*k3y);
+  return [x+dt/6*(k1x+2*k2x+2*k3x+k4x), y+dt/6*(k1y+2*k2y+2*k3y+k4y)];
+}
+function integrate(x0,y0,dir){
+  const w=sys.win, pts=[[x0,y0]];
+  let x=x0,y=y0;
+  const span=Math.hypot(w.xmax-w.xmin,w.ymax-w.ymin);
+  // step by roughly constant arc length rather than constant time, so a stiff slow manifold
+  // (small eps) does not eat the step budget and truncate the loop partway around
+  const ds=span*0.005;      // target arc length per step
+  const hmax=0.25;          // cap the time step so fast regions stay accurate
+  const maxLen=span*3.2;    // stop after tracing this much curve (about one relaxation loop, with margin)
+  const maxSteps=4000, mmin=1e-4;
+  let len=0;
+  for(let i=0;i<maxSteps && len<maxLen;i++){
+    const m=Math.hypot(sys.f(x,y,P),sys.g(x,y,P));
+    const h=dir*Math.min(ds/Math.max(m,mmin), hmax);
+    const [nx,ny]=rk4step(x,y,h);
+    if(!isFinite(nx)||!isFinite(ny)) break;
+    if(Math.abs(nx)>1e4||Math.abs(ny)>1e4) break;
+    const padx=(w.xmax-w.xmin)*0.6, pady=(w.ymax-w.ymin)*0.6;
+    if(nx<w.xmin-padx||nx>w.xmax+padx||ny<w.ymin-pady||ny>w.ymax+pady){ pts.push([nx,ny]); break; }
+    len+=Math.hypot(nx-x,ny-y);
+    pts.push([nx,ny]); x=nx; y=ny;
+  }
+  return pts;
+}
+function drawTrajectories(){
+  ctx.lineWidth=1.8; ctx.strokeStyle=getCss('--traj'); ctx.globalAlpha=.85;
+  trajectories.forEach(tr=>{
+    ctx.beginPath();
+    tr.forEach((p,k)=>{ const px=X2px(p[0]),py=Y2px(p[1]); k?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+    ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+  // seed dots
+  ctx.fillStyle=getCss('--orange');
+  trajectories.forEach(tr=>{ const p=tr.seed||tr[0]; ctx.beginPath(); ctx.arc(X2px(p[0]),Y2px(p[1]),3,0,7); ctx.fill(); });
+}
+
+function drawEquilibria(eqs, specs){
+  if(!toggle('t_eq')) return;
+  eqs.forEach((e,i)=>{
+    const sp=specs[i], cl=classify(sp);
+    // draw a phase marker only for equilibria within the visible window; the trace–determinant plane and the readout still list those that have left the view
+    const w0=sys.win, px0=(w0.xmax-w0.xmin)*0.02, py0=(w0.ymax-w0.ymin)*0.02;
+    if(e[0]<w0.xmin-px0||e[0]>w0.xmax+px0||e[1]<w0.ymin-py0||e[1]>w0.ymax+py0) return;
+    const px=X2px(e[0]), py=Y2px(e[1]);
+    // eigenvectors
+    if(toggle('t_evec') && !sp.complex){
+      const w=sys.win, len=Math.min(w.xmax-w.xmin,w.ymax-w.ymin)*0.20;
+      ctx.setLineDash([6,4]); ctx.lineWidth=2; ctx.strokeStyle=getCss('--evec');
+      sp.evecs.forEach((v,k)=>{
+        const lam=sp.evals[k].re;
+        ctx.beginPath();
+        ctx.moveTo(X2px(e[0]-v[0]*len), Y2px(e[1]-v[1]*len));
+        ctx.lineTo(X2px(e[0]+v[0]*len), Y2px(e[1]+v[1]*len));
+        ctx.stroke();
+        // direction arrows along stable(in)/unstable(out) sense
+        const sgn=lam>=0?1:-1;
+        const tipx=X2px(e[0]+sgn*v[0]*len), tipy=Y2px(e[1]+sgn*v[1]*len);
+        drawArrowHead(tipx,tipy, Math.atan2(-(sgn*v[1]),(sgn*v[0])), getCss('--evec'), 8);
+      });
+      ctx.setLineDash([]);
+    }
+    // rotation oval for complex eigenvalues: {vr cos t + vi sin t} is the orbit shape
+    if(toggle('t_evec') && sp.complex){
+      const w=sys.win, R=Math.min(w.xmax-w.xmin,w.ymax-w.ymin)*0.16;
+      const vr=sp.evr, vi=sp.evi, M=65, pts=[];
+      let mx=0;
+      for(let k=0;k<M;k++){ const t=k/(M-1)*2*Math.PI;
+        const ex=vr[0]*Math.cos(t)+vi[0]*Math.sin(t);
+        const ey=vr[1]*Math.cos(t)+vi[1]*Math.sin(t);
+        pts.push([ex,ey]); mx=Math.max(mx,Math.hypot(ex,ey));
+      }
+      const sc=R/(mx||1);
+      const isCenter=Math.abs(sp.tr)<1e-6;
+      ctx.strokeStyle=getCss('--evec'); ctx.lineWidth=2;
+      ctx.setLineDash(isCenter?[]:[5,4]);   // solid = exact orbit (center), dashed = template (focus)
+      ctx.beginPath();
+      pts.forEach((pp,k)=>{ const X=X2px(e[0]+pp[0]*sc), Y=Y2px(e[1]+pp[1]*sc); k?ctx.lineTo(X,Y):ctx.moveTo(X,Y); });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // arrowhead tangent to the oval, oriented by the flow's circulation sense
+      const idx=10, t=idx/(M-1)*2*Math.PI;
+      const wx=e[0]+pts[idx][0]*sc, wy=e[1]+pts[idx][1]*sc;
+      let tx=-vr[0]*Math.sin(t)+vi[0]*Math.cos(t);
+      let ty=-vr[1]*Math.sin(t)+vi[1]*Math.cos(t);
+      if(tx*sys.f(wx,wy,P)+ty*sys.g(wx,wy,P) < 0){ tx=-tx; ty=-ty; }
+      drawArrowHead(X2px(wx),Y2px(wy), Math.atan2(-ty,tx), getCss('--evec'), 8);
+    }
+    // marker
+    const stable = !sp.complex ? (sp.evals[0].re<0&&sp.evals[1].re<0) : sp.tr<0;
+    ctx.lineWidth=2; ctx.strokeStyle=cl.color;
+    ctx.fillStyle = sp.det<0 ? getCss('--cream') : (stable? cl.color : getCss('--cream'));
+    ctx.beginPath(); ctx.arc(px,py,6,0,7); ctx.fill(); ctx.stroke();
+  });
+}
+function drawArrowHead(x,y,ang,color,s){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x-s*Math.cos(ang-0.45), y-s*Math.sin(ang-0.45));
+  ctx.lineTo(x-s*Math.cos(ang+0.45), y-s*Math.sin(ang+0.45));
+  ctx.closePath(); ctx.fill();
+}
+
+let lastEqs=[], lastSpecs=[];
+function draw(){
+  clearBg();
+  drawGridAxes();
+  drawField();
+  drawNullclines();
+  const eqs=findEquilibria();
+  const specs=eqs.map(e=>spectrum(jacobian(e[0],e[1])));
+  lastEqs=eqs; lastSpecs=specs;
+  drawTrajectories();
+  drawEquilibria(eqs,specs);
+  renderReadout(eqs,specs);
+  drawTD(eqs,specs);
+}
+
+// ---- trace–determinant inset ----
+function drawTD(eqs,specs){
+  if(!sys.showTD){ document.getElementById('tdCard').style.display='none'; return; }
+  document.getElementById('tdCard').style.display='';
+  const w=tdcv.clientWidth, h=tdcv.clientHeight;
+  tdx.clearRect(0,0,w,h);
+  // ranges: a fixed frame per system keeps the discriminant parabola from appearing to change shape as the sliders move; an auto-fit fallback covers any system without a declared frame
+  let Tmax, Dmax, Dmin;
+  if(sys.tdWin){ Tmax=sys.tdWin.Tmax; Dmin=sys.tdWin.Dmin; Dmax=sys.tdWin.Dmax; }
+  else {
+    Tmax=2.5; Dmax=2.5; Dmin=-1.5;
+    specs.forEach(s=>{ Tmax=Math.max(Tmax,Math.abs(s.tr)*1.2); Dmax=Math.max(Dmax,s.det*1.2); Dmin=Math.min(Dmin,s.det*1.2); });
+  }
+  const T2x=t=> (t+Tmax)/(2*Tmax)*w;
+  const D2y=d=> h-(d-Dmin)/(Dmax-Dmin)*h;
+  // axes
+  tdx.strokeStyle="#cdbfa8"; tdx.lineWidth=1;
+  tdx.beginPath(); tdx.moveTo(T2x(0),0); tdx.lineTo(T2x(0),h); tdx.stroke();
+  tdx.beginPath(); tdx.moveTo(0,D2y(0)); tdx.lineTo(w,D2y(0)); tdx.stroke();
+  // discriminant parabola det = tr^2/4
+  tdx.strokeStyle="#b08a52"; tdx.lineWidth=1.4; tdx.beginPath();
+  let first=true;
+  for(let px=0;px<=w;px+=2){
+    const t=px/w*2*Tmax - Tmax; const d=t*t/4;
+    const py=D2y(d);
+    if(first){ tdx.moveTo(px,py); first=false; } else tdx.lineTo(px,py);
+  }
+  tdx.stroke();
+  // axis labels
+  tdx.fillStyle="#7a6a4a"; tdx.font="500 11px 'IBM Plex Mono', monospace";
+  tdx.textAlign="left"; tdx.textBaseline="alphabetic";
+  tdx.fillText("tr", w-16, Math.min(h-5, D2y(0)+14));
+  tdx.fillText("det", T2x(0)+5, 12);
+  // subtle region guides near the edges, matching the labeled map below
+  const ax=T2x(0), ay=D2y(0);
+  tdx.font="500 10px 'Outfit', sans-serif"; tdx.fillStyle="rgba(122,106,74,.6)";
+  tdx.textAlign="left";  tdx.fillText("stable focus", 7, 13);
+  tdx.textAlign="right"; tdx.fillText("unstable focus", w-7, 13);
+  tdx.textAlign="left";  tdx.fillText("stable node", 7, Math.max(28, ay-7));
+  tdx.textAlign="right"; tdx.fillText("unstable node", w-7, Math.max(28, ay-7));
+  if(ay < h-8){ tdx.textAlign="center"; tdx.fillText("saddle", ax, h-7); }
+  tdx.textAlign="left";
+  // points; an equilibrium pushed past the fixed frame is clamped to the edge with a small arrow toward its true location
+  specs.forEach((s)=>{
+    const cl=classify(s);
+    const stable = !s.complex ? (s.evals[0].re<0 && s.evals[1].re<0) : s.tr<0;
+    const x=T2x(s.tr), y=D2y(s.det), m=12;
+    const cx=Math.max(m,Math.min(w-m,x)), cy=Math.max(m,Math.min(h-m,y));
+    const off=(cx!==x)||(cy!==y);
+    tdx.lineWidth=2; tdx.strokeStyle=cl.color;
+    tdx.fillStyle = s.det<0 ? getCss('--cream') : (stable ? cl.color : getCss('--cream'));
+    tdx.beginPath(); tdx.arc(cx,cy, off?4:5, 0,7); tdx.fill(); tdx.stroke();
+    if(off){
+      const dx=x-cx, dy=y-cy, L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L, px=-uy, py=ux;
+      const bx=cx+ux*6, by=cy+uy*6, tx=cx+ux*11, ty=cy+uy*11;
+      tdx.fillStyle=cl.color; tdx.beginPath();
+      tdx.moveTo(tx,ty); tdx.lineTo(bx+px*3.5, by+py*3.5); tdx.lineTo(bx-px*3.5, by-py*3.5);
+      tdx.closePath(); tdx.fill();
+    }
+  });
+}
+
+// ---- readout ----
+function fmt(v,d=3){ if(!isFinite(v)) return "—"; const s=v.toFixed(d); return (s==="-0.000"||s==="-0.00")?s.slice(1):s; }
+function renderReadout(eqs,specs){
+  const host=document.getElementById('readout');
+  if(eqs.length===0){ host.innerHTML='<div class="hint">No equilibria found.</div>'; return; }
+  let html="";
+  const EVTIP="Each eigenvector is an invariant direction through the equilibrium. Along a real eigenvalue's eigenvector, trajectories move inward when that eigenvalue is negative (approach) and outward when it is positive (retreat); a node has both the same sign, whereas a saddle has one of each. A complex pair has no real invariant line: the real and imaginary parts shown span the plane of rotation, and trajectories spiral instead of following a fixed direction.";
+  eqs.forEach((e,i)=>{
+    const sp=specs[i], cl=classify(sp), J=jacobian(e[0],e[1]);
+    const lt=LBL_TIPS[cl.label]||"";
+    const pill=lt
+      ? `<span class="cls" tabindex="0" data-tip="${lt}" style="background:${cl.color}1a;color:${cl.color}">${cl.label}</span>`
+      : `<span class="cls" style="background:${cl.color}1a;color:${cl.color}">${cl.label}</span>`;
+    const evalStr = sp.complex
+      ? `\u03bb = ${fmt(sp.evals[0].re)} \u00b1 ${fmt(Math.abs(sp.evals[0].im))} i`
+      : `\u03bb\u2081 = ${fmt(sp.evals[0].re)},  \u03bb\u2082 = ${fmt(sp.evals[1].re)}`;
+    // nullcline slopes at this eq (from J)
+    const sf = Math.abs(J[0][1])>1e-9 ? -J[0][0]/J[0][1] : Infinity;
+    const sg = Math.abs(J[1][1])>1e-9 ? -J[1][0]/J[1][1] : Infinity;
+    const slopeStr = `s<sub>f</sub> = ${isFinite(sf)?fmt(sf,2):'\u221e'},  s<sub>g</sub> = ${isFinite(sg)?fmt(sg,2):'\u221e'}`;
+    html += `<div class="eq">
+      ${pill}
+      <span class="pt">(${fmt(e[0])}, ${fmt(e[1])})</span>
+      <table>
+        <tr><td class="k">J</td><td>[[${fmt(J[0][0],2)}, ${fmt(J[0][1],2)}], [${fmt(J[1][0],2)}, ${fmt(J[1][1],2)}]]</td></tr>
+        <tr><td class="k"><span class="tip" tabindex="0" data-tip="Trace: \u2202\u1E8B/\u2202x + \u2202\u1E8F/\u2202y = \u03bb\u2081 + \u03bb\u2082. Its sign sets growth or decay \u2013 negative gives a stable node or focus, positive an unstable one. On its own it says nothing about saddles.">tr</span> / <span class="tip" tabindex="0" data-tip="Determinant: (\u2202\u1E8B/\u2202x)(\u2202\u1E8F/\u2202y) \u2212 (\u2202\u1E8B/\u2202y)(\u2202\u1E8F/\u2202x) = \u03bb\u2081 \u03bb\u2082. Negative gives a saddle; positive gives a node or focus, with the trace then setting stability.">det</span> / <span class="tip" tabindex="0" data-tip="Discriminant: tr\u00b2 \u2212 4 det. Non-negative gives real eigenvalues (a node or saddle); negative gives a complex pair (a focus or center).">disc</span></td><td>${fmt(sp.tr,2)} / ${fmt(sp.det,2)} / ${fmt(sp.disc,2)}</td></tr>
+        <tr><td class="k"><span class="tip" tabindex="0" data-tip="Eigenvalues of J. Both real parts negative is stable, any positive real part is unstable. Real eigenvalues give a node or saddle; a complex conjugate pair gives rotation \u2013 a focus when the real part is nonzero, a center when it is zero.">eigenvalues</span></td><td>${evalStr}</td></tr>
+        ${sp.complex
+          ? `<tr><td class="k"><span class="tip" tabindex="0" data-tip="${EVTIP}">eigenvectors</span></td><td>[${fmt(sp.evr[0],2)}, ${fmt(sp.evr[1],2)}] \u00b1 i[${fmt(sp.evi[0],2)}, ${fmt(sp.evi[1],2)}]</td></tr>`
+          : `<tr><td class="k"><span class="tip" tabindex="0" data-tip="${EVTIP}">eigenvectors</span></td><td>[${fmt(sp.evecs[0][0],2)}, ${fmt(sp.evecs[0][1],2)}], [${fmt(sp.evecs[1][0],2)}, ${fmt(sp.evecs[1][1],2)}]</td></tr>`}
+        <tr><td class="k">nullcline slopes</td><td>${slopeStr}</td></tr>
+        <tr><td class="k"><span class="htip" tabindex="0" data-tip="The identity det J = (\u2202\u1E8B/\u2202y)(\u2202\u1E8F/\u2202y)(s<sub>g</sub> \u2212 s<sub>f</sub>). The slope difference (s<sub>g</sub> \u2212 s<sub>f</sub>) is the angle between the nullclines, but it sets det only after scaling by those two y-partials. A negative value here is the saddle, and the angle alone never settles stability.">det check</span></td><td>(\u2202\u1E8B/\u2202y)(\u2202\u1E8F/\u2202y)(s<sub>g</sub>\u2212s<sub>f</sub>) = ${fmt(detCheck(J),2)}</td></tr>
+      </table>
+    </div>`;
+  });
+  host.innerHTML=html;
+}
+function detCheck(J){
+  const fy=J[0][1], gy=J[1][1];
+  const sf=Math.abs(fy)>1e-9?-J[0][0]/fy:0, sg=Math.abs(gy)>1e-9?-J[1][0]/gy:0;
+  return fy*gy*(sg-sf);
+}
+
+// ---- helpers ----
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function toggle(id){ return document.getElementById(id).checked; }
+
+// ---- UI build ----
+function matrixHTML(c){
+  return `<span class="mtx"><span class="brk l"></span>`
+    + `<span class="cells"><span>${c[0]}</span><span>${c[1]}</span><span>${c[2]}</span><span>${c[3]}</span></span>`
+    + `<span class="brk r"></span></span>`;
+}
+function renderBanner(){
+  const jac = sys.jac ? `<span class="jacsym tip plain" tabindex="0" data-tip="The Jacobian J gathers every first-order partial derivative of the system: the top row is \u2202\u1E8B/\u2202x and \u2202\u1E8B/\u2202y, the bottom row \u2202\u1E8F/\u2202x and \u2202\u1E8F/\u2202y. When evaluated at an equilibrium, it represents a linearized approximation of the system's behavior near that equilibrium."><span class="jlab">J =</span>${matrixHTML(sys.jac)}</span>` : "";
+  document.getElementById('eqbanner').innerHTML =
+    `<div class="eqs">${sys.eq}</div>` + jac + (sys.pnote ? `<span class="pnote">${sys.pnote}</span>` : "");
+}
+function buildTabs(){
+  const host=document.getElementById('tabs'); host.innerHTML="";
+  Object.keys(SYSTEMS).forEach(k=>{
+    const b=document.createElement('button');
+    b.className="tab"+(k===curKey?" active":"");
+    b.textContent=SYSTEMS[k].name;
+    b.onclick=()=>{ curKey=k; sys=SYSTEMS[k]; loadParams(); trajectories=[]; buildTabs(); buildSliders(); renderBanner(); document.getElementById('sysDesc').textContent=sys.desc; setHint(); draw(); };
+    host.appendChild(b);
+  });
+}
+function buildSliders(){
+  const host=document.getElementById('sliders'); host.innerHTML="";
+  sys.params.forEach(s=>{
+    const wrap=document.createElement('div'); wrap.className="slider";
+    wrap.innerHTML=`<div class="lab"><span class="nm">${s.label}</span><span class="vl" id="v_${s.key}">${P[s.key]}</span></div>`;
+    const inp=document.createElement('input');
+    inp.type="range"; inp.min=s.min; inp.max=s.max; inp.step=s.step; inp.value=P[s.key];
+    inp.oninput=()=>{ P[s.key]=parseFloat(inp.value); document.getElementById('v_'+s.key).textContent=(+inp.value).toFixed(2); recomputeTraj(); draw(); };
+    wrap.appendChild(inp); host.appendChild(wrap);
+  });
+}
+function recomputeTraj(){ trajectories=trajectories.map(t=>{ const r=buildTrajFromSeed(t.seed); r.seed=t.seed; return r; }); }
+function buildTrajFromSeed(seed){
+  const fwd=integrate(seed[0],seed[1],1);
+  if(toggle('t_back')){ const bwd=integrate(seed[0],seed[1],-1).reverse(); return bwd.concat(fwd); }
+  return fwd;
+}
+
+cv.addEventListener('click', ev=>{
+  const r=cv.getBoundingClientRect();
+  const px=ev.clientX-r.left, py=ev.clientY-r.top;
+  const x=px2X(px), y=px2Y(py);
+  const t=buildTrajFromSeed([x,y]); t.seed=[x,y];
+  trajectories.push(t); draw();
+});
+document.getElementById('clearTraj').onclick=()=>{ trajectories=[]; draw(); };
+['t_null','t_field','t_evec','t_eq'].forEach(id=>document.getElementById(id).onchange=draw);
+document.getElementById('t_back').onchange=()=>{ recomputeTraj(); draw(); };
+
+window.addEventListener('resize', fitCanvas);
+
+// init
+buildTabs(); buildSliders(); renderBanner();
+document.getElementById('sysDesc').textContent=sys.desc;
+function setHint(){ const hn=document.getElementById('hint'); if(sys.tip){ hn.innerHTML=sys.tip.replace(/^Tip:/,'<b>Tip:</b>'); hn.style.display=''; } else { hn.textContent=''; hn.style.display='none'; } }
+setHint();
+fitCanvas();
+
+// JS-driven floating tooltips for the SVG cartoons and for the readout's HTML tooltip (det check), where subscripts must render; the inline .tip glossary terms keep their CSS tooltip and are skipped here
+(function(){
+  const tip=document.createElement('div');
+  tip.style.cssText='position:fixed;z-index:60;max-width:250px;padding:7px 10px;border-radius:7px;'+
+    'background:#20402f;color:#f4ecd8;font:400 12.5px/1.45 \'Outfit\',sans-serif;'+
+    'box-shadow:0 5px 16px rgba(31,64,53,.28);pointer-events:none;opacity:0;transition:opacity .08s';
+  document.body.appendChild(tip);
+  function place(x,y){
+    const r=tip.getBoundingClientRect();
+    let nx=x+14, ny=y+16;
+    if(nx+r.width>window.innerWidth-8) nx=x-r.width-14;
+    if(ny+r.height>window.innerHeight-8) ny=y-r.height-16;
+    tip.style.left=Math.max(8,nx)+'px'; tip.style.top=Math.max(8,ny)+'px';
+  }
+  const show=(t,x,y)=>{ tip.innerHTML=t.getAttribute('data-tip'); tip.style.opacity='1'; place(x,y); };
+  const hide=()=>{ tip.style.opacity='0'; };
+  function move(e){
+    const t=e.target.closest ? e.target.closest('[data-tip]') : null;
+    if(t && !t.classList.contains('tip')) show(t,e.clientX,e.clientY);
+    else hide();
+  }
+  document.querySelectorAll('.cartoon').forEach(svg=>{
+    svg.addEventListener('mousemove', move);
+    svg.addEventListener('mouseleave', hide);
+  });
+  const ro=document.getElementById('readout');
+  if(ro){
+    ro.addEventListener('mousemove', move);
+    ro.addEventListener('mouseleave', hide);
+    ro.addEventListener('focusin', e=>{ const t=e.target.closest&&e.target.closest('[data-tip]'); if(t&&!t.classList.contains('tip')){ const r=t.getBoundingClientRect(); show(t,r.left,r.bottom); } });
+    ro.addEventListener('focusout', hide);
+  }
+  // touch devices: tap a labeled term to show its tooltip (hover and the CSS tooltip do not fire on touch), and tap elsewhere to dismiss it. This reaches every [data-tip], including the cartoon region labels that have no focus path
+  if(window.matchMedia && window.matchMedia('(hover: none)').matches){
+    document.addEventListener('click', e=>{
+      const t=e.target.closest ? e.target.closest('[data-tip]') : null;
+      if(t){ const r=t.getBoundingClientRect(); show(t, r.left+r.width/2, r.bottom); }
+      else hide();
+    });
+  }
+})();
+</script>
+<footer id="back-link-footer" style="max-width:1180px;margin:0 auto;padding:0 18px 1.5rem;">
+  <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+    <a href="../" style="color:#2e7d32;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
+  </div>
+</footer>
+<script>
+if (window.self !== window.top) { var f = document.getElementById('back-link-footer'); if (f) f.style.display = 'none'; }
+</script>
+</body>
+</html>

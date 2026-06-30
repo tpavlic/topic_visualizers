@@ -168,6 +168,9 @@ Update the **Current demos** list below to include the new demo.
 
 ### Nonlinear Systems
 
+- **Nullclines & Jacobian Linearization Explorer** — `jacobian_linearization/nullclines-jacobian-explorer.html`
+  Interactive explorer of how nullclines locate equilibria, what the Jacobian linearization reveals about their stability, and what the nullcline geometry can and cannot show on its own.
+
 - **Lyapunov Level-Set Explorer** — `lyapunov_functions/lyapunov_explorer.html`
   Interactive exploration of Lyapunov functions and level-set curves for common nonlinear dynamical systems, plus sum-of-squares synthesis that builds the semidefinite program and exports runnable MATLAB and Python code.
 

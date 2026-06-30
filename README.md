@@ -15,10 +15,11 @@ in course management systems (e.g., Canvas LMS) as an iframe.
 
 ### Nonlinear Systems
 
-| Demo                                         | Description                                                                                                                                                                                              |
-|----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`lyapunov_functions/`](lyapunov_functions/) | Explore Lyapunov functions and level-set curves for common nonlinear dynamical systems, then synthesize them automatically with sum-of-squares programming that exports runnable MATLAB and Python code. |
-| [`chaos/`](chaos/)                           | Explore multi-scroll chaotic attractors and hyperchaos, and how their dynamics underpin image-encryption schemes.                                                                                        |
+| Demo                                                 | Description                                                                                                                                                                                              |
+|------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`jacobian_linearization/`](jacobian_linearization/) | See how nullclines locate equilibria, what the Jacobian linearization reveals about their stability, and what the nullcline geometry can and cannot show on its own.                                     |
+| [`lyapunov_functions/`](lyapunov_functions/)         | Explore Lyapunov functions and level-set curves for common nonlinear dynamical systems, then synthesize them automatically with sum-of-squares programming that exports runnable MATLAB and Python code. |
+| [`chaos/`](chaos/)                                   | Explore multi-scroll chaotic attractors and hyperchaos, and how their dynamics underpin image-encryption schemes.                                                                                        |
 
 ### Statistics
 
