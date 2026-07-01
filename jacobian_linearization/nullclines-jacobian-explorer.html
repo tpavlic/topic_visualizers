@@ -112,8 +112,8 @@
       grid-template-areas:
         "params"
         "phase"
-        "readout"
-        "td";
+        "td"
+        "readout";
     }
   }
 
@@ -165,23 +165,9 @@
   .tip{border-bottom:1px dotted var(--orange);cursor:help;position:relative}
   .tip.plain{border-bottom:none}
   .htip{border-bottom:1px dotted var(--orange);cursor:help;position:relative}
-  @media (hover: none){
-    /* on touch there is no hover; a tap shows the same text through the floating tooltip, so suppress the CSS variant to avoid a duplicate */
-    .tip:hover::after,.tip:focus::after,.tip:hover::before,.tip:focus::before{content:none}
-  }
   sub,sup{font-size:.72em;line-height:0;position:relative;vertical-align:baseline}
   sub{bottom:-.28em}
   sup{top:-.45em}
-  .tip:hover::after,.tip:focus::after{
-    content:attr(data-tip);position:absolute;left:0;bottom:150%;
-    background:var(--ink);color:var(--cream);
-    font-family:'Outfit',sans-serif;font-size:12px;font-weight:400;line-height:1.45;
-    padding:8px 10px;border-radius:8px;width:max-content;max-width:270px;white-space:normal;
-    z-index:30;box-shadow:0 5px 16px rgba(31,64,53,.28);pointer-events:none}
-  .tip:hover::before,.tip:focus::before{
-    content:'';position:absolute;left:8px;bottom:150%;
-    border:6px solid transparent;border-top-color:var(--ink);
-    transform:translateY(100%);z-index:31;pointer-events:none}
 
   .swatchrow{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--ink-soft);margin-top:6px}
   .sw{display:inline-flex;align-items:center;gap:6px}
@@ -1007,7 +993,7 @@ function setHint(){ const hn=document.getElementById('hint'); if(sys.tip){ hn.in
 setHint();
 fitCanvas();
 
-// JS-driven floating tooltips for the SVG cartoons and for the readout's HTML tooltip (det check), where subscripts must render; the inline .tip glossary terms keep their CSS tooltip and are skipped here
+// One JS-driven floating tooltip serves every [data-tip] on the page: the SVG cartoon labels, the readout's HTML tooltips (det check), and the inline .tip glossary terms alike. Routing them all through a single element renders subscripts correctly and guarantees a term can never show two tooltips at once
 (function(){
   const tip=document.createElement('div');
   tip.style.cssText='position:fixed;z-index:60;max-width:250px;padding:7px 10px;border-radius:7px;'+
@@ -1023,30 +1009,12 @@ fitCanvas();
   }
   const show=(t,x,y)=>{ tip.innerHTML=t.getAttribute('data-tip'); tip.style.opacity='1'; place(x,y); };
   const hide=()=>{ tip.style.opacity='0'; };
-  function move(e){
-    const t=e.target.closest ? e.target.closest('[data-tip]') : null;
-    if(t && !t.classList.contains('tip')) show(t,e.clientX,e.clientY);
-    else hide();
-  }
-  document.querySelectorAll('.cartoon').forEach(svg=>{
-    svg.addEventListener('mousemove', move);
-    svg.addEventListener('mouseleave', hide);
-  });
-  const ro=document.getElementById('readout');
-  if(ro){
-    ro.addEventListener('mousemove', move);
-    ro.addEventListener('mouseleave', hide);
-    ro.addEventListener('focusin', e=>{ const t=e.target.closest&&e.target.closest('[data-tip]'); if(t&&!t.classList.contains('tip')){ const r=t.getBoundingClientRect(); show(t,r.left,r.bottom); } });
-    ro.addEventListener('focusout', hide);
-  }
-  // touch devices: tap a labeled term to show its tooltip (hover and the CSS tooltip do not fire on touch), and tap elsewhere to dismiss it. This reaches every [data-tip], including the cartoon region labels that have no focus path
-  if(window.matchMedia && window.matchMedia('(hover: none)').matches){
-    document.addEventListener('click', e=>{
-      const t=e.target.closest ? e.target.closest('[data-tip]') : null;
-      if(t){ const r=t.getBoundingClientRect(); show(t, r.left+r.width/2, r.bottom); }
-      else hide();
-    });
-  }
+  const target=e=>(e.target.closest ? e.target.closest('[data-tip]') : null);
+  // three entry points into the same tooltip: hover on desktop, tap on touch, and focus for the keyboard
+  document.addEventListener('mousemove', e=>{ const t=target(e); if(t) show(t,e.clientX,e.clientY); else hide(); });
+  document.addEventListener('click', e=>{ const t=target(e); if(t){ const r=t.getBoundingClientRect(); show(t, r.left+r.width/2, r.bottom); } else hide(); });
+  document.addEventListener('focusin', e=>{ const t=target(e); if(t){ const r=t.getBoundingClientRect(); show(t, r.left+r.width/2, r.bottom); } });
+  document.addEventListener('focusout', hide);
 })();
 </script>
 <footer id="back-link-footer" style="max-width:1180px;margin:0 auto;padding:0 18px 1.5rem;">
