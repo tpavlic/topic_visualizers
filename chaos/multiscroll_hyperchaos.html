@@ -549,7 +549,7 @@ a { color: var(--accent); }
 
 .foot {
   border-top: 1px solid var(--border);
-  margin-top: 36px;
+  margin-top: 18px;
   padding-top: 12px;
   padding-bottom: 0;
   font-size: 0.74rem;
@@ -557,7 +557,8 @@ a { color: var(--accent); }
   text-align: center;
   font-family: var(--mono);
 }
-.foot a { color: var(--tiny); text-decoration: underline; }
+.foot a { color: var(--accent); text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
 .footer-sep { display: inline; }
 .footer-lic { display: inline; }
 
@@ -569,7 +570,8 @@ a { color: var(--accent); }
   text-align: left;
   margin: 12px 0 0;
 }
-.lede-credit a { color: var(--tiny); text-decoration: underline; }
+.lede-credit a { color: var(--accent); text-decoration: none; }
+.lede-credit a:hover { text-decoration: underline; }
 
 @media (max-width: 880px) {
   .grid, .grid-2eq, .grid-encrypt { grid-template-columns: 1fr; }
@@ -3740,7 +3742,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <footer id="back-link-footer" style="max-width:1180px;margin:0 auto;padding:0 22px 1.5rem;">
-  <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+  <div style="padding-top:0.35rem;font-size:0.8rem;color:#888;">
     <a href="../" style="color:#2a5a8c;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
   </div>
 </footer>

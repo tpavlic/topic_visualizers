@@ -144,10 +144,12 @@ tr:last-child td { border-bottom:none; }
 .rblock-hdr { background:var(--green-dark); color:white; padding:8px 14px; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.07em; font-weight:600; display:flex; justify-content:space-between; align-items:center; }
 .rblock-hdr .lab-r { font-family:var(--mono); text-transform:none; letter-spacing:0; background:rgba(255,255,255,0.18); padding:2px 7px; border-radius:3px; font-size:0.85em; }
 .rblock pre { margin:0; padding:14px 16px; font-family:var(--mono); font-size:0.82rem; line-height:1.55; color:var(--text); white-space:pre; overflow-x:auto; }
-.foot { border-top:1px solid var(--border); margin-top:22px; padding-top:12px; font-size:0.74rem; color:var(--tiny); text-align:center; font-family:var(--mono); }
-.foot a { color:var(--tiny); text-decoration:underline; }
+.foot { margin-top:16px; font-size:0.74rem; color:var(--tiny); text-align:center; font-family:var(--mono); }
+.foot a { color:var(--accent); text-decoration:none; }
+.foot a:hover { text-decoration:underline; }
 .topcopy { text-align:left; font-family:var(--mono); font-size:0.74rem; color:var(--tiny); margin:12px 0 0; }
-.topcopy a { color:var(--tiny); text-decoration:underline; }
+.topcopy a { color:var(--accent); text-decoration:none; }
+.topcopy a:hover { text-decoration:underline; }
 .footer-sep { display:inline; } .footer-lic { display:inline; }
 .note { font-size:0.82rem; color:var(--muted); line-height:1.55; margin:0; }
 .pill { display:inline-block; padding:2px 7px; border-radius:12px; font-size:0.72rem; font-weight:600; background:var(--green-pale); color:var(--green-dark); border:1px solid var(--green-tint); }
@@ -871,7 +873,7 @@ setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',(
 })();
 </script>
 <footer id="back-link-footer" style="max-width:1180px;margin:-2rem auto 0;padding:0 22px 1.5rem;">
-  <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+  <div style="padding-top:0.35rem;font-size:0.8rem;color:#888;">
     <a href="../" style="color:#2a5a8c;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
   </div>
 </footer>

@@ -60,7 +60,7 @@
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 6px}
 
   header h1{
     font-weight:700;font-size:clamp(20px,3.2vw,30px);
@@ -236,9 +236,10 @@
 
   /* credit and footer */
   .credit{font-size:12px;color:var(--ink-soft);margin:0}
-  .foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line-soft);
+  .foot{margin-top:16px;
     text-align:center;font-size:12px;color:var(--ink-soft)}
-  .credit a,.foot a{color:var(--orange);text-decoration:underline}
+  .credit a,.foot a{color:var(--orange);text-decoration:none}
+  .credit a:hover,.foot a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -1018,7 +1019,7 @@ fitCanvas();
 })();
 </script>
 <footer id="back-link-footer" style="max-width:1180px;margin:0 auto;padding:0 18px 1.5rem;">
-  <div style="padding-top:0.75rem;border-top:1px solid #e0e0e0;font-size:0.8rem;color:#888;">
+  <div style="padding-top:0.35rem;font-size:0.8rem;color:#888;">
     <a href="../" style="color:#e07a23;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">&larr; All visualizations</a>
   </div>
 </footer>
