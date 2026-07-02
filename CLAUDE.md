@@ -160,6 +160,38 @@ across header/footer:
 - Bring body/reference links into the same behavior (e.g. via the page's global `a{}` rule:
   `a{…;text-decoration:none} a:hover{text-decoration:underline}`) so the whole page is consistent.
 
+**At most one hard rule in the footer area.** The copyright block and the `#back-link-footer` can
+each carry a `border-top`, and having both stacks two rules bracketing the copyright, which reads as
+too much. Keep at most one. If the page body is built from panels with hard edges, no footer rule is
+needed. If the body is borderless, a single rule above the copyright can help, mirroring the rule
+under the lede at the top of the page, but then do not also put one on the back-link footer.
+
+**When you remove a footer rule, drop the `padding-top` that paired with it.** The `#back-link-footer`
+template pairs `border-top:1px solid #e0e0e0` with `padding-top:0.75rem` on its inner `<div>` (the
+padding seats the link below the rule). Once you remove the border, reduce that padding (about
+`0.35rem`) or the back-link floats with a phantom gap.
+
+**Tighten the copyright-to-back-link gap from the content side, not with a negative margin on the
+back-link footer.** The copyright is usually the last child inside the main content wrapper, so the
+gap below it is the wrapper's `padding-bottom`, not the copyright's own margin. Reduce that wrapper
+bottom padding (a positive value) rather than pulling the back-link up with a negative `margin-top`.
+
+**Space under the back-link: do not stack `body` padding-bottom and the footer's own `padding-bottom`.**
+If `body` has all-sides padding (e.g. `padding:18px`), a `#back-link-footer` that also sets a bottom
+padding doubles the space, so that page's back-link sits visibly lower than sibling pages whose
+footers have none. Pick one source (usually the body padding) and keep it consistent across pages.
+
+**Header copyright in a colored banner.** For a right-aligned copyright/license in a colored header,
+make it a flex child pushed right with `margin-left:auto`, styled like the muted subtitle. On a dark
+or colored banner keep the license link `color:inherit` (the banner's light text) rather than the
+page accent, which would be unreadable there, but keep hover-underline so its behavior matches the
+footer link. To balance a two-line title, stack it on two lines by default (copyright on top, license
+below) and collapse to one line as the header narrows, using a toggled `<br>` and a `·` separator
+(two-line: the `<br>` shows and the separator is hidden; one-line: the `<br>` is hidden, the separator
+shows, and `width:100%` drops the block onto its own line under the subtitle). Split it back to two
+lines at a much narrower breakpoint. Match the header separator's spacing to the footer separator's
+(e.g. `margin:0 .3em`) so both dots look the same.
+
 ### 3. Entry in `index.html`
 
 Add a `<li>` inside the appropriate `<section class="demo-section">` in `index.html`.
