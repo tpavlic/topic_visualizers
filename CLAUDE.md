@@ -8,6 +8,16 @@ topics in science, mathematics, statistics, and engineering, built by Theodore P
 
 ## Registering an existing visualization
 
+**Confine setup edits to the file's outer edges (the `<head>` and the back-link footer); leave the
+body interior untouched.** These apps are often authored or edited in a separate tool (such as Claude
+Desktop) and then re-imported, so the body between the head and the footer is owned by that tool.
+When you register, add, or set up a demo here, restrict your changes to the head metadata (title,
+description, OG/Twitter/GA tags) and the back-link footer with its iframe-hiding script, and do not
+restructure or restyle anything in between, so a later re-import of the app body does not have to
+re-apply your interior edits. This applies to the setup/import path; when the user explicitly asks
+you to change the body (for example a footer or layout review pass), that is fine. Otherwise, if the
+interior seems to need a change, flag it and ask rather than editing it silently.
+
 When a user asks to add an existing demo to the index/README/CLAUDE.md, **always also audit
 the demo's HTML file itself** before finishing:
 
