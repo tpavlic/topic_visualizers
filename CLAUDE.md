@@ -97,11 +97,12 @@ so entities there decode fine and need no change.
 
 **Twitter/X image requirements** (stricter than other platforms):
 
-- Aspect ratio must be close to **2:1** (e.g. 1200×600, 2400×1200). Twitter silently drops
-  images that deviate significantly, even if Facebook/Mastodon/Bluesky render them fine.
+- Aim for an aspect ratio near **2:1** (e.g. 1200×600, 2400×1200) and keep the important
+  content centered. Twitter's own card code enforces only a 280×150 minimum, so a wider ratio
+  is not rejected, but the card is rendered toward 2:1 and the edges may not survive.
 - File size must be **under 5 MB**.
-- If the natural preview image is the wrong ratio, create a cropped/padded version for
-  `twitter:image` while leaving `og:image` pointing at the full-resolution original.
+- Only if a ratio actually causes a problem, add a cropped or padded version for `twitter:image`
+  while leaving `og:image` on the full-resolution original. Do not do this pre-emptively.
 
 ### 2. Footer with back-link and iframe-hiding script
 
