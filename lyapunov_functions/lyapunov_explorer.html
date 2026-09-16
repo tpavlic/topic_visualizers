@@ -458,6 +458,8 @@
     margin-bottom: -1px;
     transition: color 0.15s, border-color 0.15s;
     white-space: nowrap;
+    text-decoration: none;
+    display: inline-block;
   }
   .tab-btn:hover { color: var(--text); }
   .tab-btn.active { color: var(--green); border-bottom-color: var(--green); background: var(--cream); }
@@ -786,12 +788,12 @@
 
   <!-- ═══ TAB BAR ═══ -->
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="explorer">Explorer</button>
-    <button class="tab-btn" data-tab="systems">Systems Reference</button>
-    <button class="tab-btn" data-tab="candidates">Lyapunov Reference</button>
-    <button class="tab-btn" data-tab="terms">Key Terms</button>
-    <button class="tab-btn" data-tab="sosmethod">SOS Synthesis</button>
-    <button class="tab-btn" data-tab="sos">SOS Code</button>
+    <a class="tab-btn active" href="#explorer" data-tab="explorer">Explorer</a>
+    <a class="tab-btn" href="#systems" data-tab="systems">Systems Reference</a>
+    <a class="tab-btn" href="#candidates" data-tab="candidates">Lyapunov Reference</a>
+    <a class="tab-btn" href="#terms" data-tab="terms">Key Terms</a>
+    <a class="tab-btn" href="#sosmethod" data-tab="sosmethod">SOS Synthesis</a>
+    <a class="tab-btn" href="#sos" data-tab="sos">SOS Code</a>
     <select class="tab-select" id="tabSelect">
       <option value="explorer">Explorer</option>
       <option value="systems">Systems Reference</option>
@@ -962,7 +964,7 @@
 <div id="panel-systems" class="tab-panel">
 <div class="ref-panel">
   <div class="ref-intro">
-    A catalog of the dynamical systems available in the <span class="tab-link" data-goto="explorer">Explorer</span>, grouped by family. For each system the linearization, equilibrium type, physical interpretation (where applicable), and suggested Lyapunov candidates are noted. Some candidates have a principled origin, such as an energy or a structural argument; others are simply what worked because for many systems finding V is guess and check, the difficulty that the <span class="tab-link" data-goto="sos">SOS Code</span> tab automates.
+    A catalog of the dynamical systems available in the <a class="tab-link" href="#explorer" data-goto="explorer">Explorer</a>, grouped by family. For each system the linearization, equilibrium type, physical interpretation (where applicable), and suggested Lyapunov candidates are noted. Some candidates have a principled origin, such as an energy or a structural argument; others are simply what worked because for many systems finding V is guess and check, the difficulty that the <a class="tab-link" href="#sos" data-goto="sos">SOS Code</a> tab automates.
   </div>
 
   <div class="ref-group-title">Linear Systems — behavior fully determined by eigenvalues of A</div>
@@ -1083,7 +1085,7 @@
   <div class="ref-group-title">Mechanical / Physical Systems</div>
 
   <div class="ref-intro section-lede">
-    For a mechanical or physical system, the total energy is a principled first guess for a Lyapunov function rather than something to search for. The Hamiltonian H = T + U (kinetic plus potential energy) is positive definite about a stable equilibrium that sits at an energy minimum, and along trajectories dH/dt = −(dissipation) ≤ 0 because a passive system can only shed stored energy. A damped mechanical system therefore hands you V ∝ H almost for free, and the only work left is reading off the sublevel set it certifies. The two examples below follow this pattern; the energy argument behind it is developed on the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
+    For a mechanical or physical system, the total energy is a principled first guess for a Lyapunov function rather than something to search for. The Hamiltonian H = T + U (kinetic plus potential energy) is positive definite about a stable equilibrium that sits at an energy minimum, and along trajectories dH/dt = −(dissipation) ≤ 0 because a passive system can only shed stored energy. A damped mechanical system therefore hands you V ∝ H almost for free, and the only work left is reading off the sublevel set it certifies. The two examples below follow this pattern; the energy argument behind it is developed on the <a class="tab-link" href="#candidates" data-goto="candidates">Lyapunov Reference</a> tab.
   </div>
 
   <div class="ref-entry">
@@ -1121,7 +1123,7 @@
   <div class="ref-group-title">Ecological / Population Dynamics</div>
 
   <div class="ref-intro section-lede">
-    Population models can carry the same energy logic as mechanical systems. Where individuals only move between states, the population itself is conserved, with births acting as a source and deaths as dissipation. Lotka–Volterra predator–prey is less direct because its birth and death terms do not cancel: in place of a conserved head count it has a first integral, a combination of both populations held constant along every orbit, that plays the role the Hamiltonian plays in mechanics. That first integral is positive definite about the coexistence equilibrium, the natural Lyapunov candidate; adding damping turns it into a strict Lyapunov function, dV/dt ≤ 0, exactly as dissipation does for a mechanical system. That is why the predator–prey candidate sits in the Energy Functions group of the <span class="tab-link" data-goto="candidates">Lyapunov Reference</span> tab.
+    Population models can carry the same energy logic as mechanical systems. Where individuals only move between states, the population itself is conserved, with births acting as a source and deaths as dissipation. Lotka–Volterra predator–prey is less direct because its birth and death terms do not cancel: in place of a conserved head count it has a first integral, a combination of both populations held constant along every orbit, that plays the role the Hamiltonian plays in mechanics. That first integral is positive definite about the coexistence equilibrium, the natural Lyapunov candidate; adding damping turns it into a strict Lyapunov function, dV/dt ≤ 0, exactly as dissipation does for a mechanical system. That is why the predator–prey candidate sits in the Energy Functions group of the <a class="tab-link" href="#candidates" data-goto="candidates">Lyapunov Reference</a> tab.
   </div>
 
   <div class="ref-entry">
@@ -1157,11 +1159,11 @@
 <div id="panel-candidates" class="tab-panel">
 <div class="ref-panel">
   <div class="ref-intro">
-    A catalog of Lyapunov function candidates available in the <span class="tab-link" data-goto="explorer">Explorer</span>. A <em>Lyapunov function</em> for the origin must be positive definite (V(0)=0, V&gt;0 elsewhere) and have V̇=∇V·f ≤ 0 along trajectories. The choice of candidate profoundly affects what stability information can be extracted.
+    A catalog of Lyapunov function candidates available in the <a class="tab-link" href="#explorer" data-goto="explorer">Explorer</a>. A <em>Lyapunov function</em> for the origin must be positive definite (V(0)=0, V&gt;0 elsewhere) and have V̇=∇V·f ≤ 0 along trajectories. The choice of candidate profoundly affects what stability information can be extracted.
   </div>
 
   <div class="ref-callout">
-    <strong>When there is no rationale.</strong> The candidates here each come with a story: an energy, a first integral, or a structural shortcut such as solving AᵀP + PA = −Q for a quadratic. Many systems offer no such story, and choosing V becomes guess and check: propose a form, test whether dV/dt ≤ 0, and adjust. That difficulty is what motivates computational synthesis, in which the search for V is handed to an optimizer. The sum-of-squares method does exactly this; it is introduced at the <span class="tab-link" data-scrollto="sos-synthesis">foot of this tab</span> and carried through to runnable code on the <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> and <span class="tab-link" data-goto="sos">SOS Code</span> tabs.
+    <strong>When there is no rationale.</strong> The candidates here each come with a story: an energy, a first integral, or a structural shortcut such as solving AᵀP + PA = −Q for a quadratic. Many systems offer no such story, and choosing V becomes guess and check: propose a form, test whether dV/dt ≤ 0, and adjust. That difficulty is what motivates computational synthesis, in which the search for V is handed to an optimizer. The sum-of-squares method does exactly this; it is introduced at the <span class="tab-link" data-scrollto="sos-synthesis">foot of this tab</span> and carried through to runnable code on the <a class="tab-link" href="#sosmethod" data-goto="sosmethod">SOS Synthesis</a> and <a class="tab-link" href="#sos" data-goto="sos">SOS Code</a> tabs.
   </div>
 
   <div class="ref-group-title">Quadratic Forms — V = x&#7488;Px, level curves are ellipses</div>
@@ -1258,8 +1260,8 @@ With damping c:  dV/dt = −cy²</div>
   <div class="ref-callout">
     <strong>From guessing V to searching for it.</strong> Every candidate above had to be supplied by hand — an energy, a first integral, a quadratic form. When no such candidate is obvious, the search itself can be handed to a convex optimizer: <strong>sum-of-squares (SOS) programming</strong> parameterizes V as a polynomial with unknown coefficients and finds one that certifies stability, automating the step that otherwise needs insight or luck. Two tabs carry this all the way to running code:
     <br><br>
-    &rarr; the <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab builds the exact formulation this tool uses, from the textbook version to the one design choice behind the generated program;<br>
-    &rarr; the <span class="tab-link" data-goto="sos">SOS Code</span> tab generates runnable MATLAB (SOSTOOLS) and Python (SumOfSquares.py) that solves it as a real semidefinite program.
+    &rarr; the <a class="tab-link" href="#sosmethod" data-goto="sosmethod">SOS Synthesis</a> tab builds the exact formulation this tool uses, from the textbook version to the one design choice behind the generated program;<br>
+    &rarr; the <a class="tab-link" href="#sos" data-goto="sos">SOS Code</a> tab generates runnable MATLAB (SOSTOOLS) and Python (SumOfSquares.py) that solves it as a real semidefinite program.
     <br><br>
     The three cards here are the conceptual bridge from the candidate library to those tabs.
   </div>
@@ -1274,14 +1276,14 @@ With damping c:  dV/dt = −cy²</div>
   <div class="ref-entry">
     <div class="ref-entry-head"><span class="ref-entry-name">From candidate to certificate</span></div>
     <div class="ref-body">
-      <p>Parameterize V as a polynomial with unknown coefficients and require V and −dV/dt each to dominate a fixed positive definite function (each of V − ℓ₁ and −dV/dt − ℓ₂ is SOS). When feasible, the program returns a V whose existence certifies asymptotic stability, searching a whole family of candidates at once rather than testing them one by one. The one choice that matters in practice is how strictly to enforce the decrease: a strict margin ℓ₂ certifies convergence outright but is infeasible for degenerate cases such as the Cubic Drain, and so this tool drops it and finishes convergence with a short per-system argument. That trade-off, and the one-line change that restores the strict form, is developed on the <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab.</p>
+      <p>Parameterize V as a polynomial with unknown coefficients and require V and −dV/dt each to dominate a fixed positive definite function (each of V − ℓ₁ and −dV/dt − ℓ₂ is SOS). When feasible, the program returns a V whose existence certifies asymptotic stability, searching a whole family of candidates at once rather than testing them one by one. The one choice that matters in practice is how strictly to enforce the decrease: a strict margin ℓ₂ certifies convergence outright but is infeasible for degenerate cases such as the Cubic Drain, and so this tool drops it and finishes convergence with a short per-system argument. That trade-off, and the one-line change that restores the strict form, is developed on the <a class="tab-link" href="#sosmethod" data-goto="sosmethod">SOS Synthesis</a> tab.</p>
     </div>
   </div>
 
   <div class="ref-entry">
     <div class="ref-entry-head"><span class="ref-entry-name">Relation to this tool</span></div>
     <div class="ref-body">
-      <p>The "Optimize parameters for largest ROA" button on the <span class="tab-link" data-goto="explorer">Explorer</span> tab is a low-dimensional stand-in for the same idea: it searches the two free entries of the quadratic's matrix P by brute-force grid evaluation, where SOS searches the whole cone of positive definite matrices by convex optimization. The crucial difference is what comes out — the button's region is a <em>numerical estimate</em> from sampling the grid, whereas SOS produces an actual <strong>certificate</strong> that holds at every point. Enlarging the certified region, and scaling beyond the quadratic to higher-degree V or non-polynomial dynamics, is where the dedicated software on the <span class="tab-link" data-goto="sos">SOS Code</span> tab takes over.</p>
+      <p>The "Optimize parameters for largest ROA" button on the <a class="tab-link" href="#explorer" data-goto="explorer">Explorer</a> tab is a low-dimensional stand-in for the same idea: it searches the two free entries of the quadratic's matrix P by brute-force grid evaluation, where SOS searches the whole cone of positive definite matrices by convex optimization. The crucial difference is what comes out — the button's region is a <em>numerical estimate</em> from sampling the grid, whereas SOS produces an actual <strong>certificate</strong> that holds at every point. Enlarging the certified region, and scaling beyond the quadratic to higher-degree V or non-polynomial dynamics, is where the dedicated software on the <a class="tab-link" href="#sos" data-goto="sos">SOS Code</a> tab takes over.</p>
     </div>
   </div>
 
@@ -1532,9 +1534,9 @@ With damping c:  dV/dt = −cy²</div>
     Sum-of-squares (SOS) programming turns "find a Lyapunov function" into a <strong>semidefinite
     program</strong> (SDP): a convex search over a whole family of polynomial candidates that returns a
     genuine certificate rather than a sampled guess. This tab builds up the exact formulation the
-    <span class="tab-link" data-goto="sos">SOS Code</span> tab emits, starting from the textbook version and
-    then making one deliberate change. The <span class="tab-link" data-goto="candidates">Lyapunov
-    Reference</span> tab places SOS among the other candidate families; the essentials are restated below so
+    <a class="tab-link" href="#sos" data-goto="sos">SOS Code</a> tab emits, starting from the textbook version and
+    then making one deliberate change. The <a class="tab-link" href="#candidates" data-goto="candidates">Lyapunov
+    Reference</a> tab places SOS among the other candidate families; the essentials are restated below so
     this tab stands on its own.
   </div>
 
@@ -1615,11 +1617,11 @@ With damping c:  dV/dt = −cy²</div>
   <div class="ref-group-title">4. Finishing convergence</div>
   <div class="ref-entry">
     <div class="ref-body">
-      <p>The default template on the <span class="tab-link" data-goto="sos">SOS Code</span> tab proves only
+      <p>The default template on the <a class="tab-link" href="#sos" data-goto="sos">SOS Code</a> tab proves only
       dV/dt ≤ 0 for the polynomial V it finds, which gives stability and an invariant region but not
       convergence. Two routes supply the rest, and which one applies is a property of the Lyapunov function,
       not of the system: every system here already has a region of attraction worked out by energy or LaSalle
-      arguments on the <span class="tab-link" data-goto="explorer">Explorer</span> and Reference tabs, with no
+      arguments on the <a class="tab-link" href="#explorer" data-goto="explorer">Explorer</a> and Reference tabs, with no
       SOS at all.</p>
       <p><strong>Tighten the SDP.</strong> Re-add a strict margin (section 1). Every equilibrium in the
       catalog except the Cubic Drain is hyperbolic, and a quadratic margin then certifies convergence
@@ -1659,7 +1661,7 @@ With damping c:  dV/dt = −cy²</div>
       and the largest-disk certificate is the degree-limited SOS approximation of it. The construction is not
       literally unique because many converse integrands work, and V here is capped at degree d, but in practice
       the bisection recovers very nearly the full basin with far less tuning than the alternating iteration. It
-      is the same move as the <span class="tab-link" data-goto="explorer">Explorer</span> tab's
+      is the same move as the <a class="tab-link" href="#explorer" data-goto="explorer">Explorer</a> tab's
       <strong>"Optimize parameters for largest ROA"</strong> button, which searches the quadratic's two free
       parameters for the largest certified area; here, the scalar searched is the region radius rather than the
       shape of V.</p>
@@ -1729,7 +1731,7 @@ With damping c:  dV/dt = −cy²</div>
     stays feasible rather than the one disk you typed; each step solves one convex program, and V is re-found at
     every radius. This is the <em>non-strict</em> formulation: convergence to the equilibrium is
     finished by a short per-system argument rather than by the SDP itself. The
-    <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab explains why, how it differs from
+    <a class="tab-link" href="#sosmethod" data-goto="sosmethod">SOS Synthesis</a> tab explains why, how it differs from
     the conventional strict certificate, and the one-line change that recovers the strict form. The
     certificate is built around the origin, and so coordinates must be translated first if the stable equilibrium of
     interest is elsewhere. The Duffing system below is handled this way, and its generated comments show the
@@ -1785,7 +1787,7 @@ With damping c:  dV/dt = −cy²</div>
         </ul>
       </li>
       <li><strong>R (certification disk)</strong> is the disk ‖x‖ ≤ R on which decrease is required, and the certified estimate always lies inside this circle. A larger R asks for more, but once the disk reaches past the true basin, for instance a nearby saddle, the problem turns infeasible. With <strong>auto-grow R</strong> off, R is fixed and you choose it; with auto-grow on, R is only a starting radius and the bisection searches outward from it for the largest certifiable disk.</li>
-      <li><strong>Auto-grow R (bisection)</strong> turns the single fixed-R version into a one-dimensional search for the largest certifiable disk. It is the practical way to push the certificate toward the true basin boundary: every step stays a convex program, and V is re-optimized at each radius rather than iterated against the multiplier. The emitted code keeps an <code>auto_R</code> flag, and so the same script switches back to the single fixed disk by setting it false. The <span class="tab-link" data-goto="sosmethod">SOS Synthesis</span> tab places this beside the alternating method it replaces.</li>
+      <li><strong>Auto-grow R (bisection)</strong> turns the single fixed-R version into a one-dimensional search for the largest certifiable disk. It is the practical way to push the certificate toward the true basin boundary: every step stays a convex program, and V is re-optimized at each radius rather than iterated against the multiplier. The emitted code keeps an <code>auto_R</code> flag, and so the same script switches back to the single fixed disk by setting it false. The <a class="tab-link" href="#sosmethod" data-goto="sosmethod">SOS Synthesis</a> tab places this beside the alternating method it replaces.</li>
       <li><strong>n (multiplier degree)</strong> controls how flexibly the decrease condition can be enforced on the disk. It never weakens the guarantee because a feasible SDP certifies dV/dt ≤ 0 across the disk for every n. It is both a feasibility lever (too small a degree leaves no admissible certificate) and a shape lever (a higher degree can fit a larger region), at the cost of a bigger SDP.
         <ul>
           <li><em>Balanced choice.</em> Set n = deg(dV/dt) − 2 because the disk constraint R² − ‖x‖² has degree 2, and so a multiplier of that degree lets the term λ·(R² − ‖x‖²) reach the top-degree part of dV/dt rather than sit below it. With deg(dV/dt) = (d − 1) + deg(f), the widget computes this n* and seeds the multiplier control with it whenever d, the system, or k changes. You rarely need to depart from it: a smaller n often leaves the SDP infeasible, and a larger one only enlarges the program. When (d − 1) + deg(f) is odd, as it is for the predator–prey field, the bare decrease polynomial cannot be SOS, and so n* rounds up to the next even degree (an SOS multiplier must have even degree); the generated code applies the same parity guard.</li>
@@ -3381,7 +3383,7 @@ document.getElementById('clearTrajBtn').addEventListener('click', clearTrajector
 //  TAB SWITCHING
 // ═══════════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => goToTab(btn.dataset.tab));
+  btn.addEventListener('click', e => { e.preventDefault(); goToTab(btn.dataset.tab); });
 });
 
 document.getElementById('tabSelect').addEventListener('change', e => goToTab(e.target.value));
@@ -3395,13 +3397,24 @@ function goToTab(tab, scrollToTop){
   if (panel) panel.classList.add('active');
   const sel = document.getElementById('tabSelect');
   if (sel) sel.value = tab;
+  // replaceState, not pushState: switching tabs updates the link a reader could
+  // copy without growing the back/forward history.
+  if (location.hash.slice(1) !== tab) history.replaceState(null, '', '#' + tab);
   if (tab === 'explorer') scheduleRender();
   if (scrollToTop) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function validTab(tab){ return !!document.querySelector(`.tab-btn[data-tab="${tab}"]`); }
+
+// An externally opened #id, or a back/forward step across one, lands on that tab.
+window.addEventListener('hashchange', () => {
+  const name = location.hash.slice(1);
+  if (name && validTab(name)) goToTab(name);
+});
+
 // In-text links that jump to another tab (scroll up so the target reads from its start).
 document.querySelectorAll('[data-goto]').forEach(el => {
-  el.addEventListener('click', () => goToTab(el.dataset.goto, true));
+  el.addEventListener('click', e => { e.preventDefault(); goToTab(el.dataset.goto, true); });
 });
 
 // In-text links that scroll to a section within a tab (activating its tab first if needed).
@@ -4304,6 +4317,9 @@ updateSysUI();
 updateLyapUI();
 initSOS();
 scheduleRender();
+
+// An incoming link naming a non-default tab takes over once startup has primed the default.
+{ const startHash = location.hash.slice(1); if (startHash && startHash !== 'explorer' && validTab(startHash)) goToTab(startHash); }
 
 // Re-render if window moves to a screen with different DPR
 window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)

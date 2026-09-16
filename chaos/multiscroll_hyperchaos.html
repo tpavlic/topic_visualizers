@@ -132,6 +132,8 @@ a { color: var(--accent); }
   border-radius: 5px 5px 0 0;
   transition: all 0.15s;
   white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
 }
 .tab:hover { color: var(--nav-dark); background: var(--nav-pale); }
 .tab.active {
@@ -627,11 +629,11 @@ a { color: var(--accent); }
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="0">Double-scroll basics</button>
-    <button class="tab"        data-tab="1">Scroll grids &amp; L&eacute;vy analogy</button>
-    <button class="tab"        data-tab="2">Unstable vs chaotic</button>
-    <button class="tab"        data-tab="3">Chaos vs hyperchaos</button>
-    <button class="tab"        data-tab="4">Application: image encryption</button>
+    <a class="tab active" href="#0" data-tab="0">Double-scroll basics</a>
+    <a class="tab"        href="#1" data-tab="1">Scroll grids &amp; L&eacute;vy analogy</a>
+    <a class="tab"        href="#2" data-tab="2">Unstable vs chaotic</a>
+    <a class="tab"        href="#3" data-tab="3">Chaos vs hyperchaos</a>
+    <a class="tab"        href="#4" data-tab="4">Application: image encryption</a>
   </div>
   <div class="tabs-select-wrap">
     <select class="tabs-select" id="mainTabSelect">
@@ -3324,10 +3326,15 @@ function refreshEnc() {
 //  Tab switching + slider wiring
 // ═════════════════════════════════════════════════════════════════════
 
+function validTab(idx) { return !!document.querySelector('.tab[data-tab="' + idx + '"]'); }
+
 function showTab(idx) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab == idx));
   document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.dataset.pane == idx));
   document.getElementById('mainTabSelect').value = idx;
+  // replaceState, not pushState: switching tabs updates the link a reader could
+  // copy without growing the back/forward history.
+  if (location.hash.slice(1) !== String(idx)) history.replaceState(null, '', '#' + idx);
   // refresh active tab in case window resized
   if (idx == 0) refreshChua();
   else if (idx == 1) refreshMS();
@@ -3472,9 +3479,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // tabs
   document.querySelectorAll('.tab').forEach(b => {
-    b.addEventListener('click', () => showTab(+b.dataset.tab));
+    b.addEventListener('click', e => { e.preventDefault(); showTab(+b.dataset.tab); });
   });
   document.getElementById('mainTabSelect').addEventListener('change', e => showTab(+e.target.value));
+
+  // An externally opened #id, or a back/forward step across one, lands on that tab.
+  window.addEventListener('hashchange', () => {
+    const name = location.hash.slice(1);
+    if (name && validTab(name)) showTab(+name);
+  });
 
   // Switch the tab strip to a <select> dropdown only when the tabs would not fit
   // on a single row. Re-evaluates on resize, on font load, and on container size
@@ -3727,8 +3740,12 @@ window.addEventListener('DOMContentLoaded', () => {
     refreshEnc();
   });
 
-  // initial paint
+  // initial paint (captured before showTab(0) below overwrites the hash with the default tab's)
+  const startHash = location.hash.slice(1);
   showTab(0);
+
+  // An incoming link naming a non-default tab takes over once startup has primed the default.
+  if (startHash && startHash !== '0' && validTab(startHash)) showTab(+startHash);
 
   // recompute on resize
   let resizeTimer = null;

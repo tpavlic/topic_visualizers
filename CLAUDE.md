@@ -367,6 +367,47 @@ When adding or reviewing a demo with canvas graphics, check that this dpr scalin
 
 ---
 
+## Tabs and deep links
+
+Every widget with page-section tabs should make them externally linkable: a reader should be able
+to right-click a tab and copy a link straight to it, and a link ending in `#id` should open on that
+tab rather than the default one. Widgets in this repository are not built from one shared scaffold,
+so each one wires its own tabs differently (a `switchTab`/`showTab`/`gotoTab` function, buttons keyed
+by a `data-tab` string, a DOM id, or a numeric index) — read the widget's own tab code before
+applying this, rather than assuming any one shape.
+
+- **A tab control is an `<a href="#id">`, never a `<button>`.** Keep the existing click handler's
+  logic, adding `e.preventDefault()` (for a handler wired through `addEventListener`) or
+  `return false;` (for an inline `onclick`) so the browser never actually navigates. This includes
+  any pill/tile picker used in place of a plain tab row, and any hand-written prose link that jumps
+  to another tab. It does not extend to a narrow-screen `<select>` fallback, which stays a `<select>`
+  and drives the same handler through its `change` event. Confirm no CSS needs to change before
+  converting: the existing tab class almost always already carries its own border, background, and
+  cursor, and the nav row is usually a flex container, so a flex item is block-boxed the same way
+  whether the tag is `<a>` or `<button>` — but check this per widget rather than assuming it.
+- **The tab-switching function sets the hash itself, with `history.replaceState`, never
+  `pushState`**, so switching tabs never grows the back/forward history: a reader tapping through
+  several tabs should not have to fight the back button that many times to leave the page.
+- **A validity guard checks the hash against the real tab set before acting on it**, reading the
+  same markup or state object the tab code already has, rather than a second list that could drift
+  out of step.
+- **A `hashchange` listener re-activates a tab when the hash changes from outside the page** (an
+  external link opened while the page is already loaded, or a back/forward step across one), by
+  calling the same function the tab controls' own click handlers use.
+- **At boot, read the hash once and switch to that tab if it names one other than the default**,
+  after the page's own startup sequence has finished priming its default tab, so a widget whose
+  default tab does lazy setup work inside its tab-switching function (a canvas sized on first visit,
+  an animation started or stopped) still gets that setup when the incoming link points elsewhere.
+- **A control that only changes a parameter — which system to load, which initial distribution to
+  start from — is not a page tab**, even if it happens to carry a `tab`-sounding class name or
+  visual style. Leave it as a plain button; this convention is for controls that switch between
+  separate sections of the page.
+
+The worked versions are in the sibling repository `asu-simulating-stochastic-systems`, whose
+`THEME.md` documents the same convention for its own more uniform widget scaffold.
+
+---
+
 ## Site structure
 
 - `index.html` — the root landing page; self-contained HTML (no Jekyll/build step)

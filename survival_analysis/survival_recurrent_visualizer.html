@@ -70,7 +70,7 @@ a { color: var(--accent); }
 .phdr code, code { font-family:var(--mono); font-size:0.88em; background:var(--green-pale); padding:1px 5px; border-radius:3px; color:var(--green-dark); }
 .tabs { display:flex; gap:2px; border-bottom:2px solid var(--border); margin-bottom:16px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
 .tabs::-webkit-scrollbar { display:none; }
-.tab { background:transparent; border:none; border-bottom:2px solid transparent; padding:10px 16px; font-family:var(--sans); font-size:0.9rem; font-weight:500; color:var(--muted); cursor:pointer; margin-bottom:-2px; transition:all 0.15s; white-space:nowrap; }
+.tab { background:transparent; border:none; border-bottom:2px solid transparent; padding:10px 16px; font-family:var(--sans); font-size:0.9rem; font-weight:500; color:var(--muted); cursor:pointer; margin-bottom:-2px; transition:all 0.15s; white-space:nowrap; text-decoration:none; display:inline-block; }
 .tab:hover { color:var(--green-dark); background:var(--green-pale); }
 .tab.active { color:var(--green-dark); background:var(--green-tint); border-bottom-color:var(--green-dark); font-weight:700; border-radius:5px 5px 0 0; }
 .tabs-select-wrap { display:none; margin-bottom:16px; }
@@ -172,9 +172,9 @@ tr:last-child td { border-bottom:none; }
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="0">Censoring and rates</button>
-    <button class="tab" data-tab="1">Recurrent events</button>
-    <button class="tab" data-tab="2">Hypothesis testing</button>
+    <a class="tab active" href="#0" data-tab="0">Censoring and rates</a>
+    <a class="tab" href="#1" data-tab="1">Recurrent events</a>
+    <a class="tab" href="#2" data-tab="2">Hypothesis testing</a>
   </div>
   <div class="tabs-select-wrap"><select class="tabs-select" id="mainTabSelect">
     <option value="0">1. Censoring and rates</option><option value="1">2. Recurrent events</option><option value="2">3. Hypothesis testing</option>
@@ -470,11 +470,26 @@ function drawInsetLegend(ctx,x,y,items,canvasId){
   }); ctx.textBaseline='alphabetic';
   if(canvasId) legendHits[canvasId]=hits;
 }
+function setTab(idx){
+  idx = String(idx);
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',String(b.dataset.tab)===idx));
+  document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',String(p.dataset.pane)===idx));
+  const sel=$('mainTabSelect'); if(sel) sel.value=idx;
+  // replaceState, not pushState: switching tabs updates the link a reader could
+  // copy without growing the back/forward history.
+  if (location.hash.slice(1) !== idx) history.replaceState(null, '', '#' + idx);
+  drawAll();
+}
+function validTab(idx){ return !!document.querySelector('.tab[data-tab="'+idx+'"]'); }
 function setupTabs(){
-  function setTab(idx){ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',String(b.dataset.tab)===String(idx))); document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',String(p.dataset.pane)===String(idx))); const sel=$('mainTabSelect'); if(sel) sel.value=idx; drawAll(); }
-  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); setTab(b.dataset.tab); }));
   const sel=$('mainTabSelect'); if(sel) sel.addEventListener('change',e=>setTab(e.target.value));
 }
+// An externally opened #id, or a back/forward step across one, lands on that tab.
+window.addEventListener('hashchange', () => {
+  const name = location.hash.slice(1);
+  if (name && validTab(name)) setTab(name);
+});
 function axes(ctx,x0,y0,w,h,xmax){
   ctx.strokeStyle='#999'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,y0-h); ctx.lineTo(x0+w,y0-h); ctx.stroke();
   ctx.fillStyle='#666'; ctx.font='12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'; ctx.textAlign='right'; ctx.fillText('time',x0+w,y0+28); ctx.textAlign='left';
@@ -870,6 +885,7 @@ Object.entries(textTips).forEach(([id,t])=>{
   el.addEventListener('click', e=>{ showTip(t,e.clientX,e.clientY); tipSticky=true; });
 });
 setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',()=>geomRecur); attachDrag('appCanvas',()=>geomApp); drawAll(); attachLegendTips('basicCanvas'); attachLegendTips('recurCanvas'); attachLegendTips('appCanvas');
+{ const startHash = location.hash.slice(1); if (startHash && startHash !== '0' && validTab(startHash)) setTab(startHash); }
 })();
 </script>
 <footer id="back-link-footer" style="max-width:1180px;margin:-2rem auto 0;padding:0 22px 1.5rem;">
