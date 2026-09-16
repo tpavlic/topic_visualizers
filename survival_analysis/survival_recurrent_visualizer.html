@@ -172,9 +172,9 @@ tr:last-child td { border-bottom:none; }
   </div>
 
   <div class="tabs" role="tablist">
-    <a class="tab active" href="#0" data-tab="0">Censoring and rates</a>
-    <a class="tab" href="#1" data-tab="1">Recurrent events</a>
-    <a class="tab" href="#2" data-tab="2">Hypothesis testing</a>
+    <a class="tab active" href="#censoring" data-tab="0">Censoring and rates</a>
+    <a class="tab" href="#recurrent" data-tab="1">Recurrent events</a>
+    <a class="tab" href="#hypothesis" data-tab="2">Hypothesis testing</a>
   </div>
   <div class="tabs-select-wrap"><select class="tabs-select" id="mainTabSelect">
     <option value="0">1. Censoring and rates</option><option value="1">2. Recurrent events</option><option value="2">3. Hypothesis testing</option>
@@ -470,6 +470,9 @@ function drawInsetLegend(ctx,x,y,items,canvasId){
   }); ctx.textBaseline='alphabetic';
   if(canvasId) legendHits[canvasId]=hits;
 }
+// Stable per-tab names for the URL hash, kept independent of array position so
+// inserting a tab later never repoints an already-shared link at the wrong one.
+const TAB_SLUGS = ['censoring', 'recurrent', 'hypothesis'];
 function setTab(idx){
   idx = String(idx);
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',String(b.dataset.tab)===idx));
@@ -477,18 +480,21 @@ function setTab(idx){
   const sel=$('mainTabSelect'); if(sel) sel.value=idx;
   // replaceState, not pushState: switching tabs updates the link a reader could
   // copy without growing the back/forward history.
-  if (location.hash.slice(1) !== idx) history.replaceState(null, '', '#' + idx);
+  const slug = TAB_SLUGS[+idx];
+  if (location.hash.slice(1) !== slug) history.replaceState(null, '', '#' + slug);
   drawAll();
 }
-function validTab(idx){ return !!document.querySelector('.tab[data-tab="'+idx+'"]'); }
+// Reads the hash against the real slug list, rather than trusting a raw index
+// that would silently point at the wrong tab once the tab order changes.
+function tabForSlug(slug){ const i = TAB_SLUGS.indexOf(slug); return i>=0 ? String(i) : null; }
 function setupTabs(){
   document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); setTab(b.dataset.tab); }));
   const sel=$('mainTabSelect'); if(sel) sel.addEventListener('change',e=>setTab(e.target.value));
 }
 // An externally opened #id, or a back/forward step across one, lands on that tab.
 window.addEventListener('hashchange', () => {
-  const name = location.hash.slice(1);
-  if (name && validTab(name)) setTab(name);
+  const idx = tabForSlug(location.hash.slice(1));
+  if (idx !== null) setTab(idx);
 });
 function axes(ctx,x0,y0,w,h,xmax){
   ctx.strokeStyle='#999'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,y0-h); ctx.lineTo(x0+w,y0-h); ctx.stroke();
@@ -885,7 +891,7 @@ Object.entries(textTips).forEach(([id,t])=>{
   el.addEventListener('click', e=>{ showTip(t,e.clientX,e.clientY); tipSticky=true; });
 });
 setupTabs(); attachDrag('basicCanvas',()=>geomBasic); attachDrag('recurCanvas',()=>geomRecur); attachDrag('appCanvas',()=>geomApp); drawAll(); attachLegendTips('basicCanvas'); attachLegendTips('recurCanvas'); attachLegendTips('appCanvas');
-{ const startHash = location.hash.slice(1); if (startHash && startHash !== '0' && validTab(startHash)) setTab(startHash); }
+{ const startIdx = tabForSlug(location.hash.slice(1)); if (startIdx !== null && startIdx !== '0') setTab(startIdx); }
 })();
 </script>
 <footer id="back-link-footer" style="max-width:1180px;margin:-2rem auto 0;padding:0 22px 1.5rem;">

@@ -75,6 +75,7 @@
     background:var(--panel);color:var(--ink-soft);
     border:1px solid var(--line);border-radius:10px;
     padding:8px 14px;cursor:pointer;transition:.12s;
+    text-decoration:none;display:inline-block;
   }
   .tab:hover{border-color:var(--orange-soft)}
   .tab.active{background:var(--ink);color:var(--cream);border-color:var(--ink)}
@@ -946,13 +947,22 @@ function renderBanner(){
   document.getElementById('eqbanner').innerHTML =
     `<div class="eqs">${sys.eq}</div>` + jac + (sys.pnote ? `<span class="pnote">${sys.pnote}</span>` : "");
 }
+function selectSystem(k){
+  curKey=k; sys=SYSTEMS[k]; loadParams(); trajectories=[];
+  // replaceState, not pushState: switching systems updates the link a reader
+  // could copy without growing the back/forward history.
+  if(location.hash.slice(1)!==k) history.replaceState(null,'','#'+k);
+  buildTabs(); buildSliders(); renderBanner();
+  document.getElementById('sysDesc').textContent=sys.desc; setHint(); draw();
+}
 function buildTabs(){
   const host=document.getElementById('tabs'); host.innerHTML="";
   Object.keys(SYSTEMS).forEach(k=>{
-    const b=document.createElement('button');
+    const b=document.createElement('a');
+    b.href="#"+k;
     b.className="tab"+(k===curKey?" active":"");
     b.textContent=SYSTEMS[k].name;
-    b.onclick=()=>{ curKey=k; sys=SYSTEMS[k]; loadParams(); trajectories=[]; buildTabs(); buildSliders(); renderBanner(); document.getElementById('sysDesc').textContent=sys.desc; setHint(); draw(); };
+    b.onclick=()=>{ selectSystem(k); return false; };
     host.appendChild(b);
   });
 }
@@ -993,6 +1003,15 @@ document.getElementById('sysDesc').textContent=sys.desc;
 function setHint(){ const hn=document.getElementById('hint'); if(sys.tip){ hn.innerHTML=sys.tip.replace(/^Tip:/,'<b>Tip:</b>'); hn.style.display=''; } else { hn.textContent=''; hn.style.display='none'; } }
 setHint();
 fitCanvas();
+
+// An externally opened #id, or a back/forward step across one, lands on that system.
+window.addEventListener('hashchange', () => {
+  const k = location.hash.slice(1);
+  if (k && k !== curKey && SYSTEMS[k]) selectSystem(k);
+});
+// An incoming #id link opens straight to that system instead of the default.
+const startHash = location.hash.slice(1);
+if (startHash && startHash !== curKey && SYSTEMS[startHash]) selectSystem(startHash);
 
 // One JS-driven floating tooltip serves every [data-tip] on the page: the SVG cartoon labels, the readout's HTML tooltips (det check), and the inline .tip glossary terms alike. Routing them all through a single element renders subscripts correctly and guarantees a term can never show two tooltips at once
 (function(){

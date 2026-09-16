@@ -629,11 +629,11 @@ a { color: var(--accent); }
   </div>
 
   <div class="tabs" role="tablist">
-    <a class="tab active" href="#0" data-tab="0">Double-scroll basics</a>
-    <a class="tab"        href="#1" data-tab="1">Scroll grids &amp; L&eacute;vy analogy</a>
-    <a class="tab"        href="#2" data-tab="2">Unstable vs chaotic</a>
-    <a class="tab"        href="#3" data-tab="3">Chaos vs hyperchaos</a>
-    <a class="tab"        href="#4" data-tab="4">Application: image encryption</a>
+    <a class="tab active" href="#basics" data-tab="0">Double-scroll basics</a>
+    <a class="tab"        href="#scrollgrids" data-tab="1">Scroll grids &amp; L&eacute;vy analogy</a>
+    <a class="tab"        href="#stability" data-tab="2">Unstable vs chaotic</a>
+    <a class="tab"        href="#hyperchaos" data-tab="3">Chaos vs hyperchaos</a>
+    <a class="tab"        href="#encryption" data-tab="4">Application: image encryption</a>
   </div>
   <div class="tabs-select-wrap">
     <select class="tabs-select" id="mainTabSelect">
@@ -3326,7 +3326,10 @@ function refreshEnc() {
 //  Tab switching + slider wiring
 // ═════════════════════════════════════════════════════════════════════
 
-function validTab(idx) { return !!document.querySelector('.tab[data-tab="' + idx + '"]'); }
+// Stable per-tab names for the URL hash, kept independent of array position so
+// inserting a tab later never repoints an already-shared link at the wrong one.
+const TAB_SLUGS = ['basics', 'scrollgrids', 'stability', 'hyperchaos', 'encryption'];
+function validTab(name) { return TAB_SLUGS.includes(name); }
 
 function showTab(idx) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab == idx));
@@ -3334,7 +3337,7 @@ function showTab(idx) {
   document.getElementById('mainTabSelect').value = idx;
   // replaceState, not pushState: switching tabs updates the link a reader could
   // copy without growing the back/forward history.
-  if (location.hash.slice(1) !== String(idx)) history.replaceState(null, '', '#' + idx);
+  if (location.hash.slice(1) !== TAB_SLUGS[idx]) history.replaceState(null, '', '#' + TAB_SLUGS[idx]);
   // refresh active tab in case window resized
   if (idx == 0) refreshChua();
   else if (idx == 1) refreshMS();
@@ -3486,7 +3489,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // An externally opened #id, or a back/forward step across one, lands on that tab.
   window.addEventListener('hashchange', () => {
     const name = location.hash.slice(1);
-    if (name && validTab(name)) showTab(+name);
+    if (name && validTab(name)) showTab(TAB_SLUGS.indexOf(name));
   });
 
   // Switch the tab strip to a <select> dropdown only when the tabs would not fit
@@ -3745,7 +3748,7 @@ window.addEventListener('DOMContentLoaded', () => {
   showTab(0);
 
   // An incoming link naming a non-default tab takes over once startup has primed the default.
-  if (startHash && startHash !== '0' && validTab(startHash)) showTab(+startHash);
+  if (startHash && startHash !== TAB_SLUGS[0] && validTab(startHash)) showTab(TAB_SLUGS.indexOf(startHash));
 
   // recompute on resize
   let resizeTimer = null;
