@@ -10720,7 +10720,7 @@ function tourDataset(which) {
 // classical test, and the model that is that test.
 function modelBlock(spec, data, test) {
   return '<dl class="tm-model">' +
-    '<dt>Data</dt><dd>' + data + '</dd>' +
+    '<dt>Data to compare</dt><dd>' + data + '</dd>' +
     '<dt>Classical test</dt><dd>' + test + '</dd>' +
     '<dt>Equivalent model</dt><dd><code>' + esc(formulaOf(spec)) + '</code> <span class="tm-model-fam">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', fitted by REML' : '') + '</span></dd>' +
     '</dl>';
