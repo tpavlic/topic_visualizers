@@ -50,3 +50,6 @@ Icon[]
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Superpowers working documents (specs and plans), never committed
+docs/superpowers/
