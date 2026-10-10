@@ -81,7 +81,7 @@ export function render(root) {
       '</div>' +
       '<div class="im-block" id="im-formats" tabindex="-1">' +
         '<div class="ctrl-grp-lbl">Text format</div>' +
-        '<p class="ctrl-note">A header row, then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. An observations file of the kind a simulation output analyzer exports (<code>dataset, replication, value</code>) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
+        '<p class="ctrl-note">A header row, then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. Simulation output in the conventional CSV layout (<code>dataset, replication, value</code> columns) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
       '</div>' +
       '<div class="im-block">' +
         '<div class="ctrl-grp-lbl">From a file</div>' +

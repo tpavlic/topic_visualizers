@@ -413,8 +413,14 @@ details.why.issues .why-body { padding-left: 11px; }
 .scroll-box[data-more~="right"][data-more~="bottom"] { box-shadow: inset -22px 0 16px -14px rgba(0, 0, 0, .32), inset 0 -22px 16px -14px rgba(0, 0, 0, .28); }
 .scroll-box[data-more~="left"][data-more~="bottom"] { box-shadow: inset 22px 0 16px -14px rgba(0, 0, 0, .32), inset 0 -22px 16px -14px rgba(0, 0, 0, .28); }
 .scroll-box[data-more~="left"][data-more~="right"][data-more~="bottom"] { box-shadow: inset 22px 0 16px -14px rgba(0, 0, 0, .32), inset -22px 0 16px -14px rgba(0, 0, 0, .32), inset 0 -22px 16px -14px rgba(0, 0, 0, .28); }
-.tm-model { margin: 2px 0 14px; font-size: 1rem; }
-.tm-model code { font-size: .95rem; padding: 3px 8px; }
+/* The Tests page's facts block: the data, the classical test, and the equivalent model. */
+.tm-model { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; align-items: baseline; margin: 0 0 12px;
+            padding: 9px 12px; background: var(--chart-bg); border: 1px solid var(--border); border-radius: 6px; font-size: .9rem; }
+.tm-model dt { font-size: .64rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.tm-model dd { margin: 0; }
+.tm-model code { font-family: 'IBM Plex Mono', monospace; font-size: .92rem; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
+.tm-model-fam { color: var(--muted); font-size: .84rem; margin-left: 4px; }
+@media (max-width: 520px) { .tm-model { grid-template-columns: 1fr; gap: 2px 0; } .tm-model dd { margin-bottom: 5px; } }
 .ptab { border-collapse: collapse; width: 100%; font-size: .8rem; }
 .ptab th, .ptab td { padding: 5px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
 .ptab th:first-child, .ptab td:first-child { text-align: left; }
@@ -9045,7 +9051,7 @@ export function render(root) {
       '</div>' +
       '<div class="im-block" id="im-formats" tabindex="-1">' +
         '<div class="ctrl-grp-lbl">Text format</div>' +
-        '<p class="ctrl-note">A header row, then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. An observations file of the kind a simulation output analyzer exports (<code>dataset, replication, value</code>) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
+        '<p class="ctrl-note">A header row, then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. Simulation output in the conventional CSV layout (<code>dataset, replication, value</code> columns) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
       '</div>' +
       '<div class="im-block">' +
         '<div class="ctrl-grp-lbl">From a file</div>' +
@@ -10710,9 +10716,14 @@ function tourDataset(which) {
   return datasets.get(which);
 }
 
-// The model itself, first and apart from the prose, in the Model page's formula readout.
-function modelLine(spec) {
-  return '<p class="fb-formula tm-model"><code>' + esc(formulaOf(spec)) + '</code> <span class="ctrl-note">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', REML' : '') + '</span></p>';
+// The section's facts, first and apart from the prose: the data, the
+// classical test, and the model that is that test.
+function modelBlock(spec, data, test) {
+  return '<dl class="tm-model">' +
+    '<dt>Data</dt><dd>' + data + '</dd>' +
+    '<dt>Classical test</dt><dd>' + test + '</dd>' +
+    '<dt>Equivalent model</dt><dd><code>' + esc(formulaOf(spec)) + '</code> <span class="tm-model-fam">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', fitted by REML' : '') + '</span></dd>' +
+    '</dl>';
 }
 
 function loadButton(which, spec) {
@@ -10748,7 +10759,7 @@ function sectionT(root) {
   const t = twoSampleT(b, a);
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), tm = fit.beta[1] / se1, pm = waldP(tm, fit.dfResidual);
-  root.innerHTML = modelLine(spec) + '<p class="exp-note">Throughput on fifteen days of each of two lines. The two-sample t test asks whether the lines’ mean throughputs differ. The model <code>throughput ~ line</code>, normal family, identity link, has an intercept (line A’s mean) and one coefficient, the difference B − A, and its t test on that coefficient is the pooled two-sample t test, digit for digit. Welch’s test allows the lines different variances, which the one-variance model does not; where the spreads differ, Welch’s is the honest test and the model needs a separate variance per line, which a generalized least-squares fit gives and this tool does not.</p>';
+  root.innerHTML = modelBlock(spec, 'Throughput on fifteen days of each of two lines.', 'The two-sample t test, pooled and Welch’s.') + '<p class="exp-note">The two-sample t test asks whether the lines’ mean throughputs differ. The model has an intercept (line A’s mean) and one coefficient, the difference B − A, and its t test on that coefficient is the pooled two-sample t test, digit for digit. Welch’s test allows the lines different variances, which the one-variance model does not; where the spreads differ, Welch’s is the honest test and the model needs a separate variance per line, which a generalized least-squares fit gives and this tool does not.</p>';
   root.innerHTML += table([
     pair('Difference of means, B − A', stat(t.diff, 5), stat(fit.beta[1], 5), 'the coefficient of lineB'),
     pair('Standard error', stat(t.pooled.se, 5), stat(se1, 5), 'the pooled estimate'),
@@ -10771,7 +10782,7 @@ function sectionAnova(root) {
   const F = ((fit.nullDeviance - fit.deviance) / df1) / (fit.deviance / df2);
   const pF = 1 - fCdf(F, df1, df2);
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelLine(spec) + '<p class="exp-note">The defect rate on twelve days of each of three shifts. One-way ANOVA asks whether the three means differ, through the F ratio of the between-shift to the within-shift mean square. The model <code>defect_rate ~ shift</code> has an intercept and two contrasts against the day shift, and the same F comes from its deviances: the null deviance is the total sum of squares and the deviance is the within-shift sum of squares. The Model page’s term test is the likelihood-ratio version of the same comparison, which agrees with the F test in large samples and is close here.</p>';
+  root.innerHTML = modelBlock(spec, 'The defect rate on twelve days of each of three shifts.', 'One-way analysis of variance.') + '<p class="exp-note">One-way ANOVA asks whether the three means differ, through the F ratio of the between-shift to the within-shift mean square. The model has an intercept and two contrasts against the day shift, and the same F comes from its deviances: the null deviance is the total sum of squares and the deviance is the within-shift sum of squares. The Model page’s term test is the likelihood-ratio version of the same comparison, which agrees with the F test in large samples and is close here.</p>';
   root.innerHTML += table([
     pair('Between sum of squares', stat(av.ssBetween, 5), stat(fit.nullDeviance - fit.deviance, 5), 'null deviance − deviance'),
     pair('Within sum of squares', stat(av.ssWithin, 5), stat(fit.deviance, 5), 'the deviance'),
@@ -10795,7 +10806,7 @@ function sectionPaired(root) {
   const k = r.names.indexOf('conditionbefore');
   const est = -fit.beta[k], se = Math.sqrt(fit.vcov[k][k]);
   const ret = randomEffectTest(ds, spec, r);
-  root.innerHTML = modelLine(spec) + '<p class="exp-note">Fourteen operators timed before and after a change. The paired t test works on each operator’s difference, and so removes the operator’s own level from the comparison. The model <code>time ~ condition + (1 | subject)</code> does the same with a random intercept per operator: its coefficient for the condition is the mean difference, and under REML its standard error is the paired test’s. The model reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the model also says how much of the variation sits between operators, which the t test never does.</p>';
+  root.innerHTML = modelBlock(spec, 'Fourteen operators timed before and after a change.', 'The paired t test.') + '<p class="exp-note">The paired t test works on each operator’s difference, and so removes the operator’s own level from the comparison. The model does the same with a random intercept per operator: its coefficient for the condition is the mean difference, and under REML its standard error is the paired test’s. The model reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the model also says how much of the variation sits between operators, which the t test never does.</p>';
   root.innerHTML += table([
     pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
     pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
@@ -10819,7 +10830,7 @@ function sectionChisq(root) {
   const r0 = fitModel(ds, Object.assign({}, spec, { terms: ['outcome', 'channel'] }));
   let X2 = 0;
   for (const p of r0.fit.pearson) X2 += p * p;
-  root.innerHTML = modelLine(spec) + '<p class="exp-note">Orders counted by outcome (early, on time, late) and channel (web, phone): a 3 × 2 table. The chi-square test of independence asks whether outcome and channel are associated. The Poisson model of the six counts, <code>count ~ outcome + channel + outcome:channel</code>, fits the table exactly; dropping the interaction gives the independence model, whose expected counts are the test’s, and the likelihood-ratio test of the interaction is G², the likelihood-ratio form of the chi-square test. Pearson’s X² is the independence model’s Pearson statistic. The two agree in large samples.</p>';
+  root.innerHTML = modelBlock(spec, 'Orders counted by outcome (early, on time, late) and channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.') + '<p class="exp-note">The chi-square test of independence asks whether outcome and channel are associated. The Poisson model of the six counts fits the table exactly; dropping the interaction gives the independence model, whose expected counts are the test’s, and the likelihood-ratio test of the interaction is G², the likelihood-ratio form of the chi-square test. Pearson’s X² is the independence model’s Pearson statistic. The two agree in large samples.</p>';
   root.innerHTML += table([
     pair('Degrees of freedom', intl(cs.df), intl(ia.df), '(rows − 1)(columns − 1)'),
     pair('Pearson X²', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5), 'Σ Pearson residual² of the independence model'),
@@ -10840,7 +10851,7 @@ function sectionProportion(root) {
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), z = fit.beta[1] / se1;
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelLine(spec) + '<p class="exp-note">Fifty customers shown each of two offers, and whether each converted. The two-proportion test compares the two conversion rates by a z test with the pooled proportion’s standard error (a score test; its square is the chi-square test on the 2 × 2 table). The logistic model <code>converted ~ offer</code> estimates the log odds ratio of converting under B against A; its likelihood-ratio test is G² for the same table, and its Wald z uses the standard error at the estimate rather than under the null, which is why it differs from the score z.</p>';
+  root.innerHTML = modelBlock(spec, 'Fifty customers shown each of two offers, and whether each converted.', 'The two-proportion z test.') + '<p class="exp-note">The two-proportion test compares the two conversion rates by a z test with the pooled proportion’s standard error (a score test; its square is the chi-square test on the 2 × 2 table). The logistic model estimates the log odds ratio of converting under B against A; its likelihood-ratio test is G² for the same table, and its Wald z uses the standard error at the estimate rather than under the null, which is why it differs from the score z.</p>';
   root.innerHTML += table([
     pair('Conversion rates', stat(pr.p2, 4) + ' (A), ' + stat(pr.p1, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
     pair('Effect', 'difference B − A ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', ''),
