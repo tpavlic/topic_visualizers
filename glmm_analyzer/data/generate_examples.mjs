@@ -335,7 +335,7 @@ const EXAMPLES = [
     mapping: { name: 'Outcome by channel', response: 'count', columns: { count: { role: 'response', type: 'continuous' }, outcome: { role: 'predictor', type: 'categorical' }, channel: { role: 'predictor', type: 'categorical' } } }
   },
   {
-    id: 'tour-proportion', tour: 'proportion', title: 'Two offers (for the two-proportion test)', file: 'tour_proportion.csv',
+    id: 'tour-proportion', tour: 'proportion', title: 'Two offers (for the two-proportion z test)', file: 'tour_proportion.csv',
     description: 'Whether each of fifty customers shown each of two offers converted.',
     build: () => tourCsv('proportion'),
     mapping: { name: 'Two offers', response: 'converted', columns: { converted: { role: 'response', type: 'continuous' }, offer: { role: 'predictor', type: 'categorical' } } }
