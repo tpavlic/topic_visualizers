@@ -11123,6 +11123,10 @@ function sectionRepeated(root) {
   root.appendChild(loadButton('repeated', spec));
 }
 
+// The deviance, explained once for the chi-square section's tables.
+const DEVIANCE_TIP = 'Twice the gap in log-likelihood between this model and a model that fits the data exactly: 0 for an exact fit, and larger the worse the fit. For a normal model it is the residual sum of squares.';
+const tipped = (text, tip) => '<span class="tip" tabindex="0" data-tip="' + esc(tip) + '">' + text + '</span>';
+
 function sectionChisq(root) {
   const { ds } = tourDataset('chisq');
   const spec0 = { response: 'count', family: 'poisson', link: 'log', terms: ['outcome', 'channel'], group: null, nested: null, slope: null, olre: false, reml: false };
@@ -11153,8 +11157,8 @@ function sectionChisq(root) {
     '<p class="exp-note">The chi-square test of independence is the comparison of the two GLMMs above, Poisson models of the six counts. The model without the interaction is the independence model: it says that the outcome’s distribution is the same on every channel, and its fitted counts are the classical test’s expected counts. The model with the interaction lets the distribution differ by channel. Under independence, the second model predicts the counts no better than the first, and the likelihood-ratio test of the interaction asks whether it does: that test is the chi-square test. On the Model page, it is the term test of outcome:channel in the model with the interaction. The question is an interaction and not a main effect of channel because the response is the count, and a channel term alone says only that one channel is busier; in the two-proportion section, where the outcome is the response, the same question is a main effect.</p>' +
     '<p class="tm-sub">Comparing the two models</p>' +
     table([
-      pair('Deviance, model with interaction', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'one coefficient per cell fits the table exactly'),
-      pair('Deviance, model without interaction', '–', stat(r0.fit.deviance, 5), ''),
+      pair(tipped('Deviance', DEVIANCE_TIP) + ', model with interaction', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'one coefficient per cell fits the table exactly'),
+      pair(tipped('Deviance', DEVIANCE_TIP) + ', model without interaction', '–', stat(r0.fit.deviance, 5), ''),
       pair('Difference', stat(cs.G2, 5), stat(ia.stat, 5), 'the likelihood-ratio test of outcome:channel'),
       pair('Degrees of freedom', intl(cs.df), intl(ia.df), 'coefficients of the interaction'),
       pair('p', pEq(cs.pG), pEq(ia.p), 'the Model page’s term test')
@@ -11165,7 +11169,7 @@ function sectionChisq(root) {
       pairSpan('Expected counts', chi.col.levels.map((ch, i) => [esc(ch), counts(expectedByCell, i), counts(fittedByCell, i)]), 'the fitted counts'),
       pair('Degrees of freedom', intl(cs.df), intl(r0.fit.dfResidual), '(rows − 1)(columns − 1)'),
       pair('Pearson chi-square', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5) + ', ' + pEq(1 - chi2Cdf(X2, r0.fit.dfResidual)), 'Σ Pearson residual²'),
-      pair('Likelihood-ratio chi-square', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(r0.fit.deviance, 5) + ', ' + pEq(1 - chi2Cdf(r0.fit.deviance, r0.fit.dfResidual)), 'the deviance')
+      pair('Likelihood-ratio chi-square', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(r0.fit.deviance, 5) + ', ' + pEq(1 - chi2Cdf(r0.fit.deviance, r0.fit.dfResidual)), 'the ' + tipped('deviance', DEVIANCE_TIP))
     ]);
   root.appendChild(loadButton('chisq', spec, 'Open this dataset and the model with interaction on the Model page'));
 }
