@@ -361,6 +361,8 @@ function rangeCdf(r, k, rn) {
 /** Studentized range CDF: P(Q ≤ q) for k means and ν error degrees of freedom. */
 export function ptukey(q, k, nu) {
   if (!(q > 0)) return 0;
+  // At infinite degrees of freedom the range's own distribution is the answer.
+  if (nu === Infinity) return Math.min(1, rangeCdf(q, k, rangeNodes()));
   const nd = chiNodes(nu), rn = rangeNodes();
   let s = 0;
   for (let i = 0; i < nd.s.length; i++) s += nd.w[i] * rangeCdf(q * nd.s[i], k, rn);

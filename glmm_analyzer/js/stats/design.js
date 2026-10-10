@@ -116,27 +116,77 @@ export function missingMainEffects(spec) {
  * @param {number[]} keep row indices
  * @param {number} [degree] a raw power for a polynomial term
  */
-function variableColumns(ds, name, keep, degree = 1) {
+function variableColumns(ds, name, rows, degree = 1) {
   const c = column(ds, name);
   if (!c) throw new Error('The column ' + name + ' is not in the dataset.');
   const col = c.col, j = c.index;
   if (col.type === 'continuous') {
-    const v = Float64Array.from(keep, i => (degree === 1 ? ds.rows[i][j] : ds.rows[i][j] ** degree));
+    const v = Float64Array.from(rows, r => (degree === 1 ? r[j] : r[j] ** degree));
     return { names: [degree === 1 ? name : 'I(' + name + '^' + degree + ')'], cols: [v] };
   }
   if (degree !== 1) throw new Error('A power applies to a continuous predictor; ' + name + ' is ' + col.type + '.');
   const levels = col.levels || [];
   const index = new Map(levels.map((l, k) => [l, k]));
+  const at = r => { const k = index.get(r[j]); if (k === undefined) throw new Error('"' + r[j] + '" is not a level of ' + name + '.'); return k; };
   if (col.type === 'categorical') {
     const names = levels.slice(1).map(l => name + l);
-    const cols = levels.slice(1).map((l, k) => Float64Array.from(keep, i => (index.get(ds.rows[i][j]) === k + 1 ? 1 : 0)));
+    const cols = levels.slice(1).map((l, k) => Float64Array.from(rows, r => (at(r) === k + 1 ? 1 : 0)));
     return { names, cols };
   }
   const k = levels.length;
   const P = contrPoly(k);
   const names = polyNames(k).map(s => name + s);
-  const cols = names.map((_, d) => Float64Array.from(keep, i => P[index.get(ds.rows[i][j])][d]));
+  const cols = names.map((_, d) => Float64Array.from(rows, r => P[at(r)][d]));
   return { names, cols };
+}
+
+// Every column of the fixed part for the given rows (arrays of cells in
+// the dataset's column order), before any aliased column is dropped.
+function allColumns(ds, terms, rows) {
+  const names = ['(Intercept)'];
+  const cols = [Float64Array.from(rows, () => 1)];
+  const assign = [-1];
+  terms.forEach((t, ti) => {
+    let part;
+    if (typeof t === 'string') part = variableColumns(ds, t, rows);
+    else if (t.degree) part = variableColumns(ds, t.name, rows, t.degree);
+    else {
+      // The products of the factors' columns, the first factor's varying fastest.
+      part = variableColumns(ds, t.of[0], rows);
+      for (const v of t.of.slice(1)) {
+        const next = variableColumns(ds, v, rows);
+        const names2 = [], cols2 = [];
+        for (let b = 0; b < next.cols.length; b++) {
+          for (let a = 0; a < part.cols.length; a++) {
+            names2.push(part.names[a] + ':' + next.names[b]);
+            const ca = part.cols[a], cb = next.cols[b];
+            cols2.push(Float64Array.from(ca, (x, i) => x * cb[i]));
+          }
+        }
+        part = { names: names2, cols: cols2 };
+      }
+    }
+    for (let k = 0; k < part.cols.length; k++) { names.push(part.names[k]); cols.push(part.cols[k]); assign.push(ti); }
+  });
+  return { names, cols, assign };
+}
+
+/**
+ * Design rows for new predictor values, with the columns of a fitted design
+ * (aliased columns left out). Each new row is an object naming a value for
+ * every predictor the terms use: a number for a continuous predictor and a
+ * level for a categorical or ordinal one.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {ReturnType<typeof modelMatrix>} design
+ * @param {Object<string, number|string>[]} newRows
+ * @returns {Float64Array[]}
+ */
+export function newDataMatrix(ds, design, newRows) {
+  const rows = newRows.map(o => ds.columns.map(c => (o[c.name] === undefined ? null : o[c.name])));
+  const all = allColumns(ds, design.terms, rows);
+  const pick = design.names.map(n => all.names.indexOf(n));
+  if (pick.some(k => k < 0)) throw new Error('The new rows do not give every column of the design.');
+  return rows.map((_, i) => Float64Array.from(pick, k => all.cols[k][i]));
 }
 
 /**
@@ -160,31 +210,7 @@ export function modelMatrix(ds, spec) {
   if (spec.nested) vars.add(spec.nested);
   if (spec.slope) vars.add(spec.slope);
   const { keep, dropped } = usedRows(ds, Array.from(vars));
-  const names = ['(Intercept)'];
-  const cols = [Float64Array.from(keep, () => 1)];
-  const assign = [-1];
-  terms.forEach((t, ti) => {
-    let part;
-    if (typeof t === 'string') part = variableColumns(ds, t, keep);
-    else if (t.degree) part = variableColumns(ds, t.name, keep, t.degree);
-    else {
-      // The products of the factors' columns, the first factor's varying fastest.
-      part = variableColumns(ds, t.of[0], keep);
-      for (const v of t.of.slice(1)) {
-        const next = variableColumns(ds, v, keep);
-        const names2 = [], cols2 = [];
-        for (let b = 0; b < next.cols.length; b++) {
-          for (let a = 0; a < part.cols.length; a++) {
-            names2.push(part.names[a] + ':' + next.names[b]);
-            const ca = part.cols[a], cb = next.cols[b];
-            cols2.push(Float64Array.from(ca, (x, i) => x * cb[i]));
-          }
-        }
-        part = { names: names2, cols: cols2 };
-      }
-    }
-    for (let k = 0; k < part.cols.length; k++) { names.push(part.names[k]); cols.push(part.cols[k]); assign.push(ti); }
-  });
+  const { names, cols, assign } = allColumns(ds, terms, keep.map(i => ds.rows[i]));
   const n = keep.length;
   let X = Array.from({ length: n }, (_, i) => Float64Array.from(cols, c => c[i]));
   const rank = independentColumns(X);

@@ -427,6 +427,9 @@ svg.fig .cut-hit:focus-visible { outline: none; }
 .leg > span { display: flex; gap: 6px; align-items: center; }
 .lg-sv { display: inline-block; width: 24px; height: 12px; flex: 0 0 auto; }
 
+/* A figure's box on the model pages: the toolbar, the figure, and its legend. */
+.fig-box { margin: 10px 0 4px; }
+.fig-box + .fig-box { margin-top: 18px; }
 /* The formula builder: each fixed term as a chip with its remove button, and the formula line. */
 .fb-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; min-height: 28px; }
 .fb-term { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 4px 2px 10px; border: 1.5px solid var(--border); border-radius: 999px;
@@ -3221,7 +3224,9 @@ import { esc, intl, plural } from './ui/format.js';
 import { canModel } from './data/model.js';
 
 import * as importPage from './pages/import.js';
+import * as explorePage from './pages/explore.js';
 import * as modelPage from './pages/model.js';
+import * as predictPage from './pages/predict.js';
 import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
 import * as referencesPage from './pages/references.js';
@@ -3243,7 +3248,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, modelPage, reportPage, storagePage, referencesPage];
+export const PAGE_MODULES = [importPage, explorePage, modelPage, predictPage, reportPage, storagePage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 
@@ -3330,6 +3335,214 @@ function boot() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
+</script>
+<script type="text/plain" data-module="js/pages/explore.js">
+// The Explore page: what the response holds and the families that can
+// describe it, its descriptives overall and by a categorical predictor, its
+// histogram, and the response against each predictor.
+
+import * as state from '../state.js';
+import { column, support, valuesOf, SUPPORT_LABEL, predictorColumns, groupColumns } from '../data/model.js';
+import { FAMILIES, familiesFor } from '../stats/families.js';
+import { summary, histogram, boxStats } from '../stats/descriptive.js';
+import { binnedMeans } from '../stats/inference.js';
+import { makeFigure, histogram as drawHistogram, boxPlot, intervals, exportButtons, legend } from '../ui/plots.js';
+import { dataPoints, rawPoints, curveBand } from '../ui/modelplots.js';
+import { datasetSelect, card, cardRow, notice } from '../ui/widgets.js';
+import { installExportRow } from '../ui/exportrow.js';
+import { esc, num, stat, intl, plural } from '../ui/format.js';
+import { registerTips } from '../ui/tooltip.js';
+
+/** The page's hash id. */
+export const id = 'explore';
+/** The page's title. */
+export const title = 'Explore';
+
+let rootEl = null;
+let els = {};
+let dsSel = null;
+let figs = [];
+
+/**
+ * Renders the page into its section.
+ * @param {HTMLElement} root
+ */
+export function render(root) {
+  rootEl = root;
+  root.innerHTML =
+    '<h2>' + title + '</h2>' +
+    '<p class="lede">What the response holds decides which families can describe it, and how it moves with each predictor is the first look at the model to build. Nothing here is a fit; the Model page fits.</p>' +
+    '<div class="sec ctrl-card"><div class="ctrl-row">' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-ds">Dataset</label><select id="ex-ds"></select></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-by">Descriptives by</label><select id="ex-by"></select></span>' +
+    '</div></div>' +
+    '<div class="sec"><div class="sec-hd">The response</div><div id="ex-resp"></div></div>' +
+    '<div class="sec"><div class="sec-hd">Descriptives</div><div id="ex-desc"></div></div>' +
+    '<div class="sec"><div class="sec-hd">Against each predictor</div><p class="exp-note">A continuous predictor gives a scatter with the mean of the response in ten bins of equal count; a categorical one gives a box per level, or the proportion per level for a binary response.</p><div id="ex-plots"></div></div>';
+  els = { ds: root.querySelector('#ex-ds'), by: root.querySelector('#ex-by'), resp: root.querySelector('#ex-resp'), desc: root.querySelector('#ex-desc'), plots: root.querySelector('#ex-plots') };
+  dsSel = datasetSelect(els.ds, { remember: { page: id, key: 'dataset' } });
+  els.ds.addEventListener('change', () => { fillBy(); compute(); });
+  els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); compute(); });
+  installExportRow(root, id);
+  state.on('datasets', () => { fillBy(); if (visible()) compute(); });
+  fillBy();
+  compute();
+}
+
+function visible() { return !!rootEl && rootEl.classList.contains('active'); }
+
+/** Called each time the page is shown. */
+export function onShow() { compute(); }
+
+function current() { return state.get(els.ds.value); }
+
+function fillBy() {
+  const ds = current();
+  const cats = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'response' && c.type !== 'continuous') : [];
+  const want = state.getPick(id, 'by');
+  els.by.innerHTML = '<option value="">none</option>' + cats.map(c => '<option value="' + esc(c.name) + '"' + (c.name === want ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+  els.by.disabled = !cats.length;
+}
+
+function compute() {
+  for (const f of figs) if (f.ro) f.ro.disconnect();
+  figs = [];
+  const ds = current();
+  if (!ds) {
+    els.resp.innerHTML = '<p class="muted-line">Load a dataset on the Import page first.</p>';
+    els.desc.innerHTML = ''; els.plots.innerHTML = '';
+    state.setResult(id, null);
+    return;
+  }
+  const resp = ds.columns.find(c => c.role === 'response');
+  if (!resp) {
+    els.resp.innerHTML = '<p class="muted-line">The dataset has no response column; assign one on the Import page.</p>';
+    els.desc.innerHTML = ''; els.plots.innerHTML = '';
+    state.setResult(id, null);
+    return;
+  }
+  const vals = valuesOf(ds, resp.name);
+  const sup = support(resp, vals);
+  const fams = familiesFor(sup);
+  const nMissing = vals.filter(v => v == null).length;
+  els.resp.innerHTML = '';
+  els.resp.appendChild(cardRow([
+    card('Response', esc(resp.name), esc(resp.type)),
+    card('Values', esc(SUPPORT_LABEL[sup])),
+    card('Rows', intl(ds.rows.length), nMissing ? intl(nMissing) + ' missing the response' : 'none missing the response'),
+    card('Distinct values', intl(new Set(vals.filter(v => v != null)).size))
+  ]));
+  const famText = fams.length
+    ? 'Families whose support holds these values: ' + fams.map(f => '<b>' + esc(FAMILIES[f].label) + '</b>').join(', ') + '. ' + familyAdvice(sup)
+    : 'No family offered fits these values.';
+  els.resp.appendChild(notice('info', famText));
+
+  // Descriptives: overall and by the chosen categorical.
+  const numeric = resp.type === 'continuous';
+  const y = numeric ? vals.filter(v => v != null) : null;
+  const levels = resp.levels || [];
+  let html = '';
+  const byName = els.by.value;
+  const byCol = byName ? column(ds, byName) : null;
+  const groups = byCol ? byCol.col.levels.map(l => ({ label: l, rows: ds.rows.filter(r => r[byCol.index] === l) })) : [{ label: 'all', rows: ds.rows }];
+  const rc = column(ds, resp.name);
+  const tableRows = [];
+  if (numeric) {
+    html += '<div class="scroll-box"><table class="ptab"><thead><tr><th>' + (byCol ? esc(byName) : 'Rows') + '</th><th>n</th><th>mean</th><th>sd</th><th>min</th><th>q1</th><th>median</th><th>q3</th><th>max</th></tr></thead><tbody>';
+    for (const g of groups) {
+      const v = g.rows.map(r => r[rc.index]).filter(x => x != null);
+      const s = summary(v);
+      html += '<tr><td>' + esc(g.label) + '</td><td>' + intl(s.n) + '</td><td>' + stat(s.mean, 5) + '</td><td>' + stat(s.sd, 4) + '</td><td>' + stat(s.min, 4) + '</td><td>' + stat(s.q1, 4) + '</td><td>' + stat(s.median, 4) + '</td><td>' + stat(s.q3, 4) + '</td><td>' + stat(s.max, 4) + '</td></tr>';
+      tableRows.push([g.label, s.n, s.mean, s.sd, s.min, s.q1, s.median, s.q3, s.max]);
+    }
+    html += '</tbody></table></div>';
+  } else {
+    html += '<div class="scroll-box"><table class="ptab"><thead><tr><th>' + (byCol ? esc(byName) : 'Rows') + '</th><th>n</th>' + levels.map(l => '<th>' + esc(l) + '</th>').join('') + '</tr></thead><tbody>';
+    for (const g of groups) {
+      const v = g.rows.map(r => r[rc.index]).filter(x => x != null);
+      const counts = levels.map(l => v.filter(x => x === l).length);
+      html += '<tr><td>' + esc(g.label) + '</td><td>' + intl(v.length) + '</td>' + counts.map(c => '<td>' + intl(c) + ' (' + num(100 * c / Math.max(1, v.length), 3) + '%)</td>').join('') + '</tr>';
+      tableRows.push([g.label, v.length].concat(counts));
+    }
+    html += '</tbody></table></div>';
+  }
+  els.desc.innerHTML = html;
+  if (numeric) {
+    const box = document.createElement('div');
+    box.className = 'fig-box';
+    els.desc.appendChild(box);
+    const fig = makeFigure(box, { height: 230, xLabel: resp.name, yLabel: 'Frequency', title: 'Histogram of ' + resp.name });
+    exportButtons(box, fig, ds.name + ' histogram');
+    fig.render(f => { drawHistogram(f, histogram(y, { bins: sup === 'count' || sup === 'binary' ? Math.min(30, new Set(y).size) : undefined })); });
+    figs.push(fig);
+  }
+
+  // Against each predictor.
+  els.plots.innerHTML = '';
+  const preds = ds.columns.filter(c => c.role === 'predictor' || c.role === 'group');
+  const yNum = Float64Array.from(vals, v => (v == null ? NaN : (numeric ? v : (levels.length === 2 ? (v === levels[1] ? 1 : 0) : levels.indexOf(v)))));
+  const yLabel = numeric ? resp.name : (levels.length === 2 ? 'proportion ' + levels[1] : resp.name + ' (level index)');
+  for (const pc of preds) {
+    const box = document.createElement('div');
+    box.className = 'fig-box';
+    els.plots.appendChild(box);
+    const px = column(ds, pc.name);
+    if (pc.type === 'continuous') {
+      const xs = ds.rows.map(r => r[px.index]);
+      const idx = xs.map((x, i) => i).filter(i => x_(xs[i]) && Number.isFinite(yNum[i]));
+      const X = idx.map(i => xs[i]), Y = idx.map(i => yNum[i]);
+      const fig = makeFigure(box, { height: 240, xLabel: pc.name, yLabel, title: resp.name + ' against ' + pc.name });
+      exportButtons(box, fig, ds.name + ' ' + resp.name + ' by ' + pc.name);
+      fig.render(f => {
+        rawPoints(f, X, Y);
+        const b = binnedMeans(X, Y, 10);
+        if (b.length > 1) curveBand(f, { x: b.map(p => p.x), y: b.map(p => p.y) }, { band: false, label: 'binned mean', width: 2 });
+        dataPoints(f, b, { color: '--truth', hollow: true, r: 4, label: 'binned mean' });
+      });
+      legend(box.appendChild(document.createElement('div')), [{ swatch: 'dot', color: '--est', label: 'observation' }, { swatch: 'hollow', color: '--truth', label: 'mean of ' + yLabel + ' in a bin of ' + pc.name }]);
+      figs.push(fig);
+    } else {
+      const lv = pc.levels || [];
+      const fig = makeFigure(box, { height: 'auto', xLabel: yLabel, title: resp.name + ' by ' + pc.name });
+      exportButtons(box, fig, ds.name + ' ' + resp.name + ' by ' + pc.name);
+      fig.render(f => {
+        const items = lv.map(l => {
+          const v = ds.rows.filter(r => r[px.index] === l).map(r => yNum[ds.rows.indexOf(r)]).filter(Number.isFinite);
+          return { label: l + ' (n = ' + v.length + ')', stats: v.length ? boxStats(v) : { q1: NaN, median: NaN, q3: NaN, whiskerLo: NaN, whiskerHi: NaN, outliers: [] }, v };
+        });
+        if (numeric || levels.length !== 2) boxPlot(f, items.map(it => ({ label: it.label, stats: it.stats })));
+        else {
+          // A binary response: the proportion per level with its Wilson interval.
+          const rows = items.map(it => { const n = it.v.length, p = n ? it.v.reduce((a, c) => a + c, 0) / n : NaN; const z = 1.959963984540054; const d = 1 + z * z / n; const c = (p + z * z / (2 * n)) / d; const h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return { label: it.label, center: p, lo: c - h, hi: c + h }; });
+          f.x([0, 1]);
+          intervals(f, rows, { ref: null });
+        }
+      });
+      figs.push(fig);
+    }
+  }
+  state.setResult(id, {
+    title: 'Explore: ' + resp.name + ' in ' + ds.name,
+    provenance: { dataset: ds.name, response: resp.name, values: SUPPORT_LABEL[sup], 'descriptives by': byName || 'none' },
+    tables: [{ name: 'Descriptives', headers: numeric ? ['group', 'n', 'mean', 'sd', 'min', 'q1', 'median', 'q3', 'max'] : ['group', 'n'].concat(levels), rows: tableRows }]
+  });
+  registerTips(rootEl);
+}
+
+const x_ = v => typeof v === 'number' && Number.isFinite(v);
+
+function familyAdvice(sup) {
+  return {
+    binary: 'The binomial family with a logit link is the usual choice; the normal family would model the 0 or 1 directly, which can predict outside the interval.',
+    count: 'Start with the Poisson family; if the Pearson χ² / df on the Model page sits well above 1, the counts are overdispersed and the negative binomial family (or a Poisson-lognormal) fits them.',
+    unit: 'The beta family with a logit link models a proportion that is a measurement rather than a count of successes; the normal family can serve when the values stay well inside the interval.',
+    positive: 'The gamma family with a log link models a positive, right-skewed response whose spread grows with its mean; the normal family with a log link keeps the spread constant instead.',
+    real: 'The normal family with an identity link is the linear model.',
+    ordinal: 'The ordinal family models the cumulative probabilities of the ordered levels.'
+  }[sup] || '';
+}
+
+export default { id, title, render, onShow };
 </script>
 <script type="text/plain" data-module="js/pages/import.js">
 // The Import page: a drop zone, a file chooser, a paste box, and the bundled
@@ -3961,6 +4174,7 @@ import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
+import { termTests } from '../stats/inference.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { normCdf, normInv, tCdf, tQuantile } from '../stats/special.js';
 import { formulaBuilder } from '../ui/formula.js';
@@ -3998,13 +4212,14 @@ export function render(root) {
     '<div id="md-flags"></div>' +
     '<div class="sec" id="md-coef"><div class="sec-hd">Coefficients</div><div id="md-coef-body"></div></div>' +
     '<div class="sec" id="md-stats"><div class="sec-hd">Fit</div><div id="md-stats-body"></div></div>' +
+    '<div class="sec" id="md-terms"><div class="sec-hd">Term tests</div><div id="md-terms-body"></div></div>' +
     '<div class="sec" id="md-keep"><div class="sec-hd">Keep for comparison</div>' +
       '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="md-keep-name">Name</label><input type="text" id="md-keep-name" class="txt-inp" autocomplete="off" spellcheck="false"></span>' +
       '<button type="button" class="btn-run2" id="md-keep-btn">Keep this model</button><span class="ctrl-note" id="md-keep-note" aria-live="polite"></span></div>' +
       '<p class="exp-note">A kept model joins the table on the Compare page, where the candidates are ranked by AIC and tested against one another. Keeping the same model twice renames it.</p>' +
     '</div>';
   els = { builder: root.querySelector('#md-builder'), flags: root.querySelector('#md-flags'), coef: root.querySelector('#md-coef-body'), stats: root.querySelector('#md-stats-body'),
-    keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
+    terms: root.querySelector('#md-terms-body'), keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
   formulaBuilder(els.builder, { page: id });
   els.keepBtn.addEventListener('click', () => {
     if (!lastFit || !lastFit.result || !lastFit.result.fit) return;
@@ -4039,7 +4254,7 @@ function compute() {
   if (!ds || !state.spec.response) {
     lastFit = null;
     els.coef.innerHTML = '<p class="muted-line">Choose a dataset and a response above.</p>';
-    els.stats.innerHTML = '';
+    els.stats.innerHTML = ''; els.terms.innerHTML = '';
     els.keepBtn.disabled = true;
     state.setResult(id, null);
     return;
@@ -4051,7 +4266,7 @@ function compute() {
     lastFit = null;
     els.flags.appendChild(notice('warn', esc(err.message)));
     els.coef.innerHTML = '';
-    els.stats.innerHTML = '';
+    els.stats.innerHTML = ''; els.terms.innerHTML = '';
     els.keepBtn.disabled = true;
     state.setResult(id, null);
     return;
@@ -4066,11 +4281,13 @@ function compute() {
     els.flags.appendChild(notice('warn', 'The ' + esc(fam.label) + ' family needs every response value to be ' + esc(fam.domain) + ', and so no model is fitted. The response holds ' + esc(r.support) + '; outside the family’s support: ' + (r.rows.length === 1 ? 'row ' : 'rows ') + rows + '. ' +
       (fits.length ? 'Of the families offered, ' + (fits.length === 1 ? 'only the ' + esc(fits[0]) + ' fits' : esc(listWords(fits)) + ' fit') + ' these values.' : 'No family offered fits these values.')));
     els.coef.innerHTML = '';
-    els.stats.innerHTML = '';
+    els.stats.innerHTML = ''; els.terms.innerHTML = '';
     els.keepBtn.disabled = true;
     state.setResult(id, null);
     return;
   }
+  result.codedY = result.design.y;
+  if (result.event) { const rc = column(ds, state.spec.response).col; result.codedY = Float64Array.from(result.design.yRaw, v => (v === rc.levels[1] ? 1 : 0)); }
   lastFit = { ds, spec: state.copySpec(state.spec), result };
   for (const f of result.flags) {
     let text = FLAG_TEXT[f] || f;
@@ -4081,8 +4298,9 @@ function compute() {
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
   drawCoefficients(result);
   drawStats(result);
+  const tt = drawTerms(ds, result);
   els.keepBtn.disabled = false;
-  registerResult(ds, result);
+  registerResult(ds, result, tt);
 }
 
 // Wald tests: z for a family with a fixed dispersion, t on the residual
@@ -4144,7 +4362,21 @@ function drawStats(result) {
   els.stats.appendChild(cardRow(cards));
 }
 
-function registerResult(ds, result) {
+function drawTerms(ds, result) {
+  let tt;
+  try { tt = termTests(ds, state.spec, result); } catch (err) { els.terms.innerHTML = '<p class="muted-line">' + esc(err.message) + '</p>'; return null; }
+  if (!tt.rows.length) { els.terms.innerHTML = '<p class="muted-line">The model has no term to drop.</p>'; return tt; }
+  const fam = FAMILIES[result.fit.family];
+  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Term dropped</th><th>df</th><th>' + (tt.scaled && fam.id !== 'normal' ? 'scaled deviance' : 'LR statistic') + '</th><th>p</th><th>deviance without it</th></tr></thead><tbody>';
+  for (const r of tt.rows) html += '<tr><td>' + esc(r.term) + '</td><td>' + intl(r.df) + '</td><td>' + stat(r.stat, 4) + '</td><td>' + pValue(r.p) + '</td><td>' + stat(r.deviance, 5) + '</td></tr>';
+  html += '</tbody></table></div>';
+  html += '<p class="muted-line">Each row refits the model without that term and compares the two by a likelihood-ratio test on a chi-square with the change in parameter count as its degrees of freedom. A main effect that an interaction still uses is not dropped. ' +
+    (fam.id === 'normal' ? 'For the normal family the statistic is n times the log of the deviance ratio, with σ² profiled out.' : tt.scaled ? 'The deviance change is divided by the full model’s dispersion.' : '') + '</p>';
+  els.terms.innerHTML = html;
+  return tt;
+}
+
+function registerResult(ds, result, tt) {
   const rows = waldRows(result);
   const link = LINKS[result.link];
   const fit = result.fit;
@@ -4175,11 +4407,314 @@ function registerResult(ds, result) {
     tables: [
       { name: 'Coefficients', headers, rows: coefRows },
       { name: 'Fit statistics', headers: ['statistic', 'value'], rows: statRows }
-    ]
+    ].concat(tt && tt.rows.length ? [{ name: 'Term tests', headers: ['term', 'df', 'statistic', 'p', 'deviance_without'], rows: tt.rows.map(r => [r.term, r.df, r.stat, r.p, r.deviance]) }] : [])
   });
 }
 
 export default { id, title, render, onShow };
+</script>
+<script type="text/plain" data-module="js/pages/predict.js">
+// The Predict page: what the fitted model says. Effect: the predicted mean
+// against one predictor with its band and the data overlaid, by the levels
+// of a second one. Means: the marginal means of a categorical predictor and
+// their pairwise comparisons. Calculator: a prediction at typed values.
+
+import * as state from '../state.js';
+import { column, support, valuesOf } from '../data/model.js';
+import { FAMILIES, LINKS } from '../stats/families.js';
+import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf } from '../stats/inference.js';
+import { termVars } from '../stats/design.js';
+import { currentFit } from './model.js';
+import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
+import { curveBand, dataPoints, rawPoints, categoricalX, LEVEL_COLORS, LEVEL_DASHES } from '../ui/modelplots.js';
+import { card, cardRow, notice } from '../ui/widgets.js';
+import { setSectionAvailable } from '../ui/tabs.js';
+import { installExportRow } from '../ui/exportrow.js';
+import { esc, num, stat, pValue, intl, lvl } from '../ui/format.js';
+import { registerTips } from '../ui/tooltip.js';
+
+/** The page's hash id. */
+export const id = 'predict';
+/** The page's title. */
+export const title = 'Predict';
+/** The page's sections. */
+export const sections = [
+  { id: 'effect', label: 'Effect plot', tip: 'The predicted mean against one predictor, with the data.' },
+  { id: 'means', label: 'Marginal means', tip: 'The predicted mean at each level of a categorical predictor, and the pairwise differences.' },
+  { id: 'calculator', label: 'Calculator', tip: 'A prediction at values you type.' }
+];
+
+let rootEl = null;
+let els = {};
+let figs = [];
+let timer = null;
+
+/**
+ * Renders the page into its section.
+ * @param {HTMLElement} root
+ */
+export function render(root) {
+  rootEl = root;
+  root.innerHTML =
+    '<h2>' + title + '</h2>' +
+    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the Wald intervals on the link scale; the other predictors are held at their means or their first levels, which the captions say.</p>' +
+    '<div id="pr-fit-note"></div>' +
+    '<div data-subnav class="subnav"></div>' +
+    '<div data-section="effect" class="sec">' +
+      '<div class="sec-hd">Effect plot</div>' +
+      '<div class="ctrl-row">' +
+        '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-x">Predictor on the x axis</label><select id="pr-x"></select></span>' +
+        '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-by">Lines by</label><select id="pr-by"></select></span>' +
+        '<label class="ctrl-chk"><input type="checkbox" id="pr-data" checked> show the data</label>' +
+      '</div>' +
+      '<div id="pr-effect"></div>' +
+    '</div>' +
+    '<div data-section="means" class="sec">' +
+      '<div class="sec-hd">Marginal means</div>' +
+      '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-factor">Predictor</label><select id="pr-factor"></select></span></div>' +
+      '<div id="pr-means"></div>' +
+    '</div>' +
+    '<div data-section="calculator" class="sec">' +
+      '<div class="sec-hd">Calculator</div>' +
+      '<div class="ctrl-row" id="pr-calc-inputs"></div>' +
+      '<div id="pr-calc"></div>' +
+    '</div>';
+  els = { note: root.querySelector('#pr-fit-note'), x: root.querySelector('#pr-x'), by: root.querySelector('#pr-by'), data: root.querySelector('#pr-data'), effect: root.querySelector('#pr-effect'),
+    factor: root.querySelector('#pr-factor'), means: root.querySelector('#pr-means'), calcInputs: root.querySelector('#pr-calc-inputs'), calc: root.querySelector('#pr-calc') };
+  els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); drawEffect(); });
+  els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); drawEffect(); });
+  els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
+  els.factor.addEventListener('change', () => { state.setPick(id, 'factor', els.factor.value); drawMeans(); });
+  els.calcInputs.addEventListener('change', drawCalc);
+  els.calcInputs.addEventListener('input', drawCalc);
+  installExportRow(root, id);
+  state.on('results', ({ pageId } = {}) => { if (pageId === 'model') schedule(); });
+  state.on('settings', schedule);
+  schedule();
+}
+
+/** Called each time the page is shown. */
+export function onShow() { schedule(); }
+
+function schedule() { clearTimeout(timer); timer = setTimeout(compute, 40); }
+
+function predictorsOf(ds, result) {
+  const names = [];
+  for (const t of result.design.terms) for (const v of termVars(t)) if (!names.includes(v)) names.push(v);
+  return names.map(n => column(ds, n).col);
+}
+
+function compute() {
+  for (const f of figs) if (f.ro) f.ro.disconnect();
+  figs = [];
+  const cf = currentFit();
+  els.note.innerHTML = '';
+  if (!cf) {
+    els.note.appendChild(notice('info', 'No model is fitted. Build one on the <a href="#model">Model</a> page.'));
+    els.effect.innerHTML = ''; els.means.innerHTML = ''; els.calc.innerHTML = ''; els.calcInputs.innerHTML = '';
+    setSectionAvailable(id, { effect: 'No model is fitted.', means: 'No model is fitted.', calculator: 'No model is fitted.' });
+    state.setResult(id, null);
+    return;
+  }
+  const { ds, result } = cf;
+  const preds = predictorsOf(ds, result);
+  const cats = preds.filter(c => c.type !== 'continuous');
+  const off = {};
+  if (!preds.length) { off.effect = 'The model has no predictor to plot against.'; off.calculator = 'The model has no predictor to set.'; }
+  if (!cats.length) off.means = 'The model has no categorical predictor.';
+  setSectionAvailable(id, off);
+  els.note.appendChild(notice('info', 'Model: <code>' + esc(result.formula) + '</code>, ' + esc(FAMILIES[result.fit.family].label) + ' family with the ' + esc(LINKS[result.link].label) + ' link, fitted to ' + esc(ds.name) + '.'));
+  const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
+  const wantX = state.getPick(id, 'x');
+  els.x.innerHTML = preds.map((c, i) => opt(c.name, c.name, c.name === wantX || (!preds.some(p => p.name === wantX) && i === 0))).join('');
+  const wantBy = state.getPick(id, 'by');
+  els.by.innerHTML = opt('', 'none', !wantBy) + preds.map(c => opt(c.name, c.name, c.name === wantBy)).join('');
+  els.data.checked = state.getPick(id, 'data') !== false;
+  const wantF = state.getPick(id, 'factor');
+  els.factor.innerHTML = cats.map((c, i) => opt(c.name, c.name, c.name === wantF || (!cats.some(p => p.name === wantF) && i === 0))).join('');
+  buildCalcInputs(ds, result, preds);
+  drawEffect();
+  drawMeans();
+  drawCalc();
+  registerTips(rootEl);
+}
+
+function drawEffect() {
+  const cf = currentFit();
+  els.effect.innerHTML = '';
+  if (!cf || !els.x.value) return;
+  const { ds, result } = cf;
+  const x = els.x.value, by = els.by.value && els.by.value !== x ? els.by.value : null;
+  const level = state.settings.level;
+  const grid = effectGrid(ds, result, x, by, 60);
+  const resp = column(ds, result.design && state.spec.response).col;
+  const xc = column(ds, x);
+  const link = LINKS[result.link];
+  const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.effect.appendChild(box);
+  const fig = makeFigure(box, { height: 320, xLabel: x, yLabel, title: 'Predicted ' + yLabel + ' against ' + x + (by ? ' by ' + by : '') });
+  exportButtons(box, fig, ds.name + ' effect of ' + x);
+  const showData = els.data.checked;
+  const yData = result.codedY || result.design.y;
+  const keep = result.design.keep;
+  const xs = keep.map(i => ds.rows[i][xc.index]);
+  const byc = by ? column(ds, by) : null;
+  const legendItems = [];
+  fig.render(f => {
+    const curves = grid.series.map(s => Object.assign({}, s, { pred: predictRows(ds, result, s.rows, level) }));
+    const allY = [];
+    for (const c of curves) { for (const v of c.pred.fitLo) allY.push(v); for (const v of c.pred.fitHi) allY.push(v); }
+    let pts = [];
+    if (showData) {
+      if (xc.col.type === 'continuous') {
+        if (resp && (resp.type !== 'continuous' || support(resp, valuesOf(ds, resp.name)) === 'binary')) {
+          // A binary response: binned proportions per series.
+          pts = curves.map(c => {
+            const idx = keep.map((row, k) => k).filter(k => !byc || matchesBy(ds.rows[keep[k]][byc.index], c.by, byc.col));
+            return { by: c.by, bins: binnedMeans(idx.map(k => xs[k]), idx.map(k => yData[k]), 10) };
+          });
+          for (const p of pts) for (const b of p.bins) allY.push(b.y);
+        } else {
+          for (let k = 0; k < keep.length; k++) allY.push(yData[k]);
+        }
+      } else {
+        for (let k = 0; k < keep.length; k++) allY.push(yData[k]);
+      }
+    }
+    let lo = Math.min(...allY), hi = Math.max(...allY);
+    const prob = result.fit.family === 'binomial' || result.fit.family === 'beta';
+    if (xc.col.type === 'continuous') f.x([Math.min(...xs), Math.max(...xs)], { pad: 0.03, nice: true });
+    // A probability stays on [0, 1]; anything else gets a little room and round ticks.
+    if (prob) f.y([Math.min(0, lo), Math.max(1, hi)]); else f.y([lo, hi], { pad: 0.06, nice: true });
+    let pos = null;
+    if (xc.col.type !== 'continuous') pos = categoricalX(f, grid.xLevels); else f.axes({});
+    if (showData) {
+      if (xc.col.type === 'continuous') {
+        if (pts.length) pts.forEach((p, i) => dataPoints(f, p.bins, { color: by ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--est', hollow: true, r: 4.2, label: 'binned proportion' + (p.by != null ? ', ' + p.by : '') }));
+        else rawPoints(f, xs, Array.from(yData), { label: 'observation' });
+      } else {
+        // A categorical x: the observations jittered within each level.
+        const jx = keep.map((i, k) => pos[grid.xLevels.indexOf(ds.rows[i][xc.index])] + (((k * 7919) % 100) / 100 - 0.5) * 0.3);
+        rawPoints(f, jx, Array.from(yData), { label: 'observation' });
+      }
+    }
+    curves.forEach((c, i) => {
+      const cx = xc.col.type === 'continuous' ? c.xs : pos;
+      const color = by ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--truth';
+      curveBand(f, { x: cx, y: c.pred.fit, lo: c.pred.fitLo, hi: c.pred.fitHi }, { color, dash: by ? LEVEL_DASHES[i % LEVEL_DASHES.length] : null, label: c.label || 'predicted mean' });
+      if (xc.col.type !== 'continuous') dataPoints(f, pos.map((p, k) => ({ x: p, y: c.pred.fit[k] })), { color, r: 4.5, label: (c.label || 'predicted mean') + ' at each level' });
+    });
+    legendItems.length = 0;
+    curves.forEach((c, i) => legendItems.push({ swatch: by && LEVEL_DASHES[i % LEVEL_DASHES.length] ? 'dash' : 'line', color: by ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--truth', label: esc(c.label || 'predicted mean') + ' with its ' + lvl(level) + ' band' }));
+    if (showData) legendItems.push(pts.length ? { swatch: 'hollow', color: '--est', label: 'observed proportion in a bin of ' + esc(x) + ' (ten bins of equal count)' } : { swatch: 'dot', color: '--est', label: 'observation' });
+  });
+  legend(box.appendChild(document.createElement('div')), legendItems);
+  const held = Object.entries(grid.held).map(([k, v]) => esc(k) + ' = ' + (typeof v === 'number' ? num(v, 4) : esc(v))).join(', ');
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = (held ? 'Other predictors held at ' + held + ' (a continuous one at its mean over the fitted rows, a categorical one at its first level). ' : '') +
+    (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
+    (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
+  els.effect.appendChild(p);
+  figs.push(fig);
+}
+
+function matchesBy(v, bv, col) {
+  if (col.type !== 'continuous') return v === bv;
+  return true;
+}
+
+function drawMeans() {
+  const cf = currentFit();
+  els.means.innerHTML = '';
+  if (!cf || !els.factor.value) return;
+  const { ds, result } = cf;
+  const level = state.settings.level;
+  let m;
+  try { m = marginalMeans(ds, result, els.factor.value, level); } catch (err) { els.means.appendChild(notice('warn', esc(err.message))); return; }
+  const link = LINKS[result.link];
+  const useT = Number.isFinite(m.df);
+  const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
+  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>' + esc(m.factor) + '</th><th>mean (link scale)</th><th>std. error</th><th>' + esc(lvl(level)) + ' interval</th><th>mean (' + esc(yLabel) + ')</th><th>its interval</th></tr></thead><tbody>';
+  for (const r of m.means) html += '<tr><td>' + esc(r.level) + '</td><td>' + stat(r.eta, 5) + '</td><td>' + stat(r.se, 4) + '</td><td>[' + stat(r.lo, 5) + ', ' + stat(r.hi, 5) + ']</td><td>' + stat(r.fit, 5) + '</td><td>[' + stat(r.fitLo, 5) + ', ' + stat(r.fitHi, 5) + ']</td></tr>';
+  html += '</tbody></table></div>';
+  html += '<div class="ctrl-grp-lbl im-gap">Pairwise differences, Tukey-adjusted</div>' +
+    '<div class="scroll-box"><table class="ptab"><thead><tr><th>Pair</th><th>difference (link scale)</th><th>std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + (link.backName ? '<th>' + esc(link.backWord) + '</th><th>its interval</th>' : '') + '</tr></thead><tbody>';
+  for (const p of m.pairs) html += '<tr><td>' + esc(p.a + ' − ' + p.b) + '</td><td>' + stat(p.diff, 5) + '</td><td>' + stat(p.se, 4) + '</td><td>' + stat(p.t, 4) + '</td><td>' + pValue(p.p) + '</td><td>[' + stat(p.lo, 5) + ', ' + stat(p.hi, 5) + ']</td>' +
+    (link.backName ? '<td>' + stat(p.ratio, 4) + '</td><td>[' + stat(p.ratioLo, 4) + ', ' + stat(p.ratioHi, 4) + ']</td>' : '') + '</tr>';
+  html += '</tbody></table></div>';
+  els.means.innerHTML = html;
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.means.appendChild(box);
+  const fig = makeFigure(box, { height: 'auto', xLabel: yLabel, title: 'Marginal means of ' + m.factor });
+  exportButtons(box, fig, ds.name + ' marginal means of ' + m.factor);
+  fig.render(f => intervals(f, m.means.map(r => ({ label: r.level, center: r.fit, lo: r.fitLo, hi: r.fitHi })), { ref: null }));
+  figs.push(fig);
+  const held = Object.entries(m.grid.continuous).map(([k, v]) => esc(k) + ' = ' + num(v, 4)).join(', ');
+  const others = Object.keys(m.grid.factors).filter(k => k !== m.factor);
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = 'Each mean is the model’s prediction at the level' + (held ? ', with ' + held + ' (the means over the fitted rows)' : '') + (others.length ? ', averaged over the levels of ' + esc(others.join(', ')) + ' with equal weights' : '') + ', on the link scale and then carried to the response scale. ' +
+    'The pairwise p-values and intervals use the studentized range over ' + intl(m.k) + ' means' + (useT ? ' on ' + intl(m.df) + ' degrees of freedom' : ', with no finite degrees of freedom because the dispersion is fixed') + '.';
+  els.means.appendChild(p);
+  state.setResult(id, {
+    title: 'Predict: marginal means of ' + m.factor,
+    provenance: { dataset: ds.name, formula: result.formula, family: FAMILIES[result.fit.family].label, link: link.label, factor: m.factor, level: lvl(level), adjustment: 'Tukey' },
+    tables: [
+      { name: 'Marginal means', headers: [m.factor, 'mean_link', 'std_error', 'ci_lower', 'ci_upper', 'mean_response', 'response_lower', 'response_upper'], rows: m.means.map(r => [r.level, r.eta, r.se, r.lo, r.hi, r.fit, r.fitLo, r.fitHi]) },
+      { name: 'Pairwise differences', headers: ['pair', 'difference', 'std_error', useT ? 't' : 'z', 'p_tukey', 'ci_lower', 'ci_upper'].concat(link.backName ? ['ratio', 'ratio_lower', 'ratio_upper'] : []),
+        rows: m.pairs.map(p => [p.a + ' - ' + p.b, p.diff, p.se, p.t, p.p, p.lo, p.hi].concat(link.backName ? [p.ratio, p.ratioLo, p.ratioHi] : [])) }
+    ]
+  });
+}
+
+function buildCalcInputs(ds, result, preds) {
+  const grid = {};
+  for (const t of result.design.terms) for (const v of termVars(t)) grid[v] = true;
+  const saved = state.getPick(id, 'calc') || {};
+  els.calcInputs.innerHTML = preds.map(c => {
+    const held = saved[c.name];
+    if (c.type === 'continuous') {
+      let s = 0;
+      for (const i of result.design.keep) s += ds.rows[i][column(ds, c.name).index];
+      const mean = s / result.design.keep.length;
+      return '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-in-' + esc(c.name) + '">' + esc(c.name) + '</label><input type="text" class="par-inp" id="pr-in-' + esc(c.name) + '" data-name="' + esc(c.name) + '" value="' + esc(typeof held === 'number' ? String(held) : String(Number(mean.toPrecision(5)))) + '" inputmode="decimal"></span>';
+    }
+    return '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-in-' + esc(c.name) + '">' + esc(c.name) + '</label><select id="pr-in-' + esc(c.name) + '" data-name="' + esc(c.name) + '">' + c.levels.map(l => '<option value="' + esc(l) + '"' + (l === held ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
+  }).join('');
+}
+
+function drawCalc() {
+  const cf = currentFit();
+  els.calc.innerHTML = '';
+  if (!cf) return;
+  const { ds, result } = cf;
+  const row = {};
+  const saved = {};
+  for (const inp of els.calcInputs.querySelectorAll('[data-name]')) {
+    const name = inp.getAttribute('data-name');
+    const c = column(ds, name).col;
+    if (c.type === 'continuous') { const v = Number(inp.value); if (!Number.isFinite(v)) { els.calc.appendChild(notice('warn', 'Type a number for ' + esc(name) + '.')); return; } row[name] = v; saved[name] = v; }
+    else { row[name] = inp.value; saved[name] = inp.value; }
+  }
+  state.setPick(id, 'calc', saved);
+  if (!Object.keys(row).length && result.design.terms.length) return;
+  const level = state.settings.level;
+  const p = predictRows(ds, result, [row], level);
+  const link = LINKS[result.link];
+  const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
+  els.calc.appendChild(cardRow([
+    card('Linear predictor', stat(p.eta[0], 5), 'on the ' + esc(link.label) + ' scale, SE ' + stat(p.se[0], 4)),
+    card(esc(lvl(level)) + ' interval, link scale', '[' + stat(p.lo[0], 5) + ', ' + stat(p.hi[0], 5) + ']'),
+    card('Predicted ' + esc(yLabel), stat(p.fit[0], 5)),
+    card('Its interval', '[' + stat(p.fitLo[0], 5) + ', ' + stat(p.fitHi[0], 5) + ']', 'the link-scale interval carried through the inverse link')
+  ]));
+}
+
+export default { id, title, render, onShow, sections };
 </script>
 <script type="text/plain" data-module="js/pages/references.js">
 // The References page: the sources behind every procedure in the tool,
@@ -5329,27 +5864,77 @@ export function missingMainEffects(spec) {
  * @param {number[]} keep row indices
  * @param {number} [degree] a raw power for a polynomial term
  */
-function variableColumns(ds, name, keep, degree = 1) {
+function variableColumns(ds, name, rows, degree = 1) {
   const c = column(ds, name);
   if (!c) throw new Error('The column ' + name + ' is not in the dataset.');
   const col = c.col, j = c.index;
   if (col.type === 'continuous') {
-    const v = Float64Array.from(keep, i => (degree === 1 ? ds.rows[i][j] : ds.rows[i][j] ** degree));
+    const v = Float64Array.from(rows, r => (degree === 1 ? r[j] : r[j] ** degree));
     return { names: [degree === 1 ? name : 'I(' + name + '^' + degree + ')'], cols: [v] };
   }
   if (degree !== 1) throw new Error('A power applies to a continuous predictor; ' + name + ' is ' + col.type + '.');
   const levels = col.levels || [];
   const index = new Map(levels.map((l, k) => [l, k]));
+  const at = r => { const k = index.get(r[j]); if (k === undefined) throw new Error('"' + r[j] + '" is not a level of ' + name + '.'); return k; };
   if (col.type === 'categorical') {
     const names = levels.slice(1).map(l => name + l);
-    const cols = levels.slice(1).map((l, k) => Float64Array.from(keep, i => (index.get(ds.rows[i][j]) === k + 1 ? 1 : 0)));
+    const cols = levels.slice(1).map((l, k) => Float64Array.from(rows, r => (at(r) === k + 1 ? 1 : 0)));
     return { names, cols };
   }
   const k = levels.length;
   const P = contrPoly(k);
   const names = polyNames(k).map(s => name + s);
-  const cols = names.map((_, d) => Float64Array.from(keep, i => P[index.get(ds.rows[i][j])][d]));
+  const cols = names.map((_, d) => Float64Array.from(rows, r => P[at(r)][d]));
   return { names, cols };
+}
+
+// Every column of the fixed part for the given rows (arrays of cells in
+// the dataset's column order), before any aliased column is dropped.
+function allColumns(ds, terms, rows) {
+  const names = ['(Intercept)'];
+  const cols = [Float64Array.from(rows, () => 1)];
+  const assign = [-1];
+  terms.forEach((t, ti) => {
+    let part;
+    if (typeof t === 'string') part = variableColumns(ds, t, rows);
+    else if (t.degree) part = variableColumns(ds, t.name, rows, t.degree);
+    else {
+      // The products of the factors' columns, the first factor's varying fastest.
+      part = variableColumns(ds, t.of[0], rows);
+      for (const v of t.of.slice(1)) {
+        const next = variableColumns(ds, v, rows);
+        const names2 = [], cols2 = [];
+        for (let b = 0; b < next.cols.length; b++) {
+          for (let a = 0; a < part.cols.length; a++) {
+            names2.push(part.names[a] + ':' + next.names[b]);
+            const ca = part.cols[a], cb = next.cols[b];
+            cols2.push(Float64Array.from(ca, (x, i) => x * cb[i]));
+          }
+        }
+        part = { names: names2, cols: cols2 };
+      }
+    }
+    for (let k = 0; k < part.cols.length; k++) { names.push(part.names[k]); cols.push(part.cols[k]); assign.push(ti); }
+  });
+  return { names, cols, assign };
+}
+
+/**
+ * Design rows for new predictor values, with the columns of a fitted design
+ * (aliased columns left out). Each new row is an object naming a value for
+ * every predictor the terms use: a number for a continuous predictor and a
+ * level for a categorical or ordinal one.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {ReturnType<typeof modelMatrix>} design
+ * @param {Object<string, number|string>[]} newRows
+ * @returns {Float64Array[]}
+ */
+export function newDataMatrix(ds, design, newRows) {
+  const rows = newRows.map(o => ds.columns.map(c => (o[c.name] === undefined ? null : o[c.name])));
+  const all = allColumns(ds, design.terms, rows);
+  const pick = design.names.map(n => all.names.indexOf(n));
+  if (pick.some(k => k < 0)) throw new Error('The new rows do not give every column of the design.');
+  return rows.map((_, i) => Float64Array.from(pick, k => all.cols[k][i]));
 }
 
 /**
@@ -5373,31 +5958,7 @@ export function modelMatrix(ds, spec) {
   if (spec.nested) vars.add(spec.nested);
   if (spec.slope) vars.add(spec.slope);
   const { keep, dropped } = usedRows(ds, Array.from(vars));
-  const names = ['(Intercept)'];
-  const cols = [Float64Array.from(keep, () => 1)];
-  const assign = [-1];
-  terms.forEach((t, ti) => {
-    let part;
-    if (typeof t === 'string') part = variableColumns(ds, t, keep);
-    else if (t.degree) part = variableColumns(ds, t.name, keep, t.degree);
-    else {
-      // The products of the factors' columns, the first factor's varying fastest.
-      part = variableColumns(ds, t.of[0], keep);
-      for (const v of t.of.slice(1)) {
-        const next = variableColumns(ds, v, keep);
-        const names2 = [], cols2 = [];
-        for (let b = 0; b < next.cols.length; b++) {
-          for (let a = 0; a < part.cols.length; a++) {
-            names2.push(part.names[a] + ':' + next.names[b]);
-            const ca = part.cols[a], cb = next.cols[b];
-            cols2.push(Float64Array.from(ca, (x, i) => x * cb[i]));
-          }
-        }
-        part = { names: names2, cols: cols2 };
-      }
-    }
-    for (let k = 0; k < part.cols.length; k++) { names.push(part.names[k]); cols.push(part.cols[k]); assign.push(ti); }
-  });
+  const { names, cols, assign } = allColumns(ds, terms, keep.map(i => ds.rows[i]));
   const n = keep.length;
   let X = Array.from({ length: n }, (_, i) => Float64Array.from(cols, c => c[i]));
   const rank = independentColumns(X);
@@ -5891,6 +6452,267 @@ function validMu(familyId, m) {
   if (familyId === 'binomial' || familyId === 'beta') return m > 0 && m < 1;
   if (familyId === 'poisson' || familyId === 'negbin' || familyId === 'gamma') return m > 0;
   return true;
+}
+</script>
+<script type="text/plain" data-module="js/stats/inference.js">
+// Inference from a fitted model beyond its coefficient table: the term
+// tests (each term dropped and the model refitted), predictions at new
+// predictor values with their intervals on both scales, the reference grid
+// and the marginal means of a categorical predictor with their pairwise
+// comparisons under Tukey's correction. Conventions follow R's drop1,
+// predict.glm, and emmeans. Pure functions, no DOM.
+
+import { column } from '../data/model.js';
+import { FAMILIES, LINKS } from './families.js';
+import { modelMatrix, newDataMatrix, orderedTerms, termLabel, termVars } from './design.js';
+import { fitGlm } from './glm.js';
+import { fitNegbin } from './negbin.js';
+import { chi2Cdf, normCdf, normInv, tCdf, tQuantile, ptukey, qtukey } from './special.js';
+
+/**
+ * The degrees of freedom the Wald and Tukey procedures use: the residual
+ * degrees of freedom where the dispersion is estimated, infinite otherwise.
+ * @param {object} fit
+ */
+export function waldDf(fit) {
+  return FAMILIES[fit.family].dispersion === 'estimated' ? fit.dfResidual : Infinity;
+}
+
+/** The two-sided quantile at `level` on `df` degrees of freedom (normal when infinite). */
+export function waldQuantile(level, df) {
+  return Number.isFinite(df) ? tQuantile(1 - (1 - level) / 2, df) : normInv(1 - (1 - level) / 2);
+}
+
+/** The two-sided p-value of a Wald statistic on `df` degrees of freedom. */
+export function waldP(z, df) {
+  const a = Math.abs(z);
+  return Number.isFinite(df) ? 2 * (1 - tCdf(a, df)) : 2 * (1 - normCdf(a));
+}
+
+// Refits the fixed part with the given terms, holding the negative
+// binomial's θ at the full fit's value, as drop1 holds the family fixed.
+function refitTerms(ds, spec, full, terms) {
+  const s = Object.assign({}, spec, { terms, group: null, nested: null, slope: null, olre: false });
+  const m = modelMatrix(ds, s);
+  const y = full.codedY;
+  if (spec.family === 'negbin') return fitGlm(y, m.X, { family: 'negbin', link: spec.link, aux: full.fit.theta });
+  return fitGlm(y, m.X, { family: spec.family, link: spec.link });
+}
+
+/**
+ * The term tests, as drop1(test = "Chisq"): each term whose main effects
+ * no interaction still needs is dropped and the model refitted. The
+ * statistic is the likelihood-ratio statistic: the change in deviance where
+ * the dispersion is fixed, the change in deviance over the full model's
+ * dispersion (the scaled deviance) for the gamma family, and n times the
+ * log of the deviance ratio for the normal family, with σ² profiled out;
+ * each on the change in parameter count.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @param {object} result fitModel's output, with `codedY`
+ * @returns {{ rows: { term: string, df: number, stat: number, p: number, deviance: number }[], scaled: boolean }}
+ */
+export function termTests(ds, spec, result) {
+  const terms = orderedTerms(spec);
+  const full = result.fit;
+  const scaled = FAMILIES[full.family].dispersion === 'estimated';
+  const rows = [];
+  terms.forEach((t, i) => {
+    const vars = termVars(t);
+    // Marginality: a term is kept while a higher-order term holds all its variables.
+    const needed = terms.some((u, j) => j !== i && typeof u === 'object' && u.of && vars.every(v => u.of.includes(v)) && u.of.length > vars.length);
+    if (needed) return;
+    const reduced = refitTerms(ds, spec, result, terms.filter((_, j) => j !== i));
+    const df = full.rank - reduced.rank;
+    // drop1's statistic: for the normal family the likelihood ratio with σ²
+    // profiled out, n log(deviance ratio); for the gamma the deviance change
+    // over the dispersion; and for a fixed dispersion the deviance change.
+    const stat = full.family === 'normal' ? full.n * Math.log(reduced.deviance / full.deviance)
+      : (reduced.deviance - full.deviance) / (scaled ? full.dispersion : 1);
+    rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: reduced.deviance });
+  });
+  return { rows, scaled };
+}
+
+/**
+ * Predictions at new predictor values: the linear predictor with its
+ * standard error and Wald interval, and the mean on the response scale with
+ * the interval carried through the inverse link.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} result fitModel's output
+ * @param {Object<string, number|string>[]} newRows
+ * @param {number} level
+ * @returns {{ eta: Float64Array, se: Float64Array, lo: Float64Array, hi: Float64Array, fit: Float64Array, fitLo: Float64Array, fitHi: Float64Array, df: number, q: number }}
+ */
+export function predictRows(ds, result, newRows, level) {
+  const X = newDataMatrix(ds, result.design, newRows);
+  const b = result.fit.beta, V = result.fit.vcov;
+  const link = LINKS[result.link];
+  const df = waldDf(result.fit), q = waldQuantile(level, df);
+  const n = X.length, p = b.length;
+  const eta = new Float64Array(n), se = new Float64Array(n), lo = new Float64Array(n), hi = new Float64Array(n);
+  const fit = new Float64Array(n), fitLo = new Float64Array(n), fitHi = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = X[i];
+    let e = 0, v = 0;
+    for (let a = 0; a < p; a++) { e += x[a] * b[a]; let t = 0; for (let c = 0; c < p; c++) t += V[a][c] * x[c]; v += x[a] * t; }
+    eta[i] = e; se[i] = Math.sqrt(Math.max(0, v)); lo[i] = e - q * se[i]; hi[i] = e + q * se[i];
+    fit[i] = link.linkinv(e);
+    const a1 = link.linkinv(lo[i]), a2 = link.linkinv(hi[i]);
+    fitLo[i] = Math.min(a1, a2); fitHi[i] = Math.max(a1, a2);
+  }
+  return { eta, se, lo, hi, fit, fitLo, fitHi, df, q };
+}
+
+/**
+ * The reference grid's settings, as emmeans forms them: each continuous
+ * predictor at its mean over the rows the model used, and each categorical
+ * or ordinal predictor's levels.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} result
+ * @returns {{ continuous: Object<string, number>, factors: Object<string, string[]>, names: string[] }}
+ */
+export function referenceGrid(ds, result) {
+  const names = [];
+  for (const t of result.design.terms) for (const v of termVars(t)) if (!names.includes(v)) names.push(v);
+  const continuous = {}, factors = {};
+  for (const name of names) {
+    const c = column(ds, name);
+    if (c.col.type === 'continuous') {
+      let s = 0;
+      for (const i of result.design.keep) s += ds.rows[i][c.index];
+      continuous[name] = s / result.design.keep.length;
+    } else factors[name] = c.col.levels.slice();
+  }
+  return { continuous, factors, names };
+}
+
+// Every combination of the given factors' levels, as objects.
+function combos(factors, names) {
+  let out = [{}];
+  for (const f of names) {
+    const next = [];
+    for (const o of out) for (const l of factors[f]) next.push(Object.assign({}, o, { [f]: l }));
+    out = next;
+  }
+  return out;
+}
+
+/**
+ * The marginal means of a categorical predictor and their pairwise
+ * comparisons, as emmeans and pairs() with Tukey's correction form them:
+ * each level's mean of the linear predictor over the other factors' levels
+ * with equal weights and the continuous predictors at their means, carried
+ * to the response scale; the differences on the link scale with their Tukey
+ * intervals and p-values, and as ratios where the link gives one.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} result
+ * @param {string} factor
+ * @param {number} level
+ */
+export function marginalMeans(ds, result, factor, level) {
+  const grid = referenceGrid(ds, result);
+  const others = Object.keys(grid.factors).filter(f => f !== factor);
+  const levels = grid.factors[factor];
+  if (!levels) throw new Error(factor + ' is not a categorical predictor of the model.');
+  const b = result.fit.beta, V = result.fit.vcov, p = b.length;
+  const link = LINKS[result.link];
+  const df = waldDf(result.fit), k = levels.length;
+  const q = waldQuantile(level, df);
+  const xbars = levels.map(l => {
+    const rows = combos(grid.factors, others).map(o => Object.assign({}, grid.continuous, o, { [factor]: l }));
+    const X = newDataMatrix(ds, result.design, rows);
+    const xb = new Float64Array(p);
+    for (const x of X) for (let a = 0; a < p; a++) xb[a] += x[a] / X.length;
+    return xb;
+  });
+  const quad = (x, z) => { let v = 0; for (let a = 0; a < p; a++) { let t = 0; for (let c = 0; c < p; c++) t += V[a][c] * z[c]; v += x[a] * t; } return v; };
+  const dot = x => { let e = 0; for (let a = 0; a < p; a++) e += x[a] * b[a]; return e; };
+  const means = levels.map((l, i) => {
+    const eta = dot(xbars[i]), se = Math.sqrt(Math.max(0, quad(xbars[i], xbars[i])));
+    const lo = eta - q * se, hi = eta + q * se;
+    const a1 = link.linkinv(lo), a2 = link.linkinv(hi);
+    return { level: l, eta, se, lo, hi, fit: link.linkinv(eta), fitLo: Math.min(a1, a2), fitHi: Math.max(a1, a2) };
+  });
+  const qt = k > 1 ? qtukey(level, k, df) / Math.SQRT2 : q;
+  const pairs = [];
+  for (let i = 0; i < k; i++) {
+    for (let j = i + 1; j < k; j++) {
+      const c = Float64Array.from(xbars[i], (v, a) => v - xbars[j][a]);
+      const diff = dot(c), se = Math.sqrt(Math.max(0, quad(c, c)));
+      const t = diff / se;
+      const pv = k > 1 ? 1 - ptukey(Math.abs(t) * Math.SQRT2, k, df) : waldP(t, df);
+      const lo = diff - qt * se, hi = diff + qt * se;
+      const pr = { a: levels[i], b: levels[j], diff, se, t, p: pv, lo, hi };
+      if (link.backName) { pr.ratio = Math.exp(diff); pr.ratioLo = Math.exp(lo); pr.ratioHi = Math.exp(hi); }
+      pairs.push(pr);
+    }
+  }
+  return { factor, levels, means, pairs, df, k, grid };
+}
+
+/**
+ * The rows of an effect plot: `x` over `n` points from its least to its
+ * greatest used value (or over its levels), the `by` predictor at each of
+ * its levels or at three quantiles, and every other predictor at its mean
+ * or its first level.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} result
+ * @param {string} x
+ * @param {string|null} by
+ * @param {number} [n]
+ * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string> }}
+ */
+export function effectGrid(ds, result, x, by, n = 60) {
+  const grid = referenceGrid(ds, result);
+  const held = {};
+  for (const name of grid.names) if (name !== x && name !== by) held[name] = name in grid.continuous ? grid.continuous[name] : grid.factors[name][0];
+  const cx = column(ds, x);
+  let xs;
+  if (cx.col.type === 'continuous') {
+    let lo = Infinity, hi = -Infinity;
+    for (const i of result.design.keep) { const v = ds.rows[i][cx.index]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    xs = Array.from({ length: n }, (_, i) => lo + (hi - lo) * i / (n - 1));
+  } else xs = cx.col.levels.slice();
+  let byValues = [null];
+  if (by) {
+    const cb = column(ds, by);
+    if (cb.col.type === 'continuous') {
+      const v = result.design.keep.map(i => ds.rows[i][cb.index]).sort((a, c) => a - c);
+      const at = pq => v[Math.min(v.length - 1, Math.max(0, Math.round(pq * (v.length - 1))))];
+      byValues = [at(0.25), at(0.5), at(0.75)];
+    } else byValues = cb.col.levels.slice();
+  }
+  const series = byValues.map(bv => ({
+    label: by ? (typeof bv === 'number' ? by + ' = ' + Number(bv.toPrecision(4)) : String(bv)) : null,
+    by: bv,
+    rows: xs.map(xv => Object.assign({}, held, { [x]: xv }, by ? { [by]: bv } : {})),
+    xs
+  }));
+  return { series, xLevels: cx.col.type === 'continuous' ? null : xs, held };
+}
+
+/**
+ * The observed response binned along a continuous predictor, for the data
+ * overlay of an effect plot: up to `bins` bins of about equal count, each
+ * giving the mean of x and the mean of y.
+ * @param {ArrayLike<number>} x
+ * @param {ArrayLike<number>} y
+ * @param {number} [bins]
+ */
+export function binnedMeans(x, y, bins = 10) {
+  const idx = Array.from(x, (_, i) => i).filter(i => Number.isFinite(x[i]) && Number.isFinite(y[i])).sort((a, b) => x[a] - x[b]);
+  const n = idx.length;
+  const k = Math.max(1, Math.min(bins, Math.floor(n / 5)));
+  const out = [];
+  for (let b = 0; b < k; b++) {
+    const from = Math.floor(b * n / k), to = Math.floor((b + 1) * n / k);
+    if (to <= from) continue;
+    let sx = 0, sy = 0;
+    for (let i = from; i < to; i++) { sx += x[idx[i]]; sy += y[idx[i]]; }
+    out.push({ x: sx / (to - from), y: sy / (to - from), n: to - from });
+  }
+  return out;
 }
 </script>
 <script type="text/plain" data-module="js/stats/linalg.js">
@@ -6763,6 +7585,8 @@ function rangeCdf(r, k, rn) {
 /** Studentized range CDF: P(Q ≤ q) for k means and ν error degrees of freedom. */
 export function ptukey(q, k, nu) {
   if (!(q > 0)) return 0;
+  // At infinite degrees of freedom the range's own distribution is the answer.
+  if (nu === Infinity) return Math.min(1, rangeCdf(q, k, rangeNodes()));
   const nd = chiNodes(nu), rn = rangeNodes();
   let s = 0;
   for (let i = 0; i < nd.s.length; i++) s += nd.w[i] * rangeCdf(q * nd.s[i], k, rn);
@@ -7675,6 +8499,106 @@ function termUses(t, name) {
   if (typeof t === 'string') return t === name;
   if (t.degree) return t.name === name;
   return t.of.includes(name);
+}
+</script>
+<script type="text/plain" data-module="js/ui/modelplots.js">
+// Mark helpers for the model pages, built on ui/plots.js: a fitted curve
+// with its band, binned or raw data points, a bar of proportions per level,
+// and a curve over a categorical x. Each records what it drew in
+// fig.series, as the helpers in plots.js do, so that the figure's scripts
+// can redraw it.
+
+import { svgEl, tok, extent, scatter } from './plots.js';
+import { num } from './format.js';
+
+const r1 = v => Math.round(v * 10) / 10;
+const col = (c, fallback) => (c ? (c.startsWith('--') ? tok(c) : c) : tok(fallback));
+
+/** The level palette: Okabe–Ito without blue, each level also told apart by a dash pattern. */
+export const LEVEL_COLORS = ['#C2570A', '#009E73', '#CC79A7', '#8b6914', '#56B4E9', '#000000'];
+export const LEVEL_DASHES = [null, '6,4', '2,3', '8,3,2,3', '4,4', '1,3'];
+
+/**
+ * A fitted curve with its interval band. Sets the x and y scales from the
+ * data unless the caller already set them; `yExtra` widens the y range to
+ * hold the data points drawn afterwards.
+ * @param {import('./plots.js').Figure} fig
+ * @param {{ x: ArrayLike<number>, y: ArrayLike<number>, lo?: ArrayLike<number>, hi?: ArrayLike<number> }} c
+ * @param {{ color?: string, dash?: string|null, label?: string, band?: boolean, axes?: boolean, width?: number }} [o]
+ */
+export function curveBand(fig, c, o = {}) {
+  const n = c.x.length;
+  if (!fig.sx) fig.x(extent(c.x), { pad: 0.03, nice: true });
+  if (!fig.sy) fig.y(extent(c.y, c.lo || [], c.hi || []), { pad: 0.05, nice: true });
+  if (o.axes !== false && !fig.axesDrawn) fig.axes({});
+  const sx = fig.sx, sy = fig.sy;
+  const color = col(o.color, '--truth');
+  if (o.band !== false && c.lo && c.hi) {
+    let d = '';
+    for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + r1(sx(c.x[i])) + ',' + r1(sy(c.hi[i]));
+    for (let i = n - 1; i >= 0; i--) d += 'L' + r1(sx(c.x[i])) + ',' + r1(sy(c.lo[i]));
+    svgEl('path', { d: d + 'Z', fill: color, 'fill-opacity': 0.14, stroke: 'none', class: 'm-band' }, fig.inner);
+    fig.series.push({ kind: 'band', x: Array.from(c.x), lo: Array.from(c.lo), hi: Array.from(c.hi), color, label: (o.label || 'fit') + ' interval' });
+  }
+  let d = '';
+  for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + r1(sx(c.x[i])) + ',' + r1(sy(c.y[i]));
+  svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': o.width || 2.2, 'stroke-dasharray': o.dash || null, class: 'm-curve' }, fig.inner);
+  fig.series.push({ kind: 'line', x: Array.from(c.x), y: Array.from(c.y), color, dash: o.dash ? true : false, width: o.width || 2.2, label: o.label || 'fit' });
+}
+
+/**
+ * Data points, raw or binned, in the data color: a filled dot per point, with
+ * the readout naming the bin's count when the points carry one.
+ * @param {import('./plots.js').Figure} fig
+ * @param {{ x: number, y: number, n?: number }[]} pts
+ * @param {{ color?: string, r?: number, label?: string, hollow?: boolean }} [o]
+ */
+export function dataPoints(fig, pts, o = {}) {
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  if (!fig.sx) fig.x(extent(xs), { pad: 0.05, nice: true });
+  if (!fig.sy) fig.y(extent(ys), { pad: 0.05, nice: true });
+  if (!fig.axesDrawn) fig.axes({});
+  const color = col(o.color, '--est'), r = o.r || 3.6;
+  const g = svgEl('g', { class: 'm-data' }, fig.inner);
+  for (const p of pts) {
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+    if (o.hollow) svgEl('circle', { cx: r1(fig.sx(p.x)), cy: r1(fig.sy(p.y)), r, fill: tok('--card'), stroke: color, 'stroke-width': 1.8 }, g);
+    else svgEl('circle', { cx: r1(fig.sx(p.x)), cy: r1(fig.sy(p.y)), r, fill: color, 'fill-opacity': o.opacity || 0.75 }, g);
+  }
+  fig.series.push({ kind: 'points', x: xs, y: ys, color, hollow: !!o.hollow, label: o.label || 'data' });
+  if (!fig.readoutFn) fig.readout((dx, dy, px, py) => {
+    let best = -1, bd = Infinity;
+    pts.forEach((p, i) => { const d = Math.hypot(fig.sx(p.x) - px, fig.sy(p.y) - py); if (d < bd) { bd = d; best = i; } });
+    if (best < 0 || bd > 16) return null;
+    const p = pts[best];
+    return ['(' + num(p.x) + ', ' + num(p.y) + ')' + (p.n ? '  n = ' + p.n : '')];
+  });
+}
+
+/**
+ * A jittered strip of raw points, for a scatter of many observations with
+ * few distinct y values (a binary response).
+ * @param {import('./plots.js').Figure} fig
+ * @param {ArrayLike<number>} xs
+ * @param {ArrayLike<number>} ys
+ * @param {{ color?: string, label?: string }} [o]
+ */
+export function rawPoints(fig, xs, ys, o = {}) {
+  scatter(fig, xs, ys, { color: col(o.color, '--est'), r: 2.4, label: o.label || 'observations' });
+}
+
+/**
+ * Sets a categorical x scale: the levels at 1..k with the labels drawn as
+ * ticks. Returns the position of each level.
+ * @param {import('./plots.js').Figure} fig
+ * @param {string[]} levels
+ */
+export function categoricalX(fig, levels) {
+  const k = levels.length;
+  fig.x([0.5, k + 0.5]);
+  fig.cats = { axis: 'x', labels: levels.slice() };
+  fig.axes({ xTicks: k, xFormat: v => (Number.isInteger(v) && v >= 1 && v <= k ? levels[v - 1] : ''), grid: false });
+  return levels.map((_, i) => i + 1);
 }
 </script>
 <script type="text/plain" data-module="js/ui/plots.js">

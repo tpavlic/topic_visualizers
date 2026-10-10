@@ -8,6 +8,7 @@ import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
+import { termTests } from '../stats/inference.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { normCdf, normInv, tCdf, tQuantile } from '../stats/special.js';
 import { formulaBuilder } from '../ui/formula.js';
@@ -45,13 +46,14 @@ export function render(root) {
     '<div id="md-flags"></div>' +
     '<div class="sec" id="md-coef"><div class="sec-hd">Coefficients</div><div id="md-coef-body"></div></div>' +
     '<div class="sec" id="md-stats"><div class="sec-hd">Fit</div><div id="md-stats-body"></div></div>' +
+    '<div class="sec" id="md-terms"><div class="sec-hd">Term tests</div><div id="md-terms-body"></div></div>' +
     '<div class="sec" id="md-keep"><div class="sec-hd">Keep for comparison</div>' +
       '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="md-keep-name">Name</label><input type="text" id="md-keep-name" class="txt-inp" autocomplete="off" spellcheck="false"></span>' +
       '<button type="button" class="btn-run2" id="md-keep-btn">Keep this model</button><span class="ctrl-note" id="md-keep-note" aria-live="polite"></span></div>' +
       '<p class="exp-note">A kept model joins the table on the Compare page, where the candidates are ranked by AIC and tested against one another. Keeping the same model twice renames it.</p>' +
     '</div>';
   els = { builder: root.querySelector('#md-builder'), flags: root.querySelector('#md-flags'), coef: root.querySelector('#md-coef-body'), stats: root.querySelector('#md-stats-body'),
-    keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
+    terms: root.querySelector('#md-terms-body'), keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
   formulaBuilder(els.builder, { page: id });
   els.keepBtn.addEventListener('click', () => {
     if (!lastFit || !lastFit.result || !lastFit.result.fit) return;
@@ -86,7 +88,7 @@ function compute() {
   if (!ds || !state.spec.response) {
     lastFit = null;
     els.coef.innerHTML = '<p class="muted-line">Choose a dataset and a response above.</p>';
-    els.stats.innerHTML = '';
+    els.stats.innerHTML = ''; els.terms.innerHTML = '';
     els.keepBtn.disabled = true;
     state.setResult(id, null);
     return;
@@ -98,7 +100,7 @@ function compute() {
     lastFit = null;
     els.flags.appendChild(notice('warn', esc(err.message)));
     els.coef.innerHTML = '';
-    els.stats.innerHTML = '';
+    els.stats.innerHTML = ''; els.terms.innerHTML = '';
     els.keepBtn.disabled = true;
     state.setResult(id, null);
     return;
@@ -113,11 +115,13 @@ function compute() {
     els.flags.appendChild(notice('warn', 'The ' + esc(fam.label) + ' family needs every response value to be ' + esc(fam.domain) + ', and so no model is fitted. The response holds ' + esc(r.support) + '; outside the family’s support: ' + (r.rows.length === 1 ? 'row ' : 'rows ') + rows + '. ' +
       (fits.length ? 'Of the families offered, ' + (fits.length === 1 ? 'only the ' + esc(fits[0]) + ' fits' : esc(listWords(fits)) + ' fit') + ' these values.' : 'No family offered fits these values.')));
     els.coef.innerHTML = '';
-    els.stats.innerHTML = '';
+    els.stats.innerHTML = ''; els.terms.innerHTML = '';
     els.keepBtn.disabled = true;
     state.setResult(id, null);
     return;
   }
+  result.codedY = result.design.y;
+  if (result.event) { const rc = column(ds, state.spec.response).col; result.codedY = Float64Array.from(result.design.yRaw, v => (v === rc.levels[1] ? 1 : 0)); }
   lastFit = { ds, spec: state.copySpec(state.spec), result };
   for (const f of result.flags) {
     let text = FLAG_TEXT[f] || f;
@@ -128,8 +132,9 @@ function compute() {
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
   drawCoefficients(result);
   drawStats(result);
+  const tt = drawTerms(ds, result);
   els.keepBtn.disabled = false;
-  registerResult(ds, result);
+  registerResult(ds, result, tt);
 }
 
 // Wald tests: z for a family with a fixed dispersion, t on the residual
@@ -191,7 +196,21 @@ function drawStats(result) {
   els.stats.appendChild(cardRow(cards));
 }
 
-function registerResult(ds, result) {
+function drawTerms(ds, result) {
+  let tt;
+  try { tt = termTests(ds, state.spec, result); } catch (err) { els.terms.innerHTML = '<p class="muted-line">' + esc(err.message) + '</p>'; return null; }
+  if (!tt.rows.length) { els.terms.innerHTML = '<p class="muted-line">The model has no term to drop.</p>'; return tt; }
+  const fam = FAMILIES[result.fit.family];
+  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Term dropped</th><th>df</th><th>' + (tt.scaled && fam.id !== 'normal' ? 'scaled deviance' : 'LR statistic') + '</th><th>p</th><th>deviance without it</th></tr></thead><tbody>';
+  for (const r of tt.rows) html += '<tr><td>' + esc(r.term) + '</td><td>' + intl(r.df) + '</td><td>' + stat(r.stat, 4) + '</td><td>' + pValue(r.p) + '</td><td>' + stat(r.deviance, 5) + '</td></tr>';
+  html += '</tbody></table></div>';
+  html += '<p class="muted-line">Each row refits the model without that term and compares the two by a likelihood-ratio test on a chi-square with the change in parameter count as its degrees of freedom. A main effect that an interaction still uses is not dropped. ' +
+    (fam.id === 'normal' ? 'For the normal family the statistic is n times the log of the deviance ratio, with σ² profiled out.' : tt.scaled ? 'The deviance change is divided by the full model’s dispersion.' : '') + '</p>';
+  els.terms.innerHTML = html;
+  return tt;
+}
+
+function registerResult(ds, result, tt) {
   const rows = waldRows(result);
   const link = LINKS[result.link];
   const fit = result.fit;
@@ -222,7 +241,7 @@ function registerResult(ds, result) {
     tables: [
       { name: 'Coefficients', headers, rows: coefRows },
       { name: 'Fit statistics', headers: ['statistic', 'value'], rows: statRows }
-    ]
+    ].concat(tt && tt.rows.length ? [{ name: 'Term tests', headers: ['term', 'df', 'statistic', 'p', 'deviance_without'], rows: tt.rows.map(r => [r.term, r.df, r.stat, r.p, r.deviance]) }] : [])
   });
 }
 
