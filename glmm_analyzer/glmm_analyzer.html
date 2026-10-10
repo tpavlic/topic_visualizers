@@ -421,6 +421,8 @@ details.why.issues .why-body { padding-left: 11px; }
 .tm-model dd { margin: 0; }
 .tm-model code { font-family: 'IBM Plex Mono', monospace; font-size: .92rem; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
 .tm-model-fam { color: var(--muted); font-size: .84rem; margin-left: 4px; }
+/* A section's second model sits under the first's table, set off by a rule. */
+.tm-model-more { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
 @media (max-width: 520px) { .tm-model { grid-template-columns: 1fr; gap: 2px 0; } .tm-model dd { margin-bottom: 5px; } }
 .ptab { border-collapse: collapse; width: 100%; font-size: .8rem; }
 .ptab th, .ptab td { padding: 5px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
@@ -2457,6 +2459,41 @@ poor,3.29,no
 `
   },
   {
+    id: "tour-one",
+    title: "Deviation from a target (for the one-sample t test)",
+    file: "tour_one.csv",
+    description: "The delivery time of twenty-five orders, each as its deviation from the thirty-minute target.",
+    mapping: {"name":"Deviation from target","response":"deviation","columns":{"deviation":{"role":"response","type":"continuous"}}},
+    tour: "one",
+    text: `deviation
+0.97
+-1.17
+2.82
+0.07
+3.14
+3.51
+2.7
+-4.36
+2.07
+-0.95
+2.07
+5.87
+-0.86
+4.16
+-4.09
+2.72
+1.36
+4.68
+1.23
+2.1
+0.1
+2.43
+-10.17
+0.69
+-0.69
+`
+  },
+  {
     id: "tour-t",
     title: "Two production lines (for the t test)",
     file: "tour_t.csv",
@@ -2578,6 +2615,216 @@ poor,3.29,no
 32.1,after,S13
 25.7,before,S14
 23.1,after,S14
+`
+  },
+  {
+    id: "tour-repeated",
+    title: "Orders on ten days (for repeated measures)",
+    file: "tour_repeated.csv",
+    description: "The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.",
+    mapping: {"name":"Orders on ten days","response":"deviation","columns":{"deviation":{"role":"response","type":"continuous"},"day":{"role":"group","type":"categorical"}}},
+    tour: "repeated",
+    text: `deviation,day
+-1.72,D01
+-6.62,D01
+-3.64,D01
+-8.52,D01
+-1.7,D01
+2.05,D01
+-1.56,D01
+0.75,D01
+-6.96,D01
+-3.43,D01
+4.2,D01
+-4.39,D01
+-1.59,D01
+-3.27,D01
+-0.83,D01
+-2.14,D01
+-4.7,D01
+-1.29,D01
+0.23,D01
+-0.24,D01
+0.26,D02
+-1.46,D02
+-5.46,D02
+-2.83,D02
+-8.4,D02
+-1.87,D02
+-4.78,D02
+-0.68,D02
+-2.01,D02
+-1.83,D02
+-5.53,D02
+1.99,D02
+-1.6,D02
+-1.8,D02
+-1.31,D02
+-3.26,D02
+-4.46,D02
+-5.1,D02
+3.14,D02
+-3.86,D02
+-0.9,D03
+-2.78,D03
+-0.41,D03
+-1.65,D03
+3.29,D03
+2.5,D03
+7.64,D03
+5.42,D03
+4.99,D03
+0.42,D03
+-0.63,D03
+2.42,D03
+-1.55,D03
+1.91,D03
+0.75,D03
+5.78,D03
+0.54,D03
+0.87,D03
+4.23,D03
+3.23,D03
+-1.03,D04
+4.1,D04
+6.71,D04
+-0.12,D04
+3.8,D04
+-1.99,D04
+8.48,D04
+8.21,D04
+-0.99,D04
+2.25,D04
+3.03,D04
+2.17,D04
+4.19,D04
+3.08,D04
+0.04,D04
+0.73,D04
+3.89,D04
+0.23,D04
+0.5,D04
+1.44,D04
+0.45,D05
+0.9,D05
+2.57,D05
+0.97,D05
+-2.36,D05
+-4.8,D05
+5.04,D05
+1.84,D05
+-0.99,D05
+-2.91,D05
+-1.87,D05
+-3.01,D05
+-0.23,D05
+-1.96,D05
+5.38,D05
+-1.72,D05
+1.51,D05
+2.12,D05
+-4.72,D05
+0.72,D05
+7.12,D06
+2.86,D06
+0.31,D06
+1.63,D06
+1.99,D06
+3.78,D06
+-1.08,D06
+-1.37,D06
+4.29,D06
+3.85,D06
+11.8,D06
+2.96,D06
+6.52,D06
+2.72,D06
+-1.68,D06
+2.91,D06
+6.56,D06
+-0.75,D06
+-4.54,D06
+3.23,D06
+2.91,D07
+3.41,D07
+0.57,D07
+9.1,D07
+-1,D07
+0.32,D07
+7.85,D07
+1.45,D07
+-0.21,D07
+9.08,D07
+2.94,D07
+-3.05,D07
+0.35,D07
+4.42,D07
+2.06,D07
+0.07,D07
+0.33,D07
+5.2,D07
+2.09,D07
+5.8,D07
+6.97,D08
+-0.14,D08
+0.94,D08
+-0.79,D08
+-2.43,D08
+-6.87,D08
+-1.67,D08
+5.1,D08
+-0.96,D08
+3.44,D08
+0.02,D08
+1.09,D08
+-3.17,D08
+-5.41,D08
+0.89,D08
+0.67,D08
+3.44,D08
+2.22,D08
+7.18,D08
+-1.19,D08
+4.4,D09
+3.9,D09
+-1.49,D09
+-0.23,D09
+-1.12,D09
+-0.62,D09
+0.63,D09
+-3.78,D09
+5.73,D09
+0.46,D09
+-6.02,D09
+2.27,D09
+-0.2,D09
+2.12,D09
+-2.31,D09
+0.5,D09
+0.14,D09
+0.71,D09
+3.63,D09
+0.82,D09
+-0.88,D10
+-1.59,D10
+-5.75,D10
+1.08,D10
+-0.31,D10
+4.47,D10
+-7.01,D10
+-0.35,D10
+6.57,D10
+0.1,D10
+0.22,D10
+2.36,D10
+-4.9,D10
+5.17,D10
+-2.49,D10
+-0.59,D10
+-1.77,D10
+-1.07,D10
+0.09,D10
+1.47,D10
 `
   },
   {
@@ -10672,9 +10919,9 @@ export function onShow() { refresh(); }
 export default { id, title, render, onShow };
 </script>
 <script type="text/plain" data-module="js/pages/tests.js">
-// The Tests as models page: five classical tests beside the models that
-// contain them, each on a bundled dataset, with the matching numbers side
-// by side and one paragraph on what matches and what does not.
+// The Classic tests as GLMM page: seven classical tests beside the models
+// that contain them, each on a bundled dataset, with the matching numbers
+// side by side and one paragraph on what matches and what does not.
 
 import * as state from '../state.js';
 import { EXAMPLES } from '../data/examples.js';
@@ -10682,8 +10929,8 @@ import { sniff, buildTable } from '../io/parse.js';
 import { column, sameData } from '../data/model.js';
 import { fitModel } from '../stats/fit.js';
 import { termTests, randomEffectTest, waldP } from '../stats/inference.js';
-import { twoSampleT, onewayAnova, pairedT, chiSquareIndependence, twoProportions } from '../stats/classical.js';
-import { fCdf } from '../stats/special.js';
+import { oneSampleT, twoSampleT, onewayAnova, pairedT, chiSquareIndependence, twoProportions } from '../stats/classical.js';
+import { fCdf, chi2Cdf } from '../stats/special.js';
 import { card, cardRow, notice } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { esc, num, stat, pValue, pEq, intl } from '../ui/format.js';
@@ -10697,10 +10944,12 @@ export const id = 'tests';
 export const title = 'Classic tests as GLMM';
 /** The page's sections. */
 export const sections = [
+  { id: 'one', label: 'One-sample t test', tip: 'A normal model with no predictor.' },
   { id: 't', label: 'Two-sample t test', tip: 'A normal model with one binary predictor.' },
   { id: 'anova', label: 'One-way ANOVA', tip: 'A normal model with one categorical predictor.' },
   { id: 'paired', label: 'Paired t test', tip: 'A normal mixed model with the subject as the group.' },
-  { id: 'chisq', label: 'Chi-square test of independence', tip: 'A Poisson model of the counts with an interaction.' },
+  { id: 'repeated', label: 'Repeated measures', tip: 'A normal mixed model with no predictor and the day as the group.' },
+  { id: 'chisq', label: 'Chi-square test of independence', tip: 'Two Poisson models of the counts, without and with the interaction.' },
   { id: 'proportion', label: 'Two-proportion test', tip: 'A logistic model with one binary predictor.' }
 ];
 
@@ -10718,19 +10967,26 @@ function tourDataset(which) {
 
 // The section's facts, first and apart from the prose: the data, the
 // classical test, and the model that is that test.
-function modelBlock(spec, data, test) {
+function modelRow(spec, label) {
+  return '<dt>' + esc(label) + '</dt><dd><code>' + esc(formulaOf(spec)) + '</code> <span class="tm-model-fam">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', fitted by REML' : '') + '</span></dd>';
+}
+function modelBlock(spec, data, test, label = 'Equivalent model') {
   return '<dl class="tm-model">' +
     '<dt>Data to compare</dt><dd>' + data + '</dd>' +
     '<dt>Classical test</dt><dd>' + test + '</dd>' +
-    '<dt>Equivalent model</dt><dd><code>' + esc(formulaOf(spec)) + '</code> <span class="tm-model-fam">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', fitted by REML' : '') + '</span></dd>' +
+    modelRow(spec, label) +
     '</dl>';
 }
+// A second model of the same section, under the first's table.
+function modelOnly(spec, label) {
+  return '<dl class="tm-model tm-model-more">' + modelRow(spec, label) + '</dl>';
+}
 
-function loadButton(which, spec) {
+function loadButton(which, spec, label = 'Open this dataset and model on the Model page') {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'btn-run2';
-  b.textContent = 'Open this dataset and model on the Model page';
+  b.textContent = label;
   b.addEventListener('click', () => {
     const { ds } = tourDataset(which);
     let loaded = state.datasets.find(d => sameData(d, ds));
@@ -10747,6 +11003,24 @@ function pair(label, classical, model, note) {
 }
 function table(rows) {
   return '<div class="scroll-box"><table class="ptab"><thead><tr><th>Quantity</th><th>Classical test</th><th>GLMM</th><th></th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+}
+
+function sectionOne(root) {
+  const { ds } = tourDataset('one');
+  const spec = { response: 'deviation', family: 'normal', link: 'identity', terms: [], group: null, nested: null, slope: null, olre: false, reml: false };
+  const r = fitModel(ds, spec);
+  const t = oneSampleT(ds.rows.map(x => x[0]));
+  const fit = r.fit;
+  const se0 = Math.sqrt(fit.vcov[0][0]), tm = fit.beta[0] / se0, pm = waldP(tm, fit.dfResidual);
+  root.innerHTML = modelBlock(spec, 'The delivery time of twenty-five orders, each as its deviation from the thirty-minute target.', 'The one-sample t test of the mean against 0.') + '<p class="exp-note">The one-sample t test can be realized as the GLMM above, a normal model with no predictor. The intercept of the GLMM is the mean deviation, its standard error is s/√n, and the Wald test of the intercept against 0 is the one-sample t test, on the same n − 1 degrees of freedom. A test against a target other than 0 is the same test on the response minus the target, which is why these data are each order’s deviation from the target rather than its delivery time.</p>';
+  root.innerHTML += table([
+    pair('Mean deviation', stat(t.mean, 5), stat(fit.beta[0], 5), 'the intercept'),
+    pair('Standard error', stat(t.se, 5), stat(se0, 5), 's/√n'),
+    pair('t', stat(t.t, 5), stat(tm, 5), 'the GLMM matches the test'),
+    pair('Degrees of freedom', intl(t.df), intl(fit.dfResidual), 'the GLMM matches the test'),
+    pair('p', pValue(t.p), pValue(pm), 'the GLMM matches the test')
+  ]);
+  root.appendChild(loadButton('one', spec));
 }
 
 function sectionT(root) {
@@ -10817,27 +11091,64 @@ function sectionPaired(root) {
   root.appendChild(loadButton('paired', spec));
 }
 
+function sectionRepeated(root) {
+  const { ds } = tourDataset('repeated');
+  const spec = { response: 'deviation', family: 'normal', link: 'identity', terms: [], group: 'day', nested: null, slope: null, olre: false, reml: true };
+  const r = fitModel(ds, spec);
+  const di = column(ds, 'day');
+  const days = di.col.levels.map(d => ds.rows.filter(x => x[di.index] === d).map(x => x[0]));
+  const means = oneSampleT(days.map(v => v.reduce((a, b) => a + b, 0) / v.length));
+  const naive = oneSampleT(ds.rows.map(x => x[0]));
+  const fit = r.fit;
+  const se0 = Math.sqrt(fit.vcov[0][0]), z = fit.beta[0] / se0;
+  const ret = randomEffectTest(ds, spec, r);
+  root.innerHTML = modelBlock(spec, 'The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.', 'The one-sample t test on the ten daily means.') + '<p class="exp-note">A one-sample t test on repeated measures can be realized as the GLMM above, a mixed model with a random intercept per day and no predictor. The two hundred orders are not independent: orders on the same day share that day’s conditions, and a t test that treats them as two hundred independent observations takes a standard error that is too small. The classical remedy is to test the ten daily means, one number per day. The random intercept of the GLMM does the same: under REML, the standard error of its intercept is the standard error of the daily means, exactly, because every day carries the same number of orders and the between-day variance is estimated above 0. The GLMM reports a z test where the t test has 9 degrees of freedom, as on the paired test, and it also says how much of the variation sits between days. The paired t test is the two-condition form of this model; a factor with more levels in place of the condition gives one-way repeated-measures analysis of variance under compound symmetry.</p>';
+  root.innerHTML += table([
+    pair('Mean deviation', stat(means.mean, 5) + ' (daily means), ' + stat(naive.mean, 5) + ' (all orders)', stat(fit.beta[0], 5), 'the intercept'),
+    pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders as if independent)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
+    pair('Statistic', 't = ' + stat(means.t, 5) + ' on ' + intl(means.df) + ' df (daily means), t = ' + stat(naive.t, 5) + ' on ' + intl(naive.df) + ' df (all orders)', 'z = ' + stat(z, 5), ''),
+    pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders)', pValue(waldP(z, Infinity)), 'z against t on 9 df'),
+    pair('Between-day variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
+  ]);
+  root.appendChild(loadButton('repeated', spec));
+}
+
 function sectionChisq(root) {
   const { ds } = tourDataset('chisq');
-  const spec = { response: 'count', family: 'poisson', link: 'log', terms: ['outcome', 'channel', { of: ['outcome', 'channel'] }], group: null, nested: null, slope: null, olre: false, reml: false };
-  const r = fitModel(ds, spec);
+  const spec0 = { response: 'count', family: 'poisson', link: 'log', terms: ['outcome', 'channel'], group: null, nested: null, slope: null, olre: false, reml: false };
+  const spec = Object.assign({}, spec0, { terms: ['outcome', 'channel', { of: ['outcome', 'channel'] }] });
+  const r0 = fitModel(ds, spec0), r = fitModel(ds, spec);
   const oi = column(ds, 'outcome'), chi = column(ds, 'channel');
-  const tab = chi.col.levels.map(ch => oi.col.levels.map(o => ds.rows.find(x => x[oi.index] === o && x[chi.index] === ch)[0]));
+  const cells = chi.col.levels.map(ch => oi.col.levels.map(o => ds.rows.findIndex(x => x[oi.index] === o && x[chi.index] === ch)));
+  const tab = cells.map(row => row.map(i => ds.rows[i][0]));
   const cs = chiSquareIndependence(tab);
-  const tt = termTests(ds, spec, r);
-  const ia = tt.rows.find(x => x.term.includes(':'));
-  // The independence model's Pearson statistic.
-  const r0 = fitModel(ds, Object.assign({}, spec, { terms: ['outcome', 'channel'] }));
+  // The independence model's Pearson statistic, and its fitted counts in the
+  // table's order.
   let X2 = 0;
   for (const p of r0.fit.pearson) X2 += p * p;
-  root.innerHTML = modelBlock(spec, 'Delivery orders counted by outcome (early, on time, late) and by order channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.') + '<p class="exp-note">The chi-square test of independence can be realized as the GLMM above, a Poisson model of the six counts with the outcome-by-channel interaction. The test asks whether outcome and channel are associated. With the interaction, the GLMM fits the table exactly; without it, it is the independence model, whose fitted counts are the test’s expected counts. The likelihood-ratio test of the interaction is G², the likelihood-ratio form of the chi-square test, and Pearson’s X² is the independence model’s Pearson statistic; the two agree in large samples.</p>';
+  const counts = m => chi.col.levels.map((ch, i) => esc(ch) + ': ' + cells[i].map(j => num(m[j], 4)).join(', ')).join('; ');
+  const fittedByCell = new Float64Array(ds.rows.length);
+  r0.design.keep.forEach((rowIndex, k) => { fittedByCell[rowIndex] = r0.fit.fitted[k]; });
+  const expectedByCell = new Float64Array(ds.rows.length);
+  cells.forEach((row, i) => row.forEach((j, k) => { expectedByCell[j] = cs.expected[i][k]; }));
+  const tt = termTests(ds, spec, r);
+  const ia = tt.rows.find(x => x.term.includes(':'));
+  root.innerHTML = modelBlock(spec0, 'Delivery orders counted by outcome (early, on time, late) and by order channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.', 'Independence model') + '<p class="exp-note">The chi-square test of independence can be realized through two nested GLMMs, Poisson models of the six counts. The first is the one above, with the outcome and the channel as its predictors and no interaction between them: the independence model, which says that the outcome’s distribution is the same on every channel. Its fitted counts are the test’s expected counts, the counts that independence predicts. Pearson’s chi-square statistic is the sum of the squared Pearson residuals of this GLMM, and the GLMM’s deviance is the likelihood-ratio chi-square statistic, a second statistic for the same test that many texts write as G². Both are chi-square on (rows − 1)(columns − 1) degrees of freedom, the residual degrees of freedom of the GLMM, and the two agree in large samples.</p>';
   root.innerHTML += table([
-    pair('Degrees of freedom', intl(cs.df), intl(ia.df), '(rows − 1)(columns − 1)'),
-    pair('Pearson X²', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5), 'Σ Pearson residual² of the independence model'),
-    pair('Likelihood-ratio G²', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(ia.stat, 5) + ', ' + pEq(ia.p), 'the term test of outcome:channel'),
-    pair('Saturated model’s deviance', '–', stat(r.fit.deviance, 3), 'the table is fitted exactly')
+    pair('Expected counts', counts(expectedByCell), counts(fittedByCell), 'the fitted counts'),
+    pair('Degrees of freedom', intl(cs.df), intl(r0.fit.dfResidual), '(rows − 1)(columns − 1)'),
+    pair('Pearson chi-square', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5) + ', ' + pEq(1 - chi2Cdf(X2, r0.fit.dfResidual)), 'Σ Pearson residual²'),
+    pair('Likelihood-ratio chi-square', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(r0.fit.deviance, 5) + ', ' + pEq(1 - chi2Cdf(r0.fit.deviance, r0.fit.dfResidual)), 'the deviance')
   ]);
-  root.appendChild(loadButton('chisq', spec));
+  root.appendChild(loadButton('chisq', spec0, 'Open this dataset and the independence model on the Model page'));
+  const second = document.createElement('div');
+  second.innerHTML = modelOnly(spec, 'Saturated model') + '<p class="exp-note">The second GLMM adds the outcome-by-channel interaction. It then has as many coefficients as the table has cells, and so it fits the six counts exactly: its deviance is 0, and a model that fits its data exactly is called saturated. The Model page’s likelihood-ratio test of the interaction refits the GLMM without it, which is the independence model, and the fit it gives up is the independence model’s deviance. The test of the interaction is therefore the likelihood-ratio chi-square test of independence, number for number, and it is the form the test takes once the GLMM carries more, a third factor or a covariate, where the chi-square test has no answer.</p>';
+  second.innerHTML += table([
+    pair('Deviance', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'the table is fitted exactly'),
+    pair('Likelihood-ratio test of outcome:channel', stat(cs.G2, 5) + ' on ' + intl(cs.df) + ' df, ' + pEq(cs.pG), stat(ia.stat, 5) + ' on ' + intl(ia.df) + ' df, ' + pEq(ia.p), 'the Model page’s term test')
+  ]);
+  root.appendChild(second);
+  root.appendChild(loadButton('chisq', spec, 'Open this dataset and the saturated model on the Model page'));
 }
 
 function sectionProportion(root) {
@@ -10851,13 +11162,13 @@ function sectionProportion(root) {
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), z = fit.beta[1] / se1;
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'Fifty customers shown each of two offers (A and B), and whether each customer converted.', 'The two-proportion z test.') + '<p class="exp-note">The two-proportion test can be realized as the GLMM above, a logistic model with the offer as its one predictor. The GLMM’s coefficient is the log odds ratio of converting under B against A, and its likelihood-ratio test is G² for the 2 × 2 table. The classical test compares the two rates by a z test with the pooled proportion’s standard error (a score test, whose square is the chi-square test on the table), whereas the GLMM’s Wald z uses the standard error at the estimate, which is why the two z values differ a little.</p>';
+  root.innerHTML = modelBlock(spec, 'Fifty customers shown each of two offers (A and B), and whether each customer converted.', 'The two-proportion z test.') + '<p class="exp-note">The two-proportion test can be realized as the GLMM above, a logistic model with the offer as its one predictor. The GLMM’s coefficient is the log odds ratio of converting under B against A, and its likelihood-ratio test is the likelihood-ratio chi-square statistic for the 2 × 2 table. The classical test compares the two rates by a z test with the pooled proportion’s standard error (a score test, whose square is the chi-square test on the table), whereas the GLMM’s Wald z uses the standard error at the estimate, which is why the two z values differ a little.</p>';
   root.innerHTML += table([
     pair('Conversion rates', stat(pr.p2, 4) + ' (A), ' + stat(pr.p1, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
     pair('Effect', 'difference B − A ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', ''),
     pair('z', stat(pr.z, 5) + ' (score, pooled SE)', stat(z, 5) + ' (Wald)', ''),
     pair('p', pValue(pr.p), pValue(waldP(z, Infinity)) + ' (Wald), ' + pValue(tt.rows[0].p) + ' (likelihood ratio)', 'three tests of one hypothesis'),
-    pair('Chi-square on the 2 × 2 table', stat(pr.chisq, 5), stat(tt.rows[0].stat, 5) + ' (G²)', '')
+    pair('Chi-square on the 2 × 2 table', stat(pr.chisq, 5), stat(tt.rows[0].stat, 5) + ' (likelihood ratio)', '')
   ]);
   root.appendChild(loadButton('proportion', spec));
 }
@@ -10870,10 +11181,10 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">The tests of a first statistics course can each be realized as a generalized linear mixed model: a t test as a normal model with one binary predictor, ANOVA as a normal model with a factor, the paired test as a mixed model, the chi-square test as a Poisson model of counts, and the comparison of two proportions as a logistic model. Each section names the classical test, states the GLMM that realizes it, fits that GLMM to a small bundled dataset, and sets its numbers beside the test’s. The point is not that the GLMM is better on these data; it is that the GLMM keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
+    '<p class="lede">The tests of a first statistics course can each be realized as a generalized linear mixed model: the one-sample t test as a normal model with no predictor, the two-sample t test as one with a binary predictor, ANOVA as a normal model with a factor, the paired test and a test on repeated measures as mixed models, the chi-square test as a Poisson model of counts, and the comparison of two proportions as a logistic model. Each section names the classical test, states the GLMM that realizes it, fits that GLMM to a small bundled dataset, and sets its numbers beside the test’s. The point is not that the GLMM is better on these data; it is that the GLMM keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
     '<div data-subnav class="subnav"></div>' +
     sections.map(s => '<div data-section="' + s.id + '" class="sec"><div class="sec-hd">' + esc(s.label) + '</div><div id="ts-' + s.id + '"></div></div>').join('');
-  for (const [sec, fn] of [['t', sectionT], ['anova', sectionAnova], ['paired', sectionPaired], ['chisq', sectionChisq], ['proportion', sectionProportion]]) {
+  for (const [sec, fn] of [['one', sectionOne], ['t', sectionT], ['anova', sectionAnova], ['paired', sectionPaired], ['repeated', sectionRepeated], ['chisq', sectionChisq], ['proportion', sectionProportion]]) {
     const box = root.querySelector('#ts-' + sec);
     try { fn(box); } catch (err) { console.error(err); box.appendChild(notice('warn', 'This section could not be computed: ' + esc(err.message))); }
   }
@@ -11326,9 +11637,9 @@ function lsq(X, z) {
 }
 </script>
 <script type="text/plain" data-module="js/stats/classical.js">
-// The classical tests the Tests as models page sets beside their models:
-// the pooled and Welch two-sample t tests, one-way ANOVA's F, the paired t
-// test, the chi-square test of independence with Pearson's and the
+// The classical tests the Classic tests as GLMM page sets beside their
+// models: the one-sample t test, the pooled and Welch two-sample t tests,
+// one-way ANOVA's F, the paired t test, the chi-square test of independence with Pearson's and the
 // likelihood-ratio statistics, and the two-proportion test as a score test.
 // Conventions are R's (t.test, aov, chisq.test with no continuity
 // correction, prop.test with no correction). Pure functions, no DOM.
@@ -11343,6 +11654,19 @@ function meanVar(a) {
   let s = 0;
   for (const v of a) s += (v - m) * (v - m);
   return { n, mean: m, variance: n > 1 ? s / (n - 1) : NaN };
+}
+
+/**
+ * The one-sample t test of a mean against mu0.
+ * @param {ArrayLike<number>} x
+ * @param {number} [mu0]
+ * @returns {{ mean: number, se: number, t: number, df: number, p: number }}
+ */
+export function oneSampleT(x, mu0 = 0) {
+  const m = meanVar(Array.from(x));
+  const se = Math.sqrt(m.variance / m.n);
+  const t = (m.mean - mu0) / se;
+  return { mean: m.mean, se, t, df: m.n - 1, p: 2 * (1 - tCdf(Math.abs(t), m.n - 1)) };
 }
 
 /**

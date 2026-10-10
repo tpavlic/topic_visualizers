@@ -1,6 +1,6 @@
-// The classical tests the Tests as models page sets beside their models:
-// the pooled and Welch two-sample t tests, one-way ANOVA's F, the paired t
-// test, the chi-square test of independence with Pearson's and the
+// The classical tests the Classic tests as GLMM page sets beside their
+// models: the one-sample t test, the pooled and Welch two-sample t tests,
+// one-way ANOVA's F, the paired t test, the chi-square test of independence with Pearson's and the
 // likelihood-ratio statistics, and the two-proportion test as a score test.
 // Conventions are R's (t.test, aov, chisq.test with no continuity
 // correction, prop.test with no correction). Pure functions, no DOM.
@@ -15,6 +15,19 @@ function meanVar(a) {
   let s = 0;
   for (const v of a) s += (v - m) * (v - m);
   return { n, mean: m, variance: n > 1 ? s / (n - 1) : NaN };
+}
+
+/**
+ * The one-sample t test of a mean against mu0.
+ * @param {ArrayLike<number>} x
+ * @param {number} [mu0]
+ * @returns {{ mean: number, se: number, t: number, df: number, p: number }}
+ */
+export function oneSampleT(x, mu0 = 0) {
+  const m = meanVar(Array.from(x));
+  const se = Math.sqrt(m.variance / m.n);
+  const t = (m.mean - mu0) / se;
+  return { mean: m.mean, se, t, df: m.n - 1, p: 2 * (1 - tCdf(Math.abs(t), m.n - 1)) };
 }
 
 /**

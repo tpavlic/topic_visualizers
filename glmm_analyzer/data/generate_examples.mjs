@@ -25,7 +25,7 @@
 //   colony_recruits.csv recruits per trial at 12 colonies (count) against temperature and a
 //                       treatment, with a random intercept and slope by colony
 //   rating.csv          a four-level rating (ordinal) against the wait and the express lane
-//   tour_*.csv          the five small datasets of the Tests as models page
+//   tour_*.csv          the seven small datasets of the Classic tests as GLMM page
 //
 // Usage, from anywhere:
 //   node glmm_analyzer/data/generate_examples.mjs [--out <dir>]
@@ -211,8 +211,19 @@ function ratingCsv() {
 
 /** The five small datasets of the Tests as models page. */
 function tourCsv(which) {
-  const rng = mulberry32(SEEDS.tour + { t: 1, anova: 2, paired: 3, chisq: 4, proportion: 9 }[which]);
+  const rng = mulberry32(SEEDS.tour + { one: 5, t: 1, anova: 2, paired: 3, repeated: 6, chisq: 4, proportion: 9 }[which]);
   const rows = [];
+  if (which === 'one') {
+    for (let i = 0; i < 25; i++) rows.push([fmt(1.5 + 3.5 * normal([rng(), rng()]), 2)]);
+    return csv(['deviation'], rows);
+  }
+  if (which === 'repeated') {
+    for (let d = 1; d <= 10; d++) {
+      const day = 1.2 + 2 * normal([rng(), rng()]);
+      for (let i = 0; i < 20; i++) rows.push([fmt(day + 3 * normal([rng(), rng()]), 2), 'D' + String(d).padStart(2, '0')]);
+    }
+    return csv(['deviation', 'day'], rows);
+  }
   if (which === 't') {
     for (const [line, m] of [['A', 48], ['B', 52]]) for (let i = 0; i < 15; i++) rows.push([fmt(m + 4 * normal([rng(), rng()]), 2), line]);
     return csv(['throughput', 'line'], rows);
@@ -288,6 +299,12 @@ const EXAMPLES = [
     mapping: { name: 'Visit ratings', response: 'rating', columns: { rating: { role: 'response', type: 'ordinal', levels: ['poor', 'fair', 'good', 'great'] }, wait: { role: 'predictor', type: 'continuous' }, express: { role: 'predictor', type: 'categorical' } } }
   },
   {
+    id: 'tour-one', tour: 'one', title: 'Deviation from a target (for the one-sample t test)', file: 'tour_one.csv',
+    description: 'The delivery time of twenty-five orders, each as its deviation from the thirty-minute target.',
+    build: () => tourCsv('one'),
+    mapping: { name: 'Deviation from target', response: 'deviation', columns: { deviation: { role: 'response', type: 'continuous' } } }
+  },
+  {
     id: 'tour-t', tour: 't', title: 'Two production lines (for the t test)', file: 'tour_t.csv',
     description: 'Throughput on fifteen days of each of two production lines.',
     build: () => tourCsv('t'),
@@ -304,6 +321,12 @@ const EXAMPLES = [
     description: 'The task time of fourteen operators before and after a change.',
     build: () => tourCsv('paired'),
     mapping: { name: 'Before and after', response: 'time', columns: { time: { role: 'response', type: 'continuous' }, condition: { role: 'predictor', type: 'categorical' }, subject: { role: 'group', type: 'categorical' } } }
+  },
+  {
+    id: 'tour-repeated', tour: 'repeated', title: 'Orders on ten days (for repeated measures)', file: 'tour_repeated.csv',
+    description: 'The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.',
+    build: () => tourCsv('repeated'),
+    mapping: { name: 'Orders on ten days', response: 'deviation', columns: { deviation: { role: 'response', type: 'continuous' }, day: { role: 'group', type: 'categorical' } } }
   },
   {
     id: 'tour-chisq', tour: 'chisq', title: 'Delivery outcome by channel (for the chi-square test)', file: 'tour_chisq.csv',

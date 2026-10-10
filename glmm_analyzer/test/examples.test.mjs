@@ -54,5 +54,5 @@ test('the examples show the supports their descriptions name', () => {
   assert.equal(sup('utilization'), 'unit');
   assert.equal(sup('colony-recruits'), 'count');
   assert.equal(sup('rating'), 'ordinal');
-  assert.deepEqual(EXAMPLES.filter(e => e.tour).map(e => e.tour), ['t', 'anova', 'paired', 'chisq', 'proportion']);
+  assert.deepEqual(EXAMPLES.filter(e => e.tour).map(e => e.tour), ['one', 't', 'anova', 'paired', 'repeated', 'chisq', 'proportion']);
 });

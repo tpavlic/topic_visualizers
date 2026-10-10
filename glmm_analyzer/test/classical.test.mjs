@@ -4,11 +4,54 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { twoSampleT, onewayAnova, pairedT, chiSquareIndependence, twoProportions } from '../js/stats/classical.js';
+import { oneSampleT, twoSampleT, onewayAnova, pairedT, chiSquareIndependence, twoProportions } from '../js/stats/classical.js';
+import { EXAMPLES } from '../js/data/examples.js';
+import { sniff, buildTable } from '../js/io/parse.js';
+import { column } from '../js/data/model.js';
+import { fitModel } from '../js/stats/fit.js';
 
 const ref = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'reference', 'classical.json'), 'utf8'));
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), msg + ': ' + a + ' vs ' + b);
 const x = [5.1, 4.8, 6.2, 5.5, 4.9, 5.8, 6.1, 5.0, 5.4, 4.7], y = [6.0, 6.4, 5.9, 7.1, 6.6, 6.2, 5.8, 6.9];
+
+test('the one-sample t test', () => {
+  const r = oneSampleT(x, 5);
+  close(r.t, ref.one.t, 1e-10, 't'); assert.equal(r.df, ref.one.df); close(r.p, ref.one.p, 1e-9, 'p');
+  close(r.mean, ref.one.est, 1e-12, 'mean'); close(r.se, ref.one.se, 1e-10, 'se');
+  assert.equal(oneSampleT(x).mean, r.mean);
+});
+
+// The two intercept-only fits of the Classic tests as GLMM page: a normal
+// model with no predictor is the one-sample t test, and with a random
+// intercept per day by REML it is the t test on the daily means.
+function tour(which) {
+  const ex = EXAMPLES.find(e => e.tour === which);
+  return buildTable(sniff(ex.text, { name: ex.mapping.name }), ex.mapping).dataset;
+}
+
+test('an intercept-only normal model is the one-sample t test', () => {
+  const ds = tour('one');
+  const r = fitModel(ds, { response: 'deviation', family: 'normal', link: 'identity', terms: [], group: null, nested: null, slope: null, olre: false, reml: false });
+  const t = oneSampleT(ds.rows.map(v => v[0]));
+  assert.deepEqual(r.names, ['(Intercept)']);
+  close(r.fit.beta[0], t.mean, 1e-12, 'mean');
+  close(Math.sqrt(r.fit.vcov[0][0]), t.se, 1e-10, 'se');
+  assert.equal(r.fit.dfResidual, t.df);
+});
+
+test('an intercept-only mixed model by REML is the t test on the group means', () => {
+  const ds = tour('repeated');
+  const r = fitModel(ds, { response: 'deviation', family: 'normal', link: 'identity', terms: [], group: 'day', nested: null, slope: null, olre: false, reml: true });
+  const di = column(ds, 'day');
+  const means = di.col.levels.map(d => { const v = ds.rows.filter(x => x[di.index] === d).map(x => x[0]); return v.reduce((a, b) => a + b, 0) / v.length; });
+  const t = oneSampleT(means);
+  assert.equal(means.length, 10);
+  assert.ok(r.fit.varcomp[0].variances[0] > 0, 'the between-day variance is above 0');
+  close(r.fit.beta[0], t.mean, 1e-8, 'mean');
+  close(Math.sqrt(r.fit.vcov[0][0]), t.se, 1e-6, 'se');
+  // The t test on every order as if independent has a smaller standard error.
+  assert.ok(oneSampleT(ds.rows.map(v => v[0])).se < 0.6 * t.se);
+});
 
 test('the two-sample t tests', () => {
   const r = twoSampleT(x, y);
