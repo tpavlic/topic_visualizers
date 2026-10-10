@@ -80,6 +80,14 @@ function loadButton(which, spec, label = 'Open this dataset and model on the Mod
 function pair(label, classical, model, note) {
   return '<tr><td>' + label + '</td><td>' + classical + '</td><td>' + model + '</td><td class="muted-line">' + (note || '') + '</td></tr>';
 }
+// One quantity over several rows, as a small contingency table: the label
+// and the note span the rows, and each row carries its own name.
+function pairSpan(label, rows, note) {
+  return rows.map(([name, classical, model], i) =>
+    '<tr>' + (i === 0 ? '<td rowspan="' + rows.length + '">' + label + '</td>' : '') +
+    '<td>' + name + ': ' + classical + '</td><td>' + name + ': ' + model + '</td>' +
+    (i === 0 ? '<td rowspan="' + rows.length + '" class="muted-line">' + (note || '') + '</td>' : '') + '</tr>').join('');
+}
 function table(rows) {
   return '<div class="scroll-box"><table class="ptab"><thead><tr><th>Quantity</th><th>Classical test</th><th>GLMM</th><th></th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
 }
@@ -198,14 +206,17 @@ function sectionChisq(root) {
   const spec = Object.assign({}, spec0, { terms: ['outcome', 'channel', { of: ['outcome', 'channel'] }] });
   const r0 = fitModel(ds, spec0), r = fitModel(ds, spec);
   const oi = column(ds, 'outcome'), chi = column(ds, 'channel');
-  const cells = chi.col.levels.map(ch => oi.col.levels.map(o => ds.rows.findIndex(x => x[oi.index] === o && x[chi.index] === ch)));
+  // The cells in the order the data list the outcomes (early, on time,
+  // late), not the levels' sorted order.
+  const outcomes = [...new Set(ds.rows.map(x => x[oi.index]))];
+  const cells = chi.col.levels.map(ch => outcomes.map(o => ds.rows.findIndex(x => x[oi.index] === o && x[chi.index] === ch)));
   const tab = cells.map(row => row.map(i => ds.rows[i][0]));
   const cs = chiSquareIndependence(tab);
   // The independence model's Pearson statistic, and its fitted counts in the
   // table's order.
   let X2 = 0;
   for (const p of r0.fit.pearson) X2 += p * p;
-  const counts = m => chi.col.levels.map((ch, i) => esc(ch) + ': ' + cells[i].map(j => num(m[j], 4)).join(', ')).join('; ');
+  const counts = (m, i) => cells[i].map(j => num(m[j], 4)).join(', ');
   const fittedByCell = new Float64Array(ds.rows.length);
   r0.design.keep.forEach((rowIndex, k) => { fittedByCell[rowIndex] = r0.fit.fitted[k]; });
   const expectedByCell = new Float64Array(ds.rows.length);
@@ -214,7 +225,7 @@ function sectionChisq(root) {
   const ia = tt.rows.find(x => x.term.includes(':'));
   root.innerHTML = modelBlock(spec0, 'Delivery orders counted by outcome (early, on time, late) and by order channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.', 'Independence model') + '<p class="exp-note">The chi-square test of independence can be realized through two nested GLMMs, Poisson models of the six counts. The first is the one above, with the outcome and the channel as its predictors and no interaction between them: the independence model, which says that the outcome’s distribution is the same on every channel. Its fitted counts are the test’s expected counts, the counts that independence predicts. Pearson’s chi-square statistic is the sum of the squared Pearson residuals of this GLMM, and the GLMM’s deviance is the likelihood-ratio chi-square statistic, a second statistic for the same test that many texts write as G². Both are chi-square on (rows − 1)(columns − 1) degrees of freedom, the residual degrees of freedom of the GLMM, and the two agree in large samples.</p>';
   root.innerHTML += table([
-    pair('Expected counts', counts(expectedByCell), counts(fittedByCell), 'the fitted counts'),
+    pairSpan('Expected counts', chi.col.levels.map((ch, i) => [esc(ch), counts(expectedByCell, i), counts(fittedByCell, i)]), 'the fitted counts'),
     pair('Degrees of freedom', intl(cs.df), intl(r0.fit.dfResidual), '(rows − 1)(columns − 1)'),
     pair('Pearson chi-square', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5) + ', ' + pEq(1 - chi2Cdf(X2, r0.fit.dfResidual)), 'Σ Pearson residual²'),
     pair('Likelihood-ratio chi-square', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(r0.fit.deviance, 5) + ', ' + pEq(1 - chi2Cdf(r0.fit.deviance, r0.fit.dfResidual)), 'the deviance')
