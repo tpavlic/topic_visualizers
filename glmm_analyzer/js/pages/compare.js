@@ -9,6 +9,7 @@ import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { chi2Cdf } from '../stats/special.js';
 import { notice, details } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
+import { compareRecipe, tooBig, capRecipe } from '../io/recipes.js';
 import { esc, num, stat, pValue, intl, plural } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
 
@@ -127,9 +128,22 @@ function compute() {
   els.pairs.innerHTML = ph ? '<div class="scroll-box"><table class="ptab"><thead><tr><th>Smaller model</th><th>Larger model</th><th>Adds</th><th>df</th><th>χ²</th><th>p</th></tr></thead><tbody>' + ph + '</tbody></table></div>' : '<p class="muted-line">No kept pair nests: a pair is tested when one model holds the other’s terms and more, with the same response, family, link, and random part, or adds a random part to the same fixed terms.</p>';
   els.table.querySelectorAll('.cp-use').forEach(b => b.addEventListener('click', () => { const m = state.models.find(x => x.id === b.dataset.id); if (m) { state.setSpec(m.spec); location.hash = '#model'; } }));
   els.table.querySelectorAll('.cp-drop').forEach(b => b.addEventListener('click', () => state.dropModel(b.dataset.id)));
+  const title = 'Compare: ' + plural(fitted.length, 'candidate model');
+  const provenance = { models: fitted.length, 'ranked by': 'AIC', fits: 'maximum likelihood' };
+  // One script fits every candidate to one dataset; candidates spread over
+  // several datasets get none.
+  let regen = null;
+  if (fitted.length && new Set(fitted.map(r => r.spec.dataset)).size === 1) {
+    const ds = fitted[0].ds, level = state.settings.level;
+    const candidates = fitted.map(r => ({ name: r.model.name, spec: Object.assign({}, r.spec, { reml: false }), result: r.result }));
+    const specs = candidates.map(c => c.spec);
+    const pairs = pairRows.map(p => ({ a: p[0], b: p[1], kind: p[2], df: p[3], stat: p[4], p: p[5] }));
+    regen = { specs, ds, tooBig: () => tooBig(ds, specs), build: () => capRecipe(compareRecipe({ ds, level, title, provenance, candidates, pairs }), ds, specs) };
+  }
   state.setResult(id, {
-    title: 'Compare: ' + plural(fitted.length, 'candidate model'),
-    provenance: { models: fitted.length, 'ranked by': 'AIC', fits: 'maximum likelihood' },
+    title,
+    provenance,
+    regen,
     tables: [
       { name: 'Candidate models', headers: ['model', 'dataset', 'formula', 'family_link', 'k', 'log_likelihood', 'AIC', 'delta_AIC', 'BIC'], rows: tableRows }
     ].concat(pairRows.length ? [{ name: 'Likelihood-ratio tests', headers: ['smaller', 'larger', 'adds', 'df', 'chi_square', 'p'], rows: pairRows }] : [])

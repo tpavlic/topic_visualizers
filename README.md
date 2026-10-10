@@ -26,6 +26,7 @@ in course management systems (e.g., Canvas LMS) as an iframe.
 | Demo                                         | Description                                                                                                                                     |
 |----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`survival_analysis/`](survival_analysis/)   | Explore exponential transition rates, right censoring, and repeated events through interactive survival curves and two-state transition models. |
+| [`glmm_analyzer/`](glmm_analyzer/)           | Load a table, choose a family and link, fit a generalized linear model with or without a random effect, check its residuals, plot its predictions, compare candidate models by AIC, and regenerate every result in R, Python, or MATLAB. |
 
 ---
 

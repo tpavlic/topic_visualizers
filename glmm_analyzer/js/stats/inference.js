@@ -285,3 +285,24 @@ export function randomEffectTest(ds, spec, result) {
   const p = 0.5 * upper(stat, k - 1) + 0.5 * upper(stat, k);
   return { stat, k, p, llMixed: mixed.logLik, llFixed: fixed.logLik };
 }
+
+/**
+ * The coefficient table: estimate, standard error, the Wald statistic and
+ * its p-value, and the interval at `level`, with the back-transformed ratio
+ * where the link gives one (never for the intercept).
+ * @param {object} result fitModel's output
+ * @param {number} level
+ */
+export function waldTable(result, level) {
+  const fit = result.fit;
+  const df = waldDf(fit);
+  const q = waldQuantile(level, df);
+  const link = LINKS[result.link];
+  return result.names.map((name, j) => {
+    const b = fit.beta[j], se = fit.vcov ? Math.sqrt(fit.vcov[j][j]) : NaN;
+    const z = b / se;
+    const lo = b - q * se, hi = b + q * se;
+    const back = link.backName && name !== '(Intercept)' ? { est: Math.exp(b), lo: Math.exp(lo), hi: Math.exp(hi) } : null;
+    return { name, b, se, z, p: waldP(z, df), lo, hi, back, useT: Number.isFinite(df), df };
+  });
+}

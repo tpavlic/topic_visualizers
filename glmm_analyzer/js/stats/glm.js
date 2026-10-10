@@ -9,9 +9,14 @@
 import { FAMILIES, linkOf } from './families.js';
 import { crossprod, crossprodVec, cholesky, cholSolve, cholInverse, matvec } from './linalg.js';
 
-/** Iteration cap and convergence tolerance, as R's glm.control. */
-export const GLM_MAXIT = 50;
-export const GLM_EPS = 1e-8;
+/**
+ * Iteration cap and convergence tolerance. R's glm.control stops at a
+ * relative change in the deviance of 1e-8, which can leave a coefficient a
+ * few parts in 1e-5 short of the maximum on a non-canonical link; the page
+ * runs to 1e-12, and its R scripts set the same tolerance.
+ */
+export const GLM_MAXIT = 100;
+export const GLM_EPS = 1e-12;
 
 /**
  * @typedef {{ beta: Float64Array, vcov: Float64Array[], eta: Float64Array, fitted: Float64Array, weights: Float64Array,
@@ -25,8 +30,9 @@ export const GLM_EPS = 1e-8;
  * Fits a GLM.
  * @param {Float64Array} y
  * @param {Float64Array[]} X n rows by p columns, full rank
- * @param {{ family: string, link?: string|null, aux?: number, start?: Float64Array|null, maxit?: number }} o
- *   `aux` is the negative binomial's θ (fixed for this fit).
+ * @param {{ family: string, link?: string|null, aux?: number, start?: Float64Array|null, maxit?: number, eps?: number }} o
+ *   `aux` is the negative binomial's θ (fixed for this fit); `eps` the
+ *   convergence tolerance (GLM_EPS by default).
  * @returns {GlmFit}
  */
 export function fitGlm(y, X, o) {
@@ -73,7 +79,7 @@ export function fitGlm(y, X, o) {
       devNew = devOf(muNew);
     }
     beta = betaNew; eta = etaNew; mu = muNew; dev = devNew;
-    if (Math.abs(dev - devold) / (Math.abs(dev) + 0.1) < GLM_EPS) { converged = true; break; }
+    if (Math.abs(dev - devold) / (Math.abs(dev) + 0.1) < (o.eps || GLM_EPS)) { converged = true; break; }
     devold = dev;
   }
   if (!converged) flags.push('notConverged');

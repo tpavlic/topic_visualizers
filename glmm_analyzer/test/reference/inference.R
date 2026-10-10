@@ -35,17 +35,17 @@ emm <- function(m, spec, lvl = 0.95) {
        pairs = as.character(pr$contrast), diff = pr$estimate, pair_se = pr$SE, lo_p = pr[[5]], hi_p = pr[[6]], t = pr[[7]], p = pr[[8]])
 }
 nd <- data.frame(x = c(0.5, 1.5, 2.5, 1.0), f = factor(c("a", "b", "c", "a"), levels = c("a", "b", "c")), g = factor(c("u", "u", "v", "v")))
-m_norm <- glm(ynorm ~ x + f + g, family = gaussian(), data = d)
-m_bin <- glm(ybin ~ x + f + g, family = binomial(), data = d)
-m_pois <- glm(ycount ~ x * f, family = poisson(), data = d)
-m_gam <- glm(ypos ~ x + f, family = Gamma(link = "log"), data = d)
+m_norm <- glm(ynorm ~ x + f + g, family = gaussian(), data = d, control = glm.control(epsilon = 1e-12, maxit = 100))
+m_bin <- glm(ybin ~ x + f + g, family = binomial(), data = d, control = glm.control(epsilon = 1e-12, maxit = 100))
+m_pois <- glm(ycount ~ x * f, family = poisson(), data = d, control = glm.control(epsilon = 1e-12, maxit = 100))
+m_gam <- glm(ypos ~ x + f, family = Gamma(link = "log"), data = d, control = glm.control(epsilon = 1e-12, maxit = 100))
 # The negative binomial on the data of negbin.R, where theta.ml converges.
 set.seed(20261011)
 nb_n <- 80
 nb <- data.frame(x = round(runif(nb_n, 0, 2), 3), f = factor(sample(c("p", "q"), nb_n, replace = TRUE)))
 nb$y <- rnbinom(nb_n, size = 1.8, mu = exp(0.4 + 0.7 * nb$x + ifelse(nb$f == "q", -0.5, 0)))
 m_nb <- MASS::glm.nb(y ~ x + f, data = nb)
-m_poly <- glm(ynorm ~ x + I(x^2) + f, family = gaussian(), data = d)
+m_poly <- glm(ynorm ~ x + I(x^2) + f, family = gaussian(), data = d, control = glm.control(epsilon = 1e-12, maxit = 100))
 out <- list(
   drop_norm = drop_tab(m_norm), drop_bin = drop_tab(m_bin), drop_pois = drop_tab(m_pois), drop_gam = drop_tab(m_gam), drop_nb = drop_tab(m_nb),
   pred_norm = pred(m_norm, nd), pred_bin = pred(m_bin, nd), pred_pois = pred(m_pois, nd), pred_gam = pred(m_gam, nd),

@@ -10,6 +10,10 @@ import { available as storeAvailable } from './ui/store.js';
 import { initSession } from './ui/session.js';
 import { esc, intl, plural } from './ui/format.js';
 import { canModel } from './data/model.js';
+import { installScripts } from './ui/exportrow.js';
+import { analysisScript, scriptFileName, ANALYSIS_WRITERS } from './io/analysis_scripts.js';
+import { capability, capabilityAll } from './io/capability.js';
+import { MAX_NUMBERS } from './io/recipes.js';
 
 import * as importPage from './pages/import.js';
 import * as explorePage from './pages/explore.js';
@@ -82,6 +86,7 @@ function gatePages() {
 }
 
 function boot() {
+  installScripts({ analysisScript, scriptFileName, ANALYSIS_WRITERS, capability, capabilityAll, MAX_NUMBERS });
   for (const p of PAGES) {
     const root = document.getElementById('tab-' + p.id);
     if (!root) continue;

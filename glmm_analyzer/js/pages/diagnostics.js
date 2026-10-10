@@ -18,6 +18,7 @@ import { curveBand, dataPoints, rawPoints, categoricalX } from '../ui/modelplots
 import { card, cardRow, notice, details } from '../ui/widgets.js';
 import { setSectionAvailable } from '../ui/tabs.js';
 import { installExportRow } from '../ui/exportrow.js';
+import { diagnosticsRecipe, tooBig, capRecipe } from '../io/recipes.js';
 import { esc, num, stat, pValue, pEq, intl } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
 
@@ -219,7 +220,14 @@ function compute() {
   // Random effects, with a mixed fit.
   if (fit.mixed) drawRandom(ds, result);
 
-  state.setResult(id, { title: 'Diagnostics: ' + result.formula, provenance, tables });
+  const title = 'Diagnostics: ' + result.formula;
+  const spec = cf.spec, level = state.settings.level;
+  const summary = { mean: m, sd: Math.sqrt(s2), sw };
+  state.setResult(id, { title, provenance, tables, regen: {
+    spec, ds, uniforms: res.uniforms || null,
+    tooBig: () => tooBig(ds, [spec]),
+    build: () => capRecipe(diagnosticsRecipe({ ds, spec, result, level, title, provenance, residuals: res, summary }), ds, [spec])
+  } });
   registerTips(rootEl);
 }
 

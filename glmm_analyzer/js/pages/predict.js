@@ -16,6 +16,7 @@ import { curveBand, dataPoints, rawPoints, categoricalX, LEVEL_COLORS, LEVEL_DAS
 import { card, cardRow, notice } from '../ui/widgets.js';
 import { setSectionAvailable } from '../ui/tabs.js';
 import { installExportRow } from '../ui/exportrow.js';
+import { predictRecipe, tooBig, capRecipe } from '../io/recipes.js';
 import { esc, num, stat, pValue, intl, lvl } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
 
@@ -34,6 +35,8 @@ let rootEl = null;
 let els = {};
 let figs = [];
 let timer = null;
+// What each section last drew, for the page's result and its scripts.
+const last = { effect: null, means: null, calc: null };
 
 /**
  * Renders the page into its section.
@@ -176,9 +179,10 @@ function drawOrdinalEffect(ds, result) {
 function drawEffect() {
   const cf = currentFit();
   els.effect.innerHTML = '';
-  if (!cf || !els.x.value) return;
+  last.effect = null;
+  if (!cf || !els.x.value) { registerResult(); return; }
   const { ds, result } = cf;
-  if (result.fit.family === 'ordinal') { drawOrdinalEffect(ds, result); return; }
+  if (result.fit.family === 'ordinal') { drawOrdinalEffect(ds, result); registerResult(); return; }
   const x = els.x.value, by = els.by.value && els.by.value !== x ? els.by.value : null;
   const level = state.settings.level;
   const grid = effectGrid(ds, result, x, by, 60);
@@ -197,8 +201,8 @@ function drawEffect() {
   const xs = keep.map(i => ds.rows[i][xc.index]);
   const byc = by ? column(ds, by) : null;
   const legendItems = [];
+  const curves = grid.series.map(s => Object.assign({}, s, { pred: predictRows(ds, result, s.rows, level) }));
   fig.render(f => {
-    const curves = grid.series.map(s => Object.assign({}, s, { pred: predictRows(ds, result, s.rows, level) }));
     const allY = [];
     for (const c of curves) { for (const v of c.pred.fitLo) allY.push(v); for (const v of c.pred.fitHi) allY.push(v); }
     let pts = [];
@@ -269,6 +273,8 @@ function drawEffect() {
     (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
   els.effect.appendChild(p);
   figs.push(fig);
+  last.effect = { x, by, series: curves.map(c => ({ label: c.label, by: c.by, rows: c.rows, pred: c.pred })) };
+  registerResult();
 }
 
 function matchesBy(v, bv, col) {
@@ -279,11 +285,12 @@ function matchesBy(v, bv, col) {
 function drawMeans() {
   const cf = currentFit();
   els.means.innerHTML = '';
-  if (!cf || !els.factor.value) return;
+  last.means = null;
+  if (!cf || !els.factor.value) { registerResult(); return; }
   const { ds, result } = cf;
   const level = state.settings.level;
   let m;
-  try { m = marginalMeans(ds, result, els.factor.value, level); } catch (err) { els.means.appendChild(notice('warn', esc(err.message))); return; }
+  try { m = marginalMeans(ds, result, els.factor.value, level); } catch (err) { els.means.appendChild(notice('warn', esc(err.message))); registerResult(); return; }
   const link = LINKS[result.link];
   const useT = Number.isFinite(m.df);
   const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
@@ -310,15 +317,49 @@ function drawMeans() {
   p.innerHTML = 'Each mean is the model’s prediction at the level' + (held ? ', with ' + held + ' (the means over the fitted rows)' : '') + (others.length ? ', averaged over the levels of ' + esc(others.join(', ')) + ' with equal weights' : '') + ', on the link scale and then carried to the response scale. ' +
     'The pairwise p-values and intervals use the studentized range over ' + intl(m.k) + ' means' + (useT ? ' on ' + intl(m.df) + ' degrees of freedom' : ', with no finite degrees of freedom because the dispersion is fixed') + '.';
   els.means.appendChild(p);
-  state.setResult(id, {
-    title: 'Predict: marginal means of ' + m.factor,
-    provenance: { dataset: ds.name, formula: result.formula, family: FAMILIES[result.fit.family].label, link: link.label, factor: m.factor, level: lvl(level), adjustment: 'Tukey' },
-    tables: [
-      { name: 'Marginal means', headers: [m.factor, 'mean_link', 'std_error', 'ci_lower', 'ci_upper', 'mean_response', 'response_lower', 'response_upper'], rows: m.means.map(r => [r.level, r.eta, r.se, r.lo, r.hi, r.fit, r.fitLo, r.fitHi]) },
+  last.means = m;
+  registerResult();
+}
+
+// The page's result: a table per section drawn, and the recipe of a script
+// that redraws every one of them. An ordinal model's predictions are a
+// probability per level, which the scripts do not carry, and so it has no
+// script.
+function registerResult() {
+  const cf = currentFit();
+  if (!cf) { state.setResult(id, null); return; }
+  const { ds, spec, result } = cf;
+  const level = state.settings.level, link = LINKS[result.link];
+  const title = 'Predict: ' + result.formula;
+  const provenance = { dataset: ds.name, formula: result.formula, family: FAMILIES[result.fit.family].label, link: link.label, level: lvl(level) };
+  const tables = [];
+  if (last.effect) {
+    const e = last.effect;
+    provenance['effect plot'] = e.x + (e.by ? ' by ' + e.by : '');
+    const headers = [e.x].concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
+    const rows = [];
+    for (const s of e.series) s.rows.forEach((row, i) => rows.push([row[e.x]].concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
+    tables.push({ name: 'Effect plot', headers, rows });
+  }
+  if (last.means) {
+    const m = last.means, useT = Number.isFinite(m.df);
+    provenance['marginal means of'] = m.factor;
+    provenance.adjustment = 'Tukey';
+    tables.push({ name: 'Marginal means', headers: [m.factor, 'mean_link', 'std_error', 'ci_lower', 'ci_upper', 'mean_response', 'response_lower', 'response_upper'], rows: m.means.map(r => [r.level, r.eta, r.se, r.lo, r.hi, r.fit, r.fitLo, r.fitHi]) },
       { name: 'Pairwise differences', headers: ['pair', 'difference', 'std_error', useT ? 't' : 'z', 'p_tukey', 'ci_lower', 'ci_upper'].concat(link.backName ? ['ratio', 'ratio_lower', 'ratio_upper'] : []),
-        rows: m.pairs.map(p => [p.a + ' - ' + p.b, p.diff, p.se, p.t, p.p, p.lo, p.hi].concat(link.backName ? [p.ratio, p.ratioLo, p.ratioHi] : [])) }
-    ]
-  });
+        rows: m.pairs.map(p => [p.a + ' - ' + p.b, p.diff, p.se, p.t, p.p, p.lo, p.hi].concat(link.backName ? [p.ratio, p.ratioLo, p.ratioHi] : [])) });
+  }
+  if (last.calc) {
+    const { row, pred } = last.calc;
+    provenance.calculator = Object.entries(row).map(([k, v]) => k + ' = ' + v).join(', ');
+    tables.push({ name: 'Calculator', headers: ['quantity', 'value'], rows: Object.entries(row).concat([['linear predictor', pred.eta[0]], ['std_error', pred.se[0]], ['ci_lower', pred.lo[0]], ['ci_upper', pred.hi[0]], ['prediction', pred.fit[0]], ['prediction_lower', pred.fitLo[0]], ['prediction_upper', pred.fitHi[0]]]) });
+  }
+  const regen = result.fit.family === 'ordinal' ? null : {
+    spec, ds,
+    tooBig: () => tooBig(ds, [spec]),
+    build: () => capRecipe(predictRecipe({ ds, spec, result, level, title, provenance, effect: last.effect, means: last.means, calc: last.calc }), ds, [spec])
+  };
+  state.setResult(id, { title, provenance, tables, regen });
 }
 
 function buildCalcInputs(ds, result, preds) {
@@ -340,6 +381,7 @@ function buildCalcInputs(ds, result, preds) {
 function drawCalc() {
   const cf = currentFit();
   els.calc.innerHTML = '';
+  last.calc = null;
   if (!cf) return;
   const { ds, result } = cf;
   const row = {};
@@ -347,16 +389,17 @@ function drawCalc() {
   for (const inp of els.calcInputs.querySelectorAll('[data-name]')) {
     const name = inp.getAttribute('data-name');
     const c = column(ds, name).col;
-    if (c.type === 'continuous') { const v = Number(inp.value); if (!Number.isFinite(v)) { els.calc.appendChild(notice('warn', 'Type a number for ' + esc(name) + '.')); return; } row[name] = v; saved[name] = v; }
+    if (c.type === 'continuous') { const v = Number(inp.value); if (!Number.isFinite(v)) { els.calc.appendChild(notice('warn', 'Type a number for ' + esc(name) + '.')); registerResult(); return; } row[name] = v; saved[name] = v; }
     else { row[name] = inp.value; saved[name] = inp.value; }
   }
   state.setPick(id, 'calc', saved);
-  if (!Object.keys(row).length && result.design.terms.length) return;
+  if (!Object.keys(row).length && result.design.terms.length) { registerResult(); return; }
   const level = state.settings.level;
   if (result.fit.family === 'ordinal') {
     const pr = ordinalPredict(ds, result, [row])[0];
     const levels = column(ds, state.spec.response).col.levels;
     els.calc.appendChild(cardRow(levels.map((l, k) => card('P(' + esc(l) + ')', stat(pr[k], 4)))));
+    registerResult();
     return;
   }
   const p = predictRows(ds, result, [row], level);
@@ -368,6 +411,8 @@ function drawCalc() {
     card('Predicted ' + esc(yLabel), stat(p.fit[0], 5)),
     card('Its interval', '[' + stat(p.fitLo[0], 5) + ', ' + stat(p.fitHi[0], 5) + ']', 'the link-scale interval carried through the inverse link')
   ]));
+  last.calc = { row, pred: p };
+  registerResult();
 }
 
 export default { id, title, render, onShow, sections };

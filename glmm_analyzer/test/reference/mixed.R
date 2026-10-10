@@ -53,7 +53,7 @@ olre_g <- glmer(yover ~ x + (1 | g) + (1 | obs), data = d, family = poisson)
 nb <- glmer.nb(ynb ~ x + (1 | g), data = d)
 tmb <- glmmTMB(ybeta ~ x + (1 | g), data = d, family = beta_family())
 # The fixed-effects model, for the test of the random effect.
-pois0 <- glm(ycount ~ x + f, data = d, family = poisson)
+pois0 <- glm(ycount ~ x + f, data = d, family = poisson, control = glm.control(epsilon = 1e-12, maxit = 100))
 out <- list(
   data = list(g = as.character(d$g), h = as.character(d$h), x = d$x, f = as.character(d$f), ycount = d$ycount, ybin = d$ybin, ynorm = d$ynorm, yover = d$yover, ynb = d$ynb, ybeta = d$ybeta),
   pois = out_lme4(pois, nd), bin = out_lme4(bin, data.frame(x = c(0.5, 1.5))), lmm_ml = out_lme4(lmm_ml, nd), lmm_reml = out_lme4(lmm_reml, nd),

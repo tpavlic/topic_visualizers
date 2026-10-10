@@ -8,7 +8,7 @@ import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
-import { termTests, randomEffectTest } from '../stats/inference.js';
+import { termTests, randomEffectTest, waldTable } from '../stats/inference.js';
 import { residualSet } from '../stats/residuals.js';
 import { shapiroWilk } from '../stats/normality.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
@@ -16,6 +16,7 @@ import { normCdf, normInv, tCdf, tQuantile } from '../stats/special.js';
 import { formulaBuilder } from '../ui/formula.js';
 import { card, cardRow, notice, details, listWords } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
+import { modelRecipe, tooBig, capRecipe } from '../io/recipes.js';
 import { esc, num, stat, pValue, pEq, intl, plural, lvl } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
 
@@ -140,23 +141,7 @@ function compute() {
   registerResult(ds, result, tt);
 }
 
-// Wald tests: z for a family with a fixed dispersion, t on the residual
-// degrees of freedom where the dispersion is estimated, as summary.glm.
-function waldRows(result) {
-  const fit = result.fit, fam = FAMILIES[fit.family];
-  const level = state.settings.level;
-  const useT = fam.dispersion === 'estimated';
-  const q = useT ? tQuantile(1 - (1 - level) / 2, fit.dfResidual) : normInv(1 - (1 - level) / 2);
-  const link = LINKS[result.link];
-  return result.names.map((name, j) => {
-    const b = fit.beta[j], se = fit.vcov ? Math.sqrt(fit.vcov[j][j]) : NaN;
-    const z = b / se;
-    const p = useT ? 2 * (1 - tCdf(Math.abs(z), fit.dfResidual)) : 2 * (1 - normCdf(Math.abs(z)));
-    const lo = b - q * se, hi = b + q * se;
-    const back = link.backName && name !== '(Intercept)' ? { est: Math.exp(b), lo: Math.exp(lo), hi: Math.exp(hi) } : null;
-    return { name, b, se, z, p, lo, hi, back, useT };
-  });
-}
+function waldRows(result) { return waldTable(result, state.settings.level); }
 
 function drawCoefficients(result) {
   const rows = waldRows(result);
@@ -311,9 +296,16 @@ function registerResult(ds, result, tt) {
   if (fit.mixed) { provenance['random part'] = result.formula.slice(result.formula.indexOf('(')); provenance.fit = fit.reml ? 'REML' : 'maximum likelihood' + (fit.family === 'normal' ? '' : ', Laplace approximation'); }
   if (result.design.aliased.length) provenance.aliased = result.design.aliased.join(', ');
   if (result.flags.length) provenance.flags = result.flags.join(', ');
+  const title = 'Model: ' + result.formula;
+  const spec = lastFit.spec, level = state.settings.level;
   state.setResult(id, {
-    title: 'Model: ' + result.formula,
+    title,
     provenance,
+    regen: {
+      spec, ds,
+      tooBig: () => tooBig(ds, [spec]),
+      build: () => capRecipe(modelRecipe({ ds, spec, result, level, title, provenance, waldRows: rows, termTests: tt, randomTest: result.randomTest || null }), ds, [spec])
+    },
     tables: [
       { name: 'Coefficients', headers, rows: coefRows },
       { name: 'Fit statistics', headers: ['statistic', 'value'], rows: statRows }

@@ -15,7 +15,7 @@ d$ypos <- round(rgamma(n, shape = 3, scale = exp(eta) / 3), 4)
 d$ylog <- round(exp(1 + 0.3 * x + rnorm(n, 0, 0.3)), 4)
 
 fit_one <- function(fml, family) {
-  m <- glm(fml, family = family, data = d)
+  m <- glm(fml, family = family, data = d, control = glm.control(epsilon = 1e-12, maxit = 100))
   s <- summary(m)
   list(
     coef = unname(coef(m)), names = names(coef(m)), se = unname(s$coefficients[, 2]),

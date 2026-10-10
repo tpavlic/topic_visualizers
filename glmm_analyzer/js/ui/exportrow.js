@@ -2,14 +2,17 @@
 // has computed (a CSV with `#` provenance lines), any files the page adds,
 // and a Print button that prints the page as shown, without the navigation.
 // The row follows the page's results as they change. When the page's result
-// carries `regen: { build, tooBig, files }`, a second line offers the
-// scripts that regenerate its results in MATLAB, Base R, Tidy R, and
-// Python, each button live only where that language has a commonly used
-// routine for the model (`io/capability.js`), and the recipe is built only
-// when one of those buttons is pressed.
+// carries `regen: { spec | specs, ds, build, tooBig, uniforms? }`, a second
+// line offers the scripts that regenerate its results in MATLAB, Base R,
+// Tidy R, and Python, each button live only where that language has a
+// commonly used routine for the model (`io/capability.js`), and the recipe
+// is built only when one of those buttons is pressed. Where the data run
+// past the numbers cap (`tooBig()`), the scripts read them from files, and
+// Data buttons beside the language buttons save those files.
 
 import * as state from '../state.js';
-import { datasetCsv, tableCsv, provenanceLines, downloadText, slug, csvHead } from '../io/export.js';
+import { tableCsv, provenanceLines, downloadText, slug, csvHead } from '../io/export.js';
+import { stamp, csvFileName, dataFileText, uniformsFileName, uniformsFileText } from '../io/datafiles.js';
 import { details } from './widgets.js';
 import { registerTips } from './tooltip.js';
 import { esc, intl, plural } from './format.js';
@@ -20,8 +23,8 @@ import { esc, intl, plural } from './format.js';
 let scriptsApi = null;
 /**
  * Installs the script writers the regenerate line uses:
- * `{ analysisScript, scriptFileName, ANALYSIS_WRITERS, capability }`, where
- * `capability(recipeOrSpec)` returns `{ lang: { ok, why } }`.
+ * `{ analysisScript, scriptFileName, ANALYSIS_WRITERS, capability, capabilityAll, MAX_NUMBERS }`,
+ * where `capability(spec)` and `capabilityAll(specs)` return `{ lang: { ok, why } }`.
  * @param {object} api
  */
 export function installScripts(api) { scriptsApi = api; }
@@ -34,59 +37,10 @@ const REGEN_TIP = {
 };
 const REGEN_HELP =
   '<p>Each script holds the data this page analyzed, every choice made above, and code that recomputes every number shown here with the language’s own fitting routine. It prints the results section by section and says at the end whether every one agrees with the value on this page; setting <code>check_details</code> at the top prints each result beside the page’s value instead. It then draws the figures this view shows.</p>' +
-  '<p>A button is gray where the language has no commonly used routine for this model. The tooltip on a gray button, and the line under the buttons, say what the language lacks. R has a routine for every model this page fits, and so the R buttons are always live.</p>';
+  '<p>A button is gray where the language has no commonly used routine for this model. The tooltip on a gray button, and the line under the buttons, say what the language lacks. R has a routine for every model this page fits, and so the R buttons are always live.</p>' +
+  '<p>A script carries the data it analyzes, up to 200,000 numbers. Past that, the scripts read the data from the files the Data buttons beside them save, which have to sit in the script’s folder.</p>';
 
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-/**
- * A timestamp for provenance lines, local time to the second.
- * @param {Date} d
- * @returns {string}
- */
-export function stamp(d) {
-  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' +
-    pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
-}
-
-/**
- * The `#` lines a dataset's data file carries: what the dataset is, its
- * size, which column is the response and which the group, and where it came
- * from.
- * @param {object} ds
- * @param {Record<string, unknown>} [extra]
- * @returns {Record<string, unknown>}
- */
-export function dsProvenance(ds, extra) {
-  const resp = ds.columns.find(c => c.role === 'response');
-  const groups = ds.columns.filter(c => c.role === 'group').map(c => c.name);
-  const preds = ds.columns.filter(c => c.role === 'predictor').map(c => c.name + ' (' + c.type + ')');
-  const p = { dataset: ds.name, rows: ds.rows.length, columns: ds.columns.length };
-  if (resp) p.response = resp.name;
-  if (preds.length) p.predictors = preds.join(', ');
-  if (groups.length) p.group = groups.join(', ');
-  if (ds.source && ds.source.file) p['source file'] = ds.source.file;
-  Object.assign(p, extra || {});
-  p.exported = stamp(new Date());
-  return p;
-}
-
-/**
- * The file name a dataset's data file takes, as the Import page writes it
- * and the regenerate scripts read it.
- * @param {object} ds
- */
-export function csvFileName(ds) {
-  return slug(ds.name) + '.csv';
-}
-
-/**
- * The text of a dataset's data file.
- * @param {object} ds
- * @returns {string}
- */
-export function dataFileText(ds) {
-  return datasetCsv(ds, dsProvenance(ds));
-}
+export { stamp, dsProvenance, csvFileName, dataFileText } from '../io/datafiles.js';
 
 /**
  * The data file of one dataset, as a button descriptor for an export row.
@@ -224,17 +178,23 @@ export function installExportRow(root, pageId, opts = {}) {
     const rg = r && r.regen && scriptsApi;
     regen.hidden = !rg;
     if (rg) {
-      const cap = scriptsApi.capability(r.regen.spec || state.spec);
+      const g = r.regen;
+      const cap = g.specs ? scriptsApi.capabilityAll(g.specs) : scriptsApi.capability(g.spec || state.spec);
+      const big = typeof g.tooBig === 'function' && g.tooBig();
       regenBtns.innerHTML = Object.entries(scriptsApi.ANALYSIS_WRITERS).map(([k, w]) => {
         const c = cap[k] || { ok: true };
         const tip = c.ok ? REGEN_TIP[k] : c.why;
         return '<button type="button" class="xp-btn" data-lang="' + k + '"' + (c.ok ? '' : ' disabled aria-describedby="xp-cap-' + pageId + '-' + k + '"') +
           ' data-tip="' + esc(tip) + '" data-tip-press>' + esc(w.label) + '</button>' +
           (c.ok ? '' : '<span class="sr-only" id="xp-cap-' + pageId + '-' + k + '">' + esc(c.why) + '</span>');
-      }).join('');
-      const gray = Object.entries(cap).filter(([, c]) => !c.ok).map(([k, c]) => scriptsApi.ANALYSIS_WRITERS[k].label + ': ' + c.why);
-      regenNote.textContent = gray.join(' ');
-      regenNote.hidden = !gray.length;
+      }).join('') + (!big ? '' :
+        '<button type="button" class="xp-btn" data-file="data" data-tip="The data file every script reads: the table as loaded, every column under its name, with # lines naming the response and the group." data-tip-press>Data CSV</button>' +
+        (g.uniforms ? '<button type="button" class="xp-btn" data-file="uniforms" data-tip="The uniforms behind the randomized quantile residuals, one per fitted row, which the scripts read so that their residuals are the page’s." data-tip-press>Residual uniforms CSV</button>' : ''));
+      // A reason that opens with the language's name is not prefixed with it again.
+      const notes = Object.entries(cap).filter(([, c]) => !c.ok).map(([k, c]) => { const label = scriptsApi.ANALYSIS_WRITERS[k].label; return c.why.startsWith(label.replace(/^(Base|Tidy) /, '')) ? c.why : label + ': ' + c.why; });
+      if (big) notes.push('The data run past ' + intl(scriptsApi.MAX_NUMBERS) + ' numbers, more than a script carries, and so each script reads them from the ' + (g.uniforms ? 'files the Data buttons save' : 'file the Data button saves') + '; keep ' + (g.uniforms ? 'them' : 'it') + ' in the script’s folder.');
+      regenNote.textContent = notes.join(' ');
+      regenNote.hidden = !notes.length;
     }
     fileButtons(files, items);
     if (typeof opts.help === 'function') helpBox.querySelector('.why-body').innerHTML = opts.help();
@@ -242,8 +202,15 @@ export function installExportRow(root, pageId, opts = {}) {
   }
   regenBtns.addEventListener('click', ev => {
     const r = state.results[pageId];
-    const b = ev.target.closest('button[data-lang]');
+    const b = ev.target.closest('button[data-lang], button[data-file]');
     if (!b || b.disabled || !r || !r.regen || !scriptsApi) return;
+    const file = b.getAttribute('data-file');
+    if (file) {
+      const g = r.regen;
+      if (file === 'data') downloadText(csvFileName(g.ds), dataFileText(g.ds));
+      else downloadText(uniformsFileName(g.ds), uniformsFileText(g.ds, g.uniforms));
+      return;
+    }
     const lang = b.getAttribute('data-lang');
     try {
       const recipe = r.regen.build();

@@ -467,6 +467,117 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
 - **Survival & Recurrent-Event Analysis Visualizer** — `survival_analysis/survival_recurrent_visualizer.html`
   Interactive exploration of exponential transition rates, right censoring, and recurrent events via survival curves and two-state transition models.
 
+- **GLMM Analyzer** — `glmm_analyzer/glmm_analyzer.html`
+  A browser tool for generalized linear and generalized linear mixed models: load a table, choose
+  the response, the family and link, and the terms, fit the model as it is built, check its
+  residuals, plot its predictions, compare candidate models, and regenerate every result in R,
+  Python, or MATLAB. Built as one entry page plus native ES modules under its `js/` directory with
+  no build step, in the layout of the Output Analyzer in the course repository: a sticky left
+  sidebar in five groups (Data, Analysis, Where the tests went, Session, More information) that
+  becomes a one-line tab strip and then a `<select>` as the page narrows. Ten pages: ① Import
+  (bundled examples, a file, drag-and-drop, or pasted text, behind a mapping dialog that gives every
+  column a role, response, predictor, group, or ignored, and a type, continuous, categorical, or
+  ordinal, with every rejected row listed by line number), ② Explore (the response's distribution
+  and its relation to each predictor), ③ Model (a formula builder of chips for the fixed terms,
+  powers, and interactions, a grouping factor with an optional random slope and an optional
+  observation-level random effect, REML for the normal family; the coefficient table with Wald
+  intervals and back-transformed ratios, the variance components with a boundary-corrected
+  likelihood-ratio test of the random part, the fit statistics, the checks line, the term tests as
+  `drop1` refits, and Keep for the Compare page), ④ Diagnostics (randomized quantile residuals
+  against the normal, the fitted values, and each predictor, the Pearson dispersion test, Cook's
+  distances, and the predicted random effects), ⑤ Predict (an effect plot with its band and the
+  data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator), ⑥
+  Compare (the kept models refitted by maximum likelihood, ranked by AIC and BIC, with the
+  likelihood-ratio test of every nested pair), ⑦ Tests as models (the two-sample t test, one-way
+  ANOVA, the paired t test, the chi-square test of independence, and the two-proportion test, each
+  run classically and as the GLM it is, with a button that opens that dataset and model), ⑧
+  Report, ⑨ Storage, and ⑩ References. Seven families (normal, binomial, Poisson, negative
+  binomial, gamma, beta, and the cumulative-logit ordinal model), each with its links, with the
+  support of the response detected and a family that does not fit it refused with the rows named.
+  The fallback iframe height is about 2800 px (the Explore page at 780 px wide; the Report page runs
+  longer with every page's results, which the resize message covers). Commit tag `glmm`.
+  Conventions relied on by code outside the page, which any later edit has to preserve:
+  1. The `js/` files are the source, and the page embeds a copy of every one of them between its
+     `GLMM-MODULES-BEGIN` / `GLMM-MODULES-END` markers as `<script type="text/plain" data-module>`
+     blocks, which the loader after the end marker turns into blob-URL modules. After editing any
+     module, run `node glmm_analyzer/inline_modules.mjs`; `test/inline.test.mjs` fails while the
+     page is stale. Never edit the embedded copies by hand, never put `<script`, `</script`, or
+     `<!--` inside a module, and never let two modules import each other (the loader orders the
+     blobs by dependency, and a cycle leaves one import unresolved; `io/datafiles.js` holds what
+     `io/recipes.js` and `io/analysis_scripts.js` both need for that reason).
+  2. `js/stats/*`, `js/data/model.js`, `js/io/parse.js`, `js/io/export.js`, `js/io/datafiles.js`,
+     `js/io/recipes.js`, `js/io/capability.js`, `js/io/analysis_scripts.js`, `js/io/script_lib.js`,
+     `js/io/figure_scripts.js`, the four `js/io/figure_lib_*.js`, `js/ui/format.js`, and
+     `js/ui/rules.js` are pure modules that never touch the DOM as they load (`export.js`'s
+     `downloadText` touches it only when called); `node --test glmm_analyzer/test/` imports them directly (about a minute, most
+     of it the smoke runs of the regenerate scripts in R, Tidy R, and Python). Run it after
+     touching any of them. A page module touches the DOM only when called, never as it loads.
+  3. Every expected value in `test/` comes from the R scripts in `test/reference/`, which print the
+     JSON beside them; regenerate a JSON only by re-running its R script. The GLM fits are pinned
+     against `glm` at `epsilon = 1e-12`, the negative binomial against `MASS::glm.nb` and
+     `theta.ml`, beta regression against `betareg`, the ordinal model against `MASS::polr` at
+     `reltol = 1e-14`, the mixed models against `lme4` (`glmer` at `nAGQ = 1`, `lmer` by ML and
+     REML, `glmer.nb`) and `glmmTMB` for the beta mixed model, the marginal means and Tukey pairs
+     against `emmeans`, and the classical tests against R's own. A mixed fit's deviance must come
+     out at or below lme4's; its fixed-effect standard errors are the β block of twice the inverse
+     of the numerical Hessian of the deviance over the variance parameters and β together, as
+     lme4 forms them, with the negative binomial's θ held fixed.
+  4. The residuals are Dunn–Smyth randomized quantile residuals, randomized within each discrete
+     outcome's probability from a fixed seed (`RESIDUAL_SEED` in `js/stats/residuals.js`,
+     mulberry32), so that the page shows the same residuals on every visit and the scripts carry
+     the page's own uniforms.
+  5. Design matrices follow R: treatment contrasts, `contr.poly` for an ordinal predictor, raw
+     powers as `I(x^k)`, interactions with the first factor varying fastest, and aliased columns
+     dropped and named. The coefficient names the page prints are R's, and the scripts map them to
+     patsy's (`Q("name")` where a name is a keyword) and MATLAB's through `nameIn` and `pyName` in
+     `js/io/analysis_scripts.js`.
+  6. Every analysis page registers `state.setResult(pageId, { title, provenance, tables, regen })`,
+     and the export row (`js/ui/exportrow.js`) draws one CSV button per table, a Print button, and
+     the regenerate line from `regen: { spec | specs, ds, build, tooBig, uniforms? }`: one button per
+     language (MATLAB, Base R, Tidy R, Python), each live only where `js/io/capability.js` says the
+     language has a commonly used routine for the model, and otherwise disabled with the reason in
+     its tooltip, in an `aria-describedby` span, and in the line under the buttons. R has a routine
+     for every model and is never gray; Python is gray for every mixed model but the normal
+     (statsmodels' MixedLM) and MATLAB for the negative binomial, beta, and mixed ordinal models.
+     `build()` runs only when a button is pressed and closes over what the page computed. The
+     writers arrive through `installScripts(api)` from `main.js`, so that the export row does not
+     import them.
+  7. The scripts are built from recipes (`js/io/recipes.js`: `modelRecipe`, `diagnosticsRecipe`,
+     `predictRecipe`, `compareRecipe`, each over `baseRecipe`) that record the analyzer's value of
+     every reported number in `recipe.expect`, and `analysisScript(recipe, lang)` in
+     `js/io/analysis_scripts.js` assembles each script from the literal snippets in
+     `js/io/script_lib.js` (`LIB.R`, shared by both R dialects, `LIB.py`, and `LIB.m`), no snippet
+     holding a backtick or `${`. Every script sets its choices in a Settings block, embeds its data,
+     prints each result under its section's heading through one `report` helper that checks it
+     against the analyzer's value within the tolerance `tolFor` gives that name (1e-6 relative by
+     default; looser on a mixed fit, whose optimizers agree with the page to about four digits, and
+     on a Shapiro–Wilk p), and ends in one line saying whether every value agrees; `check_details`
+     prints each beside the analyzer's value instead. The report names are defined by the emitters
+     and must stay identical and in the same order across the four scripts. Where a language's
+     routine reports a different quantity, the script converts and says so in a comment: the
+     normal and gamma log-likelihoods at R's maximum-likelihood dispersion, the negative binomial's
+     α = 1/θ, the ordinal thresholds' sign and their observed-information standard errors, MixedLM's
+     fixed-effect covariance in lme4's profiled form, and beta regression's expected-information
+     covariance. The figures come last, each one call of a helper the script carries
+     (`fig_intervals`, `fig_qq`, `fig_effect`, `fig_resid`), written once per dialect in the four
+     `js/io/figure_lib_*.js`.
+  8. Past `MAX_NUMBERS` (200,000, in `js/io/datafiles.js`), `capRecipe` puts the recipe in CSV
+     mode: the script embeds no data and reads the dataset's data file, and on the Diagnostics page
+     the file of the residuals' uniforms, from its own folder, and the export row adds the Data
+     buttons that save those files, written by `dataFileText` and `uniformsFileText` so that they
+     are the files the Import page's Export writes. In MATLAB the uniforms file is read as lines,
+     because the import-options detector takes a one-column file's first `#` line as its header.
+  9. `test/analysis_scripts.test.mjs` writes each fixture's scripts, runs them, and compares every
+     line with `recipe.expect`. With no flag, it runs only the fixtures marked `smoke: true` in Base
+     R, Tidy R, and Python where they are installed; `GLMM_SCRIPTS=1` runs every fixture in those
+     three, and `GLMM_MATLAB=1` runs every fixture in MATLAB, all in one MATLAB session through
+     `test/run_matlab_batch.m`. The full check sets both flags and takes about fifteen minutes.
+     `checkCsvMode` proves the CSV-mode scripts by writing the files beside them. A skipped
+     language is not a pass after a change to its snippets.
+  10. `js/data/examples.js` is generated by `data/generate_examples.mjs` (seeded) and must match it;
+     `test/examples.test.mjs` regenerates and compares, so change the generator, never the
+     generated file. Five of the eleven examples carry `tour`, the test the Tests page opens them on.
+
 ---
 
 ## Shared conventions

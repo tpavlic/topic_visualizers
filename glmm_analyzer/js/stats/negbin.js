@@ -72,7 +72,7 @@ export function thetaMl(y, mu, eps = 1e-8, limit = 25) {
 export function fitNegbin(y, X, o = {}) {
   const n = y.length;
   // As glm.nb: a Poisson fit first, θ from its means, then the alternation.
-  let fit = fitGlm(y, X, { family: 'poisson', link: o.link || 'log' });
+  let fit = fitGlm(y, X, { family: 'poisson', link: o.link || 'log', eps: 1e-8 });
   let th = thetaMl(y, fit.fitted);
   let theta = th.theta;
   let iter = 0, d1 = Infinity, d2 = Infinity;
@@ -84,7 +84,7 @@ export function fitNegbin(y, X, o = {}) {
   let devPrev = fit.deviance;
   while (iter < 25) {
     iter++;
-    fit = fitGlm(y, X, { family: 'negbin', link: o.link || 'log', aux: theta, start: fit.beta });
+    fit = fitGlm(y, X, { family: 'negbin', link: o.link || 'log', aux: theta, start: fit.beta, eps: 1e-8 });
     th = thetaMl(y, fit.fitted);
     const thetaNew = th.theta;
     const Lm1 = Lm(fit, thetaNew);
@@ -98,7 +98,7 @@ export function fitNegbin(y, X, o = {}) {
     if (d1 + d2 <= eps) { converged = true; break; }
   }
   // The final fit at the settled θ, so that every quantity is at one θ.
-  fit = fitGlm(y, X, { family: 'negbin', link: o.link || 'log', aux: theta, start: fit.beta });
+  fit = fitGlm(y, X, { family: 'negbin', link: o.link || 'log', aux: theta, start: fit.beta, eps: 1e-8 });
   const flags = fit.flags.filter(f => f !== 'notConverged');
   if (!converged || !fit.converged) flags.push('notConverged');
   // The standard error of θ from the observed information, as glm.nb's SE.theta.
