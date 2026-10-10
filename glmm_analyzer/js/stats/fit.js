@@ -97,6 +97,7 @@ export function fitModel(ds, spec) {
   if (design.aliased.length) flags.push('aliased');
   let fit, names = design.names;
   if ((spec.group || spec.olre) && spec.family === 'ordinal') throw new Error('A mixed ordinal model is outside this tool.');
+  if (spec.olre && spec.family !== 'poisson') throw new Error('The Poisson-lognormal effect is offered for the Poisson family only; the ' + FAMILIES[spec.family].label + ' family carries its spread in its own parameters.');
   if (spec.group || spec.olre) {
     const random = buildRandom(design, spec);
     if (spec.family === 'normal') {

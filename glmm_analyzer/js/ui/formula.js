@@ -114,7 +114,10 @@ export function formulaBuilder(container, opts) {
     const fam = familiesFor(sup).includes(state.spec.family) ? state.spec.family : defaultFamily(sup);
     state.setSpec({ response: el.resp.value, family: fam, link: null, terms: state.spec.terms.filter(t => !termUses(t, el.resp.value)) });
   });
-  el.family.addEventListener('change', () => state.setSpec({ family: el.family.value, link: null }));
+  // The observation-level effect is a Poisson device: the negative binomial
+  // already carries its own overdispersion parameter, and the two would
+  // compete for the same spread. Leaving a family that offered it drops it.
+  el.family.addEventListener('change', () => state.setSpec({ family: el.family.value, link: null, olre: el.family.value === 'poisson' && state.spec.olre }));
   el.link.addEventListener('change', () => state.setSpec({ link: el.link.value }));
   el.addPredBtn.addEventListener('click', () => { if (el.addPred.value) addTerm(el.addPred.value); });
   el.addPowBtn.addEventListener('click', () => { if (el.addPow.value) addTerm({ name: el.addPow.value, degree: deg.get() }); });
