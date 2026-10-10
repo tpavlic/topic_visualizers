@@ -106,12 +106,15 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .tab-group-items { display: flex; gap: 4px; }
 
 /* The tab row: each group is bracketed by a thin overline whose small-caps
-   label sits centered on it. Where the eight tabs do not fit on one line,
-   only the five-tab Analysis group wraps, inside its own bracket, and so the
-   row becomes two lines with every group still under its label, rather than
-   three lines with a group stranded on each. */
-.pnav { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 0 10px; margin: 2px 0 12px; }
-.tab-group { position: relative; flex: 0 0 auto; padding-top: 17px; min-width: 0; }
+   label sits centered on it. Where the ten tabs do not fit on one line, the
+   row wraps a whole group at a time, so that every group stays under its own
+   label; between 700px and 1000px that is two lines, with More information
+   and then Session on the second. A group is never narrower than its widest
+   tab (its min-width stays auto), so no tab can spill into its neighbor; the
+   Analysis group alone may wrap inside its bracket, which happens only at a
+   font size so large that the group by itself overfills a line. */
+.pnav { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 10px; margin: 2px 0 12px; }
+.tab-group { position: relative; flex: 0 0 auto; padding-top: 17px; }
 .tab-group-wrap { flex: 0 1 auto; }
 .tab-group::before {
   content: ''; position: absolute; top: 9px; left: 4px; right: 4px;
