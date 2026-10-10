@@ -492,7 +492,7 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   one-sample t test as an intercept-only normal model, the two-sample t test, one-way ANOVA, the
   paired t test, a one-sample test on repeated measures as an intercept-only mixed model by REML
   beside the t test on the group means and the too-narrow t test on every observation, the
-  chi-square test of independence, and the two-proportion test, each run classically and as the
+  chi-square test of independence, and the two-proportion z test, each run classically and as the
   GLM it is, opened by a block naming the data, the classical test, and the equivalent model,
   with a button that opens that dataset and model), and ⑩ References. The strip of loaded datasets is hidden on the two pages that use
   no data, Classic tests as GLMM and References. Seven families (normal, binomial, Poisson, negative
