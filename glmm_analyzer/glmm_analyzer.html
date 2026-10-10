@@ -3226,6 +3226,7 @@ import { canModel } from './data/model.js';
 import * as importPage from './pages/import.js';
 import * as explorePage from './pages/explore.js';
 import * as modelPage from './pages/model.js';
+import * as diagnosticsPage from './pages/diagnostics.js';
 import * as predictPage from './pages/predict.js';
 import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
@@ -3248,7 +3249,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, explorePage, modelPage, predictPage, reportPage, storagePage, referencesPage];
+export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, reportPage, storagePage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 
@@ -3335,6 +3336,250 @@ function boot() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
+</script>
+<script type="text/plain" data-module="js/pages/diagnostics.js">
+// The Diagnostics page: what the residuals say about the model on the Model
+// page. Residuals: the randomized quantile residuals' normal quantile plot
+// with the Shapiro–Wilk test, the residuals against the fitted values and
+// against each predictor, and the scale–location plot. Dispersion: the
+// Pearson dispersion and its test, and Cook's distances. Random effects:
+// the group effects' quantile plot and caterpillar plot (with a mixed fit).
+
+import * as state from '../state.js';
+import { column } from '../data/model.js';
+import { FAMILIES, LINKS } from '../stats/families.js';
+import { residualSet, RESIDUAL_SEED } from '../stats/residuals.js';
+import { shapiroWilk, normalQQ } from '../stats/normality.js';
+import { binnedMeans } from '../stats/inference.js';
+import { termVars } from '../stats/design.js';
+import { currentFit } from './model.js';
+import { makeFigure, qqPlot, exportButtons, legend, intervals } from '../ui/plots.js';
+import { curveBand, dataPoints, rawPoints, categoricalX } from '../ui/modelplots.js';
+import { card, cardRow, notice, details } from '../ui/widgets.js';
+import { setSectionAvailable } from '../ui/tabs.js';
+import { installExportRow } from '../ui/exportrow.js';
+import { esc, num, stat, pValue, pEq, intl } from '../ui/format.js';
+import { registerTips } from '../ui/tooltip.js';
+
+/** The page's hash id. */
+export const id = 'diagnostics';
+/** The page's title. */
+export const title = 'Diagnostics';
+/** The page's sections. */
+export const sections = [
+  { id: 'residuals', label: 'Residuals', tip: 'The quantile residuals against the normal and against the fitted values and the predictors.' },
+  { id: 'dispersion', label: 'Dispersion and influence', tip: 'Whether the family’s variance holds, and which rows pull the fit.' },
+  { id: 'random', label: 'Random effects', tip: 'The predicted group effects, with a mixed model.' }
+];
+
+let rootEl = null;
+let els = {};
+let figs = [];
+let timer = null;
+
+/**
+ * Renders the page into its section.
+ * @param {HTMLElement} root
+ */
+export function render(root) {
+  rootEl = root;
+  root.innerHTML =
+    '<h2>' + title + '</h2>' +
+    '<p class="lede">The residuals here are randomized quantile residuals: each observation’s position in its own fitted distribution, carried to the normal scale, so that a well-fitting model of any family leaves residuals that look standard normal and show no pattern against anything. A discrete family’s residuals are randomized within each count’s probability, from a fixed seed, and so they are the same on every visit and in the exported scripts.</p>' +
+    '<div id="dg-fit-note"></div>' +
+    '<div data-subnav class="subnav"></div>' +
+    '<div data-section="residuals">' +
+      '<div class="sec"><div class="sec-hd">Normality of the quantile residuals</div><div id="dg-qq"></div></div>' +
+      '<div class="sec"><div class="sec-hd">Residuals against the fitted values</div><div id="dg-fitted"></div></div>' +
+      '<div class="sec"><div class="sec-hd">Residuals against each predictor</div><div id="dg-preds"></div></div>' +
+    '</div>' +
+    '<div data-section="dispersion">' +
+      '<div class="sec"><div class="sec-hd">Dispersion</div><div id="dg-disp"></div></div>' +
+      '<div class="sec"><div class="sec-hd">Influence</div><div id="dg-cooks"></div></div>' +
+    '</div>' +
+    '<div data-section="random">' +
+      '<div class="sec"><div class="sec-hd">Random effects</div><div id="dg-random"></div></div>' +
+    '</div>';
+  els = { note: root.querySelector('#dg-fit-note'), qq: root.querySelector('#dg-qq'), fitted: root.querySelector('#dg-fitted'), preds: root.querySelector('#dg-preds'),
+    disp: root.querySelector('#dg-disp'), cooks: root.querySelector('#dg-cooks'), random: root.querySelector('#dg-random') };
+  installExportRow(root, id);
+  state.on('results', ({ pageId } = {}) => { if (pageId === 'model') schedule(); });
+  state.on('settings', schedule);
+  schedule();
+}
+
+/** Called each time the page is shown. */
+export function onShow() { schedule(); }
+
+function schedule() { clearTimeout(timer); timer = setTimeout(compute, 40); }
+
+function figBox(parent, opts, name) {
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  parent.appendChild(box);
+  const fig = makeFigure(box, opts);
+  exportButtons(box, fig, name);
+  figs.push(fig);
+  return { box, fig };
+}
+
+function compute() {
+  for (const f of figs) if (f.ro) f.ro.disconnect();
+  figs = [];
+  const cf = currentFit();
+  els.note.innerHTML = '';
+  for (const k of ['qq', 'fitted', 'preds', 'disp', 'cooks', 'random']) els[k].innerHTML = '';
+  if (!cf) {
+    els.note.appendChild(notice('info', 'No model is fitted. Build one on the <a href="#model">Model</a> page.'));
+    setSectionAvailable(id, { residuals: 'No model is fitted.', dispersion: 'No model is fitted.', random: 'No model is fitted.' });
+    state.setResult(id, null);
+    return;
+  }
+  const { ds, result } = cf;
+  const fit = result.fit;
+  const fam = FAMILIES[fit.family];
+  const res = residualSet(result);
+  const off = {};
+  if (!fit.mixed) off.random = 'The model has no random effect.';
+  setSectionAvailable(id, off);
+  els.note.appendChild(notice('info', 'Model: <code>' + esc(result.formula) + '</code>, ' + esc(fam.label) + ' family with the ' + esc(LINKS[result.link].label) + ' link, fitted to ' + esc(ds.name) + ' (' + intl(fit.n) + ' rows).'));
+  const tables = [];
+  const provenance = { dataset: ds.name, formula: result.formula, family: fam.label, link: LINKS[result.link].label, 'residual seed': RESIDUAL_SEED };
+
+  // Normality.
+  const r = Array.from(res.quantile).filter(Number.isFinite);
+  const sw = r.length >= 3 && r.length <= 5000 ? shapiroWilk(r) : null;
+  const cards = [];
+  if (sw) cards.push(card('Shapiro–Wilk W', stat(sw.W, 4), pEq(sw.p)));
+  else cards.push(card('Shapiro–Wilk', '–', r.length > 5000 ? 'n is beyond the test' : 'too few residuals'));
+  let m = 0, s2 = 0;
+  for (const v of r) m += v;
+  m /= r.length;
+  for (const v of r) s2 += (v - m) * (v - m);
+  s2 /= Math.max(1, r.length - 1);
+  cards.push(card('Mean of residuals', stat(m, 3), 'near 0 when the model fits'), card('SD of residuals', stat(Math.sqrt(s2), 3), 'near 1 when the family’s variance holds'));
+  els.qq.appendChild(cardRow(cards));
+  if (sw) els.qq.appendChild(notice(sw.p < 0.05 ? 'warn' : 'ok', sw.p < 0.05
+    ? 'The quantile residuals depart from the normal (' + pEq(sw.p) + '): the family or the link does not describe the response’s distribution well, or a predictor enters in a different shape. The plots below say where.'
+    : 'The quantile residuals are consistent with a standard normal (' + pEq(sw.p) + '), as a well-fitting model leaves them.'));
+  const q = normalQQ(r);
+  const qf = figBox(els.qq, { height: 300, xLabel: 'Standard normal quantiles', yLabel: 'Quantile residuals', title: 'Normal quantile plot of the quantile residuals' }, ds.name + ' residual qq');
+  qf.fig.render(f => qqPlot(f, q));
+  tables.push({ name: 'Residual summary', headers: ['statistic', 'value'], rows: [['Shapiro-Wilk W', sw ? sw.W : NaN], ['Shapiro-Wilk p', sw ? sw.p : NaN], ['mean', m], ['sd', Math.sqrt(s2)]] });
+
+  // Against the fitted values, and the scale–location plot.
+  const fitted = Array.from(res.fitted);
+  const ff = figBox(els.fitted, { height: 280, xLabel: 'Fitted value' + (fit.family === 'ordinal' ? ' (expected category index)' : ''), yLabel: 'Quantile residual', title: 'Residuals against fitted values' }, ds.name + ' residuals vs fitted');
+  ff.fig.render(f => {
+    rawPoints(f, fitted, Array.from(res.quantile), { label: 'residual' });
+    const b = binnedMeans(fitted, res.quantile, 10);
+    if (b.length > 1) curveBand(f, { x: b.map(p => p.x), y: b.map(p => p.y) }, { band: false, label: 'binned mean', width: 2 });
+    dataPoints(f, b, { color: '--truth', hollow: true, r: 4, label: 'binned mean' });
+  });
+  legend(ff.box.appendChild(document.createElement('div')), [{ swatch: 'dot', color: '--est', label: 'residual' }, { swatch: 'hollow', color: '--truth', label: 'mean residual in a bin of fitted values' }]);
+  const sl = figBox(els.fitted, { height: 240, xLabel: 'Fitted value', yLabel: '√|quantile residual|', title: 'Scale–location' }, ds.name + ' scale location');
+  const sq = Array.from(res.quantile, v => Math.sqrt(Math.abs(v)));
+  sl.fig.render(f => {
+    rawPoints(f, fitted, sq, { label: 'root absolute residual' });
+    const b = binnedMeans(fitted, sq, 10);
+    if (b.length > 1) curveBand(f, { x: b.map(p => p.x), y: b.map(p => p.y) }, { band: false, label: 'binned mean', width: 2 });
+  });
+  const pf = document.createElement('p');
+  pf.className = 'muted-line';
+  pf.textContent = 'A trend in the binned means against the fitted values says the link or a predictor’s shape is wrong; a trend in the scale–location plot says the spread changes with the mean in a way the family does not allow.';
+  els.fitted.appendChild(pf);
+
+  // Against each predictor.
+  const names = [];
+  for (const t of result.design.terms) for (const v of termVars(t)) if (!names.includes(v)) names.push(v);
+  if (!names.length) els.preds.innerHTML = '<p class="muted-line">The model has no predictor.</p>';
+  for (const name of names) {
+    const c = column(ds, name);
+    const xs = result.design.keep.map(i => ds.rows[i][c.index]);
+    const pf2 = figBox(els.preds, { height: 240, xLabel: name, yLabel: 'Quantile residual', title: 'Residuals against ' + name }, ds.name + ' residuals vs ' + name);
+    pf2.fig.render(f => {
+      if (c.col.type === 'continuous') {
+        rawPoints(f, xs, Array.from(res.quantile), { label: 'residual' });
+        const b = binnedMeans(xs, res.quantile, 10);
+        if (b.length > 1) curveBand(f, { x: b.map(p => p.x), y: b.map(p => p.y) }, { band: false, label: 'binned mean', width: 2 });
+      } else {
+        const lv = c.col.levels;
+        f.y([Math.min(...res.quantile), Math.max(...res.quantile)], { pad: 0.06, nice: true });
+        const pos = categoricalX(f, lv);
+        const jx = xs.map((v, k) => pos[lv.indexOf(v)] + (((k * 7919) % 100) / 100 - 0.5) * 0.4);
+        rawPoints(f, jx, Array.from(res.quantile), { label: 'residual' });
+        const means = lv.map((l, k) => { const v = res.quantile.filter((_, i) => xs[i] === l); return { x: pos[k], y: v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN, n: v.length }; });
+        dataPoints(f, means, { color: '--truth', hollow: true, r: 4.5, label: 'mean residual per level' });
+      }
+    });
+  }
+
+  // Dispersion.
+  const dcards = [];
+  if (res.dispersion) {
+    const d = res.dispersion;
+    dcards.push(card('Pearson χ²', stat(d.chisq, 5), 'on ' + intl(d.df) + ' df'), card('χ² / df', stat(d.ratio, 4), 'near 1 when the family’s variance holds'), card('p (overdispersion)', pValue(d.p), 'upper tail of the χ²'));
+    els.disp.appendChild(cardRow(dcards));
+    els.disp.appendChild(notice(d.ratio > 1.5 && d.p < 0.05 ? 'warn' : d.p < 0.05 && d.ratio < 1 ? 'info' : 'ok',
+      d.ratio > 1.5 && d.p < 0.05
+        ? 'The residual variance is ' + num(d.ratio, 3) + ' times what the ' + esc(fam.label) + ' family allows (' + pEq(d.p) + '): the data are overdispersed, the standard errors above are too small, and ' +
+          (fit.family === 'poisson' ? 'the negative binomial family, or a Poisson-lognormal with an observation-level random effect, allows for the extra spread.' : 'a missing predictor or grouping factor is the usual cause.')
+        : d.p < 0.05 && d.ratio < 1 ? 'The residual variance is below what the family allows (χ² / df = ' + num(d.ratio, 3) + '): underdispersion, which is rare and usually means the responses are not independent.'
+          : 'The residual variance is consistent with the ' + esc(fam.label) + ' family (χ² / df = ' + num(d.ratio, 3) + ', ' + pEq(d.p) + ').'));
+    tables.push({ name: 'Dispersion', headers: ['statistic', 'value'], rows: [['Pearson chi-square', d.chisq], ['df', d.df], ['ratio', d.ratio], ['p', d.p]] });
+  } else if (fam.dispersion === 'estimated') {
+    els.disp.appendChild(cardRow([card('Dispersion', stat(fit.dispersion, 4), 'estimated by the Pearson χ² / df and used in every standard error')]));
+    els.disp.appendChild(notice('info', 'The ' + esc(fam.label) + ' family estimates its dispersion rather than fixing it, and so there is no overdispersion test; the scale–location plot above says whether the spread changes with the mean.'));
+  } else if (fit.family === 'negbin') {
+    els.disp.appendChild(cardRow([card('θ', stat(fit.theta, 4), 'SE ' + stat(fit.thetaSe, 3)), card('Variance at the mean μ', 'μ + μ² / θ')]));
+    els.disp.appendChild(notice('info', 'The negative binomial family measures the extra spread by θ: the smaller θ, the more the variance exceeds the mean. A very large θ says the Poisson would have done.'));
+  } else if (fit.family === 'beta') {
+    els.disp.appendChild(cardRow([card('Precision φ', stat(fit.phi, 4), 'SE ' + stat(fit.phiSe, 3)), card('Variance at the mean μ', 'μ(1 − μ) / (1 + φ)')]));
+  } else els.disp.innerHTML = '<p class="muted-line">The ordinal model has no dispersion to check.</p>';
+
+  // Influence.
+  if (res.cooks) {
+    const cooks = Array.from(res.cooks);
+    const idx = cooks.map((_, i) => i).sort((a, b) => cooks[b] - cooks[a]).slice(0, 5);
+    const cf2 = figBox(els.cooks, { height: 240, xLabel: 'Row (in fitting order)', yLabel: 'Cook’s distance', title: 'Cook’s distances' }, ds.name + ' cooks distances');
+    cf2.fig.render(f => {
+      f.x([0, cooks.length + 1]);
+      f.y([0, Math.max(...cooks) * 1.05 || 1], { nice: true });
+      f.axes({});
+      rawPoints(f, cooks.map((_, i) => i + 1), cooks, { label: 'Cook’s distance' });
+    });
+    const p = document.createElement('p');
+    p.className = 'muted-line';
+    const thr = 4 / fit.n;
+    p.innerHTML = 'The five largest: ' + idx.map(i => 'row ' + intl(result.design.keep[i] + 1) + ' (' + num(cooks[i], 3) + ')').join(', ') + '. A distance above 4/n = ' + num(thr, 3) + ' marks a row the fit leans on; above 1 is a row that moves the coefficients by about their standard error.';
+    els.cooks.appendChild(p);
+    tables.push({ name: 'Largest Cook distances', headers: ['row', 'cooks_distance'], rows: idx.map(i => [result.design.keep[i] + 1, cooks[i]]) });
+  } else els.cooks.innerHTML = '<p class="muted-line">Cook’s distances are given for the families fitted by iteratively reweighted least squares; this fit has none.</p>';
+
+  // Random effects, with a mixed fit.
+  if (fit.mixed) drawRandom(ds, result);
+
+  state.setResult(id, { title: 'Diagnostics: ' + result.formula, provenance, tables });
+  registerTips(rootEl);
+}
+
+function drawRandom(ds, result) {
+  const fit = result.fit;
+  const re = fit.ranef;
+  if (!re) return;
+  for (const block of re) {
+    const u = Array.from(block.modes);
+    const q = normalQQ(u);
+    const qf = figBox(els.random, { height: 260, xLabel: 'Standard normal quantiles', yLabel: block.label, title: 'Normal quantile plot of the ' + block.label }, ds.name + ' ranef qq ' + block.label);
+    qf.fig.render(f => qqPlot(f, q));
+    const items = block.levels.map((l, i) => ({ label: l, center: block.modes[i], lo: block.modes[i] - 1.96 * block.se[i], hi: block.modes[i] + 1.96 * block.se[i] })).sort((a, b) => a.center - b.center);
+    const cf = figBox(els.random, { height: 'auto', xLabel: block.label, title: 'Predicted ' + block.label + ' by group, with 95% conditional intervals' }, ds.name + ' caterpillar ' + block.label);
+    cf.fig.render(f => intervals(f, items.slice(0, 60), { ref: 0, rowPx: 22 }));
+    if (items.length > 60) { const p = document.createElement('p'); p.className = 'muted-line'; p.textContent = 'The sixty groups with the smallest effects are shown.'; els.random.appendChild(p); }
+  }
+}
+
+export default { id, title, render, onShow, sections };
 </script>
 <script type="text/plain" data-module="js/pages/explore.js">
 // The Explore page: what the response holds and the families that can
@@ -4175,12 +4420,14 @@ import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
 import { termTests } from '../stats/inference.js';
+import { residualSet } from '../stats/residuals.js';
+import { shapiroWilk } from '../stats/normality.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { normCdf, normInv, tCdf, tQuantile } from '../stats/special.js';
 import { formulaBuilder } from '../ui/formula.js';
 import { card, cardRow, notice, details, listWords } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
-import { esc, num, stat, pValue, intl, plural, lvl } from '../ui/format.js';
+import { esc, num, stat, pValue, pEq, intl, plural, lvl } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
 
 /** The page's hash id. */
@@ -4286,8 +4533,6 @@ function compute() {
     state.setResult(id, null);
     return;
   }
-  result.codedY = result.design.y;
-  if (result.event) { const rc = column(ds, state.spec.response).col; result.codedY = Float64Array.from(result.design.yRaw, v => (v === rc.levels[1] ? 1 : 0)); }
   lastFit = { ds, spec: state.copySpec(state.spec), result };
   for (const f of result.flags) {
     let text = FLAG_TEXT[f] || f;
@@ -4298,6 +4543,7 @@ function compute() {
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
   drawCoefficients(result);
   drawStats(result);
+  drawChecks(result);
   const tt = drawTerms(ds, result);
   els.keepBtn.disabled = false;
   registerResult(ds, result, tt);
@@ -4336,20 +4582,54 @@ function drawCoefficients(result) {
   const scale = result.link === 'identity' ? 'in the response’s units' : 'on the ' + link.label + ' scale';
   html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(result.fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : '; z tests, because the dispersion is fixed by the family.') +
     (link.backName ? ' The last two columns carry each coefficient through the exponential: the ' + esc(link.backWord) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
+  if (result.fit.family === 'ordinal') {
+    const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
+    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>ζ</th><th>Std. error</th></tr></thead><tbody>' +
+      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<p class="muted-line">P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.</p>';
+  }
   els.coef.innerHTML = html;
+}
+
+// The checks line: the Shapiro–Wilk test on the quantile residuals and the
+// dispersion test where the family fixes its dispersion. Flags, never gates.
+function drawChecks(result) {
+  const fit = result.fit;
+  let res;
+  try { res = residualSet(result); } catch (err) { return; }
+  const r = Array.from(res.quantile).filter(Number.isFinite);
+  const parts = [];
+  let warn = false;
+  if (r.length >= 3 && r.length <= 5000) {
+    const sw = shapiroWilk(r);
+    const bad = sw.p < 0.05;
+    if (bad) warn = true;
+    parts.push('<span class="' + (bad ? 'chk-bad' : 'chk-ok') + '">Shapiro–Wilk on the quantile residuals: W = ' + num(sw.W, 3) + ', ' + pEq(sw.p) + (bad ? ' <b>(the residuals depart from the normal)</b>' : '') + '</span>');
+  }
+  if (res.dispersion) {
+    const d = res.dispersion;
+    const bad = d.p < 0.05 && d.ratio > 1;
+    if (bad) warn = true;
+    parts.push('<span class="' + (bad ? 'chk-bad' : 'chk-ok') + '">Pearson dispersion: χ² / df = ' + num(d.ratio, 3) + ', ' + pEq(d.p) + (bad ? ' <b>(overdispersed)</b>' : '') + '</span>');
+  }
+  if (!parts.length) return;
+  els.stats.appendChild(notice(warn ? 'warn' : 'ok', '<b>Checks.</b> ' + parts.join('; ') + '. ' + (warn ? 'See the <a href="#diagnostics">Diagnostics</a> page for where the model falls short.' : 'The <a href="#diagnostics">Diagnostics</a> page has the plots behind these.')));
 }
 
 function drawStats(result) {
   const fit = result.fit, fam = FAMILIES[fit.family];
-  const cards = [
-    card('Observations', intl(fit.n)),
+  const cards = [card('Observations', intl(fit.n))];
+  if (fit.family === 'ordinal') cards.push(card('Deviance', stat(fit.deviance, 5), '−2 log-likelihood'), card('Null deviance', stat(fit.nullDeviance, 5), 'thresholds only'));
+  else if (fit.family === 'beta') cards.push(card('Precision φ', stat(fit.phi, 4), 'SE ' + stat(fit.phiSe, 3)));
+  else cards.push(
     card('Deviance', stat(fit.deviance, 5), 'on ' + intl(fit.dfResidual) + ' residual df'),
-    card('Null deviance', stat(fit.nullDeviance, 5), 'intercept only, ' + intl(fit.n - 1) + ' df'),
+    card('Null deviance', stat(fit.nullDeviance, 5), 'intercept only, ' + intl(fit.n - 1) + ' df'));
+  cards.push(
     card('Log-likelihood', stat(fit.logLik, 5), intl(fit.df) + ' parameters'),
     card('AIC', stat(fit.aic, 5)),
-    card('BIC', stat(fit.bic, 5))
-  ];
-  if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
+    card('BIC', stat(fit.bic, 5)));
+  if (fit.family === 'ordinal' || fit.family === 'beta') { /* no dispersion card */ }
+  else if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
   else if (fam.id === 'negbin') cards.push(card('θ', stat(fit.theta, 4), 'SE ' + stat(fit.thetaSe, 3)));
   else cards.push(card('Dispersion', '1', 'fixed by the family'));
   if (fam.id === 'binomial' || fam.id === 'poisson') {
@@ -4423,6 +4703,8 @@ import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
 import { FAMILIES, LINKS } from '../stats/families.js';
 import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf } from '../stats/inference.js';
+import { ordinalProbs } from '../stats/ordinal.js';
+import { newDataMatrix } from '../stats/design.js';
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
@@ -4522,6 +4804,7 @@ function compute() {
   const off = {};
   if (!preds.length) { off.effect = 'The model has no predictor to plot against.'; off.calculator = 'The model has no predictor to set.'; }
   if (!cats.length) off.means = 'The model has no categorical predictor.';
+  if (result.fit.family === 'ordinal') off.means = 'Marginal means are not formed for the ordinal model; the effect plot shows each level’s probability.';
   setSectionAvailable(id, off);
   els.note.appendChild(notice('info', 'Model: <code>' + esc(result.formula) + '</code>, ' + esc(FAMILIES[result.fit.family].label) + ' family with the ' + esc(LINKS[result.link].label) + ' link, fitted to ' + esc(ds.name) + '.'));
   const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
@@ -4539,11 +4822,53 @@ function compute() {
   registerTips(rootEl);
 }
 
+// The ordinal model's predictions: a probability per level.
+function ordinalPredict(ds, result, rows) {
+  const X = newDataMatrix(ds, result.design, rows).map(r => r.slice(1));
+  const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
+  return ordinalProbs(result.fit, eta);
+}
+
+function drawOrdinalEffect(ds, result) {
+  const x = els.x.value;
+  const grid = effectGrid(ds, result, x, null, 60);
+  const xc = column(ds, x);
+  const levels = column(ds, state.spec.response).col.levels;
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.effect.appendChild(box);
+  const fig = makeFigure(box, { height: 320, xLabel: x, yLabel: 'probability', title: 'Predicted probability of each level against ' + x });
+  exportButtons(box, fig, ds.name + ' ordinal effect of ' + x);
+  const s = grid.series[0];
+  const probs = ordinalPredict(ds, result, s.rows);
+  fig.render(f => {
+    const xs = xc.col.type === 'continuous' ? s.xs : null;
+    if (xs) f.x([Math.min(...xs), Math.max(...xs)], { pad: 0.03, nice: true });
+    f.y([0, 1]);
+    const pos = xs ? null : categoricalX(f, grid.xLevels);
+    if (xs) f.axes({});
+    levels.forEach((l, k) => {
+      const cx = xs || pos;
+      const yk = probs.map(pr => pr[k]);
+      curveBand(f, { x: cx, y: yk }, { band: false, color: LEVEL_COLORS[k % LEVEL_COLORS.length], dash: LEVEL_DASHES[k % LEVEL_DASHES.length], label: 'P(' + l + ')' });
+      if (!xs) dataPoints(f, pos.map((p, i) => ({ x: p, y: yk[i] })), { color: LEVEL_COLORS[k % LEVEL_COLORS.length], r: 4, label: 'P(' + l + ')' });
+    });
+  });
+  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
+  const held = Object.entries(grid.held).map(([k, v]) => esc(k) + ' = ' + (typeof v === 'number' ? num(v, 4) : esc(v))).join(', ');
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = (held ? 'Other predictors held at ' + held + '. ' : '') + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
+  els.effect.appendChild(p);
+  figs.push(fig);
+}
+
 function drawEffect() {
   const cf = currentFit();
   els.effect.innerHTML = '';
   if (!cf || !els.x.value) return;
   const { ds, result } = cf;
+  if (result.fit.family === 'ordinal') { drawOrdinalEffect(ds, result); return; }
   const x = els.x.value, by = els.by.value && els.by.value !== x ? els.by.value : null;
   const level = state.settings.level;
   const grid = effectGrid(ds, result, x, by, 60);
@@ -4703,6 +5028,12 @@ function drawCalc() {
   state.setPick(id, 'calc', saved);
   if (!Object.keys(row).length && result.design.terms.length) return;
   const level = state.settings.level;
+  if (result.fit.family === 'ordinal') {
+    const pr = ordinalPredict(ds, result, [row])[0];
+    const levels = column(ds, state.spec.response).col.levels;
+    els.calc.appendChild(cardRow(levels.map((l, k) => card('P(' + esc(l) + ')', stat(pr[k], 4)))));
+    return;
+  }
   const p = predictRows(ds, result, [row], level);
   const link = LINKS[result.link];
   const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
@@ -5367,6 +5698,134 @@ export function setResult(pageId, result) {
 const state = { datasets, settings, LEVELS, spec, models, results, picks, on, emit, add, remove, rename, get, select, selected,
   setLevel, setCustomLevel, setSpec, copySpec, emptySpec, keepModel, dropModel, setResult, setPick, getPick };
 export default state;
+</script>
+<script type="text/plain" data-module="js/stats/beta.js">
+// Beta regression, as betareg fits it: the mean through a link, the
+// precision φ as one parameter on its own scale, the log-likelihood of
+// Ferrari and Cribari-Neto maximized by Fisher scoring on the expected
+// information, which also gives the covariance betareg reports. Pure
+// functions, no DOM.
+
+import { FAMILIES, linkOf } from './families.js';
+import { digamma, trigamma } from './negbin.js';
+import { cholesky, cholSolve, cholInverse, zeros } from './linalg.js';
+
+/**
+ * Fits the beta regression.
+ * @param {Float64Array} y in (0, 1)
+ * @param {Float64Array[]} X n rows by p columns
+ * @param {{ link?: string|null }} o
+ * @returns {import('./glm.js').GlmFit & { phi: number, phiSe: number }}
+ */
+export function fitBeta(y, X, o = {}) {
+  const link = linkOf('beta', o.link);
+  const n = y.length, p = X[0].length;
+  const fam = FAMILIES.beta;
+  // Starting values: least squares on the linked response, and φ from the
+  // residual variance, as betareg starts.
+  const z = Float64Array.from(y, v => link.linkfun(v));
+  let beta = lsq(X, z);
+  let mu = Float64Array.from(X, x => link.linkinv(dot(x, beta)));
+  let ss = 0;
+  for (let i = 0; i < n; i++) ss += (z[i] - dot(X[i], beta)) ** 2;
+  const s2 = ss / Math.max(1, n - p);
+  let phi = 0;
+  for (let i = 0; i < n; i++) { const me = link.mu_eta(link.linkfun(mu[i])); phi += mu[i] * (1 - mu[i]) / (s2 * me * me) - 1; }
+  phi = Math.max(phi / n, 0.5);
+  const ll = (b, ph) => {
+    const m = Float64Array.from(X, x => link.linkinv(dot(x, b)));
+    return fam.logLik(y, m, ph, n);
+  };
+  let cur = ll(beta, phi);
+  let converged = false, iter = 0;
+  let K = null;
+  const ystar = Float64Array.from(y, v => Math.log(v / (1 - v)));
+  const ylog1 = Float64Array.from(y, v => Math.log(1 - v));
+  for (iter = 1; iter <= 100; iter++) {
+    const eta = Float64Array.from(X, x => dot(x, beta));
+    mu = Float64Array.from(eta, e => link.linkinv(e));
+    // The score and the expected information in (β, φ).
+    const sb = new Float64Array(p);
+    let sp = 0;
+    K = zeros(p + 1, p + 1);
+    for (let i = 0; i < n; i++) {
+      const a = mu[i] * phi, b = (1 - mu[i]) * phi;
+      const mustar = digamma(a) - digamma(b);
+      const me = link.mu_eta(eta[i]);
+      const ta = trigamma(a), tb = trigamma(b);
+      const r = ystar[i] - mustar;
+      for (let j = 0; j < p; j++) sb[j] += phi * r * me * X[i][j];
+      sp += mu[i] * r + ylog1[i] - digamma(b) + digamma(phi);
+      const w = phi * (ta + tb) * me * me;
+      const c = phi * (ta * mu[i] - tb * (1 - mu[i]));
+      const d = ta * mu[i] * mu[i] + tb * (1 - mu[i]) * (1 - mu[i]) - trigamma(phi);
+      for (let j = 0; j < p; j++) {
+        for (let k = 0; k < p; k++) K[j][k] += phi * w * X[i][j] * X[i][k];
+        K[j][p] += me * c * X[i][j];
+      }
+      K[p][p] += d;
+    }
+    for (let j = 0; j < p; j++) K[p][j] = K[j][p];
+    const L = cholesky(K);
+    if (!L) break;
+    const score = new Float64Array(p + 1);
+    for (let j = 0; j < p; j++) score[j] = sb[j];
+    score[p] = sp;
+    const step = cholSolve(L, score);
+    // Step halving on the log-likelihood, keeping φ positive.
+    let t = 1, next = null, nb = null, np = NaN;
+    for (let h = 0; h < 30; h++) {
+      nb = Float64Array.from(beta, (v, j) => v + t * step[j]);
+      np = phi + t * step[p];
+      if (np > 0) { next = ll(nb, np); if (Number.isFinite(next) && next >= cur - 1e-12) break; }
+      next = null;
+      t /= 2;
+    }
+    if (next === null) break;
+    const change = Math.abs(next - cur);
+    beta = nb; phi = np; cur = next;
+    let maxStep = Math.abs(t * step[p]);
+    for (let j = 0; j < p; j++) maxStep = Math.max(maxStep, Math.abs(t * step[j]));
+    if (change < 1e-10 && maxStep < 1e-7) { converged = true; break; }
+  }
+  // The covariance from the expected information at the solution.
+  const eta = Float64Array.from(X, x => dot(x, beta));
+  mu = Float64Array.from(eta, e => link.linkinv(e));
+  K = zeros(p + 1, p + 1);
+  for (let i = 0; i < n; i++) {
+    const a = mu[i] * phi, b = (1 - mu[i]) * phi, me = link.mu_eta(eta[i]);
+    const ta = trigamma(a), tb = trigamma(b);
+    const w = phi * (ta + tb) * me * me, c = phi * (ta * mu[i] - tb * (1 - mu[i]));
+    const d = ta * mu[i] * mu[i] + tb * (1 - mu[i]) * (1 - mu[i]) - trigamma(phi);
+    for (let j = 0; j < p; j++) { for (let k = 0; k < p; k++) K[j][k] += phi * w * X[i][j] * X[i][k]; K[j][p] += me * c * X[i][j]; }
+    K[p][p] += d;
+  }
+  for (let j = 0; j < p; j++) K[p][j] = K[j][p];
+  const L = cholesky(K);
+  const V = L ? cholInverse(L) : null;
+  const vcov = V ? V.slice(0, p).map(r => Float64Array.from(r.slice(0, p))) : null;
+  const phiSe = V ? Math.sqrt(V[p][p]) : NaN;
+  const logLik = cur;
+  const k = p + 1;
+  const pearson = Float64Array.from(y, (v, i) => (v - mu[i]) / Math.sqrt(mu[i] * (1 - mu[i]) / (1 + phi)));
+  const flags = converged ? [] : ['notConverged'];
+  return { beta, vcov, eta, fitted: mu, weights: null, deviance: NaN, nullDeviance: NaN, logLik, aic: -2 * logLik + 2 * k, bic: -2 * logLik + k * Math.log(n),
+    dispersion: 1, aux: phi, phi, phiSe, df: k, dfResidual: n - k, rank: p, n, iterations: iter, converged, hat: null, pearson, devianceResiduals: null, cooks: null,
+    family: 'beta', link: link.id, flags };
+}
+
+function dot(x, b) { let s = 0; for (let j = 0; j < b.length; j++) s += x[j] * b[j]; return s; }
+
+// Ordinary least squares, for starting values.
+function lsq(X, z) {
+  const p = X[0].length;
+  const A = zeros(p, p), v = new Float64Array(p);
+  for (let i = 0; i < X.length; i++) {
+    for (let a = 0; a < p; a++) { v[a] += X[i][a] * z[i]; for (let b = 0; b < p; b++) A[a][b] += X[i][a] * X[i][b]; }
+  }
+  const L = cholesky(A);
+  return L ? cholSolve(L, v) : new Float64Array(p);
+}
 </script>
 <script type="text/plain" data-module="js/stats/descriptive.js">
 // Descriptive statistics for samples and for time-stamped trajectories. Pure
@@ -6231,6 +6690,8 @@ import { FAMILIES, linkOf, invalidRows, familiesFor } from './families.js';
 import { modelMatrix, formulaOf } from './design.js';
 import { fitGlm } from './glm.js';
 import { fitNegbin } from './negbin.js';
+import { fitBeta } from './beta.js';
+import { fitOrdinal } from './ordinal.js';
 
 /** How the page words each flag a fit may carry. */
 export const FLAG_TEXT = {
@@ -6314,14 +6775,20 @@ export function fitModel(ds, spec) {
   const { y, event } = codedResponse(ds, spec, design);
   const flags = [];
   if (design.aliased.length) flags.push('aliased');
-  let fit;
-  if (spec.family === 'ordinal') throw new Error('The ordinal family is not fitted yet.');
+  let fit, names = design.names;
   if (spec.group || spec.olre) throw new Error('Random effects are not fitted yet.');
-  if (spec.family === 'negbin') fit = fitNegbin(y, design.X, { link: spec.link });
-  else if (spec.family === 'beta') throw new Error('The beta family is not fitted yet.');
+  if (spec.family === 'ordinal') {
+    // No intercept: the thresholds take its place.
+    const rc = column(ds, spec.response).col;
+    const Xo = design.X.map(r => r.slice(1));
+    fit = fitOrdinal(y, Xo, rc.levels.length);
+    fit.zetaNames = rc.levels.slice(0, -1).map((l, k) => l + '|' + rc.levels[k + 1]);
+    names = design.names.slice(1);
+  } else if (spec.family === 'negbin') fit = fitNegbin(y, design.X, { link: spec.link });
+  else if (spec.family === 'beta') fit = fitBeta(y, design.X, { link: spec.link });
   else fit = fitGlm(y, design.X, { family: spec.family, link: spec.link });
   for (const f of fit.flags) if (!flags.includes(f)) flags.push(f);
-  return { design, fit, names: design.names, formula: formulaOf(spec), flags, event, link: linkOf(spec.family, spec.link).id };
+  return { design, fit, names, formula: formulaOf(spec), flags, event, link: linkOf(spec.family, spec.link).id, codedY: y, refit: fitModel };
 }
 </script>
 <script type="text/plain" data-module="js/stats/glm.js">
@@ -6493,10 +6960,11 @@ export function waldP(z, df) {
 // binomial's θ at the full fit's value, as drop1 holds the family fixed.
 function refitTerms(ds, spec, full, terms) {
   const s = Object.assign({}, spec, { terms, group: null, nested: null, slope: null, olre: false });
-  const m = modelMatrix(ds, s);
   const y = full.codedY;
-  if (spec.family === 'negbin') return fitGlm(y, m.X, { family: 'negbin', link: spec.link, aux: full.fit.theta });
-  return fitGlm(y, m.X, { family: spec.family, link: spec.link });
+  if (spec.family === 'negbin') return fitGlm(y, modelMatrix(ds, s).X, { family: 'negbin', link: spec.link, aux: full.fit.theta });
+  // The beta and ordinal fitters re-estimate every parameter in the reduced model.
+  if (spec.family === 'beta' || spec.family === 'ordinal') return full.refit(ds, s).fit;
+  return fitGlm(y, modelMatrix(ds, s).X, { family: spec.family, link: spec.link });
 }
 
 /**
@@ -6523,13 +6991,14 @@ export function termTests(ds, spec, result) {
     const needed = terms.some((u, j) => j !== i && typeof u === 'object' && u.of && vars.every(v => u.of.includes(v)) && u.of.length > vars.length);
     if (needed) return;
     const reduced = refitTerms(ds, spec, result, terms.filter((_, j) => j !== i));
-    const df = full.rank - reduced.rank;
+    const df = full.df - reduced.df;
     // drop1's statistic: for the normal family the likelihood ratio with σ²
     // profiled out, n log(deviance ratio); for the gamma the deviance change
     // over the dispersion; and for a fixed dispersion the deviance change.
     const stat = full.family === 'normal' ? full.n * Math.log(reduced.deviance / full.deviance)
-      : (reduced.deviance - full.deviance) / (scaled ? full.dispersion : 1);
-    rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: reduced.deviance });
+      : !Number.isFinite(full.deviance) ? 2 * (full.logLik - reduced.logLik)
+        : (reduced.deviance - full.deviance) / (scaled ? full.dispersion : 1);
+    rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: Number.isFinite(reduced.deviance) ? reduced.deviance : -2 * reduced.logLik });
   });
   return { rows, scaled };
 }
@@ -7219,6 +7688,218 @@ export function normalQQ(x) {
   const z1 = normInv(0.25), z3 = normInv(0.75);
   const slope = (q3 - q1) / (z3 - z1);
   return { theoretical, sample: s, slope, intercept: q1 - slope * z1 };
+}
+</script>
+<script type="text/plain" data-module="js/stats/ordinal.js">
+// The cumulative logit (proportional odds) model, as MASS::polr fits it:
+// P(Y ≤ k) = F(ζ_k − x'β) with increasing thresholds ζ and no intercept in
+// x, maximized by Newton's method on the analytic gradient and Hessian,
+// whose inverse at the solution is the covariance. Pure functions, no DOM.
+
+import { zeros, cholesky, cholSolve, cholInverse } from './linalg.js';
+
+const F = t => (t >= 0 ? 1 / (1 + Math.exp(-t)) : Math.exp(t) / (1 + Math.exp(t)));
+const f = t => { const p = F(t); return p * (1 - p); };
+const fp = t => { const p = F(t); return p * (1 - p) * (1 - 2 * p); };
+
+/**
+ * Fits the proportional-odds model.
+ * @param {Float64Array} y category indices 0..K−1
+ * @param {Float64Array[]} X n rows by p columns, without an intercept
+ * @param {number} K the number of categories
+ * @returns {{ beta: Float64Array, zeta: Float64Array, vcov: Float64Array[], logLik: number, deviance: number, aic: number, bic: number,
+ *   df: number, dfResidual: number, rank: number, n: number, iterations: number, converged: boolean, probs: Float64Array[],
+ *   cumulative: (eta: number) => Float64Array, eta: Float64Array, fitted: Float64Array, flags: string[], family: string, link: string,
+ *   dispersion: number, aux: number, hat: null, pearson: null, cooks: null, devianceResiduals: null, nullDeviance: number }}
+ */
+export function fitOrdinal(y, X, K) {
+  const n = y.length, p = X.length ? X[0].length : 0, q = K - 1;
+  // Starting values: β = 0 and ζ from the cumulative proportions, as polr.
+  const counts = new Float64Array(K);
+  for (let i = 0; i < n; i++) counts[y[i]]++;
+  let theta = new Float64Array(p + q);
+  let cum = 0;
+  for (let k = 0; k < q; k++) { cum += counts[k]; const pr = Math.min(1 - 1e-6, Math.max(1e-6, cum / n)); theta[p + k] = Math.log(pr / (1 - pr)); }
+  const dotB = (x, th) => { let s = 0; for (let j = 0; j < p; j++) s += x[j] * th[j]; return s; };
+  const ll = th => {
+    for (let k = 1; k < q; k++) if (!(th[p + k] > th[p + k - 1])) return -Infinity;
+    let s = 0;
+    for (let i = 0; i < n; i++) {
+      const e = dotB(X[i], th), k = y[i];
+      const A = k < q ? F(th[p + k] - e) : 1, B = k > 0 ? F(th[p + k - 1] - e) : 0;
+      const P = A - B;
+      if (!(P > 0)) return -Infinity;
+      s += Math.log(P);
+    }
+    return s;
+  };
+  // The gradient and Hessian of the log-likelihood in (β, ζ).
+  const derivs = th => {
+    const g = new Float64Array(p + q), H = zeros(p + q, p + q);
+    for (let i = 0; i < n; i++) {
+      const x = X[i], e = dotB(x, th), k = y[i];
+      const hasA = k < q, hasB = k > 0;
+      const A = hasA ? th[p + k] - e : Infinity, B = hasB ? th[p + k - 1] - e : -Infinity;
+      const FA = hasA ? F(A) : 1, FB = hasB ? F(B) : 0, P = FA - FB;
+      const fA = hasA ? f(A) : 0, fB = hasB ? f(B) : 0, fpA = hasA ? fp(A) : 0, fpB = hasB ? fp(B) : 0;
+      // First derivatives of P with respect to η, ζ_k, ζ_{k−1}.
+      const dPe = fB - fA, dPa = fA, dPb = -fB;
+      // Second derivatives.
+      const dPee = fpA - fpB, dPaa = fpA, dPbb = -fpB, dPea = -fpA, dPeb = fpB;
+      // log P: gradient = dP/P, Hessian = d2P/P − (dP)(dP)'/P².
+      const idx = [], dP = [], d2 = {};
+      // Parameter slots: β through η (chain rule with x), ζ_k, ζ_{k−1}.
+      for (let j = 0; j < p; j++) { idx.push(j); dP.push(dPe * x[j]); }
+      if (hasA) { idx.push(p + k); dP.push(dPa); }
+      if (hasB) { idx.push(p + k - 1); dP.push(dPb); }
+      const m = idx.length;
+      const second = (r, c) => {
+        const ir = idx[r], ic = idx[c];
+        const rb = ir < p, cb = ic < p;
+        if (rb && cb) return dPee * x[ir] * x[ic];
+        if (rb && !cb) return (ic === p + k && hasA ? dPea : dPeb) * x[ir];
+        if (!rb && cb) return (ir === p + k && hasA ? dPea : dPeb) * x[ic];
+        if (ir === ic) return ir === p + k && hasA ? dPaa : dPbb;
+        return 0;
+      };
+      for (let r = 0; r < m; r++) {
+        g[idx[r]] += dP[r] / P;
+        for (let c = 0; c < m; c++) H[idx[r]][idx[c]] += second(r, c) / P - dP[r] * dP[c] / (P * P);
+      }
+    }
+    return { g, H };
+  };
+  let cur = ll(theta);
+  let converged = false, iter = 0;
+  for (iter = 1; iter <= 100; iter++) {
+    const { g, H } = derivs(theta);
+    // Newton on the negative Hessian, which is positive definite near the solution.
+    const negH = H.map(r => Float64Array.from(r, v => -v));
+    let L = cholesky(negH);
+    if (!L) {
+      // Away from the solution, add a ridge until the matrix factors.
+      let ridge = 1e-6;
+      while (!L && ridge < 1e6) { const R = negH.map((r, a) => Float64Array.from(r, (v, b) => (a === b ? v + ridge : v))); L = cholesky(R); ridge *= 10; }
+      if (!L) break;
+    }
+    const step = cholSolve(L, g);
+    let t = 1, next = -Infinity, nt = null;
+    for (let h = 0; h < 40; h++) {
+      nt = Float64Array.from(theta, (v, j) => v + t * step[j]);
+      next = ll(nt);
+      if (Number.isFinite(next) && next >= cur - 1e-12) break;
+      t /= 2;
+    }
+    if (!Number.isFinite(next)) break;
+    const change = Math.abs(next - cur);
+    let maxStep = 0;
+    for (let j = 0; j < p + q; j++) maxStep = Math.max(maxStep, Math.abs(t * step[j]));
+    theta = nt; cur = next;
+    if (change < 1e-10 && maxStep < 1e-7) { converged = true; break; }
+  }
+  const { H } = derivs(theta);
+  const L = cholesky(H.map(r => Float64Array.from(r, v => -v)));
+  const vcov = L ? cholInverse(L) : null;
+  const beta = Float64Array.from(theta.slice(0, p)), zeta = Float64Array.from(theta.slice(p));
+  const cumulative = e => Float64Array.from(zeta, z => F(z - e));
+  const eta = Float64Array.from(X, x => dotB(x, beta));
+  const probs = Array.from(eta, e => { const c = cumulative(e); const out = new Float64Array(K); let prev = 0; for (let k = 0; k < q; k++) { out[k] = c[k] - prev; prev = c[k]; } out[q] = 1 - prev; return out; });
+  const fitted = Float64Array.from(probs, pr => { let s = 0; for (let k = 0; k < K; k++) s += k * pr[k]; return s; });
+  const k = p + q;
+  const logLik = cur;
+  const deviance = -2 * logLik;
+  // The null deviance: the thresholds alone.
+  let nullLL = 0;
+  for (let c = 0; c < K; c++) if (counts[c] > 0) nullLL += counts[c] * Math.log(counts[c] / n);
+  return { beta, zeta, vcov, logLik, deviance, nullDeviance: -2 * nullLL, aic: -2 * logLik + 2 * k, bic: -2 * logLik + k * Math.log(n), df: k, dfResidual: n - k, rank: p, n,
+    iterations: iter, converged, probs, cumulative, eta, fitted, flags: converged ? [] : ['notConverged'], family: 'ordinal', link: 'logit', dispersion: 1, aux: 1,
+    hat: null, pearson: null, cooks: null, devianceResiduals: null, weights: null };
+}
+
+/**
+ * The category probabilities at new linear predictors.
+ * @param {ReturnType<typeof fitOrdinal>} fit
+ * @param {ArrayLike<number>} eta
+ * @returns {Float64Array[]} one row per eta, one column per category
+ */
+export function ordinalProbs(fit, eta) {
+  const K = fit.zeta.length + 1;
+  return Array.from(eta, e => { const c = fit.cumulative(e); const out = new Float64Array(K); let prev = 0; for (let k = 0; k < K - 1; k++) { out[k] = c[k] - prev; prev = c[k]; } out[K - 1] = 1 - prev; return out; });
+}
+</script>
+<script type="text/plain" data-module="js/stats/residuals.js">
+// The residuals of a fit, gathered for the Diagnostics page and the
+// scripts: the randomized quantile residuals with their seeded uniforms,
+// the Pearson and deviance residuals, the hat values and Cook's distances
+// where the fitter gives them, and the Pearson dispersion test for a family
+// whose dispersion is fixed. Pure functions, no DOM.
+
+import { FAMILIES, quantileResiduals } from './families.js';
+import { normInv, chi2Cdf } from './special.js';
+
+/** The seed the page draws the quantile residuals' uniforms from. */
+export const RESIDUAL_SEED = 20261010;
+
+/**
+ * mulberry32: `n` uniforms from a 32-bit seed, the same sequence in the
+ * page and in the exported scripts, which embed the numbers.
+ * @param {number} n
+ * @param {number} seed
+ * @returns {Float64Array}
+ */
+export function uniforms(n, seed) {
+  let a = seed >>> 0;
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    out[i] = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  return out;
+}
+
+const EPS = 2.220446049250313e-16;
+
+/**
+ * Every residual a fit offers.
+ * @param {object} result fitModel's output
+ * @param {number} [seed]
+ * @returns {{ quantile: Float64Array, uniforms: Float64Array|null, pearson: Float64Array|null, deviance: Float64Array|null,
+ *   fitted: Float64Array, eta: Float64Array, hat: Float64Array|null, cooks: Float64Array|null,
+ *   dispersion: { chisq: number, df: number, ratio: number, p: number }|null, aux: number }}
+ */
+export function residualSet(result, seed = RESIDUAL_SEED) {
+  const fit = result.fit;
+  const y = result.codedY || result.design.y;
+  const n = y.length;
+  const fam = FAMILIES[fit.family];
+  let quantile, u = null;
+  if (fit.family === 'ordinal') {
+    // The cumulative probabilities bracket the observed category.
+    u = uniforms(n, seed);
+    quantile = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const c = fit.cumulative(fit.eta[i]);
+      const k = y[i];
+      const hi = k < c.length ? c[k] : 1, lo = k > 0 ? c[k - 1] : 0;
+      quantile[i] = normInv(Math.min(1 - EPS, Math.max(EPS, lo + u[i] * (hi - lo))));
+    }
+  } else {
+    if (fam.discrete) u = uniforms(n, seed);
+    const aux = fit.family === 'normal' || fit.family === 'gamma' ? fit.dispersion : fit.aux;
+    quantile = quantileResiduals(fit.family, y, fit.fitted, aux, u || new Float64Array(n));
+  }
+  let dispersion = null;
+  if (fit.pearson && (fit.family === 'binomial' || fit.family === 'poisson')) {
+    let s = 0;
+    for (let i = 0; i < n; i++) s += fit.pearson[i] * fit.pearson[i];
+    const df = fit.dfResidual;
+    dispersion = { chisq: s, df, ratio: s / df, p: 1 - chi2Cdf(s, df) };
+  }
+  return { quantile, uniforms: u, pearson: fit.pearson || null, deviance: fit.devianceResiduals || null, fitted: fit.fitted, eta: fit.eta,
+    hat: fit.hat || null, cooks: fit.cooks || null, dispersion, aux: fit.aux };
 }
 </script>
 <script type="text/plain" data-module="js/stats/special.js">
@@ -8461,7 +9142,9 @@ export function formulaBuilder(container, opts) {
         : '<span class="muted-line">No terms: the model has only an intercept.</span>';
       const missing = missingMainEffects(s);
       if (missing.length) el.terms.insertAdjacentHTML('beforeend', '<span class="ctrl-note">An interaction needs its main effects: ' + esc(missing.join(', ')) + '.</span>');
-      const preds = ds ? ds.columns.filter(c => c.role === 'predictor' && c.name !== s.response) : [];
+      // Any column but the response and the ignored ones can be a term, a
+      // response column included once another is the response.
+      const preds = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'group' && c.name !== s.response) : [];
       const cont = preds.filter(c => c.type === 'continuous');
       const have = new Set(terms.map(termLabel));
       el.addPred.innerHTML = preds.filter(c => !have.has(c.name)).map(c => opt(c.name, c.name)).join('') || opt('', 'none left', true);

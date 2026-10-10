@@ -168,7 +168,9 @@ export function formulaBuilder(container, opts) {
         : '<span class="muted-line">No terms: the model has only an intercept.</span>';
       const missing = missingMainEffects(s);
       if (missing.length) el.terms.insertAdjacentHTML('beforeend', '<span class="ctrl-note">An interaction needs its main effects: ' + esc(missing.join(', ')) + '.</span>');
-      const preds = ds ? ds.columns.filter(c => c.role === 'predictor' && c.name !== s.response) : [];
+      // Any column but the response and the ignored ones can be a term, a
+      // response column included once another is the response.
+      const preds = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'group' && c.name !== s.response) : [];
       const cont = preds.filter(c => c.type === 'continuous');
       const have = new Set(terms.map(termLabel));
       el.addPred.innerHTML = preds.filter(c => !have.has(c.name)).map(c => opt(c.name, c.name)).join('') || opt('', 'none left', true);

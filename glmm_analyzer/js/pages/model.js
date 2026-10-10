@@ -9,12 +9,14 @@ import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
 import { termTests } from '../stats/inference.js';
+import { residualSet } from '../stats/residuals.js';
+import { shapiroWilk } from '../stats/normality.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { normCdf, normInv, tCdf, tQuantile } from '../stats/special.js';
 import { formulaBuilder } from '../ui/formula.js';
 import { card, cardRow, notice, details, listWords } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
-import { esc, num, stat, pValue, intl, plural, lvl } from '../ui/format.js';
+import { esc, num, stat, pValue, pEq, intl, plural, lvl } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
 
 /** The page's hash id. */
@@ -120,8 +122,6 @@ function compute() {
     state.setResult(id, null);
     return;
   }
-  result.codedY = result.design.y;
-  if (result.event) { const rc = column(ds, state.spec.response).col; result.codedY = Float64Array.from(result.design.yRaw, v => (v === rc.levels[1] ? 1 : 0)); }
   lastFit = { ds, spec: state.copySpec(state.spec), result };
   for (const f of result.flags) {
     let text = FLAG_TEXT[f] || f;
@@ -132,6 +132,7 @@ function compute() {
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
   drawCoefficients(result);
   drawStats(result);
+  drawChecks(result);
   const tt = drawTerms(ds, result);
   els.keepBtn.disabled = false;
   registerResult(ds, result, tt);
@@ -170,20 +171,54 @@ function drawCoefficients(result) {
   const scale = result.link === 'identity' ? 'in the response’s units' : 'on the ' + link.label + ' scale';
   html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(result.fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : '; z tests, because the dispersion is fixed by the family.') +
     (link.backName ? ' The last two columns carry each coefficient through the exponential: the ' + esc(link.backWord) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
+  if (result.fit.family === 'ordinal') {
+    const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
+    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>ζ</th><th>Std. error</th></tr></thead><tbody>' +
+      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<p class="muted-line">P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.</p>';
+  }
   els.coef.innerHTML = html;
+}
+
+// The checks line: the Shapiro–Wilk test on the quantile residuals and the
+// dispersion test where the family fixes its dispersion. Flags, never gates.
+function drawChecks(result) {
+  const fit = result.fit;
+  let res;
+  try { res = residualSet(result); } catch (err) { return; }
+  const r = Array.from(res.quantile).filter(Number.isFinite);
+  const parts = [];
+  let warn = false;
+  if (r.length >= 3 && r.length <= 5000) {
+    const sw = shapiroWilk(r);
+    const bad = sw.p < 0.05;
+    if (bad) warn = true;
+    parts.push('<span class="' + (bad ? 'chk-bad' : 'chk-ok') + '">Shapiro–Wilk on the quantile residuals: W = ' + num(sw.W, 3) + ', ' + pEq(sw.p) + (bad ? ' <b>(the residuals depart from the normal)</b>' : '') + '</span>');
+  }
+  if (res.dispersion) {
+    const d = res.dispersion;
+    const bad = d.p < 0.05 && d.ratio > 1;
+    if (bad) warn = true;
+    parts.push('<span class="' + (bad ? 'chk-bad' : 'chk-ok') + '">Pearson dispersion: χ² / df = ' + num(d.ratio, 3) + ', ' + pEq(d.p) + (bad ? ' <b>(overdispersed)</b>' : '') + '</span>');
+  }
+  if (!parts.length) return;
+  els.stats.appendChild(notice(warn ? 'warn' : 'ok', '<b>Checks.</b> ' + parts.join('; ') + '. ' + (warn ? 'See the <a href="#diagnostics">Diagnostics</a> page for where the model falls short.' : 'The <a href="#diagnostics">Diagnostics</a> page has the plots behind these.')));
 }
 
 function drawStats(result) {
   const fit = result.fit, fam = FAMILIES[fit.family];
-  const cards = [
-    card('Observations', intl(fit.n)),
+  const cards = [card('Observations', intl(fit.n))];
+  if (fit.family === 'ordinal') cards.push(card('Deviance', stat(fit.deviance, 5), '−2 log-likelihood'), card('Null deviance', stat(fit.nullDeviance, 5), 'thresholds only'));
+  else if (fit.family === 'beta') cards.push(card('Precision φ', stat(fit.phi, 4), 'SE ' + stat(fit.phiSe, 3)));
+  else cards.push(
     card('Deviance', stat(fit.deviance, 5), 'on ' + intl(fit.dfResidual) + ' residual df'),
-    card('Null deviance', stat(fit.nullDeviance, 5), 'intercept only, ' + intl(fit.n - 1) + ' df'),
+    card('Null deviance', stat(fit.nullDeviance, 5), 'intercept only, ' + intl(fit.n - 1) + ' df'));
+  cards.push(
     card('Log-likelihood', stat(fit.logLik, 5), intl(fit.df) + ' parameters'),
     card('AIC', stat(fit.aic, 5)),
-    card('BIC', stat(fit.bic, 5))
-  ];
-  if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
+    card('BIC', stat(fit.bic, 5)));
+  if (fit.family === 'ordinal' || fit.family === 'beta') { /* no dispersion card */ }
+  else if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
   else if (fam.id === 'negbin') cards.push(card('θ', stat(fit.theta, 4), 'SE ' + stat(fit.thetaSe, 3)));
   else cards.push(card('Dispersion', '1', 'fixed by the family'));
   if (fam.id === 'binomial' || fam.id === 'poisson') {

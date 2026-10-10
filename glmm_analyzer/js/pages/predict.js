@@ -7,6 +7,8 @@ import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
 import { FAMILIES, LINKS } from '../stats/families.js';
 import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf } from '../stats/inference.js';
+import { ordinalProbs } from '../stats/ordinal.js';
+import { newDataMatrix } from '../stats/design.js';
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
@@ -106,6 +108,7 @@ function compute() {
   const off = {};
   if (!preds.length) { off.effect = 'The model has no predictor to plot against.'; off.calculator = 'The model has no predictor to set.'; }
   if (!cats.length) off.means = 'The model has no categorical predictor.';
+  if (result.fit.family === 'ordinal') off.means = 'Marginal means are not formed for the ordinal model; the effect plot shows each level’s probability.';
   setSectionAvailable(id, off);
   els.note.appendChild(notice('info', 'Model: <code>' + esc(result.formula) + '</code>, ' + esc(FAMILIES[result.fit.family].label) + ' family with the ' + esc(LINKS[result.link].label) + ' link, fitted to ' + esc(ds.name) + '.'));
   const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
@@ -123,11 +126,53 @@ function compute() {
   registerTips(rootEl);
 }
 
+// The ordinal model's predictions: a probability per level.
+function ordinalPredict(ds, result, rows) {
+  const X = newDataMatrix(ds, result.design, rows).map(r => r.slice(1));
+  const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
+  return ordinalProbs(result.fit, eta);
+}
+
+function drawOrdinalEffect(ds, result) {
+  const x = els.x.value;
+  const grid = effectGrid(ds, result, x, null, 60);
+  const xc = column(ds, x);
+  const levels = column(ds, state.spec.response).col.levels;
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.effect.appendChild(box);
+  const fig = makeFigure(box, { height: 320, xLabel: x, yLabel: 'probability', title: 'Predicted probability of each level against ' + x });
+  exportButtons(box, fig, ds.name + ' ordinal effect of ' + x);
+  const s = grid.series[0];
+  const probs = ordinalPredict(ds, result, s.rows);
+  fig.render(f => {
+    const xs = xc.col.type === 'continuous' ? s.xs : null;
+    if (xs) f.x([Math.min(...xs), Math.max(...xs)], { pad: 0.03, nice: true });
+    f.y([0, 1]);
+    const pos = xs ? null : categoricalX(f, grid.xLevels);
+    if (xs) f.axes({});
+    levels.forEach((l, k) => {
+      const cx = xs || pos;
+      const yk = probs.map(pr => pr[k]);
+      curveBand(f, { x: cx, y: yk }, { band: false, color: LEVEL_COLORS[k % LEVEL_COLORS.length], dash: LEVEL_DASHES[k % LEVEL_DASHES.length], label: 'P(' + l + ')' });
+      if (!xs) dataPoints(f, pos.map((p, i) => ({ x: p, y: yk[i] })), { color: LEVEL_COLORS[k % LEVEL_COLORS.length], r: 4, label: 'P(' + l + ')' });
+    });
+  });
+  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
+  const held = Object.entries(grid.held).map(([k, v]) => esc(k) + ' = ' + (typeof v === 'number' ? num(v, 4) : esc(v))).join(', ');
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = (held ? 'Other predictors held at ' + held + '. ' : '') + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
+  els.effect.appendChild(p);
+  figs.push(fig);
+}
+
 function drawEffect() {
   const cf = currentFit();
   els.effect.innerHTML = '';
   if (!cf || !els.x.value) return;
   const { ds, result } = cf;
+  if (result.fit.family === 'ordinal') { drawOrdinalEffect(ds, result); return; }
   const x = els.x.value, by = els.by.value && els.by.value !== x ? els.by.value : null;
   const level = state.settings.level;
   const grid = effectGrid(ds, result, x, by, 60);
@@ -287,6 +332,12 @@ function drawCalc() {
   state.setPick(id, 'calc', saved);
   if (!Object.keys(row).length && result.design.terms.length) return;
   const level = state.settings.level;
+  if (result.fit.family === 'ordinal') {
+    const pr = ordinalPredict(ds, result, [row])[0];
+    const levels = column(ds, state.spec.response).col.levels;
+    els.calc.appendChild(cardRow(levels.map((l, k) => card('P(' + esc(l) + ')', stat(pr[k], 4)))));
+    return;
+  }
   const p = predictRows(ds, result, [row], level);
   const link = LINKS[result.link];
   const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;

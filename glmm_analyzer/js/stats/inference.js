@@ -36,10 +36,11 @@ export function waldP(z, df) {
 // binomial's θ at the full fit's value, as drop1 holds the family fixed.
 function refitTerms(ds, spec, full, terms) {
   const s = Object.assign({}, spec, { terms, group: null, nested: null, slope: null, olre: false });
-  const m = modelMatrix(ds, s);
   const y = full.codedY;
-  if (spec.family === 'negbin') return fitGlm(y, m.X, { family: 'negbin', link: spec.link, aux: full.fit.theta });
-  return fitGlm(y, m.X, { family: spec.family, link: spec.link });
+  if (spec.family === 'negbin') return fitGlm(y, modelMatrix(ds, s).X, { family: 'negbin', link: spec.link, aux: full.fit.theta });
+  // The beta and ordinal fitters re-estimate every parameter in the reduced model.
+  if (spec.family === 'beta' || spec.family === 'ordinal') return full.refit(ds, s).fit;
+  return fitGlm(y, modelMatrix(ds, s).X, { family: spec.family, link: spec.link });
 }
 
 /**
@@ -66,13 +67,14 @@ export function termTests(ds, spec, result) {
     const needed = terms.some((u, j) => j !== i && typeof u === 'object' && u.of && vars.every(v => u.of.includes(v)) && u.of.length > vars.length);
     if (needed) return;
     const reduced = refitTerms(ds, spec, result, terms.filter((_, j) => j !== i));
-    const df = full.rank - reduced.rank;
+    const df = full.df - reduced.df;
     // drop1's statistic: for the normal family the likelihood ratio with σ²
     // profiled out, n log(deviance ratio); for the gamma the deviance change
     // over the dispersion; and for a fixed dispersion the deviance change.
     const stat = full.family === 'normal' ? full.n * Math.log(reduced.deviance / full.deviance)
-      : (reduced.deviance - full.deviance) / (scaled ? full.dispersion : 1);
-    rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: reduced.deviance });
+      : !Number.isFinite(full.deviance) ? 2 * (full.logLik - reduced.logLik)
+        : (reduced.deviance - full.deviance) / (scaled ? full.dispersion : 1);
+    rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: Number.isFinite(reduced.deviance) ? reduced.deviance : -2 * reduced.logLik });
   });
   return { rows, scaled };
 }

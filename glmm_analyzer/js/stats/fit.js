@@ -9,6 +9,8 @@ import { FAMILIES, linkOf, invalidRows, familiesFor } from './families.js';
 import { modelMatrix, formulaOf } from './design.js';
 import { fitGlm } from './glm.js';
 import { fitNegbin } from './negbin.js';
+import { fitBeta } from './beta.js';
+import { fitOrdinal } from './ordinal.js';
 
 /** How the page words each flag a fit may carry. */
 export const FLAG_TEXT = {
@@ -92,12 +94,18 @@ export function fitModel(ds, spec) {
   const { y, event } = codedResponse(ds, spec, design);
   const flags = [];
   if (design.aliased.length) flags.push('aliased');
-  let fit;
-  if (spec.family === 'ordinal') throw new Error('The ordinal family is not fitted yet.');
+  let fit, names = design.names;
   if (spec.group || spec.olre) throw new Error('Random effects are not fitted yet.');
-  if (spec.family === 'negbin') fit = fitNegbin(y, design.X, { link: spec.link });
-  else if (spec.family === 'beta') throw new Error('The beta family is not fitted yet.');
+  if (spec.family === 'ordinal') {
+    // No intercept: the thresholds take its place.
+    const rc = column(ds, spec.response).col;
+    const Xo = design.X.map(r => r.slice(1));
+    fit = fitOrdinal(y, Xo, rc.levels.length);
+    fit.zetaNames = rc.levels.slice(0, -1).map((l, k) => l + '|' + rc.levels[k + 1]);
+    names = design.names.slice(1);
+  } else if (spec.family === 'negbin') fit = fitNegbin(y, design.X, { link: spec.link });
+  else if (spec.family === 'beta') fit = fitBeta(y, design.X, { link: spec.link });
   else fit = fitGlm(y, design.X, { family: spec.family, link: spec.link });
   for (const f of fit.flags) if (!flags.includes(f)) flags.push(f);
-  return { design, fit, names: design.names, formula: formulaOf(spec), flags, event, link: linkOf(spec.family, spec.link).id };
+  return { design, fit, names, formula: formulaOf(spec), flags, event, link: linkOf(spec.family, spec.link).id, codedY: y, refit: fitModel };
 }
