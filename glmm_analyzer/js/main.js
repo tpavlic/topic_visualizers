@@ -12,6 +12,7 @@ import { esc, intl, plural } from './ui/format.js';
 import { canModel } from './data/model.js';
 
 import * as importPage from './pages/import.js';
+import * as modelPage from './pages/model.js';
 import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
 import * as referencesPage from './pages/references.js';
@@ -33,7 +34,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, reportPage, storagePage, referencesPage];
+export const PAGE_MODULES = [importPage, modelPage, reportPage, storagePage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 

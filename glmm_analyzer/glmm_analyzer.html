@@ -427,6 +427,16 @@ svg.fig .cut-hit:focus-visible { outline: none; }
 .leg > span { display: flex; gap: 6px; align-items: center; }
 .lg-sv { display: inline-block; width: 24px; height: 12px; flex: 0 0 auto; }
 
+/* The formula builder: each fixed term as a chip with its remove button, and the formula line. */
+.fb-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; min-height: 28px; }
+.fb-term { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 4px 2px 10px; border: 1.5px solid var(--border); border-radius: 999px;
+           font-family: 'IBM Plex Mono', monospace; font-size: .8rem; background: var(--card); }
+.fb-term-x { min-width: 24px; min-height: 24px; border: none; background: transparent; color: var(--muted); font-size: 1rem; line-height: 1; cursor: pointer; border-radius: 50%; }
+.fb-term-x:hover { color: var(--accent); background: var(--accent-wash); }
+.fb-term-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fb-add .ctrl-pair { gap: 6px; }
+.fb-formula { font-size: .9rem; margin: 4px 0 0; overflow-wrap: anywhere; }
+.fb-formula code { font-family: 'IBM Plex Mono', monospace; font-size: .86rem; background: var(--chart-bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
 /* Links: accent color, underline on hover only. */
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -3211,6 +3221,7 @@ import { esc, intl, plural } from './ui/format.js';
 import { canModel } from './data/model.js';
 
 import * as importPage from './pages/import.js';
+import * as modelPage from './pages/model.js';
 import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
 import * as referencesPage from './pages/references.js';
@@ -3232,7 +3243,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, reportPage, storagePage, referencesPage];
+export const PAGE_MODULES = [importPage, modelPage, reportPage, storagePage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 
@@ -3935,6 +3946,237 @@ function renderList() {
     const again = Array.from(box.querySelectorAll('[data-focus]')).find(e => e.dataset.focus === focusKey);
     if (again) again.focus();
   }
+}
+
+export default { id, title, render, onShow };
+</script>
+<script type="text/plain" data-module="js/pages/model.js">
+// The Model page: the formula builder, the fit, and what the fit says: the
+// coefficient table with its Wald intervals and back-transformed ratios,
+// the variance components, the fit statistics, the term table, and the
+// checks line; and the Keep button that adds the model to the candidates
+// the Compare page ranks.
+
+import * as state from '../state.js';
+import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
+import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
+import { fitModel, FLAG_TEXT } from '../stats/fit.js';
+import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
+import { normCdf, normInv, tCdf, tQuantile } from '../stats/special.js';
+import { formulaBuilder } from '../ui/formula.js';
+import { card, cardRow, notice, details, listWords } from '../ui/widgets.js';
+import { installExportRow } from '../ui/exportrow.js';
+import { esc, num, stat, pValue, intl, plural, lvl } from '../ui/format.js';
+import { registerTips } from '../ui/tooltip.js';
+
+/** The page's hash id. */
+export const id = 'model';
+/** The page's title. */
+export const title = 'Model';
+
+let rootEl = null;
+let els = {};
+let lastFit = null;
+let timer = null;
+
+/**
+ * The current fit, or null, for the other pages: `{ ds, spec, result }`
+ * where `result` is fitModel's output. Recomputed when the spec changes.
+ */
+export function currentFit() { return lastFit; }
+
+/**
+ * Renders the page into its section.
+ * @param {HTMLElement} root
+ */
+export function render(root) {
+  rootEl = root;
+  root.innerHTML =
+    '<h2>' + title + '</h2>' +
+    '<p class="lede">Choose the response, the family and link, and the terms, and the model is fitted as you build it. The coefficients are on the link scale, with the ratio each one implies where the link gives one, and every interval is a Wald interval at the shared confidence level. A term’s likelihood-ratio test refits the model without it.</p>' +
+    '<div class="sec ctrl-card" id="md-builder"></div>' +
+    '<div id="md-flags"></div>' +
+    '<div class="sec" id="md-coef"><div class="sec-hd">Coefficients</div><div id="md-coef-body"></div></div>' +
+    '<div class="sec" id="md-stats"><div class="sec-hd">Fit</div><div id="md-stats-body"></div></div>' +
+    '<div class="sec" id="md-keep"><div class="sec-hd">Keep for comparison</div>' +
+      '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="md-keep-name">Name</label><input type="text" id="md-keep-name" class="txt-inp" autocomplete="off" spellcheck="false"></span>' +
+      '<button type="button" class="btn-run2" id="md-keep-btn">Keep this model</button><span class="ctrl-note" id="md-keep-note" aria-live="polite"></span></div>' +
+      '<p class="exp-note">A kept model joins the table on the Compare page, where the candidates are ranked by AIC and tested against one another. Keeping the same model twice renames it.</p>' +
+    '</div>';
+  els = { builder: root.querySelector('#md-builder'), flags: root.querySelector('#md-flags'), coef: root.querySelector('#md-coef-body'), stats: root.querySelector('#md-stats-body'),
+    keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
+  formulaBuilder(els.builder, { page: id });
+  els.keepBtn.addEventListener('click', () => {
+    if (!lastFit || !lastFit.result || !lastFit.result.fit) return;
+    const name = els.keepName.value.trim() || defaultName();
+    const m = state.keepModel(name);
+    els.keepNote.textContent = 'Kept as ' + m.name + '.';
+    els.keepName.value = '';
+  });
+  installExportRow(root, id);
+  state.on('spec', schedule);
+  state.on('settings', schedule);
+  state.on('datasets', schedule);
+  schedule();
+}
+
+/** Called each time the page is shown. */
+export function onShow() { schedule(); }
+
+function defaultName() {
+  const n = state.models.length + 1;
+  return 'Model ' + n + ': ' + formulaOf(state.spec);
+}
+
+function schedule() {
+  clearTimeout(timer);
+  timer = setTimeout(compute, 30);
+}
+
+function compute() {
+  const ds = state.get(state.spec.dataset);
+  els.flags.innerHTML = '';
+  if (!ds || !state.spec.response) {
+    lastFit = null;
+    els.coef.innerHTML = '<p class="muted-line">Choose a dataset and a response above.</p>';
+    els.stats.innerHTML = '';
+    els.keepBtn.disabled = true;
+    state.setResult(id, null);
+    return;
+  }
+  let result;
+  try {
+    result = fitModel(ds, state.spec);
+  } catch (err) {
+    lastFit = null;
+    els.flags.appendChild(notice('warn', esc(err.message)));
+    els.coef.innerHTML = '';
+    els.stats.innerHTML = '';
+    els.keepBtn.disabled = true;
+    state.setResult(id, null);
+    return;
+  }
+  if (result.refused) {
+    lastFit = null;
+    const r = result.refused;
+    const fam = familyOf(state.spec.family);
+    const MAX = 10;
+    const rows = r.rows.slice(0, MAX).map(x => intl(x)).join(', ') + (r.rows.length > MAX ? ', and ' + intl(r.rows.length - MAX) + ' more' : '');
+    const fits = r.fitting.map(f => FAMILIES[f].label);
+    els.flags.appendChild(notice('warn', 'The ' + esc(fam.label) + ' family needs every response value to be ' + esc(fam.domain) + ', and so no model is fitted. The response holds ' + esc(r.support) + '; outside the family’s support: ' + (r.rows.length === 1 ? 'row ' : 'rows ') + rows + '. ' +
+      (fits.length ? 'Of the families offered, ' + (fits.length === 1 ? 'only the ' + esc(fits[0]) + ' fits' : esc(listWords(fits)) + ' fit') + ' these values.' : 'No family offered fits these values.')));
+    els.coef.innerHTML = '';
+    els.stats.innerHTML = '';
+    els.keepBtn.disabled = true;
+    state.setResult(id, null);
+    return;
+  }
+  lastFit = { ds, spec: state.copySpec(state.spec), result };
+  for (const f of result.flags) {
+    let text = FLAG_TEXT[f] || f;
+    if (f === 'aliased') text += ' Dropped: ' + result.design.aliased.join(', ') + '.';
+    els.flags.appendChild(notice('warn', esc(text)));
+  }
+  if (result.design.dropped) els.flags.appendChild(notice('info', esc(plural(result.design.dropped, 'row was', 'rows were') + ' left out for a missing value in a column the model uses; ' + intl(result.design.X.length) + ' rows remain.')));
+  if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
+  drawCoefficients(result);
+  drawStats(result);
+  els.keepBtn.disabled = false;
+  registerResult(ds, result);
+}
+
+// Wald tests: z for a family with a fixed dispersion, t on the residual
+// degrees of freedom where the dispersion is estimated, as summary.glm.
+function waldRows(result) {
+  const fit = result.fit, fam = FAMILIES[fit.family];
+  const level = state.settings.level;
+  const useT = fam.dispersion === 'estimated';
+  const q = useT ? tQuantile(1 - (1 - level) / 2, fit.dfResidual) : normInv(1 - (1 - level) / 2);
+  const link = LINKS[result.link];
+  return result.names.map((name, j) => {
+    const b = fit.beta[j], se = fit.vcov ? Math.sqrt(fit.vcov[j][j]) : NaN;
+    const z = b / se;
+    const p = useT ? 2 * (1 - tCdf(Math.abs(z), fit.dfResidual)) : 2 * (1 - normCdf(Math.abs(z)));
+    const lo = b - q * se, hi = b + q * se;
+    const back = link.backName && name !== '(Intercept)' ? { est: Math.exp(b), lo: Math.exp(lo), hi: Math.exp(hi) } : null;
+    return { name, b, se, z, p, lo, hi, back, useT };
+  });
+}
+
+function drawCoefficients(result) {
+  const rows = waldRows(result);
+  const link = LINKS[result.link];
+  const useT = rows.length && rows[0].useT;
+  const level = state.settings.level;
+  const backHead = link.backName ? '<th>' + esc(link.backName === 'ratio' ? (FAMILIES[result.fit.family].id === 'poisson' || FAMILIES[result.fit.family].id === 'negbin' ? 'rate ratio' : 'ratio of means') : link.backName) + '</th><th>its ' + esc(lvl(level)) + ' interval</th>' : '';
+  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Term</th><th>Estimate</th><th>Std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + backHead + '</tr></thead><tbody>';
+  for (const r of rows) {
+    html += '<tr><td>' + esc(r.name) + '</td><td>' + stat(r.b, 5) + '</td><td>' + stat(r.se, 4) + '</td><td>' + stat(r.z, 4) + '</td><td>' + pValue(r.p) + '</td><td>[' + stat(r.lo, 5) + ', ' + stat(r.hi, 5) + ']</td>' +
+      (link.backName ? (r.back ? '<td>' + stat(r.back.est, 4) + '</td><td>[' + stat(r.back.lo, 4) + ', ' + stat(r.back.hi, 4) + ']</td>' : '<td>–</td><td>–</td>') : '') + '</tr>';
+  }
+  html += '</tbody></table></div>';
+  const scale = result.link === 'identity' ? 'in the response’s units' : 'on the ' + link.label + ' scale';
+  html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(result.fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : '; z tests, because the dispersion is fixed by the family.') +
+    (link.backName ? ' The last two columns carry each coefficient through the exponential: the ' + esc(link.backWord) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
+  els.coef.innerHTML = html;
+}
+
+function drawStats(result) {
+  const fit = result.fit, fam = FAMILIES[fit.family];
+  const cards = [
+    card('Observations', intl(fit.n)),
+    card('Deviance', stat(fit.deviance, 5), 'on ' + intl(fit.dfResidual) + ' residual df'),
+    card('Null deviance', stat(fit.nullDeviance, 5), 'intercept only, ' + intl(fit.n - 1) + ' df'),
+    card('Log-likelihood', stat(fit.logLik, 5), intl(fit.df) + ' parameters'),
+    card('AIC', stat(fit.aic, 5)),
+    card('BIC', stat(fit.bic, 5))
+  ];
+  if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
+  else if (fam.id === 'negbin') cards.push(card('θ', stat(fit.theta, 4), 'SE ' + stat(fit.thetaSe, 3)));
+  else cards.push(card('Dispersion', '1', 'fixed by the family'));
+  if (fam.id === 'binomial' || fam.id === 'poisson') {
+    let s = 0;
+    for (let i = 0; i < fit.n; i++) s += fit.pearson[i] * fit.pearson[i];
+    cards.push(card('Pearson χ² / df', stat(s / fit.dfResidual, 4), 'near 1 when the family’s variance holds'));
+  }
+  cards.push(card('Iterations', intl(fit.iterations), fit.converged ? 'converged' : 'did not converge'));
+  els.stats.innerHTML = '';
+  els.stats.appendChild(cardRow(cards));
+}
+
+function registerResult(ds, result) {
+  const rows = waldRows(result);
+  const link = LINKS[result.link];
+  const fit = result.fit;
+  const headers = ['term', 'estimate', 'std_error', rows.length && rows[0].useT ? 't' : 'z', 'p', 'ci_lower', 'ci_upper'];
+  if (link.backName) headers.push('ratio', 'ratio_lower', 'ratio_upper');
+  const coefRows = rows.map(r => {
+    const out = [r.name, r.b, r.se, r.z, r.p, r.lo, r.hi];
+    if (link.backName) out.push(r.back ? r.back.est : NaN, r.back ? r.back.lo : NaN, r.back ? r.back.hi : NaN);
+    return out;
+  });
+  const statRows = [['observations', fit.n], ['deviance', fit.deviance], ['residual df', fit.dfResidual], ['null deviance', fit.nullDeviance], ['log-likelihood', fit.logLik], ['parameters', fit.df], ['AIC', fit.aic], ['BIC', fit.bic], ['dispersion', fit.dispersion]];
+  if (fit.theta != null) statRows.push(['theta', fit.theta], ['theta SE', fit.thetaSe]);
+  const provenance = {
+    dataset: ds.name,
+    formula: result.formula,
+    family: FAMILIES[fit.family].label,
+    link: link.label,
+    rows: fit.n,
+    'rows dropped for missing values': result.design.dropped,
+    level: lvl(state.settings.level)
+  };
+  if (result.event) provenance.event = result.event;
+  if (result.design.aliased.length) provenance.aliased = result.design.aliased.join(', ');
+  if (result.flags.length) provenance.flags = result.flags.join(', ');
+  state.setResult(id, {
+    title: 'Model: ' + result.formula,
+    provenance,
+    tables: [
+      { name: 'Coefficients', headers, rows: coefRows },
+      { name: 'Fit statistics', headers: ['statistic', 'value'], rows: statRows }
+    ]
+  });
 }
 
 export default { id, title, render, onShow };
@@ -4966,6 +5208,1053 @@ export function tallyBins(t, v, edges) {
   const out = new Float64Array(nb);
   for (let k = 0; k < nb; k++) out[k] = cnt[k] > 0 ? sum[k] / cnt[k] : NaN;
   return out;
+}
+</script>
+<script type="text/plain" data-module="js/stats/design.js">
+// The design matrix: a model specification and a dataset become the columns
+// a fitter works on, built as R's model.matrix builds them so that a
+// coefficient here carries the name the exported scripts print. The
+// intercept comes first; a continuous predictor is one column; a
+// categorical predictor gives treatment contrasts against its first sorted
+// level; an ordinal predictor gives orthogonal polynomial contrasts (R's
+// contr.poly); a polynomial term is a raw power; an interaction is the
+// products of its terms' columns, the first term's columns varying fastest.
+// Pure functions, no DOM.
+
+import { column, usedRows } from '../data/model.js';
+import { independentColumns, selectColumns } from './linalg.js';
+
+/**
+ * R's contr.poly for k levels: a k by (k − 1) matrix of orthonormal
+ * polynomial contrasts on the scores 1..k, found by Gram–Schmidt on the
+ * centered powers in order, which fixes each column's sign as R's QR does.
+ * @param {number} k
+ * @returns {Float64Array[]} rows are levels, columns are .L, .Q, .C, ^4, ...
+ */
+export function contrPoly(k) {
+  const scores = Array.from({ length: k }, (_, i) => i + 1);
+  const mean = (k + 1) / 2;
+  const cols = [];
+  for (let d = 1; d < k; d++) {
+    const v = Float64Array.from(scores, s => (s - mean) ** d);
+    for (let pass = 0; pass < 2; pass++) {
+      // The constant column is the first direction removed.
+      let m = 0;
+      for (let i = 0; i < k; i++) m += v[i];
+      m /= k;
+      for (let i = 0; i < k; i++) v[i] -= m;
+      for (const q of cols) {
+        let dot = 0;
+        for (let i = 0; i < k; i++) dot += q[i] * v[i];
+        for (let i = 0; i < k; i++) v[i] -= dot * q[i];
+      }
+    }
+    let norm = 0;
+    for (let i = 0; i < k; i++) norm += v[i] * v[i];
+    norm = Math.sqrt(norm);
+    for (let i = 0; i < k; i++) v[i] /= norm;
+    cols.push(v);
+  }
+  const out = [];
+  for (let i = 0; i < k; i++) out.push(Float64Array.from(cols, c => c[i]));
+  return out;
+}
+
+/** The suffixes R gives the polynomial contrast columns. */
+export function polyNames(k) {
+  const names = ['.L', '.Q', '.C'];
+  for (let d = 4; d < k; d++) names.push('^' + d);
+  return names.slice(0, k - 1);
+}
+
+/**
+ * A term as R writes it in a formula: a name, `I(x^2)`, or `a:b`.
+ * @param {string|{name: string, degree: number}|{of: string[]}} t
+ */
+export function termLabel(t) {
+  if (typeof t === 'string') return t;
+  if (t.degree) return 'I(' + t.name + '^' + t.degree + ')';
+  return t.of.join(':');
+}
+
+/** The predictor names a term uses. */
+export function termVars(t) {
+  if (typeof t === 'string') return [t];
+  if (t.degree) return [t.name];
+  return t.of.slice();
+}
+
+/** A term's order: 1 for a main effect or a power, the number of factors for an interaction. */
+export function termOrder(t) {
+  return typeof t === 'object' && t.of ? t.of.length : 1;
+}
+
+/**
+ * The terms of a spec in R's order: by order first (main effects, then
+ * two-way interactions), and within an order as listed. Duplicates are
+ * dropped.
+ * @param {object} spec
+ */
+export function orderedTerms(spec) {
+  const seen = new Set();
+  const out = [];
+  for (const t of spec.terms || []) {
+    const l = termLabel(t);
+    if (seen.has(l)) continue;
+    seen.add(l);
+    out.push(t);
+  }
+  return out.map((t, i) => [t, i]).sort((a, b) => termOrder(a[0]) - termOrder(b[0]) || a[1] - b[1]).map(x => x[0]);
+}
+
+/**
+ * Whether the main effects every interaction needs are present: `a:b`
+ * needs `a` and `b`. Returns the missing labels.
+ * @param {object} spec
+ */
+export function missingMainEffects(spec) {
+  const labels = new Set((spec.terms || []).map(termLabel));
+  const missing = [];
+  for (const t of spec.terms || []) {
+    if (typeof t === 'object' && t.of) for (const v of t.of) if (!labels.has(v) && !missing.includes(v)) missing.push(v);
+  }
+  return missing;
+}
+
+/**
+ * The columns one variable contributes, for the rows kept: `{ names, cols }`
+ * where each col is a Float64Array over the kept rows.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {string} name
+ * @param {number[]} keep row indices
+ * @param {number} [degree] a raw power for a polynomial term
+ */
+function variableColumns(ds, name, keep, degree = 1) {
+  const c = column(ds, name);
+  if (!c) throw new Error('The column ' + name + ' is not in the dataset.');
+  const col = c.col, j = c.index;
+  if (col.type === 'continuous') {
+    const v = Float64Array.from(keep, i => (degree === 1 ? ds.rows[i][j] : ds.rows[i][j] ** degree));
+    return { names: [degree === 1 ? name : 'I(' + name + '^' + degree + ')'], cols: [v] };
+  }
+  if (degree !== 1) throw new Error('A power applies to a continuous predictor; ' + name + ' is ' + col.type + '.');
+  const levels = col.levels || [];
+  const index = new Map(levels.map((l, k) => [l, k]));
+  if (col.type === 'categorical') {
+    const names = levels.slice(1).map(l => name + l);
+    const cols = levels.slice(1).map((l, k) => Float64Array.from(keep, i => (index.get(ds.rows[i][j]) === k + 1 ? 1 : 0)));
+    return { names, cols };
+  }
+  const k = levels.length;
+  const P = contrPoly(k);
+  const names = polyNames(k).map(s => name + s);
+  const cols = names.map((_, d) => Float64Array.from(keep, i => P[index.get(ds.rows[i][j])][d]));
+  return { names, cols };
+}
+
+/**
+ * Builds the design matrix of a spec on a dataset.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {{ response: string, terms: (string|{name: string, degree: number}|{of: string[]})[], group?: string|null, nested?: string|null, slope?: string|null }} spec
+ * @returns {{ X: Float64Array[], names: string[], assign: number[], terms: object[], keep: number[], dropped: number,
+ *   y: Float64Array, yRaw: (number|string|null)[], aliased: string[], groups: { name: string, ids: number[], levels: string[] }|null,
+ *   nested: { name: string, ids: number[], levels: string[] }|null, slopeCol: Float64Array|null }}
+ *   `assign[j]` is the index into `terms` of column j (−1 for the intercept),
+ *   `keep` the dataset rows used, `aliased` the column names dropped for
+ *   rank deficiency, `groups` the group column's level index per kept row,
+ *   `nested` the same for the nested group, and `slopeCol` the random-slope
+ *   predictor's column (a continuous predictor's values).
+ */
+export function modelMatrix(ds, spec) {
+  const terms = orderedTerms(spec);
+  const vars = new Set([spec.response]);
+  for (const t of terms) for (const v of termVars(t)) vars.add(v);
+  if (spec.group) vars.add(spec.group);
+  if (spec.nested) vars.add(spec.nested);
+  if (spec.slope) vars.add(spec.slope);
+  const { keep, dropped } = usedRows(ds, Array.from(vars));
+  const names = ['(Intercept)'];
+  const cols = [Float64Array.from(keep, () => 1)];
+  const assign = [-1];
+  terms.forEach((t, ti) => {
+    let part;
+    if (typeof t === 'string') part = variableColumns(ds, t, keep);
+    else if (t.degree) part = variableColumns(ds, t.name, keep, t.degree);
+    else {
+      // The products of the factors' columns, the first factor's varying fastest.
+      part = variableColumns(ds, t.of[0], keep);
+      for (const v of t.of.slice(1)) {
+        const next = variableColumns(ds, v, keep);
+        const names2 = [], cols2 = [];
+        for (let b = 0; b < next.cols.length; b++) {
+          for (let a = 0; a < part.cols.length; a++) {
+            names2.push(part.names[a] + ':' + next.names[b]);
+            const ca = part.cols[a], cb = next.cols[b];
+            cols2.push(Float64Array.from(ca, (x, i) => x * cb[i]));
+          }
+        }
+        part = { names: names2, cols: cols2 };
+      }
+    }
+    for (let k = 0; k < part.cols.length; k++) { names.push(part.names[k]); cols.push(part.cols[k]); assign.push(ti); }
+  });
+  const n = keep.length;
+  let X = Array.from({ length: n }, (_, i) => Float64Array.from(cols, c => c[i]));
+  const rank = independentColumns(X);
+  const aliased = rank.drop.map(j => names[j]);
+  let keptNames = names, keptAssign = assign;
+  if (rank.drop.length) {
+    X = selectColumns(X, rank.keep);
+    keptNames = rank.keep.map(j => names[j]);
+    keptAssign = rank.keep.map(j => assign[j]);
+  }
+  const rc = column(ds, spec.response);
+  const yRaw = keep.map(i => ds.rows[i][rc.index]);
+  const y = Float64Array.from(yRaw, v => (typeof v === 'number' ? v : NaN));
+  const groupOf = name => {
+    if (!name) return null;
+    const c = column(ds, name);
+    const levels = c.col.levels || [];
+    const index = new Map(levels.map((l, k) => [l, k]));
+    return { name, ids: keep.map(i => index.get(String(ds.rows[i][c.index]))), levels };
+  };
+  let slopeCol = null;
+  if (spec.slope) {
+    const sc = column(ds, spec.slope);
+    if (!sc || sc.col.type !== 'continuous') throw new Error('A random slope applies to a continuous predictor; ' + spec.slope + ' is not one.');
+    slopeCol = Float64Array.from(keep, i => ds.rows[i][sc.index]);
+  }
+  return { X, names: keptNames, assign: keptAssign, terms, keep, dropped, y, yRaw, aliased, groups: groupOf(spec.group), nested: groupOf(spec.nested), slopeCol };
+}
+
+/**
+ * The spec's fixed part as an R formula's right-hand side: `x + f + x:f`,
+ * or `1` with no terms.
+ * @param {object} spec
+ */
+export function formulaRhs(spec) {
+  const t = orderedTerms(spec).map(termLabel);
+  return t.length ? t.join(' + ') : '1';
+}
+
+/**
+ * The spec as a Wilkinson formula: `y ~ x + f + (1 | g)`. The random part
+ * is written as lme4 writes it.
+ * @param {object} spec
+ */
+export function formulaOf(spec) {
+  let f = (spec.response || 'y') + ' ~ ' + formulaRhs(spec);
+  if (spec.group) {
+    const inner = spec.slope ? '1 + ' + spec.slope : '1';
+    f += ' + (' + inner + ' | ' + spec.group + ')';
+    if (spec.nested) f += ' + (1 | ' + spec.group + ':' + spec.nested + ')';
+  }
+  if (spec.olre) f += ' + (1 | obs)';
+  return f;
+}
+</script>
+<script type="text/plain" data-module="js/stats/families.js">
+// The response families and the link functions: for each family its
+// variance function, deviance residuals, log-likelihood, distribution
+// function (for the quantile residuals), and starting values, and for each
+// link the function, its inverse, and its derivative. The conventions are
+// R's, so that a fit here matches `glm` and the exported scripts. Pure
+// functions, no DOM.
+
+import { logGamma, normCdf, normInv, gammaP, betaInc } from './special.js';
+
+const EPS = 2.220446049250313e-16;
+const clampP = p => Math.min(1 - EPS, Math.max(EPS, p));
+
+/**
+ * @typedef {{ id: string, label: string, linkfun: (mu: number) => number, linkinv: (eta: number) => number,
+ *   mu_eta: (eta: number) => number, backName: string|null, backWord: string|null }} Link
+ *   `backName` names the back-transformed coefficient column (an odds ratio,
+ *   a rate ratio, a ratio of means) and is null where exp(β) has no name.
+ */
+
+/** @type {Object<string, Link>} */
+export const LINKS = {
+  identity: { id: 'identity', label: 'identity', linkfun: mu => mu, linkinv: eta => eta, mu_eta: () => 1, backName: null, backWord: null },
+  log: { id: 'log', label: 'log', linkfun: Math.log, linkinv: eta => Math.max(Math.exp(eta), EPS), mu_eta: eta => Math.max(Math.exp(eta), EPS), backName: 'ratio', backWord: 'rate ratio' },
+  logit: { id: 'logit', label: 'logit', linkfun: mu => Math.log(mu / (1 - mu)), linkinv: eta => {
+    // As R's logit: capped so that mu stays inside (0, 1) by machine epsilon.
+    const t = eta < -30 ? EPS : eta > 30 ? 1 - EPS : 1 / (1 + Math.exp(-eta));
+    return Math.min(1 - EPS, Math.max(EPS, t));
+  }, mu_eta: eta => { const e = Math.exp(-Math.abs(eta)); const d = e / ((1 + e) * (1 + e)); return Math.max(d, EPS); }, backName: 'odds ratio', backWord: 'odds ratio' },
+  probit: { id: 'probit', label: 'probit', linkfun: mu => normInv(mu), linkinv: eta => { const thresh = -normInv(EPS); const e = Math.min(Math.max(eta, -thresh), thresh); return normCdf(e); },
+    mu_eta: eta => Math.max(Math.exp(-0.5 * eta * eta) / 2.5066282746310002, EPS), backName: null, backWord: null },
+  cloglog: { id: 'cloglog', label: 'complementary log-log', linkfun: mu => Math.log(-Math.log(1 - mu)),
+    linkinv: eta => Math.max(Math.min(-Math.expm1(-Math.exp(eta)), 1 - EPS), EPS),
+    mu_eta: eta => { const e = Math.min(eta, 700); return Math.max(Math.exp(e) * Math.exp(-Math.exp(e)), EPS); }, backName: null, backWord: null },
+  inverse: { id: 'inverse', label: 'inverse', linkfun: mu => 1 / mu, linkinv: eta => 1 / eta, mu_eta: eta => -1 / (eta * eta), backName: null, backWord: null },
+  sqrt: { id: 'sqrt', label: 'square root', linkfun: Math.sqrt, linkinv: eta => eta * eta, mu_eta: eta => 2 * eta, backName: null, backWord: null }
+};
+
+// Poisson and binomial pieces shared below.
+const ylogy = (y, mu) => (y > 0 ? y * Math.log(y / mu) : 0);
+const poisCdf = (y, mu) => (y < 0 ? 0 : 1 - gammaP(Math.floor(y) + 1, mu));
+const nbCdf = (y, mu, theta) => (y < 0 ? 0 : betaInc(theta, Math.floor(y) + 1, theta / (theta + mu)));
+
+/**
+ * @typedef {{ id: string, label: string, links: string[], defaultLink: string, supports: string[],
+ *   variance: (mu: number, aux: number) => number, devResid: (y: number, mu: number, aux: number) => number,
+ *   logLik: (y: Float64Array, mu: Float64Array, aux: number, n: number) => number,
+ *   cdf: (y: number, mu: number, aux: number) => number, discrete: boolean,
+ *   initialize: (y: number) => number, aic_extra: number, valid: (y: number) => boolean, domain: string,
+ *   dispersion: 'estimated'|'fixed', auxName: string|null }} Family
+ *   `aux` is the extra parameter where the family has one (θ for the
+ *   negative binomial, φ for the beta, σ² where the normal's log-likelihood
+ *   needs it) and is ignored elsewhere. `aic_extra` counts the scale
+ *   parameter R adds to the parameter count (1 for the normal and the
+ *   gamma). `supports` lists the response supports (js/data/model.js) the
+ *   family describes.
+ */
+
+/** @type {Object<string, Family>} */
+export const FAMILIES = {
+  normal: {
+    id: 'normal', label: 'normal', links: ['identity', 'log'], defaultLink: 'identity', supports: ['real', 'positive', 'count', 'unit', 'binary'],
+    variance: () => 1,
+    devResid: (y, mu) => (y - mu) * (y - mu),
+    // At the maximum-likelihood σ² = deviance / n, as R's logLik.glm reports it.
+    logLik: (y, mu, aux, n) => { let d = 0; for (let i = 0; i < n; i++) d += (y[i] - mu[i]) ** 2; return -0.5 * n * (Math.log(2 * Math.PI * d / n) + 1); },
+    cdf: (y, mu, aux) => normCdf((y - mu) / Math.sqrt(aux)),
+    discrete: false, initialize: y => y, aic_extra: 1, valid: () => true, domain: 'any value', dispersion: 'estimated', auxName: null
+  },
+  binomial: {
+    id: 'binomial', label: 'binomial', links: ['logit', 'probit', 'cloglog'], defaultLink: 'logit', supports: ['binary'],
+    variance: mu => mu * (1 - mu),
+    devResid: (y, mu) => 2 * (ylogy(y, mu) + ylogy(1 - y, 1 - mu)),
+    logLik: (y, mu, aux, n) => { let s = 0; for (let i = 0; i < n; i++) s += y[i] > 0.5 ? Math.log(mu[i]) : Math.log(1 - mu[i]); return s; },
+    cdf: (y, mu) => (y < 0 ? 0 : y < 1 ? 1 - mu : 1),
+    discrete: true, initialize: y => (y + 0.5) / 2, aic_extra: 0, valid: y => y === 0 || y === 1, domain: '0 or 1', dispersion: 'fixed', auxName: null
+  },
+  poisson: {
+    id: 'poisson', label: 'Poisson', links: ['log', 'sqrt', 'identity'], defaultLink: 'log', supports: ['count', 'binary'],
+    variance: mu => mu,
+    devResid: (y, mu) => 2 * (ylogy(y, mu) - (y - mu)),
+    logLik: (y, mu, aux, n) => { let s = 0; for (let i = 0; i < n; i++) s += y[i] * Math.log(mu[i]) - mu[i] - logGamma(y[i] + 1); return s; },
+    cdf: poisCdf,
+    discrete: true, initialize: y => y + 0.1, aic_extra: 0, valid: y => Number.isInteger(y) && y >= 0, domain: 'a non-negative whole number', dispersion: 'fixed', auxName: null
+  },
+  negbin: {
+    id: 'negbin', label: 'negative binomial', links: ['log'], defaultLink: 'log', supports: ['count', 'binary'],
+    variance: (mu, theta) => mu + mu * mu / theta,
+    devResid: (y, mu, theta) => 2 * (ylogy(y, mu) - (y + theta) * Math.log((y + theta) / (mu + theta))),
+    logLik: (y, mu, theta, n) => {
+      let s = 0;
+      for (let i = 0; i < n; i++) s += logGamma(theta + y[i]) - logGamma(theta) - logGamma(y[i] + 1) + theta * Math.log(theta) + y[i] * Math.log(mu[i]) - (theta + y[i]) * Math.log(theta + mu[i]);
+      return s;
+    },
+    cdf: nbCdf,
+    discrete: true, initialize: y => y + (y === 0 ? 1 / 6 : 0), aic_extra: 1, valid: y => Number.isInteger(y) && y >= 0, domain: 'a non-negative whole number', dispersion: 'fixed', auxName: 'theta'
+  },
+  gamma: {
+    id: 'gamma', label: 'gamma', links: ['log', 'inverse', 'identity'], defaultLink: 'log', supports: ['positive'],
+    variance: mu => mu * mu,
+    devResid: (y, mu) => -2 * (Math.log(y / mu) - (y - mu) / mu),
+    // At the maximum-likelihood dispersion = deviance / n, as R's Gamma()$aic does.
+    logLik: (y, mu, aux, n) => {
+      let d = 0;
+      for (let i = 0; i < n; i++) d += -2 * (Math.log(y[i] / mu[i]) - (y[i] - mu[i]) / mu[i]);
+      const disp = d / n, shape = 1 / disp;
+      let s = 0;
+      for (let i = 0; i < n; i++) { const scale = mu[i] * disp; s += (shape - 1) * Math.log(y[i]) - y[i] / scale - shape * Math.log(scale) - logGamma(shape); }
+      return s;
+    },
+    cdf: (y, mu, disp) => gammaP(1 / disp, y / (mu * disp)),
+    discrete: false, initialize: y => y, aic_extra: 1, valid: y => y > 0, domain: 'above 0', dispersion: 'estimated', auxName: null
+  },
+  beta: {
+    id: 'beta', label: 'beta', links: ['logit', 'probit', 'cloglog'], defaultLink: 'logit', supports: ['unit'],
+    variance: (mu, phi) => mu * (1 - mu) / (1 + phi),
+    devResid: () => NaN,
+    logLik: (y, mu, phi, n) => {
+      let s = 0;
+      for (let i = 0; i < n; i++) {
+        const a = mu[i] * phi, b = (1 - mu[i]) * phi;
+        s += logGamma(phi) - logGamma(a) - logGamma(b) + (a - 1) * Math.log(y[i]) + (b - 1) * Math.log(1 - y[i]);
+      }
+      return s;
+    },
+    cdf: (y, mu, phi) => betaInc(mu * phi, (1 - mu) * phi, y),
+    discrete: false, initialize: y => y, aic_extra: 1, valid: y => y > 0 && y < 1, domain: 'strictly between 0 and 1', dispersion: 'fixed', auxName: 'phi'
+  },
+  ordinal: {
+    id: 'ordinal', label: 'ordinal (cumulative logit)', links: ['logit'], defaultLink: 'logit', supports: ['ordinal'],
+    variance: () => NaN, devResid: () => NaN, logLik: () => NaN, cdf: () => NaN,
+    discrete: true, initialize: y => y, aic_extra: 0, valid: () => true, domain: 'an ordered level', dispersion: 'fixed', auxName: null
+  }
+};
+
+/** The families in menu order. */
+export const FAMILY_ORDER = ['normal', 'binomial', 'poisson', 'negbin', 'gamma', 'beta', 'ordinal'];
+
+/**
+ * The family with this id, or null.
+ * @param {string} id
+ * @returns {Family|null}
+ */
+export function familyOf(id) { return FAMILIES[id] || null; }
+
+/**
+ * The link with this id, or the family's default when `id` is null or not
+ * among the family's links.
+ * @param {string} familyId
+ * @param {string|null} id
+ * @returns {Link}
+ */
+export function linkOf(familyId, id) {
+  const f = FAMILIES[familyId] || FAMILIES.normal;
+  return LINKS[f.links.includes(id) ? id : f.defaultLink];
+}
+
+/**
+ * The families whose support holds a response of the given support.
+ * @param {string} sup a support from js/data/model.js
+ * @returns {string[]} family ids in menu order
+ */
+export function familiesFor(sup) {
+  return FAMILY_ORDER.filter(id => FAMILIES[id].supports.includes(sup));
+}
+
+/**
+ * The response values a family cannot take, as row indices.
+ * @param {string} familyId
+ * @param {ArrayLike<number>} y
+ * @returns {number[]}
+ */
+export function invalidRows(familyId, y) {
+  const f = FAMILIES[familyId];
+  const bad = [];
+  for (let i = 0; i < y.length; i++) if (!f.valid(y[i])) bad.push(i);
+  return bad;
+}
+
+/**
+ * The quantile residuals of Dunn and Smyth: Φ⁻¹ of the distribution
+ * function at y, randomized on (F(y − 1), F(y)) for a discrete family with
+ * the given uniforms.
+ * @param {string} familyId
+ * @param {Float64Array} y
+ * @param {Float64Array} mu
+ * @param {number} aux the family's extra parameter (σ² for the normal, the dispersion for the gamma, θ, φ)
+ * @param {ArrayLike<number>} u uniforms, one per observation, used by a discrete family
+ * @returns {Float64Array}
+ */
+export function quantileResiduals(familyId, y, mu, aux, u) {
+  const f = FAMILIES[familyId];
+  const n = y.length;
+  const r = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let p;
+    if (f.discrete) {
+      const hi = f.cdf(y[i], mu[i], aux), lo = f.cdf(y[i] - 1, mu[i], aux);
+      p = lo + u[i] * (hi - lo);
+    } else p = f.cdf(y[i], mu[i], aux);
+    r[i] = normInv(clampP(p));
+  }
+  return r;
+}
+</script>
+<script type="text/plain" data-module="js/stats/fit.js">
+// Fitting a specification to a dataset: the support check, the design
+// matrix, the fitter the family and the random part call for, and the names
+// and flags the pages show. Every page and every recipe fits through
+// `fitModel`, and so a number shown anywhere comes from one place. Pure
+// functions, no DOM.
+
+import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
+import { FAMILIES, linkOf, invalidRows, familiesFor } from './families.js';
+import { modelMatrix, formulaOf } from './design.js';
+import { fitGlm } from './glm.js';
+import { fitNegbin } from './negbin.js';
+
+/** How the page words each flag a fit may carry. */
+export const FLAG_TEXT = {
+  notConverged: 'The fit did not converge within the iteration cap; the numbers shown are the last iterate and may be far from the maximum.',
+  separation: 'The binomial model separates the data: a fitted probability reached 0 or 1, and so some coefficient and its standard error are not meaningful.',
+  singular: 'The design is singular at the solution; the fit stopped.',
+  aliased: 'One or more columns were dropped as aliased (a linear combination of the others).',
+  fewGroups: 'Fewer than five groups: the variance of the group effect is poorly determined.',
+  singularFit: 'A group variance is at zero: the random effect explains nothing beyond the fixed effects.'
+};
+
+/**
+ * Checks a spec against a dataset before any fitting: a response, rows to
+ * use, and a response within the family's support.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @returns {{ ok: boolean, reason: string|null, rows?: number[], fitting?: string[] }}
+ */
+export function checkSpec(ds, spec) {
+  if (!spec.response || !column(ds, spec.response)) return { ok: false, reason: 'Choose the response column.' };
+  const fam = FAMILIES[spec.family];
+  if (!fam) return { ok: false, reason: 'Choose a family.' };
+  const rc = column(ds, spec.response).col;
+  const vals = valuesOf(ds, spec.response);
+  const sup = support(rc, vals);
+  if (fam.id === 'ordinal') {
+    if (rc.type === 'continuous') return { ok: false, reason: 'The ordinal family needs a response typed ordinal or categorical; ' + spec.response + ' is continuous.' };
+    if ((rc.levels || []).length < 3) return { ok: false, reason: 'The ordinal family needs three or more levels; ' + spec.response + ' has ' + (rc.levels || []).length + '.' };
+    return { ok: true, reason: null };
+  }
+  if (rc.type !== 'continuous') {
+    if (fam.id === 'binomial' && (rc.levels || []).length === 2) return { ok: true, reason: null };
+    return { ok: false, reason: 'The ' + fam.label + ' family needs a numeric response; ' + spec.response + ' is ' + rc.type + (fam.id === 'binomial' ? ' with ' + (rc.levels || []).length + ' levels' : '') + '.' };
+  }
+  const nums = vals.filter(v => v != null);
+  const bad = invalidRows(fam.id, nums);
+  if (bad.length) {
+    const rowsOf = [];
+    let k = 0;
+    ds.rows.forEach((r, i) => { const v = r[column(ds, spec.response).index]; if (v == null) return; if (bad.includes(k)) rowsOf.push(i + 1); k++; });
+    return { ok: false, reason: null, rows: rowsOf, fitting: familiesFor(sup), domain: fam.domain, support: SUPPORT_LABEL[sup] };
+  }
+  return { ok: true, reason: null };
+}
+
+/**
+ * The response as numbers for the fitter: a two-level categorical response
+ * under the binomial family is coded 0 for its first sorted level and 1 for
+ * its second.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @param {ReturnType<typeof modelMatrix>} m
+ * @returns {{ y: Float64Array, event: string|null }}
+ */
+export function codedResponse(ds, spec, m) {
+  const rc = column(ds, spec.response).col;
+  if (rc.type === 'continuous') return { y: m.y, event: null };
+  const levels = rc.levels || [];
+  if (spec.family === 'binomial' && levels.length === 2) {
+    return { y: Float64Array.from(m.yRaw, v => (v === levels[1] ? 1 : 0)), event: levels[1] };
+  }
+  return { y: Float64Array.from(m.yRaw, v => levels.indexOf(v)), event: null };
+}
+
+/**
+ * Fits a spec to a dataset. The result carries the design, the fitter's
+ * output, the coefficient names, the formula, the flags, and the rows used.
+ * Throws when the spec cannot be checked; a support failure returns
+ * `{ refused }` instead so that a page can show the warning.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @returns {{ refused?: object, design?: object, fit?: object, names?: string[], formula?: string, flags?: string[], event?: string|null }}
+ */
+export function fitModel(ds, spec) {
+  const chk = checkSpec(ds, spec);
+  if (!chk.ok) {
+    if (chk.reason) throw new Error(chk.reason);
+    return { refused: chk };
+  }
+  const design = modelMatrix(ds, spec);
+  const { y, event } = codedResponse(ds, spec, design);
+  const flags = [];
+  if (design.aliased.length) flags.push('aliased');
+  let fit;
+  if (spec.family === 'ordinal') throw new Error('The ordinal family is not fitted yet.');
+  if (spec.group || spec.olre) throw new Error('Random effects are not fitted yet.');
+  if (spec.family === 'negbin') fit = fitNegbin(y, design.X, { link: spec.link });
+  else if (spec.family === 'beta') throw new Error('The beta family is not fitted yet.');
+  else fit = fitGlm(y, design.X, { family: spec.family, link: spec.link });
+  for (const f of fit.flags) if (!flags.includes(f)) flags.push(f);
+  return { design, fit, names: design.names, formula: formulaOf(spec), flags, event, link: linkOf(spec.family, spec.link).id };
+}
+</script>
+<script type="text/plain" data-module="js/stats/glm.js">
+// Generalized linear models by iteratively reweighted least squares, as R's
+// glm.fit does it: the family's starting values, the working response and
+// weights at each step, convergence on the relative change in the deviance,
+// step halving only where a step leaves the valid range, and the summary
+// quantities (dispersion, covariance, hat values, Cook's distances, the
+// log-likelihood, AIC, and BIC) with R's conventions. Pure functions, no
+// DOM.
+
+import { FAMILIES, linkOf } from './families.js';
+import { crossprod, crossprodVec, cholesky, cholSolve, cholInverse, matvec } from './linalg.js';
+
+/** Iteration cap and convergence tolerance, as R's glm.control. */
+export const GLM_MAXIT = 50;
+export const GLM_EPS = 1e-8;
+
+/**
+ * @typedef {{ beta: Float64Array, vcov: Float64Array[], eta: Float64Array, fitted: Float64Array, weights: Float64Array,
+ *   deviance: number, nullDeviance: number, logLik: number, aic: number, bic: number, dispersion: number, aux: number,
+ *   df: number, dfResidual: number, rank: number, n: number, iterations: number, converged: boolean,
+ *   hat: Float64Array, pearson: Float64Array, devianceResiduals: Float64Array, cooks: Float64Array,
+ *   family: string, link: string, flags: string[] }} GlmFit
+ */
+
+/**
+ * Fits a GLM.
+ * @param {Float64Array} y
+ * @param {Float64Array[]} X n rows by p columns, full rank
+ * @param {{ family: string, link?: string|null, aux?: number, start?: Float64Array|null, maxit?: number }} o
+ *   `aux` is the negative binomial's θ (fixed for this fit).
+ * @returns {GlmFit}
+ */
+export function fitGlm(y, X, o) {
+  const fam = FAMILIES[o.family];
+  const link = linkOf(o.family, o.link);
+  const n = y.length, p = n ? X[0].length : 0;
+  const aux = o.aux == null ? 1 : o.aux;
+  const maxit = o.maxit || GLM_MAXIT;
+  const flags = [];
+  // Starting values: R's mustart from the family, then eta from it.
+  let mu = Float64Array.from(y, v => fam.initialize(v));
+  let eta = Float64Array.from(mu, m => link.linkfun(m));
+  let beta = o.start ? Float64Array.from(o.start) : null;
+  if (beta) { eta = matvec(X, beta); mu = Float64Array.from(eta, e => link.linkinv(e)); }
+  const devOf = (mu_) => { let d = 0; for (let i = 0; i < n; i++) d += fam.devResid(y[i], mu_[i], aux); return d; };
+  let dev = devOf(mu);
+  let devold = dev;
+  let converged = false, iter = 0;
+  let w = new Float64Array(n);
+  let L = null;
+  for (iter = 1; iter <= maxit; iter++) {
+    const z = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const me = link.mu_eta(eta[i]);
+      z[i] = eta[i] + (y[i] - mu[i]) / me;
+      w[i] = me * me / fam.variance(mu[i], aux);
+    }
+    const A = crossprod(X, w);
+    L = cholesky(A);
+    if (!L) { flags.push('singular'); break; }
+    const b = crossprodVec(X, w, z);
+    const betaNew = cholSolve(L, b);
+    let etaNew = matvec(X, betaNew);
+    let muNew = Float64Array.from(etaNew, e => link.linkinv(e));
+    let devNew = devOf(muNew);
+    // Step halving where the step leaves the valid range (R halves on a
+    // non-finite deviance or an invalid eta or mu, not on an increase).
+    let halvings = 0;
+    while ((!Number.isFinite(devNew) || muNew.some(m => !Number.isFinite(m) || !validMu(fam.id, m))) && beta && halvings < 20) {
+      halvings++;
+      for (let j = 0; j < p; j++) betaNew[j] = (betaNew[j] + beta[j]) / 2;
+      etaNew = matvec(X, betaNew);
+      muNew = Float64Array.from(etaNew, e => link.linkinv(e));
+      devNew = devOf(muNew);
+    }
+    beta = betaNew; eta = etaNew; mu = muNew; dev = devNew;
+    if (Math.abs(dev - devold) / (Math.abs(dev) + 0.1) < GLM_EPS) { converged = true; break; }
+    devold = dev;
+  }
+  if (!converged) flags.push('notConverged');
+  // The weights, the covariance, and the hat values come from the last
+  // step's working weights, as R's summary.glm takes them from the last
+  // QR decomposition rather than recomputing them at the converged mu.
+  const XtWXinv = L ? cholInverse(L) : null;
+  const dfResidual = n - p;
+  // Dispersion: the Pearson estimate for a family with a free scale, from
+  // the working residuals and the last weights as summary.glm forms it, and
+  // 1 otherwise.
+  let dispersion = 1;
+  const pearson = new Float64Array(n);
+  for (let i = 0; i < n; i++) pearson[i] = (y[i] - mu[i]) / Math.sqrt(fam.variance(mu[i], aux));
+  if (fam.dispersion === 'estimated') {
+    let s = 0;
+    for (let i = 0; i < n; i++) { const r = (y[i] - mu[i]) / link.mu_eta(eta[i]); s += w[i] * r * r; }
+    dispersion = dfResidual > 0 ? s / dfResidual : NaN;
+  }
+  const vcov = XtWXinv ? XtWXinv.map(r => Float64Array.from(r, v => v * dispersion)) : null;
+  // Hat values: diag(sqrt(W) X (X'WX)^-1 X' sqrt(W)).
+  const hat = new Float64Array(n);
+  if (XtWXinv) {
+    for (let i = 0; i < n; i++) {
+      const xi = X[i];
+      let s = 0;
+      for (let a = 0; a < p; a++) { let t = 0; for (let b = 0; b < p; b++) t += XtWXinv[a][b] * xi[b]; s += xi[a] * t; }
+      hat[i] = s * w[i];
+    }
+  }
+  const devianceResiduals = Float64Array.from(y, (v, i) => Math.sign(v - mu[i]) * Math.sqrt(Math.max(0, fam.devResid(v, mu[i], aux))));
+  const cooks = Float64Array.from(hat, (h, i) => { const r = pearson[i] / (1 - h); return r * r * h / (dispersion * p); });
+  // The null deviance: the intercept-only model's mean is the mean of y.
+  let ybar = 0;
+  for (let i = 0; i < n; i++) ybar += y[i];
+  ybar /= n;
+  let nullDeviance = 0;
+  for (let i = 0; i < n; i++) nullDeviance += fam.devResid(y[i], ybar, aux);
+  const logLik = fam.logLik(y, mu, fam.id === 'normal' ? dev / n : fam.id === 'gamma' ? dev / n : aux, n);
+  const k = p + fam.aic_extra;
+  const aic = -2 * logLik + 2 * k;
+  const bic = -2 * logLik + k * Math.log(n);
+  if (fam.id === 'binomial' && mu.some(m => m < 1e-8 || m > 1 - 1e-8)) flags.push('separation');
+  return { beta, vcov, eta, fitted: mu, weights: w, deviance: dev, nullDeviance, logLik, aic, bic, dispersion, aux, df: k, dfResidual, rank: p, n,
+    iterations: iter, converged, hat, pearson, devianceResiduals, cooks, family: fam.id, link: link.id, flags };
+}
+
+function validMu(familyId, m) {
+  if (familyId === 'binomial' || familyId === 'beta') return m > 0 && m < 1;
+  if (familyId === 'poisson' || familyId === 'negbin' || familyId === 'gamma') return m > 0;
+  return true;
+}
+</script>
+<script type="text/plain" data-module="js/stats/linalg.js">
+// Dense linear algebra for the fitters: matrices as arrays of Float64Array
+// rows, the Cholesky factorization and its solves, the inverse from the
+// factor, weighted cross products, and the rank check that finds a design
+// matrix's aliased columns. Everything here is small (a design of a few
+// dozen columns) and so clarity beats speed. Pure functions, no DOM.
+
+/**
+ * A zero matrix of `r` rows and `c` columns.
+ * @param {number} r
+ * @param {number} c
+ * @returns {Float64Array[]}
+ */
+export function zeros(r, c) {
+  const out = new Array(r);
+  for (let i = 0; i < r; i++) out[i] = new Float64Array(c);
+  return out;
+}
+
+/** The identity of order n. */
+export function identity(n) {
+  const I = zeros(n, n);
+  for (let i = 0; i < n; i++) I[i][i] = 1;
+  return I;
+}
+
+/** A copy of a matrix. */
+export function copy(A) {
+  return A.map(r => Float64Array.from(r));
+}
+
+/** The transpose of a matrix. */
+export function transpose(A) {
+  const r = A.length, c = r ? A[0].length : 0;
+  const T = zeros(c, r);
+  for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) T[j][i] = A[i][j];
+  return T;
+}
+
+/**
+ * X'WX for a design X (n rows) and weights w (n), or X'X when w is null.
+ * @param {Float64Array[]} X
+ * @param {ArrayLike<number>|null} w
+ * @returns {Float64Array[]} p by p, symmetric
+ */
+export function crossprod(X, w = null) {
+  const n = X.length, p = n ? X[0].length : 0;
+  const A = zeros(p, p);
+  for (let i = 0; i < n; i++) {
+    const xi = X[i], wi = w ? w[i] : 1;
+    if (wi === 0) continue;
+    for (let a = 0; a < p; a++) {
+      const xa = xi[a] * wi;
+      if (xa === 0) continue;
+      const row = A[a];
+      for (let b = a; b < p; b++) row[b] += xa * xi[b];
+    }
+  }
+  for (let a = 0; a < p; a++) for (let b = 0; b < a; b++) A[a][b] = A[b][a];
+  return A;
+}
+
+/**
+ * X'Wz for a design X, weights w (or null), and a vector z.
+ * @param {Float64Array[]} X
+ * @param {ArrayLike<number>|null} w
+ * @param {ArrayLike<number>} z
+ * @returns {Float64Array} length p
+ */
+export function crossprodVec(X, w, z) {
+  const n = X.length, p = n ? X[0].length : 0;
+  const v = new Float64Array(p);
+  for (let i = 0; i < n; i++) {
+    const s = (w ? w[i] : 1) * z[i];
+    if (s === 0) continue;
+    const xi = X[i];
+    for (let a = 0; a < p; a++) v[a] += xi[a] * s;
+  }
+  return v;
+}
+
+/**
+ * X times a vector b.
+ * @param {Float64Array[]} X
+ * @param {ArrayLike<number>} b
+ * @returns {Float64Array}
+ */
+export function matvec(X, b) {
+  const n = X.length;
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const xi = X[i];
+    let s = 0;
+    for (let a = 0; a < xi.length; a++) s += xi[a] * b[a];
+    out[i] = s;
+  }
+  return out;
+}
+
+/** A times B for matrices. */
+export function matmul(A, B) {
+  const r = A.length, k = B.length, c = k ? B[0].length : 0;
+  const C = zeros(r, c);
+  for (let i = 0; i < r; i++) {
+    const ai = A[i], ci = C[i];
+    for (let t = 0; t < k; t++) {
+      const a = ai[t];
+      if (a === 0) continue;
+      const bt = B[t];
+      for (let j = 0; j < c; j++) ci[j] += a * bt[j];
+    }
+  }
+  return C;
+}
+
+/**
+ * The lower Cholesky factor L of a symmetric positive-definite matrix,
+ * A = L L'. Returns null when A is not positive definite (a pivot at or
+ * below `tol` times the largest diagonal entry).
+ * @param {Float64Array[]} A
+ * @param {number} [tol]
+ * @returns {Float64Array[]|null}
+ */
+export function cholesky(A, tol = 1e-13) {
+  const n = A.length;
+  const L = zeros(n, n);
+  let maxDiag = 0;
+  for (let i = 0; i < n; i++) if (A[i][i] > maxDiag) maxDiag = A[i][i];
+  for (let j = 0; j < n; j++) {
+    let s = A[j][j];
+    for (let k = 0; k < j; k++) s -= L[j][k] * L[j][k];
+    if (!(s > tol * maxDiag)) return null;
+    const d = Math.sqrt(s);
+    L[j][j] = d;
+    for (let i = j + 1; i < n; i++) {
+      let t = A[i][j];
+      for (let k = 0; k < j; k++) t -= L[i][k] * L[j][k];
+      L[i][j] = t / d;
+    }
+  }
+  return L;
+}
+
+/**
+ * Solves A x = b from the Cholesky factor L of A.
+ * @param {Float64Array[]} L
+ * @param {ArrayLike<number>} b
+ * @returns {Float64Array}
+ */
+export function cholSolve(L, b) {
+  const n = L.length;
+  const y = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let s = b[i];
+    for (let k = 0; k < i; k++) s -= L[i][k] * y[k];
+    y[i] = s / L[i][i];
+  }
+  const x = new Float64Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = y[i];
+    for (let k = i + 1; k < n; k++) s -= L[k][i] * x[k];
+    x[i] = s / L[i][i];
+  }
+  return x;
+}
+
+/**
+ * The inverse of A from its Cholesky factor.
+ * @param {Float64Array[]} L
+ * @returns {Float64Array[]}
+ */
+export function cholInverse(L) {
+  const n = L.length;
+  const inv = zeros(n, n);
+  const e = new Float64Array(n);
+  for (let j = 0; j < n; j++) {
+    e.fill(0); e[j] = 1;
+    const col = cholSolve(L, e);
+    for (let i = 0; i < n; i++) inv[i][j] = col[i];
+  }
+  // Symmetrize against rounding.
+  for (let i = 0; i < n; i++) for (let j = 0; j < i; j++) { const m = 0.5 * (inv[i][j] + inv[j][i]); inv[i][j] = m; inv[j][i] = m; }
+  return inv;
+}
+
+/**
+ * The log of the determinant of A from its Cholesky factor.
+ * @param {Float64Array[]} L
+ */
+export function cholLogDet(L) {
+  let s = 0;
+  for (let i = 0; i < L.length; i++) s += Math.log(L[i][i]);
+  return 2 * s;
+}
+
+/**
+ * Solves A x = b for a symmetric positive-definite A; throws when A is not.
+ * @param {Float64Array[]} A
+ * @param {ArrayLike<number>} b
+ */
+export function solveSpd(A, b) {
+  const L = cholesky(A);
+  if (!L) throw new Error('The matrix is not positive definite.');
+  return cholSolve(L, b);
+}
+
+/**
+ * The columns of X that are linearly independent of the columns before
+ * them, found by Gram–Schmidt in column order, as R's pivoted QR keeps the
+ * earlier of two aliased columns. A column whose residual norm is at most
+ * `tol` times its own norm (or that is all zero) is aliased.
+ * @param {Float64Array[]} X n by p
+ * @param {number} [tol]
+ * @returns {{ keep: number[], drop: number[] }}
+ */
+export function independentColumns(X, tol = 1e-7) {
+  const n = X.length, p = n ? X[0].length : 0;
+  const basis = [];
+  const keep = [], drop = [];
+  for (let j = 0; j < p; j++) {
+    const v = new Float64Array(n);
+    let norm0 = 0;
+    for (let i = 0; i < n; i++) { v[i] = X[i][j]; norm0 += v[i] * v[i]; }
+    norm0 = Math.sqrt(norm0);
+    if (norm0 === 0) { drop.push(j); continue; }
+    // Two passes of orthogonalization for stability.
+    for (let pass = 0; pass < 2; pass++) {
+      for (const q of basis) {
+        let d = 0;
+        for (let i = 0; i < n; i++) d += q[i] * v[i];
+        for (let i = 0; i < n; i++) v[i] -= d * q[i];
+      }
+    }
+    let norm = 0;
+    for (let i = 0; i < n; i++) norm += v[i] * v[i];
+    norm = Math.sqrt(norm);
+    if (norm <= tol * norm0) { drop.push(j); continue; }
+    for (let i = 0; i < n; i++) v[i] /= norm;
+    basis.push(v);
+    keep.push(j);
+  }
+  return { keep, drop };
+}
+
+/**
+ * The matrix with only the given columns of X, in that order.
+ * @param {Float64Array[]} X
+ * @param {number[]} cols
+ */
+export function selectColumns(X, cols) {
+  return X.map(r => Float64Array.from(cols, j => r[j]));
+}
+</script>
+<script type="text/plain" data-module="js/stats/negbin.js">
+// The negative binomial regression with θ estimated, as MASS::glm.nb fits
+// it: alternate an IRLS fit at the current θ with a maximum-likelihood
+// update of θ at the current means, until the deviance and θ settle. θ is
+// found by Newton's method on the profile score with digamma and trigamma,
+// from the moment estimate, as theta.ml does. Pure functions, no DOM.
+
+import { fitGlm } from './glm.js';
+import { FAMILIES } from './families.js';
+
+/** The digamma function ψ(x) by recurrence and the asymptotic series. */
+export function digamma(x) {
+  let r = 0;
+  while (x < 10) { r -= 1 / x; x += 1; }
+  const f = 1 / (x * x);
+  return r + Math.log(x) - 0.5 / x - f * (1 / 12 - f * (1 / 120 - f * (1 / 252 - f * (1 / 240 - f / 132))));
+}
+
+/** The trigamma function ψ'(x). */
+export function trigamma(x) {
+  let r = 0;
+  while (x < 10) { r += 1 / (x * x); x += 1; }
+  const f = 1 / (x * x);
+  return r + 1 / x + f / 2 + (f / x) * (1 / 6 - f * (1 / 30 - f * (1 / 42 - f / 30)));
+}
+
+// The profile score and observed information for θ at fixed means, summed
+// over the observations as MASS::theta.ml forms them.
+function thetaScore(y, mu, th) {
+  const n = y.length;
+  let score = 0, info = 0;
+  const dg = digamma(th), tg = trigamma(th), lt = Math.log(th);
+  for (let i = 0; i < n; i++) {
+    score += digamma(th + y[i]) - dg + lt + 1 - Math.log(th + mu[i]) - (y[i] + th) / (mu[i] + th);
+    info += -trigamma(th + y[i]) + tg - 1 / th + 2 / (mu[i] + th) - (y[i] + th) / ((mu[i] + th) ** 2);
+  }
+  return { score, info };
+}
+
+/**
+ * The maximum-likelihood θ at fixed means, as MASS::theta.ml: Newton steps
+ * from the moment estimate n / Σ((y/μ − 1)²), to a relative change under
+ * `eps`.
+ * @param {Float64Array} y
+ * @param {Float64Array} mu
+ * @param {number} [eps]
+ * @param {number} [limit]
+ * @returns {{ theta: number, iterations: number, converged: boolean }}
+ */
+export function thetaMl(y, mu, eps = 1e-8, limit = 25) {
+  const n = y.length;
+  let s = 0;
+  for (let i = 0; i < n; i++) s += (y[i] / mu[i] - 1) ** 2;
+  let t0 = n / s;
+  let it = 0, del = 1;
+  while (it < limit && Math.abs(del) > eps) {
+    it++;
+    t0 = Math.abs(t0);
+    const { score, info } = thetaScore(y, mu, t0);
+    del = score / info;
+    t0 += del;
+  }
+  return { theta: t0 < 0 ? 0 : t0, iterations: it, converged: it < limit };
+}
+
+/**
+ * Fits the negative binomial regression.
+ * @param {Float64Array} y
+ * @param {Float64Array[]} X
+ * @param {{ link?: string|null }} o
+ * @returns {import('./glm.js').GlmFit & { theta: number, thetaSe: number }}
+ */
+export function fitNegbin(y, X, o = {}) {
+  const n = y.length;
+  // As glm.nb: a Poisson fit first, θ from its means, then the alternation.
+  let fit = fitGlm(y, X, { family: 'poisson', link: o.link || 'log' });
+  let th = thetaMl(y, fit.fitted);
+  let theta = th.theta;
+  let iter = 0, d1 = Infinity, d2 = Infinity;
+  const Lm = (f, t) => FAMILIES.negbin.logLik(y, f.fitted, t, n);
+  let Lm0 = Lm(fit, theta);
+  let converged = false;
+  const eps = 1e-8;
+  // glm.nb: iterate while the deviance changes by more than eps relative, or the log-likelihood does.
+  let devPrev = fit.deviance;
+  while (iter < 25) {
+    iter++;
+    fit = fitGlm(y, X, { family: 'negbin', link: o.link || 'log', aux: theta, start: fit.beta });
+    th = thetaMl(y, fit.fitted);
+    const thetaNew = th.theta;
+    const Lm1 = Lm(fit, thetaNew);
+    // glm.nb's criterion: the change in the log-likelihood over sqrt(2 df)
+    // plus the change in θ, under epsilon.
+    d1 = Math.abs(Lm1 - Lm0) / Math.sqrt(2 * Math.max(1, fit.dfResidual));
+    d2 = Math.abs(thetaNew - theta);
+    devPrev = fit.deviance;
+    Lm0 = Lm1;
+    theta = thetaNew;
+    if (d1 + d2 <= eps) { converged = true; break; }
+  }
+  // The final fit at the settled θ, so that every quantity is at one θ.
+  fit = fitGlm(y, X, { family: 'negbin', link: o.link || 'log', aux: theta, start: fit.beta });
+  const flags = fit.flags.filter(f => f !== 'notConverged');
+  if (!converged || !fit.converged) flags.push('notConverged');
+  // The standard error of θ from the observed information, as glm.nb's SE.theta.
+  const thetaSe = Math.sqrt(1 / thetaScore(y, fit.fitted, theta).info);
+  const logLik = FAMILIES.negbin.logLik(y, fit.fitted, theta, n);
+  const k = fit.rank + 1;
+  return Object.assign({}, fit, { theta, thetaSe, aux: theta, logLik, df: k, aic: -2 * logLik + 2 * k, bic: -2 * logLik + k * Math.log(n), flags, converged: converged && fit.converged, iterations: iter });
 }
 </script>
 <script type="text/plain" data-module="js/stats/normality.js">
@@ -6175,6 +7464,217 @@ function trimExp(s) {
   const mant = trimFixed(s.slice(0, k));
   const ex = s.slice(k + 1).replace(/^\+/, '');
   return mant + 'e' + ex;
+}
+</script>
+<script type="text/plain" data-module="js/ui/formula.js">
+// The formula builder: the controls that turn the shared model
+// specification (state.spec) into a dataset, a response, a family and
+// link, a list of fixed terms, and the random part, with the formula
+// written out in R's notation as it changes. Every change goes through
+// state.setSpec, and so every page that reads the spec follows.
+
+import * as state from '../state.js';
+import { column, support, valuesOf, predictorColumns, groupColumns, SUPPORT_LABEL } from '../data/model.js';
+import { FAMILIES, FAMILY_ORDER, LINKS, familiesFor, linkOf } from '../stats/families.js';
+import { formulaOf, termLabel, orderedTerms, missingMainEffects } from '../stats/design.js';
+import { datasetSelect, spinner, levelSelect } from './widgets.js';
+import { registerTips } from './tooltip.js';
+import { esc } from './format.js';
+
+const FAMILY_TIP = {
+  normal: 'A response on a continuous scale with a constant spread: the linear model.',
+  binomial: 'A response with two values, modeled through the probability of the second sorted level (the event).',
+  poisson: 'A count whose variance equals its mean.',
+  negbin: 'A count whose variance exceeds its mean, with the extra spread measured by θ.',
+  gamma: 'A positive response whose spread grows in proportion to its mean.',
+  beta: 'A proportion strictly between 0 and 1, with its precision φ.',
+  ordinal: 'An ordered response of three or more levels, modeled through the cumulative probabilities (proportional odds).'
+};
+
+/** The family a response's support calls for by default. */
+export function defaultFamily(sup) {
+  return { binary: 'binomial', count: 'poisson', unit: 'beta', positive: 'gamma', real: 'normal', ordinal: 'ordinal' }[sup] || 'normal';
+}
+
+/**
+ * A default spec for a dataset: its response column, every predictor as a
+ * main effect, the family its support calls for, and the first group column
+ * as the group.
+ * @param {import('../data/model.js').Dataset} ds
+ */
+export function defaultSpec(ds) {
+  const resp = ds.columns.find(c => c.role === 'response');
+  const sup = resp ? support(resp, valuesOf(ds, resp.name)) : 'real';
+  const groups = groupColumns(ds);
+  return Object.assign(state.emptySpec(), {
+    dataset: ds.id,
+    response: resp ? resp.name : null,
+    family: defaultFamily(sup),
+    link: null,
+    terms: predictorColumns(ds).map(c => c.name),
+    group: groups.length ? groups[0].name : null
+  });
+}
+
+function opt(value, label, selected, disabled, tip) {
+  return '<option value="' + esc(value) + '"' + (selected ? ' selected' : '') + (disabled ? ' disabled' : '') + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + esc(label) + '</option>';
+}
+
+/**
+ * Installs the builder in `container` and keeps it in step with state.spec.
+ * @param {HTMLElement} container
+ * @param {{ page: string }} opts the page id, for the dataset picker's memory
+ * @returns {{ refresh: () => void }}
+ */
+export function formulaBuilder(container, opts) {
+  container.innerHTML =
+    '<div class="ctrl-row">' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-ds">Dataset</label><select id="fb-ds"></select></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-resp">Response</label><select id="fb-resp"></select></span>' +
+      '<span class="ctrl-note" id="fb-support"></span>' +
+    '</div>' +
+    '<div class="ctrl-row">' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-family"><span class="tip" tabindex="0" data-tip="The distribution of the response around its mean, given the predictors. The families the response\'s values rule out are grayed.">Family</span></label><select id="fb-family"></select></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-link"><span class="tip" tabindex="0" data-tip="The function that connects the mean to the linear predictor. Each family\'s canonical or customary link is the default.">Link</span></label><select id="fb-link"></select></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-level">Confidence</label><select id="fb-level"></select></span>' +
+    '</div>' +
+    '<div class="ctrl-grp-lbl">Fixed terms</div>' +
+    '<div class="fb-terms" id="fb-terms"></div>' +
+    '<div class="ctrl-row fb-add">' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-pred">Predictor</label><select id="fb-add-pred"></select><button type="button" class="btn-clear" id="fb-add-pred-btn">Add</button></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-pow">Power of</label><select id="fb-add-pow"></select><input type="text" id="fb-add-deg" class="par-inp" value="2" aria-label="Degree" style="width:56px"><button type="button" class="btn-clear" id="fb-add-pow-btn">Add</button></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-ia">Interaction</label><select id="fb-add-ia"></select><span class="ctrl-note">×</span><select id="fb-add-ib" aria-label="Second factor of the interaction"></select><button type="button" class="btn-clear" id="fb-add-ia-btn">Add</button></span>' +
+    '</div>' +
+    '<div class="ctrl-grp-lbl">Random effects</div>' +
+    '<div class="ctrl-row">' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-group"><span class="tip" tabindex="0" data-tip="A grouping factor whose rows share an unmeasured something: a random intercept per group is added to the model.">Group</span></label><select id="fb-group"></select></span>' +
+      '<span class="ctrl-pair" id="fb-slope-pair"><label class="ctrl-lbl" for="fb-slope"><span class="tip" tabindex="0" data-tip="A continuous predictor whose slope varies from group to group, correlated with the group\'s intercept.">Random slope on</span></label><select id="fb-slope"></select></span>' +
+      '<span class="ctrl-pair" id="fb-nested-pair"><label class="ctrl-lbl" for="fb-nested"><span class="tip" tabindex="0" data-tip="A second grouping factor nested inside the first, such as a nest within a colony.">Nested in it</span></label><select id="fb-nested"></select></span>' +
+      '<label class="ctrl-chk" id="fb-olre-lbl"><input type="checkbox" id="fb-olre"> <span class="tip" tabindex="0" data-tip="An observation-level random intercept: each row gets its own normal deviation on the log scale, which turns the Poisson into a Poisson-lognormal and absorbs overdispersion.">Poisson-lognormal</span></label>' +
+      '<label class="ctrl-chk" id="fb-reml-lbl"><input type="checkbox" id="fb-reml"> <span class="tip" tabindex="0" data-tip="Restricted maximum likelihood for the normal family\'s mixed model, as lmer uses by default. Off, the fit is by maximum likelihood, which the AIC comparisons need.">REML</span></label>' +
+    '</div>' +
+    '<p class="fb-formula" id="fb-formula" aria-live="polite"></p>';
+
+  const q = s => container.querySelector(s);
+  const el = { ds: q('#fb-ds'), resp: q('#fb-resp'), support: q('#fb-support'), family: q('#fb-family'), link: q('#fb-link'), level: q('#fb-level'),
+    terms: q('#fb-terms'), addPred: q('#fb-add-pred'), addPredBtn: q('#fb-add-pred-btn'), addPow: q('#fb-add-pow'), addDeg: q('#fb-add-deg'), addPowBtn: q('#fb-add-pow-btn'),
+    addIa: q('#fb-add-ia'), addIb: q('#fb-add-ib'), addIaBtn: q('#fb-add-ia-btn'), group: q('#fb-group'), slope: q('#fb-slope'), nested: q('#fb-nested'),
+    olre: q('#fb-olre'), reml: q('#fb-reml'), formula: q('#fb-formula') };
+  levelSelect(el.level);
+  const deg = spinner(el.addDeg, { min: 2, max: 6, step: 1 });
+
+  let syncing = false;
+  const current = () => state.get(state.spec.dataset);
+
+  // The dataset picker drives the spec's dataset; a new dataset gets its default spec.
+  datasetSelect(el.ds, { remember: { page: opts.page, key: 'dataset' } });
+  el.ds.addEventListener('change', () => {
+    if (syncing) return;
+    const ds = state.get(el.ds.value);
+    if (!ds) { state.setSpec(state.emptySpec()); return; }
+    if (state.spec.dataset !== ds.id) state.setSpec(defaultSpec(ds));
+  });
+
+  el.resp.addEventListener('change', () => {
+    const ds = current();
+    if (!ds) return;
+    const rc = column(ds, el.resp.value);
+    const sup = rc ? support(rc.col, valuesOf(ds, rc.col.name)) : 'real';
+    const fam = familiesFor(sup).includes(state.spec.family) ? state.spec.family : defaultFamily(sup);
+    state.setSpec({ response: el.resp.value, family: fam, link: null, terms: state.spec.terms.filter(t => !termUses(t, el.resp.value)) });
+  });
+  el.family.addEventListener('change', () => state.setSpec({ family: el.family.value, link: null }));
+  el.link.addEventListener('change', () => state.setSpec({ link: el.link.value }));
+  el.addPredBtn.addEventListener('click', () => { if (el.addPred.value) addTerm(el.addPred.value); });
+  el.addPowBtn.addEventListener('click', () => { if (el.addPow.value) addTerm({ name: el.addPow.value, degree: deg.get() }); });
+  el.addIaBtn.addEventListener('click', () => { if (el.addIa.value && el.addIb.value && el.addIa.value !== el.addIb.value) addTerm({ of: [el.addIa.value, el.addIb.value] }); });
+  el.group.addEventListener('change', () => state.setSpec({ group: el.group.value || null, slope: el.group.value ? state.spec.slope : null, nested: el.group.value ? state.spec.nested : null }));
+  el.slope.addEventListener('change', () => state.setSpec({ slope: el.slope.value || null }));
+  el.nested.addEventListener('change', () => state.setSpec({ nested: el.nested.value || null }));
+  el.olre.addEventListener('change', () => state.setSpec({ olre: el.olre.checked }));
+  el.reml.addEventListener('change', () => state.setSpec({ reml: el.reml.checked }));
+  el.terms.addEventListener('click', ev => {
+    const b = ev.target.closest('button[data-term]');
+    if (!b) return;
+    const k = Number(b.getAttribute('data-term'));
+    const all = orderedTerms(state.spec);
+    const gone = all[k];
+    // Removing a main effect also removes the powers and interactions that use it.
+    const terms = all.filter((t, i) => i !== k && !(typeof gone === 'string' && typeof t === 'object' && termUses(t, gone)));
+    state.setSpec({ terms });
+  });
+
+  function addTerm(t) {
+    const terms = orderedTerms(state.spec);
+    if (terms.some(x => termLabel(x) === termLabel(t))) return;
+    // An interaction's factors are entered as main effects when absent.
+    if (typeof t === 'object' && t.of) for (const v of t.of) if (!terms.some(x => termLabel(x) === v)) terms.push(v);
+    terms.push(t);
+    state.setSpec({ terms });
+  }
+
+  function refresh() {
+    syncing = true;
+    try {
+      const ds = current();
+      if (ds && el.ds.value !== ds.id) el.ds.value = ds.id;
+      const s = state.spec;
+      const cols = ds ? ds.columns.filter(c => c.role !== 'ignored') : [];
+      el.resp.innerHTML = cols.map(c => opt(c.name, c.name, c.name === s.response)).join('') || opt('', 'No dataset', true);
+      el.resp.disabled = !ds;
+      const rc = ds && s.response ? column(ds, s.response) : null;
+      const sup = rc ? support(rc.col, valuesOf(ds, rc.col.name)) : null;
+      el.support.textContent = sup ? 'The response holds ' + SUPPORT_LABEL[sup] + '.' : '';
+      const fits = sup ? familiesFor(sup) : FAMILY_ORDER;
+      el.family.innerHTML = FAMILY_ORDER.map(id => opt(id, FAMILIES[id].label, id === s.family, !fits.includes(id), fits.includes(id) ? FAMILY_TIP[id] : 'The response\'s values are not ' + FAMILIES[id].domain + '.')).join('');
+      const fam = FAMILIES[s.family] || FAMILIES.normal;
+      const link = linkOf(s.family, s.link);
+      el.link.innerHTML = fam.links.map(id => opt(id, LINKS[id].label, id === link.id)).join('');
+      // Terms.
+      const terms = orderedTerms(s);
+      el.terms.innerHTML = terms.length
+        ? terms.map((t, i) => '<span class="fb-term">' + esc(termLabel(t)) + '<button type="button" class="fb-term-x" data-term="' + i + '" aria-label="Remove ' + esc(termLabel(t)) + '">×</button></span>').join('')
+        : '<span class="muted-line">No terms: the model has only an intercept.</span>';
+      const missing = missingMainEffects(s);
+      if (missing.length) el.terms.insertAdjacentHTML('beforeend', '<span class="ctrl-note">An interaction needs its main effects: ' + esc(missing.join(', ')) + '.</span>');
+      const preds = ds ? ds.columns.filter(c => c.role === 'predictor' && c.name !== s.response) : [];
+      const cont = preds.filter(c => c.type === 'continuous');
+      const have = new Set(terms.map(termLabel));
+      el.addPred.innerHTML = preds.filter(c => !have.has(c.name)).map(c => opt(c.name, c.name)).join('') || opt('', 'none left', true);
+      el.addPredBtn.disabled = !el.addPred.value;
+      el.addPow.innerHTML = cont.map(c => opt(c.name, c.name)).join('') || opt('', 'no continuous predictor', true);
+      el.addPowBtn.disabled = !el.addPow.value;
+      el.addIa.innerHTML = preds.map(c => opt(c.name, c.name)).join('') || opt('', 'none', true);
+      el.addIb.innerHTML = preds.map((c, i) => opt(c.name, c.name, i === 1)).join('') || opt('', 'none', true);
+      el.addIaBtn.disabled = preds.length < 2;
+      // Random part.
+      const groups = ds ? ds.columns.filter(c => c.role === 'group') : [];
+      el.group.innerHTML = opt('', 'none', !s.group) + groups.map(c => opt(c.name, c.name, c.name === s.group)).join('');
+      el.group.disabled = !groups.length || s.family === 'ordinal';
+      q('#fb-slope-pair').hidden = !s.group;
+      q('#fb-nested-pair').hidden = !s.group || groups.length < 2;
+      el.slope.innerHTML = opt('', 'none', !s.slope) + cont.filter(c => have.has(c.name)).map(c => opt(c.name, c.name, c.name === s.slope)).join('');
+      el.nested.innerHTML = opt('', 'none', !s.nested) + groups.filter(c => c.name !== s.group).map(c => opt(c.name, c.name, c.name === s.nested)).join('');
+      q('#fb-olre-lbl').hidden = s.family !== 'poisson';
+      el.olre.checked = !!s.olre;
+      q('#fb-reml-lbl').hidden = !(s.family === 'normal' && (s.group || s.olre));
+      el.reml.checked = !!s.reml;
+      el.formula.innerHTML = ds && s.response
+        ? '<code>' + esc(formulaOf(s)) + '</code> <span class="ctrl-note">' + esc(fam.label + ' family, ' + link.label + ' link') + '</span>'
+        : '<span class="muted-line">Choose a dataset and a response.</span>';
+      registerTips(container);
+    } finally { syncing = false; }
+  }
+  state.on('spec', refresh);
+  state.on('datasets', refresh);
+  refresh();
+  return { refresh };
+}
+
+function termUses(t, name) {
+  if (typeof t === 'string') return t === name;
+  if (t.degree) return t.name === name;
+  return t.of.includes(name);
 }
 </script>
 <script type="text/plain" data-module="js/ui/plots.js">
