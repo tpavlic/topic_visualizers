@@ -8,7 +8,7 @@ import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
-import { termTests } from '../stats/inference.js';
+import { termTests, randomEffectTest } from '../stats/inference.js';
 import { residualSet } from '../stats/residuals.js';
 import { shapiroWilk } from '../stats/normality.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
@@ -47,6 +47,7 @@ export function render(root) {
     '<div class="sec ctrl-card" id="md-builder"></div>' +
     '<div id="md-flags"></div>' +
     '<div class="sec" id="md-coef"><div class="sec-hd">Coefficients</div><div id="md-coef-body"></div></div>' +
+    '<div class="sec" id="md-random" hidden><div class="sec-hd">Random effects</div><div id="md-random-body"></div></div>' +
     '<div class="sec" id="md-stats"><div class="sec-hd">Fit</div><div id="md-stats-body"></div></div>' +
     '<div class="sec" id="md-terms"><div class="sec-hd">Term tests</div><div id="md-terms-body"></div></div>' +
     '<div class="sec" id="md-keep"><div class="sec-hd">Keep for comparison</div>' +
@@ -55,7 +56,7 @@ export function render(root) {
       '<p class="exp-note">A kept model joins the table on the Compare page, where the candidates are ranked by AIC and tested against one another. Keeping the same model twice renames it.</p>' +
     '</div>';
   els = { builder: root.querySelector('#md-builder'), flags: root.querySelector('#md-flags'), coef: root.querySelector('#md-coef-body'), stats: root.querySelector('#md-stats-body'),
-    terms: root.querySelector('#md-terms-body'), keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
+    random: root.querySelector('#md-random'), randomBody: root.querySelector('#md-random-body'), terms: root.querySelector('#md-terms-body'), keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
   formulaBuilder(els.builder, { page: id });
   els.keepBtn.addEventListener('click', () => {
     if (!lastFit || !lastFit.result || !lastFit.result.fit) return;
@@ -131,6 +132,7 @@ function compute() {
   if (result.design.dropped) els.flags.appendChild(notice('info', esc(plural(result.design.dropped, 'row was', 'rows were') + ' left out for a missing value in a column the model uses; ' + intl(result.design.X.length) + ' rows remain.')));
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
   drawCoefficients(result);
+  drawRandom(ds, result);
   drawStats(result);
   drawChecks(result);
   const tt = drawTerms(ds, result);
@@ -180,6 +182,39 @@ function drawCoefficients(result) {
   els.coef.innerHTML = html;
 }
 
+// The variance components, the correlation of a random slope with its
+// intercept, and the likelihood-ratio test of the random part.
+function drawRandom(ds, result) {
+  const fit = result.fit;
+  els.random.hidden = !fit.mixed;
+  if (!fit.mixed) { els.randomBody.innerHTML = ''; return; }
+  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Group</th><th>Effect</th><th>Variance</th><th>Std. dev.</th><th>Correlation</th><th>Levels</th></tr></thead><tbody>';
+  const vcRows = [];
+  fit.varcomp.forEach((v, k) => {
+    const term = fit.random.terms[k];
+    v.names.forEach((nm, i) => {
+      const label = nm === 'slope' ? state.spec.slope : nm;
+      html += '<tr><td>' + esc(v.term) + '</td><td>' + esc(label) + '</td><td>' + stat(v.variances[i], 5) + '</td><td>' + stat(Math.sqrt(v.variances[i]), 4) + '</td><td>' + (i === 1 && v.correlation != null ? stat(v.correlation, 3) : '–') + '</td><td>' + intl(term.levels.length) + '</td></tr>';
+      vcRows.push([v.term, label, v.variances[i], Math.sqrt(v.variances[i]), i === 1 && v.correlation != null ? v.correlation : NaN, term.levels.length]);
+    });
+  });
+  if (fit.family === 'normal') { html += '<tr><td>Residual</td><td>–</td><td>' + stat(fit.sigma2, 5) + '</td><td>' + stat(Math.sqrt(fit.sigma2), 4) + '</td><td>–</td><td>' + intl(fit.n) + '</td></tr>'; vcRows.push(['Residual', '', fit.sigma2, Math.sqrt(fit.sigma2), NaN, fit.n]); }
+  html += '</tbody></table></div>';
+  let test = null;
+  try { test = randomEffectTest(ds, state.spec, result); } catch (err) { test = null; }
+  if (test) {
+    html += '<p class="muted-line">' + (fit.family === 'normal' ? 'The normal family\'s mixed model is fitted by ' + (fit.reml ? 'REML, which the likelihood-ratio tests refit by maximum likelihood' : 'maximum likelihood') + '. ' : 'Fitted by maximum likelihood with the Laplace approximation. ') +
+      'The standard errors of the fixed effects come from the Hessian of the deviance over the variance parameters and the fixed effects together.</p>';
+    els.randomBody.innerHTML = html;
+    const bad = test.p >= 0.05;
+    els.randomBody.appendChild(notice(bad ? 'info' : 'ok', '<b>Does the random part matter?</b> Likelihood-ratio test against the same model without random effects: χ² = ' + num(test.stat, 4) + ' on ' + intl(test.k) + (test.k === 1 ? ' variance parameter' : ' variance parameters') + ', ' + pEq(test.p) +
+      ' (the null puts the variance at zero, the edge of its range, and so the p-value is ' + (test.k === 1 ? 'half of the usual chi-square tail' : 'a 50:50 mixture of chi-square tails on ' + intl(test.k - 1) + ' and ' + intl(test.k) + ' degrees of freedom') + '). ' +
+      (bad ? 'The grouping explains little beyond the fixed effects; the fixed-effects model would do.' : 'The grouping explains variation the fixed effects do not.')));
+    result.randomTest = test;
+  } else els.randomBody.innerHTML = html;
+  result.vcRows = vcRows;
+}
+
 // The checks line: the Shapiro–Wilk test on the quantile residuals and the
 // dispersion test where the family fixes its dispersion. Flags, never gates.
 function drawChecks(result) {
@@ -208,7 +243,8 @@ function drawChecks(result) {
 function drawStats(result) {
   const fit = result.fit, fam = FAMILIES[fit.family];
   const cards = [card('Observations', intl(fit.n))];
-  if (fit.family === 'ordinal') cards.push(card('Deviance', stat(fit.deviance, 5), '−2 log-likelihood'), card('Null deviance', stat(fit.nullDeviance, 5), 'thresholds only'));
+  if (fit.mixed) cards.push(card(fit.reml ? 'REML criterion' : 'Deviance', stat(fit.deviance, 5), fit.family === 'normal' ? 'profiled over β and σ²' : 'Laplace approximation'), card('Groups', fit.random.terms.map(t => intl(t.levels.length) + ' ' + t.name).join(', ')));
+  else if (fit.family === 'ordinal') cards.push(card('Deviance', stat(fit.deviance, 5), '−2 log-likelihood'), card('Null deviance', stat(fit.nullDeviance, 5), 'thresholds only'));
   else if (fit.family === 'beta') cards.push(card('Precision φ', stat(fit.phi, 4), 'SE ' + stat(fit.phiSe, 3)));
   else cards.push(
     card('Deviance', stat(fit.deviance, 5), 'on ' + intl(fit.dfResidual) + ' residual df'),
@@ -217,9 +253,12 @@ function drawStats(result) {
     card('Log-likelihood', stat(fit.logLik, 5), intl(fit.df) + ' parameters'),
     card('AIC', stat(fit.aic, 5)),
     card('BIC', stat(fit.bic, 5)));
-  if (fit.family === 'ordinal' || fit.family === 'beta') { /* no dispersion card */ }
+  if (fit.mixed && fit.family === 'negbin') cards.push(card('θ', stat(fit.theta, 4), 'estimated with the other parameters'));
+  else if (fit.mixed && fit.family === 'beta') cards.push(card('Precision φ', stat(fit.phi, 4)));
+  else if (fit.mixed) { /* the residual variance sits in the random-effects table */ }
+  else if (fit.family === 'ordinal' || fit.family === 'beta') { /* no dispersion card */ }
   else if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
-  else if (fam.id === 'negbin') cards.push(card('θ', stat(fit.theta, 4), 'SE ' + stat(fit.thetaSe, 3)));
+  else if (fam.id === 'negbin') cards.push(card('θ', stat(fit.theta, 4), Number.isFinite(fit.thetaSe) ? 'SE ' + stat(fit.thetaSe, 3) : ''));
   else cards.push(card('Dispersion', '1', 'fixed by the family'));
   if (fam.id === 'binomial' || fam.id === 'poisson') {
     let s = 0;
@@ -258,6 +297,7 @@ function registerResult(ds, result, tt) {
   });
   const statRows = [['observations', fit.n], ['deviance', fit.deviance], ['residual df', fit.dfResidual], ['null deviance', fit.nullDeviance], ['log-likelihood', fit.logLik], ['parameters', fit.df], ['AIC', fit.aic], ['BIC', fit.bic], ['dispersion', fit.dispersion]];
   if (fit.theta != null) statRows.push(['theta', fit.theta], ['theta SE', fit.thetaSe]);
+  if (fit.mixed && result.randomTest) statRows.push(['random part LRT', result.randomTest.stat], ['random part p', result.randomTest.p]);
   const provenance = {
     dataset: ds.name,
     formula: result.formula,
@@ -268,6 +308,7 @@ function registerResult(ds, result, tt) {
     level: lvl(state.settings.level)
   };
   if (result.event) provenance.event = result.event;
+  if (fit.mixed) { provenance['random part'] = result.formula.slice(result.formula.indexOf('(')); provenance.fit = fit.reml ? 'REML' : 'maximum likelihood' + (fit.family === 'normal' ? '' : ', Laplace approximation'); }
   if (result.design.aliased.length) provenance.aliased = result.design.aliased.join(', ');
   if (result.flags.length) provenance.flags = result.flags.join(', ');
   state.setResult(id, {
@@ -276,7 +317,7 @@ function registerResult(ds, result, tt) {
     tables: [
       { name: 'Coefficients', headers, rows: coefRows },
       { name: 'Fit statistics', headers: ['statistic', 'value'], rows: statRows }
-    ].concat(tt && tt.rows.length ? [{ name: 'Term tests', headers: ['term', 'df', 'statistic', 'p', 'deviance_without'], rows: tt.rows.map(r => [r.term, r.df, r.stat, r.p, r.deviance]) }] : [])
+    ].concat(fit.mixed && result.vcRows ? [{ name: 'Variance components', headers: ['group', 'effect', 'variance', 'std_dev', 'correlation', 'levels'], rows: result.vcRows }] : []).concat(tt && tt.rows.length ? [{ name: 'Term tests', headers: ['term', 'df', 'statistic', 'p', 'deviance_without'], rows: tt.rows.map(r => [r.term, r.df, r.stat, r.p, r.deviance]) }] : [])
   });
 }
 

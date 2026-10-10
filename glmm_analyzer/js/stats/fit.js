@@ -11,6 +11,7 @@ import { fitGlm } from './glm.js';
 import { fitNegbin } from './negbin.js';
 import { fitBeta } from './beta.js';
 import { fitOrdinal } from './ordinal.js';
+import { buildRandom, fitGlmm, fitLmm } from './mixed.js';
 
 /** How the page words each flag a fit may carry. */
 export const FLAG_TEXT = {
@@ -95,8 +96,20 @@ export function fitModel(ds, spec) {
   const flags = [];
   if (design.aliased.length) flags.push('aliased');
   let fit, names = design.names;
-  if (spec.group || spec.olre) throw new Error('Random effects are not fitted yet.');
-  if (spec.family === 'ordinal') {
+  if ((spec.group || spec.olre) && spec.family === 'ordinal') throw new Error('A mixed ordinal model is outside this tool.');
+  if (spec.group || spec.olre) {
+    const random = buildRandom(design, spec);
+    if (spec.family === 'normal') {
+      if (linkOf('normal', spec.link).id !== 'identity') throw new Error('The normal family\'s mixed model takes the identity link.');
+      fit = fitLmm(y, design.X, random, { reml: !!spec.reml });
+    } else {
+      // The fixed-effects fit gives the starting values.
+      const start = spec.family === 'negbin' ? fitNegbin(y, design.X, { link: spec.link }) : spec.family === 'beta' ? fitBeta(y, design.X, { link: spec.link }) : fitGlm(y, design.X, { family: spec.family, link: spec.link });
+      fit = fitGlmm(y, design.X, random, { family: spec.family, link: spec.link, beta0: start.beta, aux0: spec.family === 'negbin' ? start.theta : spec.family === 'beta' ? start.phi : 1 });
+      if (spec.family === 'negbin') { fit.theta = fit.theta_nb; fit.thetaSe = NaN; }
+    }
+    fit.random = random;
+  } else if (spec.family === 'ordinal') {
     // No intercept: the thresholds take its place.
     const rc = column(ds, spec.response).col;
     const Xo = design.X.map(r => r.slice(1));

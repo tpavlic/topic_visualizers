@@ -52,6 +52,7 @@ export function render(root) {
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-x">Predictor on the x axis</label><select id="pr-x"></select></span>' +
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-by">Lines by</label><select id="pr-by"></select></span>' +
         '<label class="ctrl-chk"><input type="checkbox" id="pr-data" checked> show the data</label>' +
+        '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> <span class="tip" tabindex="0" data-tip="One thin line per group: the population curve shifted by the group\'s predicted random effect (and its slope, when the model has one).">show each group</span></label>' +
       '</div>' +
       '<div id="pr-effect"></div>' +
     '</div>' +
@@ -70,6 +71,8 @@ export function render(root) {
   els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); drawEffect(); });
   els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); drawEffect(); });
   els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
+  els.groups = root.querySelector('#pr-groups');
+  els.groups.addEventListener('change', () => { state.setPick(id, 'groups', els.groups.checked); drawEffect(); });
   els.factor.addEventListener('change', () => { state.setPick(id, 'factor', els.factor.value); drawMeans(); });
   els.calcInputs.addEventListener('change', drawCalc);
   els.calcInputs.addEventListener('input', drawCalc);
@@ -91,6 +94,7 @@ function predictorsOf(ds, result) {
 }
 
 function compute() {
+  const root_ = rootEl;
   for (const f of figs) if (f.ro) f.ro.disconnect();
   figs = [];
   const cf = currentFit();
@@ -117,6 +121,8 @@ function compute() {
   const wantBy = state.getPick(id, 'by');
   els.by.innerHTML = opt('', 'none', !wantBy) + preds.map(c => opt(c.name, c.name, c.name === wantBy)).join('');
   els.data.checked = state.getPick(id, 'data') !== false;
+  root_.querySelector('#pr-groups-lbl').hidden = !(result.fit.mixed && result.fit.random.terms[0].kind === 'group');
+  els.groups.checked = state.getPick(id, 'groups') === true;
   const wantF = state.getPick(id, 'factor');
   els.factor.innerHTML = cats.map((c, i) => opt(c.name, c.name, c.name === wantF || (!cats.some(p => p.name === wantF) && i === 0))).join('');
   buildCalcInputs(ds, result, preds);
@@ -229,6 +235,19 @@ function drawEffect() {
         rawPoints(f, jx, Array.from(yData), { label: 'observation' });
       }
     }
+    // Each group's own curve: the population linear predictor shifted by its
+    // predicted intercept, and slope where the model has one.
+    if (els.groups.checked && result.fit.mixed && result.fit.random.terms[0].kind === 'group' && !by) {
+      const re = result.fit.ranef[0], term = result.fit.random.terms[0];
+      const c = curves[0];
+      const cx = xc.col.type === 'continuous' ? c.xs : pos;
+      const slopeIsX = term.q === 2 && state.spec.slope === x;
+      re.levels.forEach((l, g) => {
+        const u0 = re.modes[g][0], u1 = term.q === 2 ? re.modes[g][1] : 0;
+        const yg = c.pred.eta.map((e, k) => link.linkinv(e + u0 + (term.q === 2 ? u1 * (slopeIsX ? c.xs[k] : grid.held[state.spec.slope] || 0) : 0)));
+        curveBand(f, { x: cx, y: Array.from(yg) }, { band: false, color: '--pair', width: 1, label: 'group ' + l });
+      });
+    }
     curves.forEach((c, i) => {
       const cx = xc.col.type === 'continuous' ? c.xs : pos;
       const color = by ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--truth';
@@ -238,12 +257,14 @@ function drawEffect() {
     legendItems.length = 0;
     curves.forEach((c, i) => legendItems.push({ swatch: by && LEVEL_DASHES[i % LEVEL_DASHES.length] ? 'dash' : 'line', color: by ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--truth', label: esc(c.label || 'predicted mean') + ' with its ' + lvl(level) + ' band' }));
     if (showData) legendItems.push(pts.length ? { swatch: 'hollow', color: '--est', label: 'observed proportion in a bin of ' + esc(x) + ' (ten bins of equal count)' } : { swatch: 'dot', color: '--est', label: 'observation' });
+    if (els.groups.checked && result.fit.mixed && !by) legendItems.push({ swatch: 'thin', color: '--pair', label: 'one group’s curve, from its predicted random effect' });
   });
   legend(box.appendChild(document.createElement('div')), legendItems);
   const held = Object.entries(grid.held).map(([k, v]) => esc(k) + ' = ' + (typeof v === 'number' ? num(v, 4) : esc(v))).join(', ');
   const p = document.createElement('p');
   p.className = 'muted-line';
   p.innerHTML = (held ? 'Other predictors held at ' + held + ' (a continuous one at its mean over the fitted rows, a categorical one at its first level). ' : '') +
+    (result.fit.mixed ? 'The population curve is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
     (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
     (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
   els.effect.appendChild(p);

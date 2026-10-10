@@ -18,6 +18,7 @@ import { chi2Cdf, normCdf, normInv, tCdf, tQuantile, ptukey, qtukey } from './sp
  * @param {object} fit
  */
 export function waldDf(fit) {
+  if (fit.mixed) return Infinity;
   return FAMILIES[fit.family].dispersion === 'estimated' ? fit.dfResidual : Infinity;
 }
 
@@ -35,6 +36,8 @@ export function waldP(z, df) {
 // Refits the fixed part with the given terms, holding the negative
 // binomial's θ at the full fit's value, as drop1 holds the family fixed.
 function refitTerms(ds, spec, full, terms) {
+  // A mixed model is refitted whole, by maximum likelihood, keeping its random part.
+  if (spec.group || spec.olre) return full.refit(ds, Object.assign({}, spec, { terms, reml: false })).fit;
   const s = Object.assign({}, spec, { terms, group: null, nested: null, slope: null, olre: false });
   const y = full.codedY;
   if (spec.family === 'negbin') return fitGlm(y, modelMatrix(ds, s).X, { family: 'negbin', link: spec.link, aux: full.fit.theta });
@@ -58,8 +61,9 @@ function refitTerms(ds, spec, full, terms) {
  */
 export function termTests(ds, spec, result) {
   const terms = orderedTerms(spec);
-  const full = result.fit;
-  const scaled = FAMILIES[full.family].dispersion === 'estimated';
+  // A REML fit is compared by maximum likelihood, as a likelihood-ratio test needs.
+  const full = result.fit.reml ? result.refit(ds, Object.assign({}, spec, { reml: false })).fit : result.fit;
+  const scaled = !full.mixed && FAMILIES[full.family].dispersion === 'estimated';
   const rows = [];
   terms.forEach((t, i) => {
     const vars = termVars(t);
@@ -71,8 +75,8 @@ export function termTests(ds, spec, result) {
     // drop1's statistic: for the normal family the likelihood ratio with σ²
     // profiled out, n log(deviance ratio); for the gamma the deviance change
     // over the dispersion; and for a fixed dispersion the deviance change.
-    const stat = full.family === 'normal' ? full.n * Math.log(reduced.deviance / full.deviance)
-      : !Number.isFinite(full.deviance) ? 2 * (full.logLik - reduced.logLik)
+    const stat = full.mixed || !Number.isFinite(full.deviance) ? 2 * (full.logLik - reduced.logLik)
+      : full.family === 'normal' ? full.n * Math.log(reduced.deviance / full.deviance)
         : (reduced.deviance - full.deviance) / (scaled ? full.dispersion : 1);
     rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: Number.isFinite(reduced.deviance) ? reduced.deviance : -2 * reduced.logLik });
   });
@@ -258,4 +262,26 @@ export function binnedMeans(x, y, bins = 10) {
     out.push({ x: sx / (to - from), y: sy / (to - from), n: to - from });
   }
   return out;
+}
+
+/**
+ * The likelihood-ratio test of the random part: the mixed model (refitted
+ * by maximum likelihood when it was fitted by REML) against the same fixed
+ * part without random effects. The null puts the variances at the edge of
+ * their range, and so the p-value is the 50:50 mixture of chi-squares with
+ * k − 1 and k degrees of freedom for k variance parameters (a half of the
+ * chi-square on one for a single variance).
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @param {object} result
+ * @returns {{ stat: number, k: number, p: number, llMixed: number, llFixed: number }}
+ */
+export function randomEffectTest(ds, spec, result) {
+  const mixed = result.fit.reml ? result.refit(ds, Object.assign({}, spec, { reml: false })).fit : result.fit;
+  const fixed = result.refit(ds, Object.assign({}, spec, { group: null, nested: null, slope: null, olre: false, reml: false })).fit;
+  const stat = Math.max(0, 2 * (mixed.logLik - fixed.logLik));
+  const k = mixed.df - fixed.df;
+  const upper = (x, d) => (d <= 0 ? (x > 0 ? 0 : 1) : 1 - chi2Cdf(x, d));
+  const p = 0.5 * upper(stat, k - 1) + 0.5 * upper(stat, k);
+  return { stat, k, p, llMixed: mixed.logLik, llFixed: fixed.logLik };
 }

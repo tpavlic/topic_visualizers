@@ -225,18 +225,27 @@ function compute() {
 
 function drawRandom(ds, result) {
   const fit = result.fit;
-  const re = fit.ranef;
-  if (!re) return;
-  for (const block of re) {
-    const u = Array.from(block.modes);
-    const q = normalQQ(u);
-    const qf = figBox(els.random, { height: 260, xLabel: 'Standard normal quantiles', yLabel: block.label, title: 'Normal quantile plot of the ' + block.label }, ds.name + ' ranef qq ' + block.label);
-    qf.fig.render(f => qqPlot(f, q));
-    const items = block.levels.map((l, i) => ({ label: l, center: block.modes[i], lo: block.modes[i] - 1.96 * block.se[i], hi: block.modes[i] + 1.96 * block.se[i] })).sort((a, b) => a.center - b.center);
-    const cf = figBox(els.random, { height: 'auto', xLabel: block.label, title: 'Predicted ' + block.label + ' by group, with 95% conditional intervals' }, ds.name + ' caterpillar ' + block.label);
-    cf.fig.render(f => intervals(f, items.slice(0, 60), { ref: 0, rowPx: 22 }));
-    if (items.length > 60) { const p = document.createElement('p'); p.className = 'muted-line'; p.textContent = 'The sixty groups with the smallest effects are shown.'; els.random.appendChild(p); }
-  }
+  if (!fit.ranef) return;
+  const p0 = document.createElement('p');
+  p0.className = 'exp-note';
+  p0.textContent = 'The predicted group effects are the conditional modes, each with a 95% interval from its conditional variance. A quantile plot of them against the normal checks the random effect’s own assumption; the caterpillar plot sorts the groups by their effect.';
+  els.random.appendChild(p0);
+  fit.ranef.forEach((block, k) => {
+    const term = fit.random.terms[k];
+    if (term.kind === 'olre') return;
+    for (let j = 0; j < block.q; j++) {
+      const label = (j === 0 ? 'intercept' : 'slope on ' + state.spec.slope) + ' by ' + block.term;
+      const u = block.modes.map(m => m[j]);
+      const q = normalQQ(u);
+      const qf = figBox(els.random, { height: 260, xLabel: 'Standard normal quantiles', yLabel: 'Random ' + label, title: 'Normal quantile plot of the random ' + label }, ds.name + ' ranef qq ' + label);
+      qf.fig.render(f => qqPlot(f, q));
+      const items = block.levels.map((l, i) => ({ label: l, center: block.modes[i][j], lo: block.modes[i][j] - 1.96 * Math.sqrt(block.condvar[i][j]), hi: block.modes[i][j] + 1.96 * Math.sqrt(block.condvar[i][j]) })).sort((a, b) => a.center - b.center);
+      const shown = items.length > 60 ? items.filter((_, i) => i < 30 || i >= items.length - 30) : items;
+      const cf = figBox(els.random, { height: 'auto', xLabel: 'Random ' + label, title: 'Predicted random ' + label + ', with 95% conditional intervals' }, ds.name + ' caterpillar ' + label);
+      cf.fig.render(f => intervals(f, shown, { ref: 0, rowPx: 22 }));
+      if (items.length > 60) { const p = document.createElement('p'); p.className = 'muted-line'; p.textContent = 'The thirty smallest and thirty largest of ' + intl(items.length) + ' groups are shown.'; els.random.appendChild(p); }
+    }
+  });
 }
 
 export default { id, title, render, onShow, sections };
