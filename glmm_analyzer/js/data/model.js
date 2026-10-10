@@ -53,7 +53,7 @@ export function sortLevels(names) {
 
 /**
  * Build a dataset from partial fields, filling defaults and assigning an id
- * (the given one, or a new one from `newId`). Each column's `levels` is
+ * (the given one or a new one from `newId`). Each column's `levels` is
  * computed from the rows unless given; a continuous column's cells are
  * numbers or null, and a categorical or ordinal column's are strings or null.
  * @param {Partial<Dataset>} fields
@@ -93,7 +93,7 @@ export function makeDataset(fields = {}) {
 }
 
 /**
- * The column with this name, or null.
+ * The column with this name or null.
  * @param {Dataset} ds
  * @param {string} name
  * @returns {{ col: Column, index: number }|null}
@@ -115,7 +115,7 @@ export function valuesOf(ds, name) {
   return ds.rows.map(r => r[c.index]);
 }
 
-/** The response column, or null. */
+/** The response column or null. */
 export function responseColumn(ds) {
   return ds.columns.find(c => c.role === 'response') || null;
 }

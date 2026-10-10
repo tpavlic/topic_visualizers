@@ -136,7 +136,7 @@ export const FAMILIES = {
 export const FAMILY_ORDER = ['normal', 'binomial', 'poisson', 'negbin', 'gamma', 'beta', 'ordinal'];
 
 /**
- * The family with this id, or null.
+ * The family with this id or null.
  * @param {string} id
  * @returns {Family|null}
  */

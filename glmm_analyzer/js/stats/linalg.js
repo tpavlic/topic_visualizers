@@ -2,7 +2,7 @@
 // rows, the Cholesky factorization and its solves, the inverse from the
 // factor, weighted cross products, and the rank check that finds a design
 // matrix's aliased columns. Everything here is small (a design of a few
-// dozen columns) and so clarity beats speed. Pure functions, no DOM.
+// dozen columns), and so clarity beats speed. Pure functions, no DOM.
 
 /**
  * A zero matrix of `r` rows and `c` columns.

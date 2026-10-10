@@ -3,7 +3,7 @@
 /**
  * Bundled example datasets. `text` is the file's contents as the importer reads it, and
  * `mapping` is the role assignment that loads it without a dialog.
- * tour names the section of the Tests as models page an example serves, or is null.
+ * tour names the section of the Tests as models page an example serves or is null.
  * @type {{id: string, title: string, file: string, description: string, text: string, mapping: object, tour: string|null}[]}
  */
 export const EXAMPLES = [
@@ -11,7 +11,7 @@ export const EXAMPLES = [
     id: "on-time",
     title: "On-time service: a binary response with a random effect",
     file: "on_time.csv",
-    description: "Whether each of the first fifty customers of a day was served within two minutes of arriving, against the number waiting in queue when the customer arrived and the service policy (A, mean service 0.8 minutes; B, mean service 0.7), in a single-server queue with exponential interarrival times of mean 1.0 minute. Eight days were run under each policy from the same eight random-number seeds, and so the seed is a grouping factor shared by both policies. A binomial model with a logit link, and a random intercept per seed.",
+    description: "Whether each of the first fifty customers of a day was served within two minutes of arriving, against the number waiting in queue when the customer arrived and the service policy (A, mean service 0.8 minutes; B, mean service 0.7), in a single-server queue with exponential interarrival times of mean 1.0 minute. Eight days were run under each policy from the same eight random-number seeds, and so the seed is a grouping factor shared by both policies. A binomial model with a logit link and a random intercept per seed.",
     mapping: {"name":"On-time service","response":"on_time","columns":{"on_time":{"role":"response","type":"continuous"},"queue":{"role":"predictor","type":"continuous"},"policy":{"role":"predictor","type":"categorical"},"seed":{"role":"group","type":"categorical"}}},
     tour: null,
     text: `on_time,queue,policy,seed
@@ -821,7 +821,7 @@ export const EXAMPLES = [
     id: "cycle-time",
     title: "Cycle time: a positive response against load and class",
     file: "cycle_time.csv",
-    description: "The time in system of sixty jobs on each of six shifts, after a warm-up of two hundred jobs, in a single-server queue whose offered load (the arrival rate, with mean service time 1.0 for a standard job and 0.5 for an express job) differs by shift. Time in system is positive and right-skewed, and its spread grows with its mean as the load rises: a gamma model with a log link, with load as a continuous predictor and class as a categorical one.",
+    description: "The time in system of sixty jobs on each of six shifts, after a warm-up of two hundred jobs, in a single-server queue whose offered load (the arrival rate, with mean service time 1.0 for a standard job and 0.5 for an express job) differs by shift. Time in system is positive and right skewed, and its spread grows with its mean as the load rises: a gamma model with a log link, with load as a continuous predictor and class as a categorical one.",
     mapping: {"name":"Cycle time","response":"time_in_system","columns":{"time_in_system":{"role":"response","type":"continuous"},"load":{"role":"predictor","type":"continuous"},"class":{"role":"predictor","type":"categorical"}}},
     tour: null,
     text: `time_in_system,load,class

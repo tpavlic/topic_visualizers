@@ -136,7 +136,7 @@ export function tooBig(ds, specs) {
 
 /**
  * Puts a recipe in CSV mode, for data past the cap: its scripts embed no
- * data and read the dataset's data file, and (on the Diagnostics page, for
+ * data and read the dataset's data file and (on the Diagnostics page, for
  * a discrete family) the file of the residuals' uniforms, from the script's
  * folder. The recipe keeps its `expect` values and, for the harness, its
  * uniforms.
@@ -217,7 +217,7 @@ function reducedFormulas(spec, ds, term) {
  * The Diagnostics page's recipe.
  * @param {object} o `{ ds, spec, result, level, title, provenance, residuals, summary }` where
  *   `residuals` is residualSet's output and `summary` holds the page's
- *   Shapiro-Wilk W and p, the residuals' mean and sd, and the largest Cook's distance.
+ *   Shapiro–Wilk W and p, the residuals' mean and sd, and the largest Cook's distance.
  */
 export function diagnosticsRecipe(o) {
   const r = baseRecipe(Object.assign({ page: 'diagnostics' }, o));

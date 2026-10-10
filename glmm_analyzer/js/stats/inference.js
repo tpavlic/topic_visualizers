@@ -67,7 +67,7 @@ export function termTests(ds, spec, result) {
   const rows = [];
   terms.forEach((t, i) => {
     const vars = termVars(t);
-    // Marginality: a term is kept while a higher-order term holds all its variables.
+    // Marginality: a term is kept when a higher-order term holds all its variables.
     const needed = terms.some((u, j) => j !== i && typeof u === 'object' && u.of && vars.every(v => u.of.includes(v)) && u.of.length > vars.length);
     if (needed) return;
     const reduced = refitTerms(ds, spec, result, terms.filter((_, j) => j !== i));
@@ -152,7 +152,7 @@ function combos(factors, names) {
  * comparisons, as emmeans and pairs() with Tukey's correction form them:
  * each level's mean of the linear predictor over the other factors' levels
  * with equal weights and the continuous predictors at their means, carried
- * to the response scale; the differences on the link scale with their Tukey
+ * to the response scale; the differences on the link scale, with their Tukey
  * intervals and p-values, and as ratios where the link gives one.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result

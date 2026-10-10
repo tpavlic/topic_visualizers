@@ -71,7 +71,7 @@ export function thetaMl(y, mu, eps = 1e-8, limit = 25) {
  */
 export function fitNegbin(y, X, o = {}) {
   const n = y.length;
-  // As glm.nb: a Poisson fit first, θ from its means, then the alternation.
+  // As glm.nb: a Poisson fit first, θ from its means, and then the alternation.
   let fit = fitGlm(y, X, { family: 'poisson', link: o.link || 'log', eps: 1e-8 });
   let th = thetaMl(y, fit.fitted);
   let theta = th.theta;

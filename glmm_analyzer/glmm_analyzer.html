@@ -77,10 +77,10 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .wh-title { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
 .wh-sub   { font-size: 0.875rem; color: var(--muted); margin-top: 3px; }
 
-/* Page navigation: one set of links laid out three ways. From 1100px it is
+/* Page navigation: one set of links laid out three ways. From 1100px, it is
    a sidebar that stays in view while the page scrolls, beside a content
-   column as wide as the page was without it; from 700px it is a row of tabs
-   under thin bracketed group labels, as wide as the content; below 700px the
+   column as wide as the page was without it; from 700px, it is a row of tabs
+   under thin bracketed group labels, as wide as the content; below 700px, the
    <select> stands in for it. */
 .oa-main { min-width: 0; }
 .tab {
@@ -108,9 +108,9 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 /* The tab row: each group is bracketed by a thin overline whose small-caps
    label sits centered on it. Where the ten tabs do not fit on one line, the
    row wraps a whole group at a time, so that every group stays under its own
-   label; between 700px and 1000px that is two lines, with More information
+   label; between 700px and 1000px, that is two lines, with More information
    and then Session on the second. A group is never narrower than its widest
-   tab (its min-width stays auto), so no tab can spill into its neighbor; the
+   tab (its min-width stays auto), and so no tab can spill into its neighbor; the
    Analysis group alone may wrap inside its bracket, which happens only at a
    font size so large that the group by itself overfills a line. */
 .pnav { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 10px; margin: 2px 0 12px; }
@@ -223,7 +223,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .ctrl-chk { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; font-size: .84rem; cursor: pointer; }
 /* The benchmark row keeps the spinner's height with the spinner hidden, and so toggling it never moves the page. */
 #sev-bench-row { min-height: 34px; align-items: center; }
-/* On a phone the checkbox text already names the field, and so the pair's own
+/* On a phone, the checkbox text already names the field, and so the pair's own
    label and the units note go, which keeps the spinner on the checkbox's line. */
 @media (max-width: 480px) { #sev-bench-pair .ctrl-lbl, #sev-bench-unit { display: none; } #sev-bench-pair { white-space: nowrap; flex-wrap: nowrap; } #sev-bench { width: 60px; } }
 /* A section's own planning card: an inset box under the results, framed and
@@ -313,7 +313,7 @@ select:focus-visible, .btn-run:focus-visible, .btn-run2:focus-visible, .btn-clea
 
 /* Spinner: a numeric field with an up/down pair that appears on hover or
    focus and drives the same stepper as the arrow keys. With no hover (a
-   touch screen) the pair sits beside the field at full size, because a
+   touch screen), the pair sits beside the field at full size because a
    hidden control is no control. */
 .spin { position: relative; display: inline-flex; align-items: center; }
 .spin-btns { position: absolute; right: 3px; top: 3px; bottom: 3px; display: none; flex-direction: column; gap: 1px; }
@@ -355,7 +355,7 @@ select:focus-visible, .btn-run:focus-visible, .btn-run2:focus-visible, .btn-clea
 .tf-note { margin: 8px 0 4px; }
 .tf-note .notice { margin-bottom: 2px; }
 /* Check verdicts as running text at .84rem: the data red and the muted gray
-   sit within a tenth of 4.5:1 on the tinted notice backgrounds, so the text
+   sit within a tenth of 4.5:1 on the tinted notice backgrounds, and so the text
    takes darker stand-ins (5.6:1 and 6.3:1 on the warn tint; THEME.md). */
 .chk-bad { color: #BE2020; }
 .chk-ok { color: var(--ok); }
@@ -588,7 +588,7 @@ footer a:hover { text-decoration: underline; }
 .im-accept-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 .im-need { font-size: .82rem; font-weight: 600; color: var(--warn); }
 .im-dialog .seg-btn:disabled { color: #b5adb0; cursor: not-allowed; }
-/* The statistic-type labels are long, and so on a narrow screen the
+/* The statistic-type labels are long, and so, on a narrow screen, the
    segments stack into one rounded column instead of overflowing. */
 @media (max-width: 640px) {
   .im-seg { display: flex; flex-direction: column; border-radius: 10px; width: 100%; }
@@ -611,7 +611,7 @@ footer a:hover { text-decoration: underline; }
 .im-exp-row > td { white-space: normal; text-align: left; background: var(--chart-bg); font-family: 'Outfit', sans-serif; }
 .im-rm-all { margin: 10px 0 0; justify-content: space-between; }
 /* A dataset's Export row: the data files sit in a box held to the width of
-   the table's scrolling frame (a size container), and so on a narrow screen
+   the table's scrolling frame (a size container), and so, on a narrow screen,
    the buttons wrap within view instead of across the whole table. */
 .im-ds-wrap { container-type: inline-size; }
 .im-xp-box { position: sticky; left: 10px; max-width: calc(100cqw - 20px); padding: 2px 0; }
@@ -644,8 +644,8 @@ footer a:hover { text-decoration: underline; }
 /* A display rule such as .ctrl-pair's inline-flex would otherwise beat the
    hidden attribute. */
 #tab-import [hidden], #tab-explore [hidden] { display: none !important; }
-/* Two and Several Systems pages */
-/* Holds the same-dataset warning's height while it is not shown, so the page does not grow when it appears. */
+/* Compare page */
+/* Holds the same-dataset warning's height while it is not shown, and so the page does not grow when it appears. */
 .cmp-verdict { font-size: .9rem; font-weight: 600; line-height: 1.5; margin: 6px 0 4px; }
 .cmp-lead { font-size: .84rem; line-height: 1.55; margin: 4px 0 8px; }
 .cmp-banner { display: inline-block; max-width: 100%; border: 1.5px solid var(--accent-tint); background: var(--accent-wash);
@@ -823,7 +823,7 @@ if (window.self !== window.top) {
 /**
  * Bundled example datasets. `text` is the file's contents as the importer reads it, and
  * `mapping` is the role assignment that loads it without a dialog.
- * tour names the section of the Tests as models page an example serves, or is null.
+ * tour names the section of the Tests as models page an example serves or is null.
  * @type {{id: string, title: string, file: string, description: string, text: string, mapping: object, tour: string|null}[]}
  */
 export const EXAMPLES = [
@@ -831,7 +831,7 @@ export const EXAMPLES = [
     id: "on-time",
     title: "On-time service: a binary response with a random effect",
     file: "on_time.csv",
-    description: "Whether each of the first fifty customers of a day was served within two minutes of arriving, against the number waiting in queue when the customer arrived and the service policy (A, mean service 0.8 minutes; B, mean service 0.7), in a single-server queue with exponential interarrival times of mean 1.0 minute. Eight days were run under each policy from the same eight random-number seeds, and so the seed is a grouping factor shared by both policies. A binomial model with a logit link, and a random intercept per seed.",
+    description: "Whether each of the first fifty customers of a day was served within two minutes of arriving, against the number waiting in queue when the customer arrived and the service policy (A, mean service 0.8 minutes; B, mean service 0.7), in a single-server queue with exponential interarrival times of mean 1.0 minute. Eight days were run under each policy from the same eight random-number seeds, and so the seed is a grouping factor shared by both policies. A binomial model with a logit link and a random intercept per seed.",
     mapping: {"name":"On-time service","response":"on_time","columns":{"on_time":{"role":"response","type":"continuous"},"queue":{"role":"predictor","type":"continuous"},"policy":{"role":"predictor","type":"categorical"},"seed":{"role":"group","type":"categorical"}}},
     tour: null,
     text: `on_time,queue,policy,seed
@@ -1641,7 +1641,7 @@ export const EXAMPLES = [
     id: "cycle-time",
     title: "Cycle time: a positive response against load and class",
     file: "cycle_time.csv",
-    description: "The time in system of sixty jobs on each of six shifts, after a warm-up of two hundred jobs, in a single-server queue whose offered load (the arrival rate, with mean service time 1.0 for a standard job and 0.5 for an express job) differs by shift. Time in system is positive and right-skewed, and its spread grows with its mean as the load rises: a gamma model with a log link, with load as a continuous predictor and class as a categorical one.",
+    description: "The time in system of sixty jobs on each of six shifts, after a warm-up of two hundred jobs, in a single-server queue whose offered load (the arrival rate, with mean service time 1.0 for a standard job and 0.5 for an express job) differs by shift. Time in system is positive and right skewed, and its spread grows with its mean as the load rises: a gamma model with a log link, with load as a continuous predictor and class as a categorical one.",
     mapping: {"name":"Cycle time","response":"time_in_system","columns":{"time_in_system":{"role":"response","type":"continuous"},"load":{"role":"predictor","type":"continuous"},"class":{"role":"predictor","type":"categorical"}}},
     tour: null,
     text: `time_in_system,load,class
@@ -3016,7 +3016,7 @@ export function sortLevels(names) {
 
 /**
  * Build a dataset from partial fields, filling defaults and assigning an id
- * (the given one, or a new one from `newId`). Each column's `levels` is
+ * (the given one or a new one from `newId`). Each column's `levels` is
  * computed from the rows unless given; a continuous column's cells are
  * numbers or null, and a categorical or ordinal column's are strings or null.
  * @param {Partial<Dataset>} fields
@@ -3056,7 +3056,7 @@ export function makeDataset(fields = {}) {
 }
 
 /**
- * The column with this name, or null.
+ * The column with this name or null.
  * @param {Dataset} ds
  * @param {string} name
  * @returns {{ col: Column, index: number }|null}
@@ -3078,7 +3078,7 @@ export function valuesOf(ds, name) {
   return ds.rows.map(r => r[c.index]);
 }
 
-/** The response column, or null. */
+/** The response column or null. */
 export function responseColumn(ds) {
   return ds.columns.find(c => c.role === 'response') || null;
 }
@@ -3248,7 +3248,7 @@ const SYMBOL = {
 
 /**
  * A string as 7-bit ASCII for a script: plain() first (dashes, curly quotes,
- * the minus sign, line breaks), then the symbols above to their ASCII
+ * the minus sign, line breaks) and then the symbols above to their ASCII
  * spellings, accents dropped by canonical decomposition, Greek letters to
  * their names, control characters to spaces, and anything else to "?".
  * @param {*} s
@@ -3617,7 +3617,7 @@ function dataBlock(recipe, L) {
 }
 
 // The data block of a CSV-mode script: the data file read from the script's
-// folder, then the same factor coding the embedded block applies, and the
+// folder, the same factor coding the embedded block applies, and the
 // computed columns MATLAB needs.
 function csvReadLines(recipe, L) {
   const c = L.comment;
@@ -4087,7 +4087,7 @@ export function parseReport(text) {
 </script>
 <script type="text/plain" data-module="js/io/capability.js">
 // Which languages have a commonly used routine for a model: a button in the
-// export row is live exactly where the language has one, and gray with a
+// export row is live exactly where the language has one and gray with a
 // reason otherwise. R has a routine for every model this tool fits. Pure
 // functions, no DOM.
 
@@ -4119,8 +4119,8 @@ export function capability(spec) {
 }
 
 /**
- * The capability for the Compare page: every candidate's languages together,
- * since one script fits them all.
+ * The capability for the Compare page: every candidate's languages together
+ * because one script fits them all.
  * @param {object[]} specs
  */
 export function capabilityAll(specs) {
@@ -4247,7 +4247,7 @@ export function toCsv(rows) {
 
 /**
  * Provenance as `# key: value` lines, in the object's key order. Undefined
- * values are skipped and line breaks inside a value become spaces, and so every
+ * values are skipped. Line breaks inside a value become spaces, and so every
  * line stays a comment.
  * @param {Record<string, unknown>|null} [fields]
  * @returns {string[]}
@@ -4306,7 +4306,7 @@ export function slug(s) {
 }
 
 /**
- * A dataset's table as CSV: the header, then one row per observation, with
+ * A dataset's table as CSV: the header and then one row per observation, with
  * a missing value as an empty field. Every column is written, whatever its
  * role, so that the file reads back in as it was loaded; the `#` lines say
  * which column is the response and which the group.
@@ -4335,7 +4335,7 @@ export function tableCsv(headers, rows, provenance) {
  * The start of a CSV file this module wrote, for a preview: its `#` lines
  * without the mark, its header's fields, the fields of its first `n` records,
  * and how many records follow those. Fields are read by RFC 4180, and so a
- * quoted field keeps its commas and line breaks and an empty field stays.
+ * quoted field keeps its commas and line breaks, and an empty field stays.
  * @param {string} text
  * @param {number} [n]
  * @returns {{notes: string[], header: string[], rows: string[][], more: number}}
@@ -4488,7 +4488,7 @@ export function downloadText(name, text, mime = 'text/csv;charset=utf-8') {
 // no toolbox, and nothing newer than R2021a. Each helper takes its required
 // arguments in order and then one optional struct o of options, read with
 // fig_opt, and draws one new figure. Pure text; the script writer chooses
-// which snippets to include, and always includes common with any of them.
+// which snippets to include and always includes common with any of them.
 //
 // The snippets are template literals, and so none of them may contain a
 // backtick or a dollar sign followed by a brace. In a MATLAB char vector a
@@ -6047,7 +6047,7 @@ export const listOf = (L, exprs) => (L.lang === 'R' ? 'list(' + exprs.join(', ')
 export const strsOf = (L, a) => (L.lang === 'R' ? 'c(' + a.map(L.str).join(', ') + ')' : L.lang === 'py' ? '[' + a.map(L.str).join(', ') + ']' : '{' + a.map(L.str).join(', ') + '}');
 
 /**
- * The lines of one helper call: positional arguments, then named options.
+ * The lines of one helper call: positional arguments and then named options.
  * R and Python pass the options by name; MATLAB gathers them in a struct o.
  */
 export function call(L, name, pos, opts = {}) {
@@ -6088,7 +6088,7 @@ function diagnosticsFigures(r, L) {
     ...call(L, 'fig_qq', ['qr', L.str('Quantile residuals'), L.str('Normal quantile plot of the quantile residuals')]),
     ...call(L, 'fig_resid', [L.lang === 'R' ? 'mu[keep]' : L.lang === 'py' ? 'mu[keep]' : 'mu(keep)', 'qr', L.str('Fitted value'), L.str('Quantile residual'), L.str('Residuals against fitted values')])
   ];
-  return { notes: ['The quantile residuals against the normal, and against the fitted values with their mean in ten bins of equal count.'], calls, fig: ['qq', 'resid'], need: [] };
+  return { notes: ['The quantile residuals against the normal and against the fitted values with their mean in ten bins of equal count.'], calls, fig: ['qq', 'resid'], need: [] };
 }
 
 function predictFigures(r, L) {
@@ -6164,7 +6164,7 @@ import { makeDataset } from '../data/model.js';
 
 const NUMBER_RE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 
-// A cell's number, or null when the cell is not a plain finite decimal. NaN,
+// A cell's number or null when the cell is not a plain finite decimal. NaN,
 // Inf, and -Inf are therefore non-numeric.
 function cellNumber(s) {
   return NUMBER_RE.test(s) ? Number(s) : null;
@@ -6199,7 +6199,7 @@ export function delimiterOf(line) {
 
 /**
  * Split one line into cells on the delimiter given, or on the one
- * `delimiterOf` finds. Cells are trimmed and an empty cell is kept, as a
+ * `delimiterOf` finds. Cells are trimmed, and an empty cell is kept, as a
  * table's missing value, except under the space delimiter, where runs of
  * spaces are one delimiter and an empty cell cannot be expressed. A
  * double-quoted cell is kept whole, delimiters included, with its quotes
@@ -6551,7 +6551,7 @@ export function tooBig(ds, specs) {
 
 /**
  * Puts a recipe in CSV mode, for data past the cap: its scripts embed no
- * data and read the dataset's data file, and (on the Diagnostics page, for
+ * data and read the dataset's data file and (on the Diagnostics page, for
  * a discrete family) the file of the residuals' uniforms, from the script's
  * folder. The recipe keeps its `expect` values and, for the harness, its
  * uniforms.
@@ -6632,7 +6632,7 @@ function reducedFormulas(spec, ds, term) {
  * The Diagnostics page's recipe.
  * @param {object} o `{ ds, spec, result, level, title, provenance, residuals, summary }` where
  *   `residuals` is residualSet's output and `summary` holds the page's
- *   Shapiro-Wilk W and p, the residuals' mean and sd, and the largest Cook's distance.
+ *   Shapiro–Wilk W and p, the residuals' mean and sd, and the largest Cook's distance.
  */
 export function diagnosticsRecipe(o) {
   const r = baseRecipe(Object.assign({ page: 'diagnostics' }, o));
@@ -6724,7 +6724,7 @@ export function describeModel(spec) {
 // function that dispatches on the family and the random part to each
 // language's own routine, the accessors that read a fit's coefficients and
 // statistics in one shape, the term tests, the quantile residuals, the
-// reference-grid rows, and the Shapiro-Wilk check. The keys are LIB.R (both
+// reference-grid rows, and the Shapiro–Wilk check. The keys are LIB.R (both
 // R dialects), LIB.py, and LIB.m. Every snippet is a template literal, and so
 // none may contain a backtick or a dollar sign followed by a brace. Pure text.
 
@@ -8473,7 +8473,7 @@ import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
 import * as referencesPage from './pages/references.js';
 
-// A page module may export its id, title, render, and onShow by name, or as
+// A page module may export its id, title, render, and onShow by name or as
 // one default object; either shape works here. A page divided into sections
 // shown one at a time also exports `sections` ([{ id, label }]) and, if it
 // needs to know when one opens, `onShowSection(id)`.
@@ -8688,13 +8688,13 @@ function compute() {
   html += '</tbody></table></div>';
   els.table.innerHTML = html;
   const notes = [];
-  if (new Set(fitted.map(r => r.spec.dataset + '|' + r.spec.response)).size > 1) notes.push('The models do not all share one response in one dataset. AIC and BIC compare only models of the same response fitted to the same rows; across responses or datasets the numbers mean nothing against each other.');
+  if (new Set(fitted.map(r => r.spec.dataset + '|' + r.spec.response)).size > 1) notes.push('The models do not all share one response in one dataset. AIC and BIC compare only models of the same response fitted to the same rows; across responses or datasets, the numbers mean nothing against each other.');
   if (new Set(fitted.map(r => r.spec.family === 'normal' && r.result.link === 'identity' ? 'lin' : r.spec.family)).size > 1 && new Set(fitted.map(r => r.spec.dataset + '|' + r.spec.response)).size === 1) notes.push('The models use different families. AIC compares families of the same response on their full likelihoods, which these are, with one caution: a normal model of a count or a proportion is a different kind of claim about the same numbers, and a lower AIC does not make it the right kind.');
   if (state.models.some(m => m.spec.reml)) notes.push('A model kept with REML on was refitted by maximum likelihood here, as the comparisons need.');
-  if (new Set(fitted.map(r => r.result.design.X.length)).size > 1 && new Set(fitted.map(r => r.spec.dataset)).size === 1) notes.push('The models were fitted to different numbers of rows, because missing values were dropped by the columns each uses; that alone changes the log-likelihood.');
+  if (new Set(fitted.map(r => r.result.design.X.length)).size > 1 && new Set(fitted.map(r => r.spec.dataset)).size === 1) notes.push('The models were fitted to different numbers of rows because missing values were dropped by the columns each uses; that alone changes the log-likelihood.');
   for (const n of notes) els.table.appendChild(notice('warn', esc(n)));
   els.table.appendChild(details('What the criteria measure',
-    '<p>AIC is −2 log-likelihood + 2k and BIC is −2 log-likelihood + k log n, for k estimated parameters: AIC adds 2 for every parameter and BIC adds log n, and so a term stays only if it raises the log-likelihood by more than that. BIC’s addition grows with the sample, and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
+    '<p>AIC is −2 log-likelihood + 2k, and BIC is −2 log-likelihood + k log n, for k estimated parameters. AIC adds 2 for every parameter, and BIC adds log n; a term stays only if it raises the log-likelihood by more than that. BIC’s addition grows with the sample, and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
     '<p>A likelihood-ratio test asks whether the extra terms of the larger model improve the fit by more than chance would: twice the difference in log-likelihood, against a chi-square with the extra parameters as its degrees of freedom. It applies only where one model nests inside the other.</p>'));
   const pairRows = [];
   let ph = '';
@@ -8875,7 +8875,7 @@ function compute() {
   const q = normalQQ(r);
   const qf = figBox(els.qq, { height: 300, xLabel: 'Standard normal quantiles', yLabel: 'Quantile residuals', title: 'Normal quantile plot of the quantile residuals' }, ds.name + ' residual qq');
   qf.fig.render(f => qqPlot(f, q));
-  tables.push({ name: 'Residual summary', headers: ['statistic', 'value'], rows: [['Shapiro-Wilk W', sw ? sw.W : NaN], ['Shapiro-Wilk p', sw ? sw.p : NaN], ['mean', m], ['sd', Math.sqrt(s2)]] });
+  tables.push({ name: 'Residual summary', headers: ['statistic', 'value'], rows: [['Shapiro–Wilk W', sw ? sw.W : NaN], ['Shapiro–Wilk p', sw ? sw.p : NaN], ['mean', m], ['sd', Math.sqrt(s2)]] });
 
   // Against the fitted values, and the scale–location plot.
   const fitted = Array.from(res.fitted);
@@ -8940,7 +8940,7 @@ function compute() {
   } else if (fit.family === 'binomial') {
     els.disp.appendChild(notice('info', 'A 0/1 response has variance p(1 − p) exactly, and so overdispersion cannot be detected from it: the Pearson χ² of a binary model has no chi-square reference, and the page makes no dispersion test. The residual plots and the model’s terms are the check here.'));
   } else if (fit.family === 'poisson') {
-    els.disp.appendChild(notice('info', 'The observation-level random effect takes up the extra spread a Poisson count shows, and shrinks the conditional residuals with it, and so there is no dispersion test here: its variance in the Random effects table is the measure of the overdispersion.'));
+    els.disp.appendChild(notice('info', 'The observation-level random effect takes up the extra spread a Poisson count shows and shrinks the conditional residuals with it, and so there is no dispersion test here: its variance in the Random effects table is the measure of the overdispersion.'));
   } else if (fam.dispersion === 'estimated') {
     els.disp.appendChild(cardRow([card('Dispersion', stat(fit.dispersion, 4), fit.mixed ? 'as lme4 estimates it: the penalized weighted residual sum of squares over n' : 'estimated by the Pearson χ² / df and used in every standard error')]));
     els.disp.appendChild(notice('info', 'The ' + esc(fam.label) + ' family estimates its dispersion rather than fixing it, and so there is no overdispersion test; the scale–location plot above says whether the spread changes with the mean.'));
@@ -9053,7 +9053,7 @@ export function render(root) {
     '</div></div>' +
     '<div class="sec"><div class="sec-hd">The response</div><div id="ex-resp"></div></div>' +
     '<div class="sec"><div class="sec-hd">Descriptives</div><div id="ex-desc"></div></div>' +
-    '<div class="sec"><div class="sec-hd">Against each predictor</div><p class="exp-note">A continuous predictor gives a scatter with the mean of the response in ten bins of equal count; a categorical one gives a box per level, or the proportion per level for a binary response.</p><div id="ex-plots"></div></div>';
+    '<div class="sec"><div class="sec-hd">Against each predictor</div><p class="exp-note">A continuous predictor gives a scatter with the mean of the response in ten bins of equal count; a categorical one gives a box per level or, for a binary response, the proportion per level.</p><div id="ex-plots"></div></div>';
   els = { ds: root.querySelector('#ex-ds'), by: root.querySelector('#ex-by'), resp: root.querySelector('#ex-resp'), desc: root.querySelector('#ex-desc'), plots: root.querySelector('#ex-plots') };
   dsSel = datasetSelect(els.ds, { remember: { page: id, key: 'dataset' } });
   els.ds.addEventListener('change', () => { fillBy(); compute(); });
@@ -9209,7 +9209,7 @@ const x_ = v => typeof v === 'number' && Number.isFinite(v);
 function familyAdvice(sup) {
   return {
     binary: 'The binomial family with a logit link is the usual choice; the normal family would model the 0 or 1 directly, which can predict outside the interval.',
-    count: 'Start with the Poisson family; if the Pearson χ² / df on the Model page sits well above 1, the counts are overdispersed and the negative binomial family (or a Poisson-lognormal) fits them.',
+    count: 'Start with the Poisson family; if the Pearson χ² / df on the Model page sits well above 1, the counts are overdispersed, and the negative binomial family (or a Poisson-lognormal) fits them.',
     unit: 'The beta family with a logit link models a proportion that is a measurement rather than a count of successes; the normal family can serve when the values stay well inside the interval.',
     positive: 'The gamma family with a log link models a positive, right-skewed response whose spread grows with its mean; the normal family with a log link keeps the spread constant instead.',
     real: 'The normal family with an identity link is the linear model.',
@@ -9256,7 +9256,7 @@ let rootEl = null;
 let els = {};
 /** Files and pastes waiting for the mapping dialog, oldest first. */
 const queue = [];
-/** The file or paste the mapping dialog is showing, or null. */
+/** The file or paste the mapping dialog is showing or null. */
 let pending = null;
 /** What the last accepted import added, for the status area. */
 let lastImport = null;
@@ -9303,7 +9303,7 @@ export function render(root) {
       '</div>' +
       '<div class="im-block" id="im-formats" tabindex="-1">' +
         '<div class="ctrl-grp-lbl">Text format</div>' +
-        '<p class="ctrl-note">A header row, then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. Simulation output in the conventional CSV layout (<code>dataset, replication, value</code> columns) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
+        '<p class="ctrl-note">A header row and then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. Simulation output in the conventional CSV layout (<code>dataset, replication, value</code> columns) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
       '</div>' +
       '<div class="im-block">' +
         '<div class="ctrl-grp-lbl">From a file</div>' +
@@ -9873,7 +9873,7 @@ let lastFit = null;
 let timer = null;
 
 /**
- * The current fit, or null, for the other pages: `{ ds, spec, result }`
+ * The current fit for the other pages, `{ ds, spec, result }`, or null before one
  * where `result` is fitModel's output. Recomputed when the spec changes.
  */
 export function currentFit() { return lastFit; }
@@ -10113,7 +10113,7 @@ function drawTerms(ds, result) {
   for (const r of tt.rows) html += '<tr><td>' + esc(r.term) + '</td><td>' + intl(r.df) + '</td><td>' + stat(r.stat, 4) + '</td><td>' + pValue(r.p) + '</td><td>' + stat(r.deviance, 5) + '</td></tr>';
   html += '</tbody></table></div>';
   html += '<p class="muted-line">Each row refits the model without that term and compares the two by a likelihood-ratio test on a chi-square with the change in parameter count as its degrees of freedom. A main effect that an interaction still uses is not dropped. ' +
-    (fam.id === 'normal' ? 'For the normal family the statistic is n times the log of the deviance ratio, with σ² profiled out.' : tt.scaled ? 'The deviance change is divided by the full model’s dispersion.' : '') + '</p>';
+    (fam.id === 'normal' ? 'For the normal family, the statistic is n times the log of the deviance ratio, with σ² profiled out.' : tt.scaled ? 'The deviance change is divided by the full model’s dispersion.' : '') + '</p>';
   els.terms.innerHTML = html;
   return tt;
 }
@@ -11071,7 +11071,7 @@ function sectionAnova(root) {
   const F = ((fit.nullDeviance - fit.deviance) / df1) / (fit.deviance / df2);
   const pF = 1 - fCdf(F, df1, df2);
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'The daily defect rate on twelve days of each of three work shifts (day, evening, night).', 'One-way analysis of variance.') + '<p class="exp-note">One-way ANOVA can be realized as the GLMM above. The intercept of the GLMM is the day shift’s mean, and its two coefficients are the other shifts’ differences from it. ANOVA asks whether the three means differ through the F ratio of the between-shift to the within-shift mean square, and the same F comes from the GLMM’s deviances: the null deviance is the total sum of squares and the deviance is the within-shift sum of squares, so the F and its p-value are the test’s. The Model page’s term test is the likelihood-ratio form of the same comparison; it agrees with the F test in large samples and is close here.</p>';
+  root.innerHTML = modelBlock(spec, 'The daily defect rate on twelve days of each of three work shifts (day, evening, night).', 'One-way analysis of variance.') + '<p class="exp-note">One-way ANOVA can be realized as the GLMM above. The intercept of the GLMM is the day shift’s mean, and its two coefficients are the other shifts’ differences from it. ANOVA asks whether the three means differ through the F ratio of the between-shift to the within-shift mean square, and the same F comes from the GLMM’s deviances: the null deviance is the total sum of squares, and the deviance is the within-shift sum of squares; the F and its p-value are therefore the test’s. The Model page’s term test is the likelihood-ratio form of the same comparison; it agrees with the F test in large samples and is close here.</p>';
   root.innerHTML += table([
     pair('Between sum of squares', stat(av.ssBetween, 5), stat(fit.nullDeviance - fit.deviance, 5), 'null deviance − deviance'),
     pair('Within sum of squares', stat(av.ssWithin, 5), stat(fit.deviance, 5), 'the deviance'),
@@ -11095,7 +11095,7 @@ function sectionPaired(root) {
   const k = r.names.indexOf('conditionbefore');
   const est = -fit.beta[k], se = Math.sqrt(fit.vcov[k][k]);
   const ret = randomEffectTest(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'Task times of fourteen operators, each timed before and after a process change.', 'The paired t test.') + '<p class="exp-note">The paired t test can be realized as the GLMM above, a mixed model with a random intercept per operator. The paired test works on each operator’s difference, which removes the operator’s own level from the comparison; the random intercept does the same. The GLMM’s coefficient for the condition is the mean difference after − before, and under REML its standard error is the paired test’s. The GLMM reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the GLMM also says how much of the variation sits between operators, which the t test never does.</p>';
+  root.innerHTML = modelBlock(spec, 'Task times of fourteen operators, each timed before and after a process change.', 'The paired t test.') + '<p class="exp-note">The paired t test can be realized as the GLMM above, a mixed model with a random intercept per operator. The paired test works on each operator’s difference, which removes the operator’s own level from the comparison; the random intercept does the same. The GLMM’s coefficient for the condition is the mean difference after − before, and under REML, its standard error is the paired test’s. The GLMM reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the GLMM also says how much of the variation sits between operators, which the t test never does.</p>';
   root.innerHTML += table([
     pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
     pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
@@ -11205,7 +11205,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">The tests of a first statistics course can each be realized as a generalized linear mixed model: the one-sample t test as a normal model with no predictor, the two-sample t test as one with a binary predictor, ANOVA as a normal model with a factor, the paired test and a test on repeated measures as mixed models, the chi-square test as a Poisson model of counts, and the comparison of two proportions as a logistic model. Each section names the classical test, states the GLMM that realizes it, fits that GLMM to a small bundled dataset, and sets its numbers beside the test’s; a dash marks a quantity the classical test has no counterpart for. The point is not that the GLMM is better on these data; it is that the GLMM keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
+    '<p class="lede">The tests of a first statistics course can each be realized as a generalized linear mixed model: the one-sample t test as a normal model with no predictor, the two-sample t test as one with a binary predictor, ANOVA as a normal model with a factor, the paired test and a test on repeated measures as mixed models, the chi-square test as a Poisson model of counts, and the comparison of two proportions as a logistic model. Each section names the classical test, states the GLMM that realizes it, fits that GLMM to a small bundled dataset, and sets its numbers beside the test’s; a dash marks a quantity the classical test has no counterpart for. The GLMM is no better than the test on these data, but it keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
     '<div data-subnav class="subnav"></div>' +
     sections.map(s => '<div data-section="' + s.id + '" class="sec"><div class="sec-hd">' + esc(s.label) + '</div><div id="ts-' + s.id + '"></div></div>').join('');
   for (const [sec, fn] of [['one', sectionOne], ['t', sectionT], ['anova', sectionAnova], ['paired', sectionPaired], ['repeated', sectionRepeated], ['chisq', sectionChisq], ['proportion', sectionProportion]]) {
@@ -11235,8 +11235,8 @@ export default { id, title, render, onShow, sections };
  * A model specification. `terms` lists the fixed terms: a predictor's name, a
  * polynomial `{ name, degree }`, or an interaction `{ of: [name, name] }`.
  * `group` names the grouping factor of the random intercept or is null;
- * `nested` a second group column nested in it, or null; `slope` the
- * predictor whose effect varies by group, or null; `olre` adds an
+ * `nested` a second group column nested in it or null; `slope` the
+ * predictor whose effect varies by group or null; `olre` adds an
  * observation-level random intercept (the Poisson-lognormal); `reml` applies
  * to the normal family only.
  * @typedef {{ dataset: string|null, response: string|null, family: string, link: string|null,
@@ -11352,7 +11352,7 @@ export function rename(id, name) {
 }
 
 /**
- * The dataset with this id, or null.
+ * The dataset with this id or null.
  * @param {string} id
  * @returns {Dataset|null}
  */
@@ -11372,7 +11372,7 @@ export function select(id) {
 }
 
 /**
- * The selected dataset's id, or null.
+ * The selected dataset's id or null.
  * @returns {string|null}
  */
 export function selected() { return selectedId; }
@@ -12101,7 +12101,7 @@ export function timeWeightedMean(t, v, endTime) {
 
 /**
  * Per-bin time averages of a piecewise-constant trajectory (the same holding rule as
- * timeWeightedMean). For bin [edges[b], edges[b+1]) the result is the integral of the
+ * timeWeightedMean). For bin [edges[b], edges[b+1]), the result is the integral of the
  * trajectory over the part of the bin it covers divided by the length of that part;
  * nothing before t[0] or after the end is covered.
  * @param {ArrayLike<number>} t record times, nondecreasing
@@ -12241,7 +12241,7 @@ export function termOrder(t) {
 }
 
 /**
- * The terms of a spec in R's order: by order first (main effects, then
+ * The terms of a spec in R's order: by order first (main effects and then
  * two-way interactions), and within an order as listed. Duplicates are
  * dropped.
  * @param {object} spec
@@ -12569,7 +12569,7 @@ export const FAMILIES = {
 export const FAMILY_ORDER = ['normal', 'binomial', 'poisson', 'negbin', 'gamma', 'beta', 'ordinal'];
 
 /**
- * The family with this id, or null.
+ * The family with this id or null.
  * @param {string} id
  * @returns {Family|null}
  */
@@ -12820,7 +12820,7 @@ export function fitGlm(y, X, o) {
   const aux = o.aux == null ? 1 : o.aux;
   const maxit = o.maxit || GLM_MAXIT;
   const flags = [];
-  // Starting values: R's mustart from the family, then eta from it.
+  // Starting values: R's mustart from the family and then eta from it.
   let mu = Float64Array.from(y, v => fam.initialize(v));
   let eta = Float64Array.from(mu, m => link.linkfun(m));
   let beta = o.start ? Float64Array.from(o.start) : null;
@@ -12981,7 +12981,7 @@ export function termTests(ds, spec, result) {
   const rows = [];
   terms.forEach((t, i) => {
     const vars = termVars(t);
-    // Marginality: a term is kept while a higher-order term holds all its variables.
+    // Marginality: a term is kept when a higher-order term holds all its variables.
     const needed = terms.some((u, j) => j !== i && typeof u === 'object' && u.of && vars.every(v => u.of.includes(v)) && u.of.length > vars.length);
     if (needed) return;
     const reduced = refitTerms(ds, spec, result, terms.filter((_, j) => j !== i));
@@ -13066,7 +13066,7 @@ function combos(factors, names) {
  * comparisons, as emmeans and pairs() with Tukey's correction form them:
  * each level's mean of the linear predictor over the other factors' levels
  * with equal weights and the continuous predictors at their means, carried
- * to the response scale; the differences on the link scale with their Tukey
+ * to the response scale; the differences on the link scale, with their Tukey
  * intervals and p-values, and as ratios where the link gives one.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result
@@ -13243,7 +13243,7 @@ export function waldTable(result, level) {
 // rows, the Cholesky factorization and its solves, the inverse from the
 // factor, weighted cross products, and the rank check that finds a design
 // matrix's aliased columns. Everything here is small (a design of a few
-// dozen columns) and so clarity beats speed. Pure functions, no DOM.
+// dozen columns), and so clarity beats speed. Pure functions, no DOM.
 
 /**
  * A zero matrix of `r` rows and `c` columns.
@@ -13533,7 +13533,7 @@ export function buildRandom(design, spec) {
   const nBlocks = design.groups ? design.groups.levels.length : n;
   const blocks = Array.from({ length: nBlocks }, () => ({ obs: [], cols: 0, map: [] }));
   for (let i = 0; i < n; i++) blocks[outer[i]].obs.push(i);
-  // Each block's columns: the group's q, then its nested levels, then its observations.
+  // Each block's columns: the group's q, its nested levels, and its observations, in that order.
   blocks.forEach((b, j) => {
     let col = 0;
     terms.forEach((t, ti) => {
@@ -13581,7 +13581,7 @@ function diagonalMask(random) {
 /**
  * Per-observation score and weight of the conditional log-likelihood in the
  * linear predictor: the GLM working weight and residual for the families
- * lme4 fits (expected information), and the observed information for the
+ * lme4 fits (expected information) and the observed information for the
  * beta family, as glmmTMB forms it.
  */
 function scoreWeight(family, link, y, eta, aux) {
@@ -13595,7 +13595,7 @@ function scoreWeight(family, link, y, eta, aux) {
       const a = m * aux, b = (1 - m) * aux;
       const ystar = Math.log(y[i] / (1 - y[i])), mustar = digamma(a) - digamma(b);
       const score = aux * (ystar - mustar) * me;
-      // d²μ/dη² for the logit link is μ(1−μ)(1−2μ); for the others it is taken as zero.
+      // d²μ/dη² for the logit link is μ(1−μ)(1−2μ); for the others, it is taken as zero.
       const d2 = link.id === 'logit' ? m * (1 - m) * (1 - 2 * m) : 0;
       const wi = aux * aux * (trigamma(a) + trigamma(b)) * me * me - aux * (ystar - mustar) * d2;
       w[i] = Math.max(wi, 1e-10); r[i] = score / w[i];
@@ -14175,7 +14175,7 @@ export function thetaMl(y, mu, eps = 1e-8, limit = 25) {
  */
 export function fitNegbin(y, X, o = {}) {
   const n = y.length;
-  // As glm.nb: a Poisson fit first, θ from its means, then the alternation.
+  // As glm.nb: a Poisson fit first, θ from its means, and then the alternation.
   let fit = fitGlm(y, X, { family: 'poisson', link: o.link || 'log', eps: 1e-8 });
   let th = thetaMl(y, fit.fitted);
   let theta = th.theta;
@@ -15019,7 +15019,7 @@ function chiDensityLog(s, nu) {
        - 0.5 * nu * Math.LN2 - logGamma(0.5 * nu);
 }
 // Nodes over s for integrals against the chi density, as Gauss–Legendre
-// panels in log s. On few degrees of freedom the density keeps its mass down
+// panels in log s. On few degrees of freedom, the density keeps its mass down
 // toward 0, and the integrands below rise from 0 to 1 near s = 1/q, which is
 // far below 1 when the quantile q is large; a panel in log s spans the same
 // ratio of s at every scale, and so that rise is resolved wherever it falls.
@@ -15076,7 +15076,7 @@ function rangeCdf(r, k, rn) {
 /** Studentized range CDF: P(Q ≤ q) for k means and ν error degrees of freedom. */
 export function ptukey(q, k, nu) {
   if (!(q > 0)) return 0;
-  // At infinite degrees of freedom the range's own distribution is the answer.
+  // At infinite degrees of freedom, the range's own distribution is the answer.
   if (nu === Infinity) return Math.min(1, rangeCdf(q, k, rangeNodes()));
   const nd = chiNodes(nu), rn = rangeNodes();
   let s = 0;
@@ -15215,7 +15215,7 @@ export function rinottH(n0, k, pstar) {
 // walks outward in both directions with the weights carried by recurrence, and so no
 // term is ever formed from an overflowing power or factorial.
 const PM_ITMAX = 4000;
-// Past this half-noncentrality the series cost (which grows like its square root)
+// Past this half-noncentrality, the series cost (which grows like its square root)
 // is impractical, and each function substitutes its large-noncentrality limit. A
 // power calculation stops at a noncentrality of single digits; only degenerate
 // input, such as an effect size of 1e16 from a standard deviation of 1e-16, gets here.
@@ -15319,7 +15319,7 @@ export function nctCdf(t, df, ncp) {
  * below some threshold and true from it on (a half-width that shrinks with n, or a
  * power that grows with it). The search starts at a guess, such as a normal
  * approximation, and moves by doubling steps (up while the condition fails, down
- * while it holds) until it brackets the threshold, and then bisects. That returns
+ * while it holds) until it brackets the threshold, and then it bisects. That returns
  * exactly what stepping one integer at a time would, in a logarithmic number of
  * evaluations even when the guess is far off.
  * @param {(n: number) => boolean} ok monotone condition
@@ -15376,7 +15376,7 @@ import { registerTips } from './tooltip.js';
 import { esc, intl, plural } from './format.js';
 
 // The regenerate line's writers and their capability table arrive with the
-// scripts; until then the line stays hidden. The two are looked up lazily
+// scripts; until then, the line stays hidden. The two are looked up lazily
 // so that this module does not import the script writers at load.
 let scriptsApi = null;
 /**
@@ -15395,7 +15395,7 @@ const REGEN_TIP = {
 };
 const REGEN_HELP =
   '<p>Each script holds the data this page analyzed, every choice made above, and code that recomputes every number shown here with the language’s own fitting routine. It prints the results section by section and says at the end whether every one agrees with the value on this page; setting <code>check_details</code> at the top prints each result beside the page’s value instead. It then draws the figures this view shows.</p>' +
-  '<p>A button is gray where the language has no commonly used routine for this model. The tooltip on a gray button, and the line under the buttons, say what the language lacks. R has a routine for every model this page fits, and so the R buttons are always live.</p>' +
+  '<p>A button is gray where the language has no commonly used routine for this model. The tooltip on a gray button and the line under the buttons say what the language lacks. R has a routine for every model this page fits, and so the R buttons are always live.</p>' +
   '<p>A script carries the data it analyzes, up to 200,000 numbers. Past that, the scripts read the data from the files the Data buttons beside them save, which have to sit in the script’s folder.</p>';
 
 export { stamp, dsProvenance, csvFileName, dataFileText } from '../io/datafiles.js';
@@ -15412,7 +15412,7 @@ export function datasetFiles(ds) {
 }
 
 /**
- * The start of a dataset's data file, as the file writes it: the `#` lines,
+ * The start of a dataset's data file, as the file writes it: the `#` lines and
  * then a table of the header and the first `n` rows, under a line saying
  * how many rows the whole file holds.
  * @param {object} ds
@@ -16075,7 +16075,7 @@ export function categoricalX(fig, levels) {
 // Sizing: the viewBox width is the figure's own container width, capped at
 // the designed width, and so one viewBox unit is one CSS pixel and labels
 // render at their nominal size on a phone as well as on a laptop. Below
-// 600px the height switches to the figure's narrowHeight, a taller aspect.
+// 600px, the height switches to the figure's narrowHeight, a taller aspect.
 // A figure redraws itself when its container's width changes (a resize, a
 // tab switch that reveals it), never on a height-only change.
 //
@@ -16408,8 +16408,8 @@ function targetWidth(fig, cw) { return Math.max(200, Math.min(fig.opts.width, Ma
  * @property {boolean} narrow whether the narrow layout (w < 600) is in force
  * @property {SVGGElement} inner the marks layer, translated to the plotting area
  * @property {{bg: SVGGElement, grid: SVGGElement, axes: SVGGElement, marks: SVGGElement, over: SVGGElement}} layers
- * @property {Function|null} sx current x scale, or null before one is set
- * @property {Function|null} sy current y scale, or null before one is set
+ * @property {Function|null} sx current x scale or null before one is set
+ * @property {Function|null} sy current y scale or null before one is set
  */
 
 /**
@@ -16832,7 +16832,7 @@ export function sequence(fig, ys, o = {}) {
   const c = col(o.color, '--est');
   // Observations that happened one at a time are drawn as dots because a
   // line between them would show values that never occurred; past the
-  // point cap the series falls back to the thinned line.
+  // point cap, the series falls back to the thinned line.
   if (o.marks === 'points' && ys.length <= POINT_CAP) {
     const n = ys.length, r = n > 2000 ? 1.4 : n > 300 ? 2 : 2.8;
     const g = svgEl('g', { class: 'm-seq-dots' }, fig.inner);
@@ -16906,7 +16906,7 @@ export function dotPlot(fig, values, o = {}) {
   const idx = Array.from({ length: n }, (_, i) => i).filter(i => Number.isFinite(values[i])).sort((a, b) => values[a] - values[b]);
   // Each dot takes the level nearest the center line (0, +1, −1, +2, ...)
   // whose last dot sits at least one diameter to its left. Past a few
-  // hundred values the dots stack upward from a baseline instead, which
+  // hundred values, the dots stack upward from a baseline instead, which
   // reads as a dot histogram rather than a mirrored smear.
   const sym = n <= 300;
   const lastX = new Map(), level = new Array(n).fill(0);
@@ -17066,7 +17066,7 @@ export function qqPlot(fig, q, o = {}) {
   if (!fig.sy) fig.y(extent(q.sample), { pad: 0.08, nice: true });
   ensureAxes(fig, o);
   // The line runs across the plotting area and stops at its edges: where it
-  // would leave the y range it is cut at the x where it crosses the edge.
+  // would leave the y range, it is cut at the x where it crosses the edge.
   const [d0, d1] = fig.sx.domain, [e0, e1] = fig.sy.domain;
   let xa = d0, xb = d1;
   if (q.slope !== 0) {
@@ -17092,7 +17092,7 @@ export function qqPlot(fig, q, o = {}) {
  * and the ±band reference lines dashed (2/√n by default for the caller to
  * pass, the approximate 95% band for an independent series). The stems are
  * one path and the dots another, and so several hundred lags draw as fast
- * as a few. Past 120 lags the dots are left off, as they would merge.
+ * as a few. Past 120 lags, the dots are left off, as they would merge.
  *
  * `lagStep` places lag k at k · lagStep on the x axis (a time step, for a
  * series resampled onto equal time intervals); the axis then takes ordinary
@@ -18159,7 +18159,7 @@ export function save(key, obj) {
 /**
  * Loads the value saved under `key`.
  * @param {string} key
- * @returns {*} the parsed value, or null when absent, unreadable, or not JSON
+ * @returns {*} the parsed value or null when absent, unreadable, or not JSON
  */
 export function load(key) {
   try {
@@ -18231,13 +18231,13 @@ export function validTab(name) {
 }
 
 /**
- * The id of the page currently shown, or null before initTabs runs.
+ * The id of the page currently shown or null before initTabs runs.
  * @returns {string|null}
  */
 export function currentTab() { return current; }
 
 /**
- * The id of the section open on the current page, or null when that page is
+ * The id of the section open on the current page or null when that page is
  * not divided into sections.
  * @returns {string|null}
  */
@@ -18637,7 +18637,7 @@ export function initTooltips() {
   });
 
   // Long press for a control that tap already operates: 450ms held still,
-  // cancelled by 10px of movement, and the click it would fire is swallowed.
+  // canceled by 10px of movement, and the click it would fire is swallowed.
   let timer = null, x0 = 0, y0 = 0, swallow = false;
   document.addEventListener('pointerdown', e => {
     const t = e.target.closest ? e.target.closest('[data-tip-press]') : null;

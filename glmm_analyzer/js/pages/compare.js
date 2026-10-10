@@ -99,13 +99,13 @@ function compute() {
   html += '</tbody></table></div>';
   els.table.innerHTML = html;
   const notes = [];
-  if (new Set(fitted.map(r => r.spec.dataset + '|' + r.spec.response)).size > 1) notes.push('The models do not all share one response in one dataset. AIC and BIC compare only models of the same response fitted to the same rows; across responses or datasets the numbers mean nothing against each other.');
+  if (new Set(fitted.map(r => r.spec.dataset + '|' + r.spec.response)).size > 1) notes.push('The models do not all share one response in one dataset. AIC and BIC compare only models of the same response fitted to the same rows; across responses or datasets, the numbers mean nothing against each other.');
   if (new Set(fitted.map(r => r.spec.family === 'normal' && r.result.link === 'identity' ? 'lin' : r.spec.family)).size > 1 && new Set(fitted.map(r => r.spec.dataset + '|' + r.spec.response)).size === 1) notes.push('The models use different families. AIC compares families of the same response on their full likelihoods, which these are, with one caution: a normal model of a count or a proportion is a different kind of claim about the same numbers, and a lower AIC does not make it the right kind.');
   if (state.models.some(m => m.spec.reml)) notes.push('A model kept with REML on was refitted by maximum likelihood here, as the comparisons need.');
-  if (new Set(fitted.map(r => r.result.design.X.length)).size > 1 && new Set(fitted.map(r => r.spec.dataset)).size === 1) notes.push('The models were fitted to different numbers of rows, because missing values were dropped by the columns each uses; that alone changes the log-likelihood.');
+  if (new Set(fitted.map(r => r.result.design.X.length)).size > 1 && new Set(fitted.map(r => r.spec.dataset)).size === 1) notes.push('The models were fitted to different numbers of rows because missing values were dropped by the columns each uses; that alone changes the log-likelihood.');
   for (const n of notes) els.table.appendChild(notice('warn', esc(n)));
   els.table.appendChild(details('What the criteria measure',
-    '<p>AIC is −2 log-likelihood + 2k and BIC is −2 log-likelihood + k log n, for k estimated parameters: AIC adds 2 for every parameter and BIC adds log n, and so a term stays only if it raises the log-likelihood by more than that. BIC’s addition grows with the sample, and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
+    '<p>AIC is −2 log-likelihood + 2k, and BIC is −2 log-likelihood + k log n, for k estimated parameters. AIC adds 2 for every parameter, and BIC adds log n; a term stays only if it raises the log-likelihood by more than that. BIC’s addition grows with the sample, and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
     '<p>A likelihood-ratio test asks whether the extra terms of the larger model improve the fit by more than chance would: twice the difference in log-likelihood, against a chi-square with the extra parameters as its degrees of freedom. It applies only where one model nests inside the other.</p>'));
   const pairRows = [];
   let ph = '';

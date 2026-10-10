@@ -77,7 +77,7 @@ export function termOrder(t) {
 }
 
 /**
- * The terms of a spec in R's order: by order first (main effects, then
+ * The terms of a spec in R's order: by order first (main effects and then
  * two-way interactions), and within an order as listed. Duplicates are
  * dropped.
  * @param {object} spec

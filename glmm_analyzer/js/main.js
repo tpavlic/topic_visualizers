@@ -27,7 +27,7 @@ import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
 import * as referencesPage from './pages/references.js';
 
-// A page module may export its id, title, render, and onShow by name, or as
+// A page module may export its id, title, render, and onShow by name or as
 // one default object; either shape works here. A page divided into sections
 // shown one at a time also exports `sections` ([{ id, label }]) and, if it
 // needs to know when one opens, `onShowSection(id)`.

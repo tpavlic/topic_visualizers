@@ -44,7 +44,7 @@ const SYMBOL = {
 
 /**
  * A string as 7-bit ASCII for a script: plain() first (dashes, curly quotes,
- * the minus sign, line breaks), then the symbols above to their ASCII
+ * the minus sign, line breaks) and then the symbols above to their ASCII
  * spellings, accents dropped by canonical decomposition, Greek letters to
  * their names, control characters to spaces, and anything else to "?".
  * @param {*} s
@@ -413,7 +413,7 @@ function dataBlock(recipe, L) {
 }
 
 // The data block of a CSV-mode script: the data file read from the script's
-// folder, then the same factor coding the embedded block applies, and the
+// folder, the same factor coding the embedded block applies, and the
 // computed columns MATLAB needs.
 function csvReadLines(recipe, L) {
   const c = L.comment;

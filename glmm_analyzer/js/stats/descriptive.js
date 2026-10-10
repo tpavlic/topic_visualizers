@@ -314,7 +314,7 @@ export function timeWeightedMean(t, v, endTime) {
 
 /**
  * Per-bin time averages of a piecewise-constant trajectory (the same holding rule as
- * timeWeightedMean). For bin [edges[b], edges[b+1]) the result is the integral of the
+ * timeWeightedMean). For bin [edges[b], edges[b+1]), the result is the integral of the
  * trajectory over the part of the bin it covers divided by the length of that part;
  * nothing before t[0] or after the end is covered.
  * @param {ArrayLike<number>} t record times, nondecreasing

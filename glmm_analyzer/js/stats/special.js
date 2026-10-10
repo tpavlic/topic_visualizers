@@ -304,7 +304,7 @@ function chiDensityLog(s, nu) {
        - 0.5 * nu * Math.LN2 - logGamma(0.5 * nu);
 }
 // Nodes over s for integrals against the chi density, as Gauss–Legendre
-// panels in log s. On few degrees of freedom the density keeps its mass down
+// panels in log s. On few degrees of freedom, the density keeps its mass down
 // toward 0, and the integrands below rise from 0 to 1 near s = 1/q, which is
 // far below 1 when the quantile q is large; a panel in log s spans the same
 // ratio of s at every scale, and so that rise is resolved wherever it falls.
@@ -361,7 +361,7 @@ function rangeCdf(r, k, rn) {
 /** Studentized range CDF: P(Q ≤ q) for k means and ν error degrees of freedom. */
 export function ptukey(q, k, nu) {
   if (!(q > 0)) return 0;
-  // At infinite degrees of freedom the range's own distribution is the answer.
+  // At infinite degrees of freedom, the range's own distribution is the answer.
   if (nu === Infinity) return Math.min(1, rangeCdf(q, k, rangeNodes()));
   const nd = chiNodes(nu), rn = rangeNodes();
   let s = 0;
@@ -500,7 +500,7 @@ export function rinottH(n0, k, pstar) {
 // walks outward in both directions with the weights carried by recurrence, and so no
 // term is ever formed from an overflowing power or factorial.
 const PM_ITMAX = 4000;
-// Past this half-noncentrality the series cost (which grows like its square root)
+// Past this half-noncentrality, the series cost (which grows like its square root)
 // is impractical, and each function substitutes its large-noncentrality limit. A
 // power calculation stops at a noncentrality of single digits; only degenerate
 // input, such as an effect size of 1e16 from a standard deviation of 1e-16, gets here.
@@ -604,7 +604,7 @@ export function nctCdf(t, df, ncp) {
  * below some threshold and true from it on (a half-width that shrinks with n, or a
  * power that grows with it). The search starts at a guess, such as a normal
  * approximation, and moves by doubling steps (up while the condition fails, down
- * while it holds) until it brackets the threshold, and then bisects. That returns
+ * while it holds) until it brackets the threshold, and then it bisects. That returns
  * exactly what stepping one integer at a time would, in a logarithmic number of
  * evaluations even when the guess is far off.
  * @param {(n: number) => boolean} ok monotone condition

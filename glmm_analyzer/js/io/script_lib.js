@@ -3,7 +3,7 @@
 // function that dispatches on the family and the random part to each
 // language's own routine, the accessors that read a fit's coefficients and
 // statistics in one shape, the term tests, the quantile residuals, the
-// reference-grid rows, and the Shapiro-Wilk check. The keys are LIB.R (both
+// reference-grid rows, and the Shapiro–Wilk check. The keys are LIB.R (both
 // R dialects), LIB.py, and LIB.m. Every snippet is a template literal, and so
 // none may contain a backtick or a dollar sign followed by a brace. Pure text.
 

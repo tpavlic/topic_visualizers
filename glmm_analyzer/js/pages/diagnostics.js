@@ -126,7 +126,7 @@ function compute() {
   const q = normalQQ(r);
   const qf = figBox(els.qq, { height: 300, xLabel: 'Standard normal quantiles', yLabel: 'Quantile residuals', title: 'Normal quantile plot of the quantile residuals' }, ds.name + ' residual qq');
   qf.fig.render(f => qqPlot(f, q));
-  tables.push({ name: 'Residual summary', headers: ['statistic', 'value'], rows: [['Shapiro-Wilk W', sw ? sw.W : NaN], ['Shapiro-Wilk p', sw ? sw.p : NaN], ['mean', m], ['sd', Math.sqrt(s2)]] });
+  tables.push({ name: 'Residual summary', headers: ['statistic', 'value'], rows: [['Shapiro–Wilk W', sw ? sw.W : NaN], ['Shapiro–Wilk p', sw ? sw.p : NaN], ['mean', m], ['sd', Math.sqrt(s2)]] });
 
   // Against the fitted values, and the scale–location plot.
   const fitted = Array.from(res.fitted);
@@ -191,7 +191,7 @@ function compute() {
   } else if (fit.family === 'binomial') {
     els.disp.appendChild(notice('info', 'A 0/1 response has variance p(1 − p) exactly, and so overdispersion cannot be detected from it: the Pearson χ² of a binary model has no chi-square reference, and the page makes no dispersion test. The residual plots and the model’s terms are the check here.'));
   } else if (fit.family === 'poisson') {
-    els.disp.appendChild(notice('info', 'The observation-level random effect takes up the extra spread a Poisson count shows, and shrinks the conditional residuals with it, and so there is no dispersion test here: its variance in the Random effects table is the measure of the overdispersion.'));
+    els.disp.appendChild(notice('info', 'The observation-level random effect takes up the extra spread a Poisson count shows and shrinks the conditional residuals with it, and so there is no dispersion test here: its variance in the Random effects table is the measure of the overdispersion.'));
   } else if (fam.dispersion === 'estimated') {
     els.disp.appendChild(cardRow([card('Dispersion', stat(fit.dispersion, 4), fit.mixed ? 'as lme4 estimates it: the penalized weighted residual sum of squares over n' : 'estimated by the Pearson χ² / df and used in every standard error')]));
     els.disp.appendChild(notice('info', 'The ' + esc(fam.label) + ' family estimates its dispersion rather than fixing it, and so there is no overdispersion test; the scale–location plot above says whether the spread changes with the mean.'));

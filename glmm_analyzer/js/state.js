@@ -11,8 +11,8 @@
  * A model specification. `terms` lists the fixed terms: a predictor's name, a
  * polynomial `{ name, degree }`, or an interaction `{ of: [name, name] }`.
  * `group` names the grouping factor of the random intercept or is null;
- * `nested` a second group column nested in it, or null; `slope` the
- * predictor whose effect varies by group, or null; `olre` adds an
+ * `nested` a second group column nested in it or null; `slope` the
+ * predictor whose effect varies by group or null; `olre` adds an
  * observation-level random intercept (the Poisson-lognormal); `reml` applies
  * to the normal family only.
  * @typedef {{ dataset: string|null, response: string|null, family: string, link: string|null,
@@ -128,7 +128,7 @@ export function rename(id, name) {
 }
 
 /**
- * The dataset with this id, or null.
+ * The dataset with this id or null.
  * @param {string} id
  * @returns {Dataset|null}
  */
@@ -148,7 +148,7 @@ export function select(id) {
 }
 
 /**
- * The selected dataset's id, or null.
+ * The selected dataset's id or null.
  * @returns {string|null}
  */
 export function selected() { return selectedId; }

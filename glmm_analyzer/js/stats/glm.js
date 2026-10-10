@@ -42,7 +42,7 @@ export function fitGlm(y, X, o) {
   const aux = o.aux == null ? 1 : o.aux;
   const maxit = o.maxit || GLM_MAXIT;
   const flags = [];
-  // Starting values: R's mustart from the family, then eta from it.
+  // Starting values: R's mustart from the family and then eta from it.
   let mu = Float64Array.from(y, v => fam.initialize(v));
   let eta = Float64Array.from(mu, m => link.linkfun(m));
   let beta = o.start ? Float64Array.from(o.start) : null;

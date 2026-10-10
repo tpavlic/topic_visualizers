@@ -33,7 +33,7 @@ export const listOf = (L, exprs) => (L.lang === 'R' ? 'list(' + exprs.join(', ')
 export const strsOf = (L, a) => (L.lang === 'R' ? 'c(' + a.map(L.str).join(', ') + ')' : L.lang === 'py' ? '[' + a.map(L.str).join(', ') + ']' : '{' + a.map(L.str).join(', ') + '}');
 
 /**
- * The lines of one helper call: positional arguments, then named options.
+ * The lines of one helper call: positional arguments and then named options.
  * R and Python pass the options by name; MATLAB gathers them in a struct o.
  */
 export function call(L, name, pos, opts = {}) {
@@ -74,7 +74,7 @@ function diagnosticsFigures(r, L) {
     ...call(L, 'fig_qq', ['qr', L.str('Quantile residuals'), L.str('Normal quantile plot of the quantile residuals')]),
     ...call(L, 'fig_resid', [L.lang === 'R' ? 'mu[keep]' : L.lang === 'py' ? 'mu[keep]' : 'mu(keep)', 'qr', L.str('Fitted value'), L.str('Quantile residual'), L.str('Residuals against fitted values')])
   ];
-  return { notes: ['The quantile residuals against the normal, and against the fitted values with their mean in ten bins of equal count.'], calls, fig: ['qq', 'resid'], need: [] };
+  return { notes: ['The quantile residuals against the normal and against the fitted values with their mean in ten bins of equal count.'], calls, fig: ['qq', 'resid'], need: [] };
 }
 
 function predictFigures(r, L) {

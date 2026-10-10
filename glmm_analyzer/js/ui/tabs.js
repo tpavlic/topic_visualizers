@@ -44,13 +44,13 @@ export function validTab(name) {
 }
 
 /**
- * The id of the page currently shown, or null before initTabs runs.
+ * The id of the page currently shown or null before initTabs runs.
  * @returns {string|null}
  */
 export function currentTab() { return current; }
 
 /**
- * The id of the section open on the current page, or null when that page is
+ * The id of the section open on the current page or null when that page is
  * not divided into sections.
  * @returns {string|null}
  */

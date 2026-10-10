@@ -39,7 +39,7 @@ export function buildRandom(design, spec) {
   const nBlocks = design.groups ? design.groups.levels.length : n;
   const blocks = Array.from({ length: nBlocks }, () => ({ obs: [], cols: 0, map: [] }));
   for (let i = 0; i < n; i++) blocks[outer[i]].obs.push(i);
-  // Each block's columns: the group's q, then its nested levels, then its observations.
+  // Each block's columns: the group's q, its nested levels, and its observations, in that order.
   blocks.forEach((b, j) => {
     let col = 0;
     terms.forEach((t, ti) => {
@@ -87,7 +87,7 @@ function diagonalMask(random) {
 /**
  * Per-observation score and weight of the conditional log-likelihood in the
  * linear predictor: the GLM working weight and residual for the families
- * lme4 fits (expected information), and the observed information for the
+ * lme4 fits (expected information) and the observed information for the
  * beta family, as glmmTMB forms it.
  */
 function scoreWeight(family, link, y, eta, aux) {
@@ -101,7 +101,7 @@ function scoreWeight(family, link, y, eta, aux) {
       const a = m * aux, b = (1 - m) * aux;
       const ystar = Math.log(y[i] / (1 - y[i])), mustar = digamma(a) - digamma(b);
       const score = aux * (ystar - mustar) * me;
-      // d²μ/dη² for the logit link is μ(1−μ)(1−2μ); for the others it is taken as zero.
+      // d²μ/dη² for the logit link is μ(1−μ)(1−2μ); for the others, it is taken as zero.
       const d2 = link.id === 'logit' ? m * (1 - m) * (1 - 2 * m) : 0;
       const wi = aux * aux * (trigamma(a) + trigamma(b)) * me * me - aux * (ystar - mustar) * d2;
       w[i] = Math.max(wi, 1e-10); r[i] = score / w[i];

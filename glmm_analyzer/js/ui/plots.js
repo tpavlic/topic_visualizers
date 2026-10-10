@@ -5,7 +5,7 @@
 // Sizing: the viewBox width is the figure's own container width, capped at
 // the designed width, and so one viewBox unit is one CSS pixel and labels
 // render at their nominal size on a phone as well as on a laptop. Below
-// 600px the height switches to the figure's narrowHeight, a taller aspect.
+// 600px, the height switches to the figure's narrowHeight, a taller aspect.
 // A figure redraws itself when its container's width changes (a resize, a
 // tab switch that reveals it), never on a height-only change.
 //
@@ -338,8 +338,8 @@ function targetWidth(fig, cw) { return Math.max(200, Math.min(fig.opts.width, Ma
  * @property {boolean} narrow whether the narrow layout (w < 600) is in force
  * @property {SVGGElement} inner the marks layer, translated to the plotting area
  * @property {{bg: SVGGElement, grid: SVGGElement, axes: SVGGElement, marks: SVGGElement, over: SVGGElement}} layers
- * @property {Function|null} sx current x scale, or null before one is set
- * @property {Function|null} sy current y scale, or null before one is set
+ * @property {Function|null} sx current x scale or null before one is set
+ * @property {Function|null} sy current y scale or null before one is set
  */
 
 /**
@@ -762,7 +762,7 @@ export function sequence(fig, ys, o = {}) {
   const c = col(o.color, '--est');
   // Observations that happened one at a time are drawn as dots because a
   // line between them would show values that never occurred; past the
-  // point cap the series falls back to the thinned line.
+  // point cap, the series falls back to the thinned line.
   if (o.marks === 'points' && ys.length <= POINT_CAP) {
     const n = ys.length, r = n > 2000 ? 1.4 : n > 300 ? 2 : 2.8;
     const g = svgEl('g', { class: 'm-seq-dots' }, fig.inner);
@@ -836,7 +836,7 @@ export function dotPlot(fig, values, o = {}) {
   const idx = Array.from({ length: n }, (_, i) => i).filter(i => Number.isFinite(values[i])).sort((a, b) => values[a] - values[b]);
   // Each dot takes the level nearest the center line (0, +1, −1, +2, ...)
   // whose last dot sits at least one diameter to its left. Past a few
-  // hundred values the dots stack upward from a baseline instead, which
+  // hundred values, the dots stack upward from a baseline instead, which
   // reads as a dot histogram rather than a mirrored smear.
   const sym = n <= 300;
   const lastX = new Map(), level = new Array(n).fill(0);
@@ -996,7 +996,7 @@ export function qqPlot(fig, q, o = {}) {
   if (!fig.sy) fig.y(extent(q.sample), { pad: 0.08, nice: true });
   ensureAxes(fig, o);
   // The line runs across the plotting area and stops at its edges: where it
-  // would leave the y range it is cut at the x where it crosses the edge.
+  // would leave the y range, it is cut at the x where it crosses the edge.
   const [d0, d1] = fig.sx.domain, [e0, e1] = fig.sy.domain;
   let xa = d0, xb = d1;
   if (q.slope !== 0) {
@@ -1022,7 +1022,7 @@ export function qqPlot(fig, q, o = {}) {
  * and the ±band reference lines dashed (2/√n by default for the caller to
  * pass, the approximate 95% band for an independent series). The stems are
  * one path and the dots another, and so several hundred lags draw as fast
- * as a few. Past 120 lags the dots are left off, as they would merge.
+ * as a few. Past 120 lags, the dots are left off, as they would merge.
  *
  * `lagStep` places lag k at k · lagStep on the x axis (a time step, for a
  * series resampled onto equal time intervals); the axis then takes ordinary

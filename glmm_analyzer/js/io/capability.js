@@ -1,5 +1,5 @@
 // Which languages have a commonly used routine for a model: a button in the
-// export row is live exactly where the language has one, and gray with a
+// export row is live exactly where the language has one and gray with a
 // reason otherwise. R has a routine for every model this tool fits. Pure
 // functions, no DOM.
 
@@ -31,8 +31,8 @@ export function capability(spec) {
 }
 
 /**
- * The capability for the Compare page: every candidate's languages together,
- * since one script fits them all.
+ * The capability for the Compare page: every candidate's languages together
+ * because one script fits them all.
  * @param {object[]} specs
  */
 export function capabilityAll(specs) {

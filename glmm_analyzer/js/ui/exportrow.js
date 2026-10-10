@@ -18,7 +18,7 @@ import { registerTips } from './tooltip.js';
 import { esc, intl, plural } from './format.js';
 
 // The regenerate line's writers and their capability table arrive with the
-// scripts; until then the line stays hidden. The two are looked up lazily
+// scripts; until then, the line stays hidden. The two are looked up lazily
 // so that this module does not import the script writers at load.
 let scriptsApi = null;
 /**
@@ -37,7 +37,7 @@ const REGEN_TIP = {
 };
 const REGEN_HELP =
   '<p>Each script holds the data this page analyzed, every choice made above, and code that recomputes every number shown here with the language’s own fitting routine. It prints the results section by section and says at the end whether every one agrees with the value on this page; setting <code>check_details</code> at the top prints each result beside the page’s value instead. It then draws the figures this view shows.</p>' +
-  '<p>A button is gray where the language has no commonly used routine for this model. The tooltip on a gray button, and the line under the buttons, say what the language lacks. R has a routine for every model this page fits, and so the R buttons are always live.</p>' +
+  '<p>A button is gray where the language has no commonly used routine for this model. The tooltip on a gray button and the line under the buttons say what the language lacks. R has a routine for every model this page fits, and so the R buttons are always live.</p>' +
   '<p>A script carries the data it analyzes, up to 200,000 numbers. Past that, the scripts read the data from the files the Data buttons beside them save, which have to sit in the script’s folder.</p>';
 
 export { stamp, dsProvenance, csvFileName, dataFileText } from '../io/datafiles.js';
@@ -54,7 +54,7 @@ export function datasetFiles(ds) {
 }
 
 /**
- * The start of a dataset's data file, as the file writes it: the `#` lines,
+ * The start of a dataset's data file, as the file writes it: the `#` lines and
  * then a table of the header and the first `n` rows, under a line saying
  * how many rows the whole file holds.
  * @param {object} ds

@@ -31,7 +31,7 @@ let lastFit = null;
 let timer = null;
 
 /**
- * The current fit, or null, for the other pages: `{ ds, spec, result }`
+ * The current fit for the other pages, `{ ds, spec, result }`, or null before one
  * where `result` is fitModel's output. Recomputed when the spec changes.
  */
 export function currentFit() { return lastFit; }
@@ -271,7 +271,7 @@ function drawTerms(ds, result) {
   for (const r of tt.rows) html += '<tr><td>' + esc(r.term) + '</td><td>' + intl(r.df) + '</td><td>' + stat(r.stat, 4) + '</td><td>' + pValue(r.p) + '</td><td>' + stat(r.deviance, 5) + '</td></tr>';
   html += '</tbody></table></div>';
   html += '<p class="muted-line">Each row refits the model without that term and compares the two by a likelihood-ratio test on a chi-square with the change in parameter count as its degrees of freedom. A main effect that an interaction still uses is not dropped. ' +
-    (fam.id === 'normal' ? 'For the normal family the statistic is n times the log of the deviance ratio, with σ² profiled out.' : tt.scaled ? 'The deviance change is divided by the full model’s dispersion.' : '') + '</p>';
+    (fam.id === 'normal' ? 'For the normal family, the statistic is n times the log of the deviance ratio, with σ² profiled out.' : tt.scaled ? 'The deviance change is divided by the full model’s dispersion.' : '') + '</p>';
   els.terms.innerHTML = html;
   return tt;
 }

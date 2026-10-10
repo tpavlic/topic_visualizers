@@ -39,7 +39,7 @@ export function render(root) {
     '</div></div>' +
     '<div class="sec"><div class="sec-hd">The response</div><div id="ex-resp"></div></div>' +
     '<div class="sec"><div class="sec-hd">Descriptives</div><div id="ex-desc"></div></div>' +
-    '<div class="sec"><div class="sec-hd">Against each predictor</div><p class="exp-note">A continuous predictor gives a scatter with the mean of the response in ten bins of equal count; a categorical one gives a box per level, or the proportion per level for a binary response.</p><div id="ex-plots"></div></div>';
+    '<div class="sec"><div class="sec-hd">Against each predictor</div><p class="exp-note">A continuous predictor gives a scatter with the mean of the response in ten bins of equal count; a categorical one gives a box per level or, for a binary response, the proportion per level.</p><div id="ex-plots"></div></div>';
   els = { ds: root.querySelector('#ex-ds'), by: root.querySelector('#ex-by'), resp: root.querySelector('#ex-resp'), desc: root.querySelector('#ex-desc'), plots: root.querySelector('#ex-plots') };
   dsSel = datasetSelect(els.ds, { remember: { page: id, key: 'dataset' } });
   els.ds.addEventListener('change', () => { fillBy(); compute(); });
@@ -195,7 +195,7 @@ const x_ = v => typeof v === 'number' && Number.isFinite(v);
 function familyAdvice(sup) {
   return {
     binary: 'The binomial family with a logit link is the usual choice; the normal family would model the 0 or 1 directly, which can predict outside the interval.',
-    count: 'Start with the Poisson family; if the Pearson χ² / df on the Model page sits well above 1, the counts are overdispersed and the negative binomial family (or a Poisson-lognormal) fits them.',
+    count: 'Start with the Poisson family; if the Pearson χ² / df on the Model page sits well above 1, the counts are overdispersed, and the negative binomial family (or a Poisson-lognormal) fits them.',
     unit: 'The beta family with a logit link models a proportion that is a measurement rather than a count of successes; the normal family can serve when the values stay well inside the interval.',
     positive: 'The gamma family with a log link models a positive, right-skewed response whose spread grows with its mean; the normal family with a log link keeps the spread constant instead.',
     real: 'The normal family with an identity link is the linear model.',

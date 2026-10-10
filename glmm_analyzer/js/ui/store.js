@@ -45,7 +45,7 @@ export function save(key, obj) {
 /**
  * Loads the value saved under `key`.
  * @param {string} key
- * @returns {*} the parsed value, or null when absent, unreadable, or not JSON
+ * @returns {*} the parsed value or null when absent, unreadable, or not JSON
  */
 export function load(key) {
   try {

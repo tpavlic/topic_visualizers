@@ -14,7 +14,7 @@ import { makeDataset } from '../data/model.js';
 
 const NUMBER_RE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 
-// A cell's number, or null when the cell is not a plain finite decimal. NaN,
+// A cell's number or null when the cell is not a plain finite decimal. NaN,
 // Inf, and -Inf are therefore non-numeric.
 function cellNumber(s) {
   return NUMBER_RE.test(s) ? Number(s) : null;
@@ -49,7 +49,7 @@ export function delimiterOf(line) {
 
 /**
  * Split one line into cells on the delimiter given, or on the one
- * `delimiterOf` finds. Cells are trimmed and an empty cell is kept, as a
+ * `delimiterOf` finds. Cells are trimmed, and an empty cell is kept, as a
  * table's missing value, except under the space delimiter, where runs of
  * spaces are one delimiter and an empty cell cannot be expressed. A
  * double-quoted cell is kept whole, delimiters included, with its quotes

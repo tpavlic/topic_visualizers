@@ -4,7 +4,7 @@
 // no toolbox, and nothing newer than R2021a. Each helper takes its required
 // arguments in order and then one optional struct o of options, read with
 // fig_opt, and draws one new figure. Pure text; the script writer chooses
-// which snippets to include, and always includes common with any of them.
+// which snippets to include and always includes common with any of them.
 //
 // The snippets are template literals, and so none of them may contain a
 // backtick or a dollar sign followed by a brace. In a MATLAB char vector a

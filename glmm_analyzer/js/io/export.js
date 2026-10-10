@@ -28,7 +28,7 @@ export function toCsv(rows) {
 
 /**
  * Provenance as `# key: value` lines, in the object's key order. Undefined
- * values are skipped and line breaks inside a value become spaces, and so every
+ * values are skipped. Line breaks inside a value become spaces, and so every
  * line stays a comment.
  * @param {Record<string, unknown>|null} [fields]
  * @returns {string[]}
@@ -87,7 +87,7 @@ export function slug(s) {
 }
 
 /**
- * A dataset's table as CSV: the header, then one row per observation, with
+ * A dataset's table as CSV: the header and then one row per observation, with
  * a missing value as an empty field. Every column is written, whatever its
  * role, so that the file reads back in as it was loaded; the `#` lines say
  * which column is the response and which the group.
@@ -116,7 +116,7 @@ export function tableCsv(headers, rows, provenance) {
  * The start of a CSV file this module wrote, for a preview: its `#` lines
  * without the mark, its header's fields, the fields of its first `n` records,
  * and how many records follow those. Fields are read by RFC 4180, and so a
- * quoted field keeps its commas and line breaks and an empty field stays.
+ * quoted field keeps its commas and line breaks, and an empty field stays.
  * @param {string} text
  * @param {number} [n]
  * @returns {{notes: string[], header: string[], rows: string[][], more: number}}
