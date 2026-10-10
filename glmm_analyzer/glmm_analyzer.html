@@ -248,6 +248,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .ctrl-pair { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; max-width: 100%; }
 /* The display rule above would otherwise beat the hidden attribute. */
 .ctrl-pair[hidden] { display: none; }
+.ctrl-chk[hidden] { display: none; }
 .ctrl-note { font-size: .74rem; color: var(--muted); }
 .ref-list { margin: 4px 0 0; padding-left: 20px; font-size: .86rem; line-height: 1.55; }
 .ref-list li + li { margin-top: 7px; }
@@ -455,15 +456,22 @@ svg.fig .cut-hit:focus-visible { outline: none; }
 .fig-box { margin: 10px 0 4px; }
 .fig-box + .fig-box { margin-top: 18px; }
 /* The formula builder: each fixed term as a chip with its remove button, and the formula line. */
-.fb-terms { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; min-height: 28px; }
-.fb-term { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 4px 2px 10px; border: 1.5px solid var(--border); border-radius: 999px;
-           font-family: 'IBM Plex Mono', monospace; font-size: .8rem; background: var(--card); }
-.fb-term-x { min-width: 24px; min-height: 24px; border: none; background: transparent; color: var(--muted); font-size: 1rem; line-height: 1; cursor: pointer; border-radius: 50%; }
-.fb-term-x:hover { color: var(--accent); background: var(--accent-wash); }
+/* The model line: the response, the fixed terms as chips a click removes,
+   and the random part, set off from the controls that write it. */
+.fb-model { margin: 0 0 12px; padding: 10px 13px 9px; border: 1.5px solid var(--border); border-left: 4px solid var(--accent); border-radius: 7px; background: var(--card); }
+.fb-model-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 7px; font-family: 'IBM Plex Mono', monospace; font-size: .95rem; min-height: 28px; }
+.fb-model-resp, .fb-model-one, .fb-model-rand { font-weight: 500; }
+.fb-model-op { color: var(--muted); }
+.fb-model-fam { font-size: .82rem; color: var(--muted); margin-top: 5px; font-family: 'Outfit', sans-serif; }
+.fb-model .ctrl-note { display: block; margin-top: 5px; }
+.fb-term { display: inline-flex; align-items: center; gap: 2px; min-height: 26px; padding: 1px 3px 1px 9px; border: 1.5px solid var(--accent); border-radius: 999px;
+           background: var(--accent-tint); color: var(--accent-dark); font-size: .88rem; }
+.fb-term-x { min-width: 24px; min-height: 24px; border: none; background: transparent; color: var(--accent); font-size: 1rem; line-height: 1; cursor: pointer; border-radius: 50%; }
+.fb-term-x:hover { color: #fff; background: var(--accent); }
 .fb-term-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fb-add .ctrl-pair { gap: 6px; }
-.fb-formula { font-size: .9rem; margin: 4px 0 0; overflow-wrap: anywhere; }
-.fb-formula code { font-family: 'IBM Plex Mono', monospace; font-size: .86rem; background: var(--chart-bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
+.fb-add select:disabled, .ctrl-chk input:disabled { cursor: not-allowed; }
+.ctrl-chk input:disabled + .tip { color: var(--muted); }
 /* Links: accent color, underline on hover only. */
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -15809,6 +15817,12 @@ function opt(value, label, selected, disabled, tip) {
  * @param {{ page: string }} opts the page id, for the dataset picker's memory
  * @returns {{ refresh: () => void }}
  */
+const PRED_TIP = 'A main effect: a slope for a continuous predictor, or a coefficient per level for a categorical one.';
+const POW_TIP = 'A polynomial term in a continuous predictor, of the degree given: a curve rather than a line.';
+const IA_TIP = 'The product of two predictors, which lets the effect of one depend on the other. Its main effects join the model with it.';
+const OLRE_TIP = 'An observation-level random intercept: each row gets its own normal deviation on the log scale, which turns the Poisson into a Poisson-lognormal and absorbs overdispersion.';
+const OLRE_OFF_TIP = 'Not for this family: the negative binomial already carries its own overdispersion parameter, θ, and an observation-level effect would compete with it for the same spread. Choose the Poisson family to use it.';
+
 export function formulaBuilder(container, opts) {
   container.innerHTML =
     '<div class="ctrl-row">' +
@@ -15821,12 +15835,13 @@ export function formulaBuilder(container, opts) {
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-link"><span class="tip" tabindex="0" data-tip="The function that connects the mean to the linear predictor. Each family\'s canonical or customary link is the default.">Link</span></label><select id="fb-link"></select></span>' +
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-level">Confidence</label><select id="fb-level"></select></span>' +
     '</div>' +
-    '<div class="ctrl-grp-lbl">Fixed terms</div>' +
-    '<div class="fb-terms" id="fb-terms"></div>' +
+    '<div class="ctrl-grp-lbl">Model</div>' +
+    '<div class="fb-model" id="fb-model" aria-live="polite"></div>' +
+    '<div class="ctrl-grp-lbl">Add to the model</div>' +
     '<div class="ctrl-row fb-add">' +
-      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-pred">Predictor</label><select id="fb-add-pred"></select><button type="button" class="btn-clear" id="fb-add-pred-btn">Add</button></span>' +
-      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-pow">Power of</label><select id="fb-add-pow"></select><input type="text" id="fb-add-deg" class="par-inp" value="2" aria-label="Degree" style="width:56px"><button type="button" class="btn-clear" id="fb-add-pow-btn">Add</button></span>' +
-      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-ia">Interaction</label><select id="fb-add-ia"></select><span class="ctrl-note">×</span><select id="fb-add-ib" aria-label="Second factor of the interaction"></select><button type="button" class="btn-clear" id="fb-add-ia-btn">Add</button></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-pred"><span class="tip" tabindex="0" id="fb-add-pred-tip" data-tip="">Predictor</span></label><select id="fb-add-pred"></select><button type="button" class="btn-clear" id="fb-add-pred-btn">Add</button></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-pow"><span class="tip" tabindex="0" id="fb-add-pow-tip" data-tip="">Power of</span></label><select id="fb-add-pow"></select><input type="text" id="fb-add-deg" class="par-inp" value="2" aria-label="Degree" style="width:56px"><button type="button" class="btn-clear" id="fb-add-pow-btn">Add</button></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="fb-add-ia"><span class="tip" tabindex="0" id="fb-add-ia-tip" data-tip="">Interaction</span></label><select id="fb-add-ia"></select><span class="ctrl-note">×</span><select id="fb-add-ib" aria-label="Second factor of the interaction"></select><button type="button" class="btn-clear" id="fb-add-ia-btn">Add</button></span>' +
     '</div>' +
     '<div class="ctrl-grp-lbl">Random effects</div>' +
     '<div class="ctrl-row">' +
@@ -15835,14 +15850,13 @@ export function formulaBuilder(container, opts) {
       '<span class="ctrl-pair" id="fb-nested-pair"><label class="ctrl-lbl" for="fb-nested"><span class="tip" tabindex="0" data-tip="A second grouping factor nested inside the first, such as a nest within a colony.">Nested in it</span></label><select id="fb-nested"></select></span>' +
       '<label class="ctrl-chk" id="fb-olre-lbl"><input type="checkbox" id="fb-olre"> <span class="tip" tabindex="0" data-tip="An observation-level random intercept: each row gets its own normal deviation on the log scale, which turns the Poisson into a Poisson-lognormal and absorbs overdispersion.">Poisson-lognormal</span></label>' +
       '<label class="ctrl-chk" id="fb-reml-lbl"><input type="checkbox" id="fb-reml"> <span class="tip" tabindex="0" data-tip="Restricted maximum likelihood for the normal family\'s mixed model, as lmer uses by default. Off, the fit is by maximum likelihood, which the AIC comparisons need.">REML</span></label>' +
-    '</div>' +
-    '<p class="fb-formula" id="fb-formula" aria-live="polite"></p>';
+    '</div>';
 
   const q = s => container.querySelector(s);
   const el = { ds: q('#fb-ds'), resp: q('#fb-resp'), support: q('#fb-support'), family: q('#fb-family'), link: q('#fb-link'), level: q('#fb-level'),
-    terms: q('#fb-terms'), addPred: q('#fb-add-pred'), addPredBtn: q('#fb-add-pred-btn'), addPow: q('#fb-add-pow'), addDeg: q('#fb-add-deg'), addPowBtn: q('#fb-add-pow-btn'),
+    model: q('#fb-model'), addPredTip: q('#fb-add-pred-tip'), addPowTip: q('#fb-add-pow-tip'), addIaTip: q('#fb-add-ia-tip'), olreTip: q('#fb-olre-lbl .tip'), addPred: q('#fb-add-pred'), addPredBtn: q('#fb-add-pred-btn'), addPow: q('#fb-add-pow'), addDeg: q('#fb-add-deg'), addPowBtn: q('#fb-add-pow-btn'),
     addIa: q('#fb-add-ia'), addIb: q('#fb-add-ib'), addIaBtn: q('#fb-add-ia-btn'), group: q('#fb-group'), slope: q('#fb-slope'), nested: q('#fb-nested'),
-    olre: q('#fb-olre'), reml: q('#fb-reml'), formula: q('#fb-formula') };
+    olre: q('#fb-olre'), reml: q('#fb-reml') };
   levelSelect(el.level);
   const deg = spinner(el.addDeg, { min: 2, max: 6, step: 1 });
 
@@ -15879,7 +15893,8 @@ export function formulaBuilder(container, opts) {
   el.nested.addEventListener('change', () => state.setSpec({ nested: el.nested.value || null }));
   el.olre.addEventListener('change', () => state.setSpec({ olre: el.olre.checked }));
   el.reml.addEventListener('change', () => state.setSpec({ reml: el.reml.checked }));
-  el.terms.addEventListener('click', ev => {
+  el.addIa.addEventListener('change', refresh);
+  el.model.addEventListener('click', ev => {
     const b = ev.target.closest('button[data-term]');
     if (!b) return;
     const k = Number(b.getAttribute('data-term'));
@@ -15916,25 +15931,44 @@ export function formulaBuilder(container, opts) {
       const fam = FAMILIES[s.family] || FAMILIES.normal;
       const link = linkOf(s.family, s.link);
       el.link.innerHTML = fam.links.map(id => opt(id, LINKS[id].label, id === link.id)).join('');
-      // Terms.
+      // The model line: the response, each fixed term as a removable chip,
+      // and the random part as the selects below write it.
       const terms = orderedTerms(s);
-      el.terms.innerHTML = terms.length
-        ? terms.map((t, i) => '<span class="fb-term">' + esc(termLabel(t)) + '<button type="button" class="fb-term-x" data-term="' + i + '" aria-label="Remove ' + esc(termLabel(t)) + '">×</button></span>').join('')
-        : '<span class="muted-line">No terms: the model has only an intercept.</span>';
-      const missing = missingMainEffects(s);
-      if (missing.length) el.terms.insertAdjacentHTML('beforeend', '<span class="ctrl-note">An interaction needs its main effects: ' + esc(missing.join(', ')) + '.</span>');
-      // Any column but the response and the ignored ones can be a term, a
-      // response column included once another is the response.
+      if (ds && s.response) {
+        const base = formulaOf(Object.assign({}, s, { terms: [] }));
+        const random = base.startsWith(s.response + ' ~ 1') ? base.slice((s.response + ' ~ 1').length) : '';
+        const chips = terms.map((t, i) => '<span class="fb-term">' + esc(termLabel(t)) + '<button type="button" class="fb-term-x" data-term="' + i + '" aria-label="Remove ' + esc(termLabel(t)) + '">×</button></span>');
+        el.model.innerHTML = '<div class="fb-model-line"><span class="fb-model-resp">' + esc(s.response) + '</span><span class="fb-model-op">~</span>' +
+          (chips.length ? chips.join('<span class="fb-model-op">+</span>') : '<span class="fb-model-one">1</span>') +
+          (random ? '<span class="fb-model-rand">' + esc(random) + '</span>' : '') + '</div>' +
+          '<div class="fb-model-fam">' + esc(fam.label + ' family, ' + link.label + ' link') + '</div>';
+        const missing = missingMainEffects(s);
+        if (missing.length) el.model.insertAdjacentHTML('beforeend', '<div class="ctrl-note">An interaction needs its main effects: ' + esc(missing.join(', ')) + '.</div>');
+      } else {
+        el.model.innerHTML = '<span class="muted-line">Choose a dataset and a response.</span>';
+      }
+      // The adders: each is grayed, with its tooltip saying why, once the
+      // dataset has nothing left for it to add.
       const preds = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'group' && c.name !== s.response) : [];
       const cont = preds.filter(c => c.type === 'continuous');
       const have = new Set(terms.map(termLabel));
-      el.addPred.innerHTML = preds.filter(c => !have.has(c.name)).map(c => opt(c.name, c.name)).join('') || opt('', 'none left', true);
-      el.addPredBtn.disabled = !el.addPred.value;
-      el.addPow.innerHTML = cont.map(c => opt(c.name, c.name)).join('') || opt('', 'no continuous predictor', true);
-      el.addPowBtn.disabled = !el.addPow.value;
-      el.addIa.innerHTML = preds.map(c => opt(c.name, c.name)).join('') || opt('', 'none', true);
-      el.addIb.innerHTML = preds.map((c, i) => opt(c.name, c.name, i === 1)).join('') || opt('', 'none', true);
-      el.addIaBtn.disabled = preds.length < 2;
+      const left = preds.filter(c => !have.has(c.name));
+      el.addPred.innerHTML = left.map(c => opt(c.name, c.name)).join('') || opt('', ds ? 'all in the model' : 'none', true);
+      el.addPred.disabled = el.addPredBtn.disabled = !left.length;
+      el.addPredTip.setAttribute('data-tip', PRED_TIP + (ds && !left.length ? ' Every predictor is in the model.' : ''));
+      el.addPow.innerHTML = cont.map(c => opt(c.name, c.name)).join('') || opt('', 'none', true);
+      el.addPow.disabled = el.addDeg.disabled = el.addPowBtn.disabled = !cont.length;
+      el.addPowTip.setAttribute('data-tip', POW_TIP + (ds && !cont.length ? ' The dataset has no continuous predictor.' : ''));
+      const pairKey = (a, b) => [a, b].sort().join('\u0000');
+      const paired = new Set(terms.filter(t => typeof t === 'object' && t.of).map(t => pairKey(t.of[0], t.of[1])));
+      const partners = a => preds.filter(c => c.name !== a && !paired.has(pairKey(a, c.name)));
+      const firsts = preds.filter(c => partners(c.name).length);
+      const keepA = el.addIa.value;
+      el.addIa.innerHTML = firsts.map(c => opt(c.name, c.name, c.name === keepA)).join('') || opt('', 'none', true);
+      const seconds = el.addIa.value ? partners(el.addIa.value) : [];
+      el.addIb.innerHTML = seconds.map(c => opt(c.name, c.name)).join('') || opt('', 'none', true);
+      el.addIa.disabled = el.addIb.disabled = el.addIaBtn.disabled = !firsts.length;
+      el.addIaTip.setAttribute('data-tip', IA_TIP + (!ds ? '' : preds.length < 2 ? ' An interaction needs two predictors.' : !firsts.length ? ' Every pair of predictors is in the model.' : ''));
       // Random part.
       const groups = ds ? ds.columns.filter(c => c.role === 'group') : [];
       el.group.innerHTML = opt('', 'none', !s.group) + groups.map(c => opt(c.name, c.name, c.name === s.group)).join('');
@@ -15943,13 +15977,14 @@ export function formulaBuilder(container, opts) {
       q('#fb-nested-pair').hidden = !s.group || groups.length < 2;
       el.slope.innerHTML = opt('', 'none', !s.slope) + cont.filter(c => have.has(c.name)).map(c => opt(c.name, c.name, c.name === s.slope)).join('');
       el.nested.innerHTML = opt('', 'none', !s.nested) + groups.filter(c => c.name !== s.group).map(c => opt(c.name, c.name, c.name === s.nested)).join('');
-      q('#fb-olre-lbl').hidden = s.family !== 'poisson';
+      // The observation-level effect is shown for the two count families: live
+      // for the Poisson, and grayed with the reason for the negative binomial.
+      q('#fb-olre-lbl').hidden = !(s.family === 'poisson' || s.family === 'negbin');
+      el.olre.disabled = s.family === 'negbin';
       el.olre.checked = !!s.olre;
+      el.olreTip.setAttribute('data-tip', s.family === 'negbin' ? OLRE_OFF_TIP : OLRE_TIP);
       q('#fb-reml-lbl').hidden = !(s.family === 'normal' && (s.group || s.olre));
       el.reml.checked = !!s.reml;
-      el.formula.innerHTML = ds && s.response
-        ? '<code>' + esc(formulaOf(s)) + '</code> <span class="ctrl-note">' + esc(fam.label + ' family, ' + link.label + ' link') + '</span>'
-        : '<span class="muted-line">Choose a dataset and a response.</span>';
       registerTips(container);
     } finally { syncing = false; }
   }
