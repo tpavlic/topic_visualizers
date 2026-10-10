@@ -81,10 +81,12 @@ function pair(label, classical, model, note) {
   return '<tr><td>' + label + '</td><td>' + classical + '</td><td>' + model + '</td><td class="muted-line">' + (note || '') + '</td></tr>';
 }
 // One quantity over several rows, as a small contingency table: the label
-// and the note span the rows, and each row carries its own name.
+// and the note span the rows, and each row carries its own name. A
+// continuation row's first cell is a value, not a label, and so stays
+// right-aligned (tm-cont).
 function pairSpan(label, rows, note) {
   return rows.map(([name, classical, model], i) =>
-    '<tr>' + (i === 0 ? '<td rowspan="' + rows.length + '">' + label + '</td>' : '') +
+    '<tr' + (i === 0 ? '' : ' class="tm-cont"') + '>' + (i === 0 ? '<td rowspan="' + rows.length + '">' + label + '</td>' : '') +
     '<td>' + name + ': ' + classical + '</td><td>' + name + ': ' + model + '</td>' +
     (i === 0 ? '<td rowspan="' + rows.length + '" class="muted-line">' + (note || '') + '</td>' : '') + '</tr>').join('');
 }
