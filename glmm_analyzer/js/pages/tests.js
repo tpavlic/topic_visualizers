@@ -237,7 +237,8 @@ function sectionChisq(root) {
   second.innerHTML = modelOnly(spec, 'Saturated model') + '<p class="exp-note">In a GLMM, the test of a term compares the model with the term to the model without it, and the chi-square test of independence is such a test: it asks whether the outcome’s distribution depends on the channel, which is the outcome-by-channel interaction. The GLMM above is the model with the interaction, and the independence model is the model without it. The Model page’s likelihood-ratio test of the interaction refits the GLMM without it and reports the fit given up, which is the independence model’s deviance, and so the term test is the likelihood-ratio chi-square test of independence, number for number. The model with the interaction has as many coefficients as the table has cells, which is why it fits the six counts exactly, why its deviance is 0, and why such a model is called saturated. Nothing in the term test depends on the data being a 3 × 2 table: with a third factor or a covariate in the GLMM, the same test of the interaction still answers the question, where the chi-square test has no form to take.</p>';
   second.innerHTML += table([
     pair('Deviance', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'the table is fitted exactly'),
-    pair('Likelihood-ratio test of outcome:channel', stat(cs.G2, 5) + ' on ' + intl(cs.df) + ' df, ' + pEq(cs.pG), stat(ia.stat, 5) + ' on ' + intl(ia.df) + ' df, ' + pEq(ia.p), 'the Model page’s term test')
+    pair('Degrees of freedom', intl(cs.df), intl(ia.df), 'coefficients the interaction adds'),
+    pair('Likelihood-ratio test of outcome:channel', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(ia.stat, 5) + ', ' + pEq(ia.p), 'the Model page’s term test')
   ]);
   root.appendChild(second);
   root.appendChild(loadButton('chisq', spec, 'Open this dataset and the saturated model on the Model page'));
