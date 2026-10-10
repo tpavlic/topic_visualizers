@@ -519,9 +519,16 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
      `reltol = 1e-14`, the mixed models against `lme4` (`glmer` at `nAGQ = 1`, `lmer` by ML and
      REML, `glmer.nb`) and `glmmTMB` for the beta mixed model, the marginal means and Tukey pairs
      against `emmeans`, and the classical tests against R's own. A mixed fit's deviance must come
-     out at or below lme4's; its fixed-effect standard errors are the β block of twice the inverse
-     of the numerical Hessian of the deviance over the variance parameters and β together, as
-     lme4 forms them, with the negative binomial's θ held fixed.
+     out at or below lme4's. A generalized mixed fit's fixed-effect standard errors are the β
+     block of twice the inverse of the numerical Hessian of the deviance over the variance
+     parameters and β together, as lme4 forms them, with the negative binomial's θ held fixed;
+     the normal mixed fit's are the profiled form σ²(X′V⁻¹X)⁻¹, as lmer's. A gamma mixed fit
+     follows lme4's conventions too: its Laplace deviance carries the family's profiled
+     dispersion and adds 2 for it, the dispersion counts as a parameter, and the dispersion
+     reported (and used by the quantile residuals) is the penalized weighted residual sum of
+     squares over n, which `sigma()` gives in R and the MATLAB script forms by hand. The Pearson
+     dispersion test is made only for a Poisson model without an observation-level effect: a
+     0/1 response cannot show overdispersion, and the page says so instead.
   4. The residuals are Dunn–Smyth randomized quantile residuals, randomized within each discrete
      outcome's probability from a fixed seed (`RESIDUAL_SEED` in `js/stats/residuals.js`,
      mulberry32), so that the page shows the same residuals on every visit and the scripts carry

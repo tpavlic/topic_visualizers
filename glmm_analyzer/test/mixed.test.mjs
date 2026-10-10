@@ -1,8 +1,8 @@
 // Tests for js/stats/mixed.js against reference/mixed.R: lme4's Laplace
 // fits (glmer at nAGQ = 1, lmer by ML and REML), the nested and
 // observation-level cases, glmer.nb, and glmmTMB's beta mixed model. The
-// optimizers land slightly apart, and so the tolerances are the spec's:
-// 1e-5 on the deviance, 1e-4 on the fixed effects, 1e-3 on the variance
+// optimizers land slightly apart, and so the tolerances are loose where that
+// shows: 1e-5 on the deviance, 1e-4 on the fixed effects, 1e-3 on the variance
 // components, and a variance under 1e-4 compared absolutely.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,9 +23,10 @@ const ds = makeDataset({
     { name: 'g', role: 'group', type: 'categorical' }, { name: 'h', role: 'group', type: 'categorical' },
     { name: 'x', role: 'predictor', type: 'continuous' }, { name: 'f', role: 'predictor', type: 'categorical' },
     { name: 'ycount', role: 'response', type: 'continuous' }, { name: 'ybin', role: 'ignored', type: 'continuous' }, { name: 'ynorm', role: 'ignored', type: 'continuous' },
-    { name: 'yover', role: 'ignored', type: 'continuous' }, { name: 'ynb', role: 'ignored', type: 'continuous' }, { name: 'ybeta', role: 'ignored', type: 'continuous' }
+    { name: 'yover', role: 'ignored', type: 'continuous' }, { name: 'ynb', role: 'ignored', type: 'continuous' }, { name: 'ybeta', role: 'ignored', type: 'continuous' },
+    { name: 'ygam', role: 'ignored', type: 'continuous' }
   ],
-  rows: D.x.map((_, i) => [D.g[i], D.h[i], D.x[i], D.f[i], D.ycount[i], D.ybin[i], D.ynorm[i], D.yover[i], D.ynb[i], D.ybeta[i]])
+  rows: D.x.map((_, i) => [D.g[i], D.h[i], D.x[i], D.f[i], D.ycount[i], D.ybin[i], D.ynorm[i], D.yover[i], D.ynb[i], D.ybeta[i], D.ygam[i]])
 });
 const spec = (response, family, terms, extra) => Object.assign({ dataset: ds.id, response, family, link: null, terms, group: 'g', nested: null, slope: null, olre: false, reml: false }, extra);
 
@@ -134,4 +135,10 @@ test('glmmTMB, beta with a random intercept', () => {
   close(fit.logLik, ref.tmb.loglik, 1e-4, 'logLik');
   close(fit.phi, ref.tmb.phi, 5e-3, 'phi');
   close(fit.varcomp[0].variances[0], ref.tmb.var_g, 5e-3, 'group variance');
+});
+
+test('gamma random intercept matches glmer with Gamma(link = "log"), its parameter count, and its dispersion', () => {
+  const result = fitModel(ds, spec('ygam', 'gamma', ['x']));
+  checkFit(ref.gam, result);
+  close(result.fit.dispersion, ref.gam.sigma2, 2e-3, 'dispersion');
 });

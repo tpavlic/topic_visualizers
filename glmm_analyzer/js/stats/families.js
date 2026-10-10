@@ -201,3 +201,17 @@ export function quantileResiduals(familyId, y, mu, aux, u) {
   }
   return r;
 }
+
+/**
+ * The word for a coefficient carried through the exponential: an odds ratio
+ * under the logit, a rate ratio for a count family under the log, and a ratio
+ * of means for any other family under the log; null where the link gives none.
+ * @param {string} family
+ * @param {Link} link
+ * @returns {string|null}
+ */
+export function backWord(family, link) {
+  if (!link.backName) return null;
+  if (link.backName === 'ratio') return family === 'poisson' || family === 'negbin' ? 'rate ratio' : 'ratio of means';
+  return link.backWord;
+}

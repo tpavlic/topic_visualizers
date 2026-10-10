@@ -5,6 +5,7 @@
 import * as state from './state.js';
 import { initTabs, setAvailable, currentTab, showTab } from './ui/tabs.js';
 import { initTooltips, registerTips } from './ui/tooltip.js';
+import { installScrollHints } from './ui/scrollhint.js';
 import { redrawVisible } from './ui/plots.js';
 import { available as storeAvailable } from './ui/store.js';
 import { initSession } from './ui/session.js';
@@ -95,6 +96,7 @@ function boot() {
 
   initTooltips();
   registerTips(document.body);
+  installScrollHints(document.body);
 
   renderDataStrip();
   state.on('datasets', renderDataStrip);

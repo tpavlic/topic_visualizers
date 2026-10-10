@@ -265,25 +265,42 @@ export function binnedMeans(x, y, bins = 10) {
 }
 
 /**
+ * The p-value of a likelihood-ratio statistic for k variance parameters
+ * tested at the edge of their range (Self and Liang; Stram and Lee): half
+ * the chi-square tail on one degree of freedom for a single variance; the
+ * 1/4 : 1/2 : 1/4 mixture of the tails on 0, 1, and 2 for two independent
+ * variances (a nested factor or an observation-level effect beside the
+ * group); and, where a random slope brings its covariance in, the plain
+ * chi-square tail on k, which is conservative, as that case has no simple
+ * mixture.
+ * @param {number} stat
+ * @param {number} k
+ * @param {boolean} withSlope
+ * @returns {{ p: number, null: 'half'|'quarter'|'chisq' }}
+ */
+export function boundaryP(stat, k, withSlope) {
+  const upper = (x, d) => (d <= 0 ? (x > 0 ? 0 : 1) : 1 - chi2Cdf(x, d));
+  if (k === 1) return { p: 0.5 * upper(stat, 0) + 0.5 * upper(stat, 1), null: 'half' };
+  if (k === 2 && !withSlope) return { p: 0.25 * upper(stat, 0) + 0.5 * upper(stat, 1) + 0.25 * upper(stat, 2), null: 'quarter' };
+  return { p: upper(stat, k), null: 'chisq' };
+}
+
+/**
  * The likelihood-ratio test of the random part: the mixed model (refitted
  * by maximum likelihood when it was fitted by REML) against the same fixed
- * part without random effects. The null puts the variances at the edge of
- * their range, and so the p-value is the 50:50 mixture of chi-squares with
- * k − 1 and k degrees of freedom for k variance parameters (a half of the
- * chi-square on one for a single variance).
+ * part without random effects, with the p-value from `boundaryP`.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} spec
  * @param {object} result
- * @returns {{ stat: number, k: number, p: number, llMixed: number, llFixed: number }}
+ * @returns {{ stat: number, k: number, p: number, null: string, llMixed: number, llFixed: number }}
  */
 export function randomEffectTest(ds, spec, result) {
   const mixed = result.fit.reml ? result.refit(ds, Object.assign({}, spec, { reml: false })).fit : result.fit;
   const fixed = result.refit(ds, Object.assign({}, spec, { group: null, nested: null, slope: null, olre: false, reml: false })).fit;
   const stat = Math.max(0, 2 * (mixed.logLik - fixed.logLik));
   const k = mixed.df - fixed.df;
-  const upper = (x, d) => (d <= 0 ? (x > 0 ? 0 : 1) : 1 - chi2Cdf(x, d));
-  const p = 0.5 * upper(stat, k - 1) + 0.5 * upper(stat, k);
-  return { stat, k, p, llMixed: mixed.logLik, llFixed: fixed.logLik };
+  const b = boundaryP(stat, k, !!spec.slope);
+  return { stat, k, p: b.p, null: b.null, llMixed: mixed.logLik, llFixed: fixed.logLik };
 }
 
 /**

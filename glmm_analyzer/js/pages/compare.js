@@ -7,6 +7,7 @@ import { FAMILIES, LINKS } from '../stats/families.js';
 import { fitModel } from '../stats/fit.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { chi2Cdf } from '../stats/special.js';
+import { boundaryP } from '../stats/inference.js';
 import { notice, details } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { compareRecipe, tooBig, capRecipe } from '../io/recipes.js';
@@ -104,7 +105,7 @@ function compute() {
   if (new Set(fitted.map(r => r.result.design.X.length)).size > 1 && new Set(fitted.map(r => r.spec.dataset)).size === 1) notes.push('The models were fitted to different numbers of rows, because missing values were dropped by the columns each uses; that alone changes the log-likelihood.');
   for (const n of notes) els.table.appendChild(notice('warn', esc(n)));
   els.table.appendChild(details('What the criteria measure',
-    '<p>AIC is −2 log-likelihood + 2k and BIC is −2 log-likelihood + k log n, for k estimated parameters: the fit, charged for its size, so that a term stays only if it improves the likelihood by more than its own cost. BIC’s charge grows with the sample and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
+    '<p>AIC is −2 log-likelihood + 2k and BIC is −2 log-likelihood + k log n, for k estimated parameters: AIC adds 2 for every parameter and BIC adds log n, and so a term stays only if it raises the log-likelihood by more than that. BIC’s addition grows with the sample, and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
     '<p>A likelihood-ratio test asks whether the extra terms of the larger model improve the fit by more than chance would: twice the difference in log-likelihood, against a chi-square with the extra parameters as its degrees of freedom. It applies only where one model nests inside the other.</p>'));
   const pairRows = [];
   let ph = '';
@@ -116,16 +117,19 @@ function compute() {
       if (nestedIn(a, b)) kind = 'terms';
       else if (randomNestedIn(a, b)) kind = 'random';
       if (!kind) continue;
+      // A likelihood ratio compares fits to the same rows; a pair whose missing values differ is left out.
+      const ka = a.result.design.keep, kb = b.result.design.keep;
+      if (ka.length !== kb.length || ka.some((v, i) => v !== kb[i])) continue;
       const fa = a.result.fit, fb = b.result.fit;
       const stat_ = Math.max(0, 2 * (fb.logLik - fa.logLik)), df = fb.df - fa.df;
       let p;
-      if (kind === 'random') p = 0.5 * (df > 1 ? 1 - chi2Cdf(stat_, df - 1) : (stat_ > 0 ? 0 : 1)) + 0.5 * (1 - chi2Cdf(stat_, df));
+      if (kind === 'random') p = boundaryP(stat_, df, !!b.spec.slope).p;
       else p = df > 0 ? 1 - chi2Cdf(stat_, df) : NaN;
       ph += '<tr><td>' + esc(a.model.name) + '</td><td>' + esc(b.model.name) + '</td><td>' + esc(kind === 'random' ? 'the random part' : 'extra terms') + '</td><td>' + intl(df) + '</td><td>' + stat(stat_, 4) + '</td><td>' + pValue(p) + (kind === 'random' ? ' <span class="ctrl-note">(boundary-corrected)</span>' : '') + '</td></tr>';
       pairRows.push([a.model.name, b.model.name, kind, df, stat_, p]);
     }
   }
-  els.pairs.innerHTML = ph ? '<div class="scroll-box"><table class="ptab"><thead><tr><th>Smaller model</th><th>Larger model</th><th>Adds</th><th>df</th><th>χ²</th><th>p</th></tr></thead><tbody>' + ph + '</tbody></table></div>' : '<p class="muted-line">No kept pair nests: a pair is tested when one model holds the other’s terms and more, with the same response, family, link, and random part, or adds a random part to the same fixed terms.</p>';
+  els.pairs.innerHTML = ph ? '<div class="scroll-box"><table class="ptab"><thead><tr><th>Smaller model</th><th>Larger model</th><th>Adds</th><th>df</th><th>χ²</th><th>p</th></tr></thead><tbody>' + ph + '</tbody></table></div>' : '<p class="muted-line">No kept pair nests: a pair is tested when one model holds the other’s terms and more, with the same response, family, link, and random part, or adds a random part to the same fixed terms, and both were fitted to the same rows.</p>';
   els.table.querySelectorAll('.cp-use').forEach(b => b.addEventListener('click', () => { const m = state.models.find(x => x.id === b.dataset.id); if (m) { state.setSpec(m.spec); location.hash = '#model'; } }));
   els.table.querySelectorAll('.cp-drop').forEach(b => b.addEventListener('click', () => state.dropModel(b.dataset.id)));
   const title = 'Compare: ' + plural(fitted.length, 'candidate model');

@@ -129,6 +129,10 @@ function condLogLik(family, y, aux) {
     for (let i = 0; i < n; i++) c += logGamma(aux + y[i]) - lg - logGamma(y[i] + 1) + aux * lt;
     return mu => { let s = c; for (let i = 0; i < n; i++) s += y[i] * Math.log(mu[i]) - (aux + y[i]) * Math.log(aux + mu[i]); return s; };
   }
+  // The gamma family's inner criterion is its deviance, dispersion-free, as lme4's
+  // penalized weighted residual sum of squares is: the iterations' fixed point minimizes
+  // it, where the profiled-dispersion likelihood (the Laplace value) has another minimizer.
+  if (family === 'gamma') return mu => { let s = 0; for (let i = 0; i < n; i++) s -= 0.5 * fam.devResid(y[i], mu[i]); return s; };
   return mu => fam.logLik(y, mu, aux, n);
 }
 
@@ -213,7 +217,12 @@ function pirls(y, X, random, family, link, beta, theta, aux, b0) {
     blocksL.push(L);
     ldL2 += cholLogDet(L);
   });
-  return { b, dev: cur.pdev + ldL2, pdev: cur.pdev, ldL2, mu: cur.mu, eta: cur.eta, w, blocksL, rows, offsets, converged };
+  // The Laplace value's data term: for the gamma family, the conditional log-likelihood at
+  // its profiled dispersion plus 2 for that parameter, as lme4 forms it through R's
+  // Gamma()$aic; for the other families, the penalized deviance as it stands.
+  let data = cur.pdev;
+  if (family === 'gamma') { let sb = 0; for (let k = 0; k < nb; k++) sb += b[k] * b[k]; data = -2 * fam.logLik(y, cur.mu, aux, n) + sb + 2; }
+  return { b, dev: data + ldL2, pdev: cur.pdev, ldL2, mu: cur.mu, eta: cur.eta, w, blocksL, rows, offsets, converged };
 }
 
 // PIRLS over β and b together, at fixed θ: the fixed effects enter the
@@ -429,7 +438,7 @@ export function fitGlmm(y, X, random, o) {
   if (!vcov) vcov = betaCov(X, random, fin.w, fin.rows, fin.blocksL, fin.offsets, 1).vcov;
   const fam = FAMILIES[o.family];
   const logLik = -fin.dev / 2;
-  const df = p + random.nTheta + (withAux ? 1 : 0);
+  const df = p + random.nTheta + (withAux || o.family === 'gamma' ? 1 : 0);
   const flags = [];
   if (!res.converged || !fin.converged) flags.push('notConverged');
   const vc = varComp(random, theta, 1);
@@ -437,10 +446,14 @@ export function fitGlmm(y, X, random, o) {
   if (random.terms[0].kind === 'group' && random.terms[0].levels.length < 5) flags.push('fewGroups');
   if (o.family === 'binomial' && fin.mu.some(m => m < 1e-8 || m > 1 - 1e-8)) flags.push('separation');
   const pearson = Float64Array.from(y, (v, i) => (v - fin.mu[i]) / Math.sqrt(fam.variance(fin.mu[i], aux)));
+  // The gamma family's dispersion as lme4 estimates it: the penalized weighted residual sum
+  // of squares over n, the Pearson chi-square plus the squared spherical random effects.
+  let dispersion = 1;
+  if (o.family === 'gamma') { let s = 0; for (let i = 0; i < n; i++) s += pearson[i] * pearson[i]; for (let k2 = 0; k2 < fin.b.length; k2++) s += fin.b[k2] * fin.b[k2]; dispersion = s / n; }
   return {
     mixed: true, beta, vcov, thetaRe: theta, varcomp: vc, ranef: ranefOf(random, theta, fin.b, fin.offsets, fin.blocksL, 1), b: fin.b,
     eta: fin.eta, fitted: fin.mu, weights: fin.w, deviance: fin.dev, logLik, aic: fin.dev + 2 * df, bic: fin.dev + df * Math.log(n), df, dfResidual: n - df, rank: p, n,
-    dispersion: 1, aux, theta_nb: o.family === 'negbin' ? aux : undefined, phi: o.family === 'beta' ? aux : undefined, sigma2: 1,
+    dispersion, aux, theta_nb: o.family === 'negbin' ? aux : undefined, phi: o.family === 'beta' ? aux : undefined, sigma2: 1,
     iterations: res.iterations, converged: res.converged && fin.converged, hat: null, pearson, devianceResiduals: null, cooks: null,
     family: o.family, link: link.id, flags, nullDeviance: NaN, reml: false
   };
@@ -450,7 +463,9 @@ export function fitGlmm(y, X, random, o) {
 // outer parameter, by central differences.
 function hessianCov(f, x, nTheta, p) {
   const d = x.length;
-  const h = Float64Array.from(x, v => 1e-4 * Math.max(1, Math.abs(v)));
+  // A step of 1e-3: the inner solve leaves noise near 1e-12 in the objective, which a
+  // second difference over a step of 1e-4 magnifies into the standard errors.
+  const h = Float64Array.from(x, v => 1e-3 * Math.max(1, Math.abs(v)));
   const f0 = f(x);
   const H = zeros(d, d);
   const at = (i, di, j, dj) => { const z = Float64Array.from(x); z[i] += di; if (j != null) z[j] += dj; return f(z); };

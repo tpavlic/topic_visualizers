@@ -61,8 +61,12 @@ export function residualSet(result, seed = RESIDUAL_SEED) {
     const aux = fit.family === 'normal' || fit.family === 'gamma' ? fit.dispersion : fit.aux;
     quantile = quantileResiduals(fit.family, y, fit.fitted, aux, u || new Float64Array(n));
   }
+  // The Pearson test of overdispersion has a chi-square reference only for counts: a 0/1
+  // response has variance p(1 - p) exactly, and an observation-level random effect takes
+  // up a count's extra spread (and shrinks the conditional residuals) by construction.
   let dispersion = null;
-  if (fit.pearson && (fit.family === 'binomial' || fit.family === 'poisson')) {
+  const olre = !!(fit.random && fit.random.terms.some(t => t.kind === 'olre'));
+  if (fit.pearson && fit.family === 'poisson' && !olre) {
     let s = 0;
     for (let i = 0; i < n; i++) s += fit.pearson[i] * fit.pearson[i];
     const df = fit.dfResidual;

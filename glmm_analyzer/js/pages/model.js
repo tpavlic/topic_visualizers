@@ -6,7 +6,7 @@
 
 import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
-import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
+import { FAMILIES, LINKS, familyOf, backWord } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
 import { termTests, randomEffectTest, waldTable } from '../stats/inference.js';
 import { residualSet } from '../stats/residuals.js';
@@ -148,7 +148,8 @@ function drawCoefficients(result) {
   const link = LINKS[result.link];
   const useT = rows.length && rows[0].useT;
   const level = state.settings.level;
-  const backHead = link.backName ? '<th>' + esc(link.backName === 'ratio' ? (FAMILIES[result.fit.family].id === 'poisson' || FAMILIES[result.fit.family].id === 'negbin' ? 'rate ratio' : 'ratio of means') : link.backName) + '</th><th>its ' + esc(lvl(level)) + ' interval</th>' : '';
+  const word = backWord(result.fit.family, link);
+  const backHead = word ? '<th>' + esc(word) + '</th><th>its ' + esc(lvl(level)) + ' interval</th>' : '';
   let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Term</th><th>Estimate</th><th>Std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + backHead + '</tr></thead><tbody>';
   for (const r of rows) {
     html += '<tr><td>' + esc(r.name) + '</td><td>' + stat(r.b, 5) + '</td><td>' + stat(r.se, 4) + '</td><td>' + stat(r.z, 4) + '</td><td>' + pValue(r.p) + '</td><td>[' + stat(r.lo, 5) + ', ' + stat(r.hi, 5) + ']</td>' +
@@ -156,8 +157,12 @@ function drawCoefficients(result) {
   }
   html += '</tbody></table></div>';
   const scale = result.link === 'identity' ? 'in the response’s units' : 'on the ' + link.label + ' scale';
-  html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(result.fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : '; z tests, because the dispersion is fixed by the family.') +
-    (link.backName ? ' The last two columns carry each coefficient through the exponential: the ' + esc(link.backWord) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
+  const fit = result.fit;
+  const zWhy = fit.mixed ? '; z tests: a mixed model’s Wald tests use the normal reference, as lme4 reports them.'
+    : fit.family === 'binomial' || fit.family === 'poisson' ? '; z tests, because the dispersion is fixed by the family.'
+      : '; z tests: large-sample Wald tests, as the fitter reports them.';
+  html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : zWhy) +
+    (word ? ' The last two columns carry each coefficient through the exponential: the ' + esc(word) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
   if (result.fit.family === 'ordinal') {
     const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
     html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>ζ</th><th>Std. error</th></tr></thead><tbody>' +
@@ -189,11 +194,11 @@ function drawRandom(ds, result) {
   try { test = randomEffectTest(ds, state.spec, result); } catch (err) { test = null; }
   if (test) {
     html += '<p class="muted-line">' + (fit.family === 'normal' ? 'The normal family\'s mixed model is fitted by ' + (fit.reml ? 'REML, which the likelihood-ratio tests refit by maximum likelihood' : 'maximum likelihood') + '. ' : 'Fitted by maximum likelihood with the Laplace approximation. ') +
-      'The standard errors of the fixed effects come from the Hessian of the deviance over the variance parameters and the fixed effects together.</p>';
+      (fit.family === 'normal' ? 'The standard errors of the fixed effects are the profiled form σ²(X′V⁻¹X)⁻¹, as lmer reports them.' : 'The standard errors of the fixed effects come from the Hessian of the deviance over the variance parameters and the fixed effects together.') + '</p>';
     els.randomBody.innerHTML = html;
     const bad = test.p >= 0.05;
     els.randomBody.appendChild(notice(bad ? 'info' : 'ok', '<b>Does the random part matter?</b> Likelihood-ratio test against the same model without random effects: χ² = ' + num(test.stat, 4) + ' on ' + intl(test.k) + (test.k === 1 ? ' variance parameter' : ' variance parameters') + ', ' + pEq(test.p) +
-      ' (the null puts the variance at zero, the edge of its range, and so the p-value is ' + (test.k === 1 ? 'half of the usual chi-square tail' : 'a 50:50 mixture of chi-square tails on ' + intl(test.k - 1) + ' and ' + intl(test.k) + ' degrees of freedom') + '). ' +
+      ' (the null puts the variance at zero, the edge of its range, and so the p-value is ' + (test.null === 'half' ? 'half of the usual chi-square tail' : test.null === 'quarter' ? 'a ¼ : ½ : ¼ mixture of the chi-square tails on 0, 1, and 2 degrees of freedom, one variance at its edge or both' : 'the chi-square tail on ' + intl(test.k) + ' degrees of freedom, which is conservative, because the random slope’s covariance has no simple boundary mixture') + '). ' +
       (bad ? 'The grouping explains little beyond the fixed effects; the fixed-effects model would do.' : 'The grouping explains variation the fixed effects do not.')));
     result.randomTest = test;
   } else els.randomBody.innerHTML = html;
@@ -240,12 +245,14 @@ function drawStats(result) {
     card('BIC', stat(fit.bic, 5)));
   if (fit.mixed && fit.family === 'negbin') cards.push(card('θ', stat(fit.theta, 4), 'estimated with the other parameters'));
   else if (fit.mixed && fit.family === 'beta') cards.push(card('Precision φ', stat(fit.phi, 4)));
+  else if (fit.mixed && fit.family === 'gamma') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'as lme4 estimates it'));
   else if (fit.mixed) { /* the residual variance sits in the random-effects table */ }
   else if (fit.family === 'ordinal' || fit.family === 'beta') { /* no dispersion card */ }
   else if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
   else if (fam.id === 'negbin') cards.push(card('θ', stat(fit.theta, 4), Number.isFinite(fit.thetaSe) ? 'SE ' + stat(fit.thetaSe, 3) : ''));
   else cards.push(card('Dispersion', '1', 'fixed by the family'));
-  if (fam.id === 'binomial' || fam.id === 'poisson') {
+  // The Pearson ratio has its chi-square reference only for counts without an observation-level effect.
+  if (fam.id === 'poisson' && !(fit.random && fit.random.terms.some(t => t.kind === 'olre'))) {
     let s = 0;
     for (let i = 0; i < fit.n; i++) s += fit.pearson[i] * fit.pearson[i];
     cards.push(card('Pearson χ² / df', stat(s / fit.dfResidual, 4), 'near 1 when the family’s variance holds'));

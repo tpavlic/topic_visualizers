@@ -405,6 +405,16 @@ details.why.issues .why-body { padding-left: 11px; }
 /* Tables scroll inside their own box, never the page. */
 .tab-wrap { overflow-x: auto; }
 .scroll-box { max-height: 240px; overflow: auto; }
+/* A shaded edge says more lies past it (ui/scrollhint.js marks the edges). */
+.scroll-box[data-more~="right"] { box-shadow: inset -22px 0 16px -14px rgba(0, 0, 0, .32); }
+.scroll-box[data-more~="left"] { box-shadow: inset 22px 0 16px -14px rgba(0, 0, 0, .32); }
+.scroll-box[data-more~="left"][data-more~="right"] { box-shadow: inset 22px 0 16px -14px rgba(0, 0, 0, .32), inset -22px 0 16px -14px rgba(0, 0, 0, .32); }
+.scroll-box[data-more~="bottom"] { box-shadow: inset 0 -22px 16px -14px rgba(0, 0, 0, .28); }
+.scroll-box[data-more~="right"][data-more~="bottom"] { box-shadow: inset -22px 0 16px -14px rgba(0, 0, 0, .32), inset 0 -22px 16px -14px rgba(0, 0, 0, .28); }
+.scroll-box[data-more~="left"][data-more~="bottom"] { box-shadow: inset 22px 0 16px -14px rgba(0, 0, 0, .32), inset 0 -22px 16px -14px rgba(0, 0, 0, .28); }
+.scroll-box[data-more~="left"][data-more~="right"][data-more~="bottom"] { box-shadow: inset 22px 0 16px -14px rgba(0, 0, 0, .32), inset -22px 0 16px -14px rgba(0, 0, 0, .32), inset 0 -22px 16px -14px rgba(0, 0, 0, .28); }
+.tm-model { margin: 2px 0 14px; font-size: 1rem; }
+.tm-model code { font-size: .95rem; padding: 3px 8px; }
 .ptab { border-collapse: collapse; width: 100%; font-size: .8rem; }
 .ptab th, .ptab td { padding: 5px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
 .ptab th:first-child, .ptab td:first-child { text-align: left; }
@@ -3001,6 +3011,20 @@ export function ascii(s) {
     .replace(/[\x00-\x1f\x7f]/g, ' ');
 }
 
+// The R packages a recipe's models call, from what they fit rather than from
+// the helpers' text, which names every package it may call.
+function rPackages(recipe) {
+  const specs = recipe.candidates ? recipe.candidates : [recipe.spec];
+  const pk = new Set();
+  for (const s of specs) {
+    if (s.family === 'ordinal' || (s.family === 'negbin' && !s.mixed)) pk.add('MASS');
+    if (s.family === 'beta') pk.add(s.mixed ? 'glmmTMB' : 'betareg');
+    if (s.mixed && s.family !== 'beta') pk.add('lme4');
+  }
+  if (recipe.means) pk.add('emmeans');
+  return ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans'].filter(p => pk.has(p));
+}
+
 // ── Per-language syntax ──────────────────────────────────────────────────
 
 function dq(s) { return '"' + ascii(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
@@ -3015,8 +3039,8 @@ const LANG = {
     assign: (n, e) => n + ' <- ' + e,
     bool: b => (b ? 'TRUE' : 'FALSE'), nan: 'NaN', inf: 'Inf',
     prelude: () => ['options(digits = 10)'],
-    requires: code => {
-      const pk = ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans'].filter(p => new RegExp('\\b' + p + '::').test(code));
+    requires: (code, recipe) => {
+      const pk = rPackages(recipe);
       return 'R with its stats package' + (pk.length ? ' and the ' + pk.join(', ') + ' package' + (pk.length > 1 ? 's' : '') : '') + '.';
     }
   },
@@ -3044,7 +3068,7 @@ const LANG = {
 LANG.tidy = Object.assign({}, LANG.R, {
   tidy: true,
   prelude: () => ['options(digits = 10)', 'suppressPackageStartupMessages({ library(tibble); library(dplyr); library(ggplot2); library(broom) })'],
-  requires: code => LANG.R.requires(code).replace(/\.$/, '') + ', plus tibble, dplyr, broom, and ggplot2.'
+  requires: (code, recipe) => LANG.R.requires(code, recipe).replace(/\.$/, '') + ', plus tibble, dplyr, broom, and ggplot2.'
 });
 
 /**
@@ -3193,7 +3217,7 @@ function header(recipe, L, code) {
     if (v === undefined || v === null || v === '') continue;
     out.push(...commentLines(c + '  ', ascii(k) + ': ' + ascii(Array.isArray(v) ? v.join(', ') : String(v)), c + '    '));
   }
-  out.push(...commentLines(c, 'Requires: ' + (typeof L.requires === 'function' ? L.requires(code) : L.requires), c + '  '));
+  out.push(...commentLines(c, 'Requires: ' + (typeof L.requires === 'function' ? L.requires(code, recipe) : L.requires), c + '  '));
   return out;
 }
 
@@ -3241,14 +3265,19 @@ function settingsBlock(recipe, L) {
   out.push(L.assign('check_details', L.bool(false)));
   out.push(L.assign('level', String(recipe.level)));
   out.push(L.assign('alpha', '1 - level'));
+  if (recipe.page === 'compare') {
+    out.push(c + 'Each candidate\'s family, link, and formula are set in its own fit_model call below.');
+    return out;
+  }
   out.push(c + 'The family, the link, and the model, as the page fitted it. family is one of normal, binomial,');
   out.push(c + 'poisson, negbin, gamma, beta, ordinal.');
   out.push(L.assign('family', L.str(s.family)));
   out.push(L.assign('link', L.str(s.link)));
   out.push(L.assign('formula', L.str(recipe.formula[L.lang])));
   out.push(L.assign('reml', L.bool(!!s.reml)));
-  out.push(c + 'The degrees of freedom of the Wald intervals: the residual degrees of freedom where the');
-  out.push(c + 'dispersion is estimated, and none (a normal quantile) otherwise.');
+  out.push(c + 'The degrees of freedom of the Wald intervals: the residual degrees of freedom for a normal or');
+  out.push(c + 'gamma model without random effects, whose dispersion is estimated, and none (a normal');
+  out.push(c + 'quantile) otherwise, as the fitters report them.');
   out.push(L.assign('df_wald', lit(L, recipe.dfWald)));
   if (L.lang === 'py' && s.mixed) {
     out.push(L.assign('group', L.str(s.olre && !s.group ? 'obs' : s.group)));
@@ -3401,6 +3430,21 @@ function varName(L, name) {
 
 // ── Page bodies ──────────────────────────────────────────────────────────
 
+// The boundary-corrected p-value of a random part's likelihood ratio, as
+// stats/inference.js's boundaryP forms it, and the comment that says which
+// mixture the line uses.
+function boundaryExpr(L, k, withSlope) {
+  const upper = d => (d <= 0 ? (L.lang === 'R' ? 'as.numeric(s <= 0)' : L.lang === 'py' ? 'float(s <= 0)' : 'double(s <= 0)') : chisqUpper(L, 's', String(d)));
+  if (k === 1) return '0.5 * ' + upper(0) + ' + 0.5 * ' + upper(1);
+  if (k === 2 && !withSlope) return '0.25 * ' + upper(0) + ' + 0.5 * ' + upper(1) + ' + 0.25 * ' + upper(2);
+  return upper(k);
+}
+function boundaryNote(k, withSlope) {
+  if (k === 1) return 'One variance at the edge of its range: half the chi-square tail on one degree of freedom.';
+  if (k === 2 && !withSlope) return 'Two independent variances at their edges: the 1/4 : 1/2 : 1/4 mixture of the tails on 0, 1, and 2 degrees of freedom.';
+  return 'The random slope brings a covariance in, whose boundary mixture has no simple form: the plain tail on ' + k + ' degrees of freedom, which is conservative.';
+}
+
 export const BODIES = {};
 
 // The Wald quantile, the fit, and the coefficient lines every page starts from.
@@ -3502,10 +3546,9 @@ function randomLines(r, L) {
   out.push(L.assign('m0', L.lang === 'R' ? 'fit_model(d, family, link, ' + L.str(f) + ', FALSE)' : L.lang === 'py' ? 'fit_model(d, family, link, ' + L.str(f) + ', False)' : 'fit_model(tbl, family, link, ' + L.str(f) + ', false)'));
   if (!r.termTests || !r.termTests.length) out.push(L.lang === 'R' ? 'm_ml <- fit_ml(m, d, family, link, formula)' : L.lang === 'py' ? 'm_ml = fit_ml(m, d, family, link, formula' + (r.spec.mixed ? ', group=group, re_formula=re_formula' : '') + ')' : 'm_ml = fit_ml(m, tbl, family, link, formula);');
   out.push(L.assign('s', '2 * (fit_loglik(m_ml) - fit_loglik(m0))'));
-  const k = r.randomTest.k;
-  const upper = d => (d <= 0 ? (L.lang === 'R' ? 'as.numeric(s <= 0)' : L.lang === 'py' ? 'float(s <= 0)' : 'double(s <= 0)') : chisqUpper(L, 's', String(d)));
   out.push(rep(L, r, 'random LRT', 's'));
-  out.push(rep(L, r, 'random p', '0.5 * ' + upper(k - 1) + ' + 0.5 * ' + upper(k)));
+  out.push(c + boundaryNote(r.randomTest.k, !!r.spec.slope));
+  out.push(rep(L, r, 'random p', boundaryExpr(L, r.randomTest.k, !!r.spec.slope)));
   return out;
 }
 
@@ -3629,7 +3672,7 @@ function predictBody(r, L) {
       for (let i = 0; i < m.levels.length; i++) for (let j = i + 1; j < m.levels.length; j++) {
         p++;
         const k = m.levels[i] + ' - ' + m.levels[j];
-        out.push(rep(L, r, 'pair ' + k, 'ep[' + p + ', 2]'), rep(L, r, 'pair se ' + k, 'ep[' + p + ', 3]'), rep(L, r, 'pair lower ' + k, 'ep[' + p + ', 5]'), rep(L, r, 'pair upper ' + k, 'ep[' + p + ', 6]'), rep(L, r, 'pair t ' + k, 'ep[' + p + ', 7]'), rep(L, r, 'pair p ' + k, 'ep[' + p + ', 8]'));
+        out.push(rep(L, r, 'pair ' + k, 'ep[' + p + ', 2]'), rep(L, r, 'pair se ' + k, 'ep[' + p + ', 3]'), rep(L, r, 'pair t ' + k, 'ep[' + p + ', 7]'), rep(L, r, 'pair p ' + k, 'ep[' + p + ', 8]'), rep(L, r, 'pair lower ' + k, 'ep[' + p + ', 5]'), rep(L, r, 'pair upper ' + k, 'ep[' + p + ', 6]'));
       }
     } else {
       out.push(c + 'The reference grid by hand: each level with the other factors\' levels in every combination (equal weights) and the continuous predictors at their means over the fitted rows.');
@@ -3700,8 +3743,8 @@ function compareBody(r, L) {
       const ia = r.candidates.findIndex(x => x.name === p.a), ib = r.candidates.findIndex(x => x.name === p.b);
       out.push(L.assign('s', '2 * (fit_loglik(m' + (ib + 1) + ') - fit_loglik(m' + (ia + 1) + '))'));
       out.push(rep(L, r, 'LRT ' + p.a + ' vs ' + p.b, 's'));
-      const upper = d => (d <= 0 ? (L.lang === 'R' ? 'as.numeric(s <= 0)' : L.lang === 'py' ? 'float(s <= 0)' : 'double(s <= 0)') : chisqUpper(L, 's', String(d)));
-      out.push(rep(L, r, 'LRT p ' + p.a + ' vs ' + p.b, p.kind === 'random' ? '0.5 * ' + upper(p.df - 1) + ' + 0.5 * ' + upper(p.df) : chisqUpper(L, 's', String(p.df))));
+      if (p.kind === 'random') out.push(c + boundaryNote(p.df, !!r.candidates[ib].slope));
+      out.push(rep(L, r, 'LRT p ' + p.a + ' vs ' + p.b, p.kind === 'random' ? boundaryExpr(L, p.df, !!r.candidates[ib].slope) : chisqUpper(L, 's', String(p.df))));
     }
   }
   return { body: out, need: ['fit'] };
@@ -3814,6 +3857,7 @@ export function capability(spec) {
     if (fam === 'negbin') out.py = { ok: false, why: 'Python has no maximum-likelihood routine for a negative binomial mixed model. R\'s glmer.nb is the conventional tool.' };
     if (fam === 'beta' && out.m.ok) out.m = { ok: false, why: 'MATLAB has no beta mixed model. R\'s glmmTMB is the conventional tool.' };
     if (fam === 'ordinal') { out.py = { ok: false, why: 'A mixed ordinal model is outside this tool.' }; out.m = out.py; }
+    if (fam === 'gamma') out.m = { ok: false, why: 'MATLAB\'s fitglme fits a gamma mixed model with the dispersion as a free parameter of its Laplace likelihood, where lme4 and this page profile it, and the two land on different estimates. R\'s lme4 is the conventional tool.' };
     if (fam === 'normal' && (spec.nested)) out.py = { ok: false, why: 'statsmodels\' MixedLM takes a nested factor through variance-component formulas that this script does not write; R\'s lmer and MATLAB\'s fitlme are the conventional tools.' };
   } else {
     if (fam === 'negbin') out.m = { ok: false, why: 'MATLAB\'s fitglm has no negative binomial distribution. R\'s MASS::glm.nb and Python\'s statsmodels are the conventional tools.' };
@@ -6798,7 +6842,8 @@ fit_loglik <- function(m) as.numeric(logLik(m))
 fit_k <- function(m) as.integer(attr(logLik(m), "df"))
 fit_deviance <- function(m) switch(fit_class(m), lme4 = as.numeric(-2 * logLik(m)), tmb = as.numeric(-2 * logLik(m)), polr = m$deviance, betareg = NaN, deviance(m))
 fit_nulldev <- function(m) if (fit_class(m) %in% c("glm", "negbin")) m$null.deviance else NaN
-fit_dispersion <- function(m) switch(fit_class(m), glm = summary(m)$dispersion, lme4 = if (lme4::isLMM(m)) sigma(m)^2 else 1, 1)
+# A gamma glmer's dispersion is lme4's: the penalized weighted residual sum of squares over n.
+fit_dispersion <- function(m) switch(fit_class(m), glm = summary(m)$dispersion, lme4 = if (lme4::isLMM(m) || family(m)$family == "Gamma") sigma(m)^2 else 1, 1)
 fit_aux <- function(m) switch(fit_class(m), negbin = m$theta, betareg = unname(coef(m, model = "precision")), tmb = glmmTMB::sigma(m),
                               lme4 = if (!is.null(lme4::getME(m, "glmer.nb.theta"))) lme4::getME(m, "glmer.nb.theta") else NA, NA)
 fit_fitted <- function(m) switch(fit_class(m), polr = NaN, unname(fitted(m)))
@@ -7454,7 +7499,35 @@ function s = fit_dispersion(m)
 switch fit_class(m)
     case 'glm', s = m.Dispersion;
     case 'lme', s = m.MSE;
+    case 'glme'
+        if strcmpi(m.Distribution, 'Gamma')
+            % As lme4 estimates a gamma mixed model's dispersion: the penalized weighted residual
+            % sum of squares over n, the Pearson chi-square plus the squared spherical random effects.
+            pr = residuals(m, 'ResidualType', 'Pearson');
+            s = (sum(pr.^2) + spherical_ss(m)) / numel(pr);
+        else
+            s = 1;
+        end
     otherwise, s = 1;
+end
+end
+
+function ss = spherical_ss(m)
+% The squared length of the spherical random effects u = L \\ b, with L the Cholesky factor
+% of each grouping factor's covariance, level by level.
+[B, Bnames] = randomEffects(m);
+psi = covarianceParameters(m);
+grp = string(Bnames.Group); lev = string(Bnames.Level);
+groups = unique(grp, 'stable');
+ss = 0;
+for g = 1:numel(groups)
+    rows = grp == groups(g);
+    L = chol(psi{g}, 'lower');
+    levels = unique(lev(rows), 'stable');
+    for l = 1:numel(levels)
+        u = L \\ B(rows & lev == levels(l));
+        ss = ss + u' * u;
+    end
 end
 end
 
@@ -8126,6 +8199,7 @@ export { sanitizeName, kebabName, plain, joinNums };
 import * as state from './state.js';
 import { initTabs, setAvailable, currentTab, showTab } from './ui/tabs.js';
 import { initTooltips, registerTips } from './ui/tooltip.js';
+import { installScrollHints } from './ui/scrollhint.js';
 import { redrawVisible } from './ui/plots.js';
 import { available as storeAvailable } from './ui/store.js';
 import { initSession } from './ui/session.js';
@@ -8216,6 +8290,7 @@ function boot() {
 
   initTooltips();
   registerTips(document.body);
+  installScrollHints(document.body);
 
   renderDataStrip();
   state.on('datasets', renderDataStrip);
@@ -8263,6 +8338,7 @@ import { FAMILIES, LINKS } from '../stats/families.js';
 import { fitModel } from '../stats/fit.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { chi2Cdf } from '../stats/special.js';
+import { boundaryP } from '../stats/inference.js';
 import { notice, details } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { compareRecipe, tooBig, capRecipe } from '../io/recipes.js';
@@ -8360,7 +8436,7 @@ function compute() {
   if (new Set(fitted.map(r => r.result.design.X.length)).size > 1 && new Set(fitted.map(r => r.spec.dataset)).size === 1) notes.push('The models were fitted to different numbers of rows, because missing values were dropped by the columns each uses; that alone changes the log-likelihood.');
   for (const n of notes) els.table.appendChild(notice('warn', esc(n)));
   els.table.appendChild(details('What the criteria measure',
-    '<p>AIC is −2 log-likelihood + 2k and BIC is −2 log-likelihood + k log n, for k estimated parameters: the fit, charged for its size, so that a term stays only if it improves the likelihood by more than its own cost. BIC’s charge grows with the sample and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
+    '<p>AIC is −2 log-likelihood + 2k and BIC is −2 log-likelihood + k log n, for k estimated parameters: AIC adds 2 for every parameter and BIC adds log n, and so a term stays only if it raises the log-likelihood by more than that. BIC’s addition grows with the sample, and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
     '<p>A likelihood-ratio test asks whether the extra terms of the larger model improve the fit by more than chance would: twice the difference in log-likelihood, against a chi-square with the extra parameters as its degrees of freedom. It applies only where one model nests inside the other.</p>'));
   const pairRows = [];
   let ph = '';
@@ -8372,16 +8448,19 @@ function compute() {
       if (nestedIn(a, b)) kind = 'terms';
       else if (randomNestedIn(a, b)) kind = 'random';
       if (!kind) continue;
+      // A likelihood ratio compares fits to the same rows; a pair whose missing values differ is left out.
+      const ka = a.result.design.keep, kb = b.result.design.keep;
+      if (ka.length !== kb.length || ka.some((v, i) => v !== kb[i])) continue;
       const fa = a.result.fit, fb = b.result.fit;
       const stat_ = Math.max(0, 2 * (fb.logLik - fa.logLik)), df = fb.df - fa.df;
       let p;
-      if (kind === 'random') p = 0.5 * (df > 1 ? 1 - chi2Cdf(stat_, df - 1) : (stat_ > 0 ? 0 : 1)) + 0.5 * (1 - chi2Cdf(stat_, df));
+      if (kind === 'random') p = boundaryP(stat_, df, !!b.spec.slope).p;
       else p = df > 0 ? 1 - chi2Cdf(stat_, df) : NaN;
       ph += '<tr><td>' + esc(a.model.name) + '</td><td>' + esc(b.model.name) + '</td><td>' + esc(kind === 'random' ? 'the random part' : 'extra terms') + '</td><td>' + intl(df) + '</td><td>' + stat(stat_, 4) + '</td><td>' + pValue(p) + (kind === 'random' ? ' <span class="ctrl-note">(boundary-corrected)</span>' : '') + '</td></tr>';
       pairRows.push([a.model.name, b.model.name, kind, df, stat_, p]);
     }
   }
-  els.pairs.innerHTML = ph ? '<div class="scroll-box"><table class="ptab"><thead><tr><th>Smaller model</th><th>Larger model</th><th>Adds</th><th>df</th><th>χ²</th><th>p</th></tr></thead><tbody>' + ph + '</tbody></table></div>' : '<p class="muted-line">No kept pair nests: a pair is tested when one model holds the other’s terms and more, with the same response, family, link, and random part, or adds a random part to the same fixed terms.</p>';
+  els.pairs.innerHTML = ph ? '<div class="scroll-box"><table class="ptab"><thead><tr><th>Smaller model</th><th>Larger model</th><th>Adds</th><th>df</th><th>χ²</th><th>p</th></tr></thead><tbody>' + ph + '</tbody></table></div>' : '<p class="muted-line">No kept pair nests: a pair is tested when one model holds the other’s terms and more, with the same response, family, link, and random part, or adds a random part to the same fixed terms, and both were fitted to the same rows.</p>';
   els.table.querySelectorAll('.cp-use').forEach(b => b.addEventListener('click', () => { const m = state.models.find(x => x.id === b.dataset.id); if (m) { state.setSpec(m.spec); location.hash = '#model'; } }));
   els.table.querySelectorAll('.cp-drop').forEach(b => b.addEventListener('click', () => state.dropModel(b.dataset.id)));
   const title = 'Compare: ' + plural(fitted.length, 'candidate model');
@@ -8600,8 +8679,12 @@ function compute() {
         : d.p < 0.05 && d.ratio < 1 ? 'The residual variance is below what the family allows (χ² / df = ' + num(d.ratio, 3) + '): underdispersion, which is rare and usually means the responses are not independent.'
           : 'The residual variance is consistent with the ' + esc(fam.label) + ' family (χ² / df = ' + num(d.ratio, 3) + ', ' + pEq(d.p) + ').'));
     tables.push({ name: 'Dispersion', headers: ['statistic', 'value'], rows: [['Pearson chi-square', d.chisq], ['df', d.df], ['ratio', d.ratio], ['p', d.p]] });
+  } else if (fit.family === 'binomial') {
+    els.disp.appendChild(notice('info', 'A 0/1 response has variance p(1 − p) exactly, and so overdispersion cannot be detected from it: the Pearson χ² of a binary model has no chi-square reference, and the page makes no dispersion test. The residual plots and the model’s terms are the check here.'));
+  } else if (fit.family === 'poisson') {
+    els.disp.appendChild(notice('info', 'The observation-level random effect takes up the extra spread a Poisson count shows, and shrinks the conditional residuals with it, and so there is no dispersion test here: its variance in the Random effects table is the measure of the overdispersion.'));
   } else if (fam.dispersion === 'estimated') {
-    els.disp.appendChild(cardRow([card('Dispersion', stat(fit.dispersion, 4), 'estimated by the Pearson χ² / df and used in every standard error')]));
+    els.disp.appendChild(cardRow([card('Dispersion', stat(fit.dispersion, 4), fit.mixed ? 'as lme4 estimates it: the penalized weighted residual sum of squares over n' : 'estimated by the Pearson χ² / df and used in every standard error')]));
     els.disp.appendChild(notice('info', 'The ' + esc(fam.label) + ' family estimates its dispersion rather than fixing it, and so there is no overdispersion test; the scale–location plot above says whether the spread changes with the mean.'));
   } else if (fit.family === 'negbin') {
     els.disp.appendChild(cardRow([card('θ', stat(fit.theta, 4), 'SE ' + stat(fit.thetaSe, 3)), card('Variance at the mean μ', 'μ + μ² / θ')]));
@@ -8962,7 +9045,7 @@ export function render(root) {
       '</div>' +
       '<div class="im-block" id="im-formats" tabindex="-1">' +
         '<div class="ctrl-grp-lbl">Text format</div>' +
-        '<p class="ctrl-note">A header row, then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. The observations file that the Output Analyzer’s Export writes (<code>dataset, replication, value</code>) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
+        '<p class="ctrl-note">A header row, then one row per observation. Columns may be separated by commas, tabs, semicolons, or spaces; a line starting with # is a comment; an empty cell, <code>NA</code>, or <code>NaN</code> is a missing value. A column whose cells are all numbers is read as continuous and any other as categorical, and the dialog lets you change either. An observations file of the kind a simulation output analyzer exports (<code>dataset, replication, value</code>) loads with the dataset as a categorical predictor and the replication as the group.</p>' +
       '</div>' +
       '<div class="im-block">' +
         '<div class="ctrl-grp-lbl">From a file</div>' +
@@ -9507,7 +9590,7 @@ export default { id, title, render, onShow };
 
 import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
-import { FAMILIES, LINKS, familyOf } from '../stats/families.js';
+import { FAMILIES, LINKS, familyOf, backWord } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
 import { termTests, randomEffectTest, waldTable } from '../stats/inference.js';
 import { residualSet } from '../stats/residuals.js';
@@ -9649,7 +9732,8 @@ function drawCoefficients(result) {
   const link = LINKS[result.link];
   const useT = rows.length && rows[0].useT;
   const level = state.settings.level;
-  const backHead = link.backName ? '<th>' + esc(link.backName === 'ratio' ? (FAMILIES[result.fit.family].id === 'poisson' || FAMILIES[result.fit.family].id === 'negbin' ? 'rate ratio' : 'ratio of means') : link.backName) + '</th><th>its ' + esc(lvl(level)) + ' interval</th>' : '';
+  const word = backWord(result.fit.family, link);
+  const backHead = word ? '<th>' + esc(word) + '</th><th>its ' + esc(lvl(level)) + ' interval</th>' : '';
   let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Term</th><th>Estimate</th><th>Std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + backHead + '</tr></thead><tbody>';
   for (const r of rows) {
     html += '<tr><td>' + esc(r.name) + '</td><td>' + stat(r.b, 5) + '</td><td>' + stat(r.se, 4) + '</td><td>' + stat(r.z, 4) + '</td><td>' + pValue(r.p) + '</td><td>[' + stat(r.lo, 5) + ', ' + stat(r.hi, 5) + ']</td>' +
@@ -9657,8 +9741,12 @@ function drawCoefficients(result) {
   }
   html += '</tbody></table></div>';
   const scale = result.link === 'identity' ? 'in the response’s units' : 'on the ' + link.label + ' scale';
-  html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(result.fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : '; z tests, because the dispersion is fixed by the family.') +
-    (link.backName ? ' The last two columns carry each coefficient through the exponential: the ' + esc(link.backWord) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
+  const fit = result.fit;
+  const zWhy = fit.mixed ? '; z tests: a mixed model’s Wald tests use the normal reference, as lme4 reports them.'
+    : fit.family === 'binomial' || fit.family === 'poisson' ? '; z tests, because the dispersion is fixed by the family.'
+      : '; z tests: large-sample Wald tests, as the fitter reports them.';
+  html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : zWhy) +
+    (word ? ' The last two columns carry each coefficient through the exponential: the ' + esc(word) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
   if (result.fit.family === 'ordinal') {
     const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
     html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>ζ</th><th>Std. error</th></tr></thead><tbody>' +
@@ -9690,11 +9778,11 @@ function drawRandom(ds, result) {
   try { test = randomEffectTest(ds, state.spec, result); } catch (err) { test = null; }
   if (test) {
     html += '<p class="muted-line">' + (fit.family === 'normal' ? 'The normal family\'s mixed model is fitted by ' + (fit.reml ? 'REML, which the likelihood-ratio tests refit by maximum likelihood' : 'maximum likelihood') + '. ' : 'Fitted by maximum likelihood with the Laplace approximation. ') +
-      'The standard errors of the fixed effects come from the Hessian of the deviance over the variance parameters and the fixed effects together.</p>';
+      (fit.family === 'normal' ? 'The standard errors of the fixed effects are the profiled form σ²(X′V⁻¹X)⁻¹, as lmer reports them.' : 'The standard errors of the fixed effects come from the Hessian of the deviance over the variance parameters and the fixed effects together.') + '</p>';
     els.randomBody.innerHTML = html;
     const bad = test.p >= 0.05;
     els.randomBody.appendChild(notice(bad ? 'info' : 'ok', '<b>Does the random part matter?</b> Likelihood-ratio test against the same model without random effects: χ² = ' + num(test.stat, 4) + ' on ' + intl(test.k) + (test.k === 1 ? ' variance parameter' : ' variance parameters') + ', ' + pEq(test.p) +
-      ' (the null puts the variance at zero, the edge of its range, and so the p-value is ' + (test.k === 1 ? 'half of the usual chi-square tail' : 'a 50:50 mixture of chi-square tails on ' + intl(test.k - 1) + ' and ' + intl(test.k) + ' degrees of freedom') + '). ' +
+      ' (the null puts the variance at zero, the edge of its range, and so the p-value is ' + (test.null === 'half' ? 'half of the usual chi-square tail' : test.null === 'quarter' ? 'a ¼ : ½ : ¼ mixture of the chi-square tails on 0, 1, and 2 degrees of freedom, one variance at its edge or both' : 'the chi-square tail on ' + intl(test.k) + ' degrees of freedom, which is conservative, because the random slope’s covariance has no simple boundary mixture') + '). ' +
       (bad ? 'The grouping explains little beyond the fixed effects; the fixed-effects model would do.' : 'The grouping explains variation the fixed effects do not.')));
     result.randomTest = test;
   } else els.randomBody.innerHTML = html;
@@ -9741,12 +9829,14 @@ function drawStats(result) {
     card('BIC', stat(fit.bic, 5)));
   if (fit.mixed && fit.family === 'negbin') cards.push(card('θ', stat(fit.theta, 4), 'estimated with the other parameters'));
   else if (fit.mixed && fit.family === 'beta') cards.push(card('Precision φ', stat(fit.phi, 4)));
+  else if (fit.mixed && fit.family === 'gamma') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'as lme4 estimates it'));
   else if (fit.mixed) { /* the residual variance sits in the random-effects table */ }
   else if (fit.family === 'ordinal' || fit.family === 'beta') { /* no dispersion card */ }
   else if (fam.dispersion === 'estimated') cards.push(card('Dispersion', stat(fit.dispersion, 4), 'Pearson χ² / df'));
   else if (fam.id === 'negbin') cards.push(card('θ', stat(fit.theta, 4), Number.isFinite(fit.thetaSe) ? 'SE ' + stat(fit.thetaSe, 3) : ''));
   else cards.push(card('Dispersion', '1', 'fixed by the family'));
-  if (fam.id === 'binomial' || fam.id === 'poisson') {
+  // The Pearson ratio has its chi-square reference only for counts without an observation-level effect.
+  if (fam.id === 'poisson' && !(fit.random && fit.random.terms.some(t => t.kind === 'olre'))) {
     let s = 0;
     for (let i = 0; i < fit.n; i++) s += fit.pearson[i] * fit.pearson[i];
     cards.push(card('Pearson χ² / df', stat(s / fit.dfResidual, 4), 'near 1 when the family’s variance holds'));
@@ -9824,7 +9914,7 @@ export default { id, title, render, onShow };
 
 import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
-import { FAMILIES, LINKS } from '../stats/families.js';
+import { FAMILIES, LINKS, backWord } from '../stats/families.js';
 import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf } from '../stats/inference.js';
 import { ordinalProbs } from '../stats/ordinal.js';
 import { newDataMatrix } from '../stats/design.js';
@@ -9874,7 +9964,7 @@ export function render(root) {
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-x">Predictor on the x axis</label><select id="pr-x"></select></span>' +
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-by">Lines by</label><select id="pr-by"></select></span>' +
         '<label class="ctrl-chk"><input type="checkbox" id="pr-data" checked> show the data</label>' +
-        '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> <span class="tip" tabindex="0" data-tip="One thin line per group: the population curve shifted by the group\'s predicted random effect (and its slope, when the model has one).">show each group</span></label>' +
+        '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> show each group</label>' +
       '</div>' +
       '<div id="pr-effect"></div>' +
     '</div>' +
@@ -10029,8 +10119,10 @@ function drawEffect() {
       if (xc.col.type === 'continuous') {
         if (resp && (resp.type !== 'continuous' || support(resp, valuesOf(ds, resp.name)) === 'binary')) {
           // A binary response: binned proportions per series.
-          pts = curves.map(c => {
-            const idx = keep.map((row, k) => k).filter(k => !byc || matchesBy(ds.rows[keep[k]][byc.index], c.by, byc.col));
+          // One set of bins per level of a categorical "by"; a continuous "by" gets one set of all the data.
+          const byLevels = !!(byc && byc.col.type !== 'continuous');
+          pts = (byLevels ? curves : [{ by: null }]).map(c => {
+            const idx = keep.map((row, k) => k).filter(k => !byLevels || ds.rows[keep[k]][byc.index] === c.by);
             return { by: c.by, bins: binnedMeans(idx.map(k => xs[k]), idx.map(k => yData[k]), 10) };
           });
           for (const p of pts) for (const b of p.bins) allY.push(b.y);
@@ -10050,7 +10142,7 @@ function drawEffect() {
     if (xc.col.type !== 'continuous') pos = categoricalX(f, grid.xLevels); else f.axes({});
     if (showData) {
       if (xc.col.type === 'continuous') {
-        if (pts.length) pts.forEach((p, i) => dataPoints(f, p.bins, { color: by ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--est', hollow: true, r: 4.2, label: 'binned proportion' + (p.by != null ? ', ' + p.by : '') }));
+        if (pts.length) pts.forEach((p, i) => dataPoints(f, p.bins, { color: p.by != null ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--est', hollow: true, r: 4.2, label: 'binned proportion' + (p.by != null ? ', ' + p.by : '') }));
         else rawPoints(f, xs, Array.from(yData), { label: 'observation' });
       } else {
         // A categorical x: the observations jittered within each level.
@@ -10088,17 +10180,13 @@ function drawEffect() {
   p.className = 'muted-line';
   p.innerHTML = (held ? 'Other predictors held at ' + held + ' (a continuous one at its mean over the fitted rows, a categorical one at its first level). ' : '') +
     (result.fit.mixed ? 'The population curve is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
+    (els.groups.checked && result.fit.mixed && !by ? 'Each thin line is one group’s curve: the population curve shifted by the group’s predicted random effect' + (result.fit.random.terms[0].q === 2 ? ' and slope' : '') + '. ' : '') +
     (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
     (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
   els.effect.appendChild(p);
   figs.push(fig);
   last.effect = { x, by, series: curves.map(c => ({ label: c.label, by: c.by, rows: c.rows, pred: c.pred })) };
   registerResult();
-}
-
-function matchesBy(v, bv, col) {
-  if (col.type !== 'continuous') return v === bv;
-  return true;
 }
 
 function drawMeans() {
@@ -10117,7 +10205,7 @@ function drawMeans() {
   for (const r of m.means) html += '<tr><td>' + esc(r.level) + '</td><td>' + stat(r.eta, 5) + '</td><td>' + stat(r.se, 4) + '</td><td>[' + stat(r.lo, 5) + ', ' + stat(r.hi, 5) + ']</td><td>' + stat(r.fit, 5) + '</td><td>[' + stat(r.fitLo, 5) + ', ' + stat(r.fitHi, 5) + ']</td></tr>';
   html += '</tbody></table></div>';
   html += '<div class="ctrl-grp-lbl im-gap">Pairwise differences, Tukey-adjusted</div>' +
-    '<div class="scroll-box"><table class="ptab"><thead><tr><th>Pair</th><th>difference (link scale)</th><th>std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + (link.backName ? '<th>' + esc(link.backWord) + '</th><th>its interval</th>' : '') + '</tr></thead><tbody>';
+    '<div class="scroll-box"><table class="ptab"><thead><tr><th>Pair</th><th>difference (link scale)</th><th>std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + (link.backName ? '<th>' + esc(backWord(result.fit.family, link)) + '</th><th>its interval</th>' : '') + '</tr></thead><tbody>';
   for (const p of m.pairs) html += '<tr><td>' + esc(p.a + ' − ' + p.b) + '</td><td>' + stat(p.diff, 5) + '</td><td>' + stat(p.se, 4) + '</td><td>' + stat(p.t, 4) + '</td><td>' + pValue(p.p) + '</td><td>[' + stat(p.lo, 5) + ', ' + stat(p.hi, 5) + ']</td>' +
     (link.backName ? '<td>' + stat(p.ratio, 4) + '</td><td>[' + stat(p.ratioLo, 4) + ', ' + stat(p.ratioHi, 4) + ']</td>' : '') + '</tr>';
   html += '</tbody></table></div>';
@@ -10134,7 +10222,7 @@ function drawMeans() {
   const p = document.createElement('p');
   p.className = 'muted-line';
   p.innerHTML = 'Each mean is the model’s prediction at the level' + (held ? ', with ' + held + ' (the means over the fitted rows)' : '') + (others.length ? ', averaged over the levels of ' + esc(others.join(', ')) + ' with equal weights' : '') + ', on the link scale and then carried to the response scale. ' +
-    'The pairwise p-values and intervals use the studentized range over ' + intl(m.k) + ' means' + (useT ? ' on ' + intl(m.df) + ' degrees of freedom' : ', with no finite degrees of freedom because the dispersion is fixed') + '.';
+    'The pairwise p-values and intervals use the studentized range over ' + intl(m.k) + ' means' + (useT ? ' on ' + intl(m.df) + ' degrees of freedom' : ', with no finite degrees of freedom' + (result.fit.mixed ? ', as a mixed model’s Wald tests use the normal reference' : result.fit.family === 'binomial' || result.fit.family === 'poisson' ? ' because the dispersion is fixed by the family' : ', as the fitter’s Wald tests are large-sample tests')) + '.';
   els.means.appendChild(p);
   last.means = m;
   registerResult();
@@ -10593,6 +10681,8 @@ import { fCdf } from '../stats/special.js';
 import { card, cardRow, notice } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { esc, num, stat, pValue, pEq, intl } from '../ui/format.js';
+import { FAMILIES, LINKS } from '../stats/families.js';
+import { formulaOf } from '../stats/design.js';
 import { registerTips } from '../ui/tooltip.js';
 
 /** The page's hash id. */
@@ -10618,6 +10708,11 @@ function tourDataset(which) {
   dataset.source.file = ex.file;
   datasets.set(which, { ex, ds: dataset });
   return datasets.get(which);
+}
+
+// The model itself, first and apart from the prose, in the Model page's formula readout.
+function modelLine(spec) {
+  return '<p class="fb-formula tm-model"><code>' + esc(formulaOf(spec)) + '</code> <span class="ctrl-note">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', REML' : '') + '</span></p>';
 }
 
 function loadButton(which, spec) {
@@ -10653,7 +10748,7 @@ function sectionT(root) {
   const t = twoSampleT(b, a);
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), tm = fit.beta[1] / se1, pm = waldP(tm, fit.dfResidual);
-  root.innerHTML = '<p class="exp-note">Throughput on fifteen days of each of two lines. The two-sample t test asks whether the lines’ mean throughputs differ. The model <code>throughput ~ line</code>, normal family, identity link, has an intercept (line A’s mean) and one coefficient, the difference B − A, and its t test on that coefficient is the pooled two-sample t test, digit for digit. Welch’s test allows the lines different variances, which the one-variance model does not; where the spreads differ, Welch’s is the honest test and the model needs a variance per group, which a mixed model with a per-group variance would give.</p>';
+  root.innerHTML = modelLine(spec) + '<p class="exp-note">Throughput on fifteen days of each of two lines. The two-sample t test asks whether the lines’ mean throughputs differ. The model <code>throughput ~ line</code>, normal family, identity link, has an intercept (line A’s mean) and one coefficient, the difference B − A, and its t test on that coefficient is the pooled two-sample t test, digit for digit. Welch’s test allows the lines different variances, which the one-variance model does not; where the spreads differ, Welch’s is the honest test and the model needs a separate variance per line, which a generalized least-squares fit gives and this tool does not.</p>';
   root.innerHTML += table([
     pair('Difference of means, B − A', stat(t.diff, 5), stat(fit.beta[1], 5), 'the coefficient of lineB'),
     pair('Standard error', stat(t.pooled.se, 5), stat(se1, 5), 'the pooled estimate'),
@@ -10676,7 +10771,7 @@ function sectionAnova(root) {
   const F = ((fit.nullDeviance - fit.deviance) / df1) / (fit.deviance / df2);
   const pF = 1 - fCdf(F, df1, df2);
   const tt = termTests(ds, spec, r);
-  root.innerHTML = '<p class="exp-note">The defect rate on twelve days of each of three shifts. One-way ANOVA asks whether the three means differ, through the F ratio of the between-shift to the within-shift mean square. The model <code>defect_rate ~ shift</code> has an intercept and two contrasts against the day shift, and the same F comes from its deviances: the null deviance is the total sum of squares and the deviance is the within-shift sum of squares. The Model page’s term test is the likelihood-ratio version of the same comparison, which agrees with the F test in large samples and is close here.</p>';
+  root.innerHTML = modelLine(spec) + '<p class="exp-note">The defect rate on twelve days of each of three shifts. One-way ANOVA asks whether the three means differ, through the F ratio of the between-shift to the within-shift mean square. The model <code>defect_rate ~ shift</code> has an intercept and two contrasts against the day shift, and the same F comes from its deviances: the null deviance is the total sum of squares and the deviance is the within-shift sum of squares. The Model page’s term test is the likelihood-ratio version of the same comparison, which agrees with the F test in large samples and is close here.</p>';
   root.innerHTML += table([
     pair('Between sum of squares', stat(av.ssBetween, 5), stat(fit.nullDeviance - fit.deviance, 5), 'null deviance − deviance'),
     pair('Within sum of squares', stat(av.ssWithin, 5), stat(fit.deviance, 5), 'the deviance'),
@@ -10700,7 +10795,7 @@ function sectionPaired(root) {
   const k = r.names.indexOf('conditionbefore');
   const est = -fit.beta[k], se = Math.sqrt(fit.vcov[k][k]);
   const ret = randomEffectTest(ds, spec, r);
-  root.innerHTML = '<p class="exp-note">Fourteen operators timed before and after a change. The paired t test works on each operator’s difference, and so removes the operator’s own level from the comparison. The model <code>time ~ condition + (1 | subject)</code> does the same with a random intercept per operator: its coefficient for the condition is the mean difference, and under REML its standard error is the paired test’s. The model reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the model also says how much of the variation sits between operators, which the t test never does.</p>';
+  root.innerHTML = modelLine(spec) + '<p class="exp-note">Fourteen operators timed before and after a change. The paired t test works on each operator’s difference, and so removes the operator’s own level from the comparison. The model <code>time ~ condition + (1 | subject)</code> does the same with a random intercept per operator: its coefficient for the condition is the mean difference, and under REML its standard error is the paired test’s. The model reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the model also says how much of the variation sits between operators, which the t test never does.</p>';
   root.innerHTML += table([
     pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
     pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
@@ -10724,7 +10819,7 @@ function sectionChisq(root) {
   const r0 = fitModel(ds, Object.assign({}, spec, { terms: ['outcome', 'channel'] }));
   let X2 = 0;
   for (const p of r0.fit.pearson) X2 += p * p;
-  root.innerHTML = '<p class="exp-note">Orders counted by outcome (early, on time, late) and channel (web, phone): a 3 × 2 table. The chi-square test of independence asks whether outcome and channel are associated. The Poisson model of the six counts, <code>count ~ outcome + channel + outcome:channel</code>, fits the table exactly; dropping the interaction gives the independence model, whose expected counts are the test’s, and the likelihood-ratio test of the interaction is G², the likelihood-ratio form of the chi-square test. Pearson’s X² is the independence model’s Pearson statistic. The two agree in large samples.</p>';
+  root.innerHTML = modelLine(spec) + '<p class="exp-note">Orders counted by outcome (early, on time, late) and channel (web, phone): a 3 × 2 table. The chi-square test of independence asks whether outcome and channel are associated. The Poisson model of the six counts, <code>count ~ outcome + channel + outcome:channel</code>, fits the table exactly; dropping the interaction gives the independence model, whose expected counts are the test’s, and the likelihood-ratio test of the interaction is G², the likelihood-ratio form of the chi-square test. Pearson’s X² is the independence model’s Pearson statistic. The two agree in large samples.</p>';
   root.innerHTML += table([
     pair('Degrees of freedom', intl(cs.df), intl(ia.df), '(rows − 1)(columns − 1)'),
     pair('Pearson X²', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5), 'Σ Pearson residual² of the independence model'),
@@ -10740,14 +10835,15 @@ function sectionProportion(root) {
   const r = fitModel(ds, spec);
   const oi = column(ds, 'offer');
   const a = ds.rows.filter(x => x[oi.index] === 'A'), b = ds.rows.filter(x => x[oi.index] === 'B');
-  const pr = twoProportions(a.filter(x => x[0] === 1).length, a.length, b.filter(x => x[0] === 1).length, b.length);
+  // The test on B − A, in the direction of the model's contrast.
+  const pr = twoProportions(b.filter(x => x[0] === 1).length, b.length, a.filter(x => x[0] === 1).length, a.length);
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), z = fit.beta[1] / se1;
   const tt = termTests(ds, spec, r);
-  root.innerHTML = '<p class="exp-note">Fifty customers shown each of two offers, and whether each converted. The two-proportion test compares the two conversion rates by a z test with the pooled proportion’s standard error (a score test; its square is the chi-square test on the 2 × 2 table). The logistic model <code>converted ~ offer</code> estimates the log odds ratio of converting under B against A; its likelihood-ratio test is G² for the same table, and its Wald z uses the standard error at the estimate rather than under the null, which is why it differs from the score z.</p>';
+  root.innerHTML = modelLine(spec) + '<p class="exp-note">Fifty customers shown each of two offers, and whether each converted. The two-proportion test compares the two conversion rates by a z test with the pooled proportion’s standard error (a score test; its square is the chi-square test on the 2 × 2 table). The logistic model <code>converted ~ offer</code> estimates the log odds ratio of converting under B against A; its likelihood-ratio test is G² for the same table, and its Wald z uses the standard error at the estimate rather than under the null, which is why it differs from the score z.</p>';
   root.innerHTML += table([
-    pair('Conversion rates', stat(pr.p1, 4) + ' (A), ' + stat(pr.p2, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
-    pair('Effect', 'difference ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', ''),
+    pair('Conversion rates', stat(pr.p2, 4) + ' (A), ' + stat(pr.p1, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
+    pair('Effect', 'difference B − A ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', ''),
     pair('z', stat(pr.z, 5) + ' (score, pooled SE)', stat(z, 5) + ' (Wald)', ''),
     pair('p', pValue(pr.p), pValue(waldP(z, Infinity)) + ' (Wald), ' + pValue(tt.rows[0].p) + ' (likelihood ratio)', 'three tests of one hypothesis'),
     pair('Chi-square on the 2 × 2 table', stat(pr.chisq, 5), stat(tt.rows[0].stat, 5) + ' (G²)', '')
@@ -12179,6 +12275,20 @@ export function quantileResiduals(familyId, y, mu, aux, u) {
   }
   return r;
 }
+
+/**
+ * The word for a coefficient carried through the exponential: an odds ratio
+ * under the logit, a rate ratio for a count family under the log, and a ratio
+ * of means for any other family under the log; null where the link gives none.
+ * @param {string} family
+ * @param {Link} link
+ * @returns {string|null}
+ */
+export function backWord(family, link) {
+  if (!link.backName) return null;
+  if (link.backName === 'ratio') return family === 'poisson' || family === 'negbin' ? 'rate ratio' : 'ratio of means';
+  return link.backWord;
+}
 </script>
 <script type="text/plain" data-module="js/stats/fit.js">
 // Fitting a specification to a dataset: the support check, the design
@@ -12710,25 +12820,42 @@ export function binnedMeans(x, y, bins = 10) {
 }
 
 /**
+ * The p-value of a likelihood-ratio statistic for k variance parameters
+ * tested at the edge of their range (Self and Liang; Stram and Lee): half
+ * the chi-square tail on one degree of freedom for a single variance; the
+ * 1/4 : 1/2 : 1/4 mixture of the tails on 0, 1, and 2 for two independent
+ * variances (a nested factor or an observation-level effect beside the
+ * group); and, where a random slope brings its covariance in, the plain
+ * chi-square tail on k, which is conservative, as that case has no simple
+ * mixture.
+ * @param {number} stat
+ * @param {number} k
+ * @param {boolean} withSlope
+ * @returns {{ p: number, null: 'half'|'quarter'|'chisq' }}
+ */
+export function boundaryP(stat, k, withSlope) {
+  const upper = (x, d) => (d <= 0 ? (x > 0 ? 0 : 1) : 1 - chi2Cdf(x, d));
+  if (k === 1) return { p: 0.5 * upper(stat, 0) + 0.5 * upper(stat, 1), null: 'half' };
+  if (k === 2 && !withSlope) return { p: 0.25 * upper(stat, 0) + 0.5 * upper(stat, 1) + 0.25 * upper(stat, 2), null: 'quarter' };
+  return { p: upper(stat, k), null: 'chisq' };
+}
+
+/**
  * The likelihood-ratio test of the random part: the mixed model (refitted
  * by maximum likelihood when it was fitted by REML) against the same fixed
- * part without random effects. The null puts the variances at the edge of
- * their range, and so the p-value is the 50:50 mixture of chi-squares with
- * k − 1 and k degrees of freedom for k variance parameters (a half of the
- * chi-square on one for a single variance).
+ * part without random effects, with the p-value from `boundaryP`.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} spec
  * @param {object} result
- * @returns {{ stat: number, k: number, p: number, llMixed: number, llFixed: number }}
+ * @returns {{ stat: number, k: number, p: number, null: string, llMixed: number, llFixed: number }}
  */
 export function randomEffectTest(ds, spec, result) {
   const mixed = result.fit.reml ? result.refit(ds, Object.assign({}, spec, { reml: false })).fit : result.fit;
   const fixed = result.refit(ds, Object.assign({}, spec, { group: null, nested: null, slope: null, olre: false, reml: false })).fit;
   const stat = Math.max(0, 2 * (mixed.logLik - fixed.logLik));
   const k = mixed.df - fixed.df;
-  const upper = (x, d) => (d <= 0 ? (x > 0 ? 0 : 1) : 1 - chi2Cdf(x, d));
-  const p = 0.5 * upper(stat, k - 1) + 0.5 * upper(stat, k);
-  return { stat, k, p, llMixed: mixed.logLik, llFixed: fixed.logLik };
+  const b = boundaryP(stat, k, !!spec.slope);
+  return { stat, k, p: b.p, null: b.null, llMixed: mixed.logLik, llFixed: fixed.logLik };
 }
 
 /**
@@ -13137,6 +13264,10 @@ function condLogLik(family, y, aux) {
     for (let i = 0; i < n; i++) c += logGamma(aux + y[i]) - lg - logGamma(y[i] + 1) + aux * lt;
     return mu => { let s = c; for (let i = 0; i < n; i++) s += y[i] * Math.log(mu[i]) - (aux + y[i]) * Math.log(aux + mu[i]); return s; };
   }
+  // The gamma family's inner criterion is its deviance, dispersion-free, as lme4's
+  // penalized weighted residual sum of squares is: the iterations' fixed point minimizes
+  // it, where the profiled-dispersion likelihood (the Laplace value) has another minimizer.
+  if (family === 'gamma') return mu => { let s = 0; for (let i = 0; i < n; i++) s -= 0.5 * fam.devResid(y[i], mu[i]); return s; };
   return mu => fam.logLik(y, mu, aux, n);
 }
 
@@ -13221,7 +13352,12 @@ function pirls(y, X, random, family, link, beta, theta, aux, b0) {
     blocksL.push(L);
     ldL2 += cholLogDet(L);
   });
-  return { b, dev: cur.pdev + ldL2, pdev: cur.pdev, ldL2, mu: cur.mu, eta: cur.eta, w, blocksL, rows, offsets, converged };
+  // The Laplace value's data term: for the gamma family, the conditional log-likelihood at
+  // its profiled dispersion plus 2 for that parameter, as lme4 forms it through R's
+  // Gamma()$aic; for the other families, the penalized deviance as it stands.
+  let data = cur.pdev;
+  if (family === 'gamma') { let sb = 0; for (let k = 0; k < nb; k++) sb += b[k] * b[k]; data = -2 * fam.logLik(y, cur.mu, aux, n) + sb + 2; }
+  return { b, dev: data + ldL2, pdev: cur.pdev, ldL2, mu: cur.mu, eta: cur.eta, w, blocksL, rows, offsets, converged };
 }
 
 // PIRLS over β and b together, at fixed θ: the fixed effects enter the
@@ -13437,7 +13573,7 @@ export function fitGlmm(y, X, random, o) {
   if (!vcov) vcov = betaCov(X, random, fin.w, fin.rows, fin.blocksL, fin.offsets, 1).vcov;
   const fam = FAMILIES[o.family];
   const logLik = -fin.dev / 2;
-  const df = p + random.nTheta + (withAux ? 1 : 0);
+  const df = p + random.nTheta + (withAux || o.family === 'gamma' ? 1 : 0);
   const flags = [];
   if (!res.converged || !fin.converged) flags.push('notConverged');
   const vc = varComp(random, theta, 1);
@@ -13445,10 +13581,14 @@ export function fitGlmm(y, X, random, o) {
   if (random.terms[0].kind === 'group' && random.terms[0].levels.length < 5) flags.push('fewGroups');
   if (o.family === 'binomial' && fin.mu.some(m => m < 1e-8 || m > 1 - 1e-8)) flags.push('separation');
   const pearson = Float64Array.from(y, (v, i) => (v - fin.mu[i]) / Math.sqrt(fam.variance(fin.mu[i], aux)));
+  // The gamma family's dispersion as lme4 estimates it: the penalized weighted residual sum
+  // of squares over n, the Pearson chi-square plus the squared spherical random effects.
+  let dispersion = 1;
+  if (o.family === 'gamma') { let s = 0; for (let i = 0; i < n; i++) s += pearson[i] * pearson[i]; for (let k2 = 0; k2 < fin.b.length; k2++) s += fin.b[k2] * fin.b[k2]; dispersion = s / n; }
   return {
     mixed: true, beta, vcov, thetaRe: theta, varcomp: vc, ranef: ranefOf(random, theta, fin.b, fin.offsets, fin.blocksL, 1), b: fin.b,
     eta: fin.eta, fitted: fin.mu, weights: fin.w, deviance: fin.dev, logLik, aic: fin.dev + 2 * df, bic: fin.dev + df * Math.log(n), df, dfResidual: n - df, rank: p, n,
-    dispersion: 1, aux, theta_nb: o.family === 'negbin' ? aux : undefined, phi: o.family === 'beta' ? aux : undefined, sigma2: 1,
+    dispersion, aux, theta_nb: o.family === 'negbin' ? aux : undefined, phi: o.family === 'beta' ? aux : undefined, sigma2: 1,
     iterations: res.iterations, converged: res.converged && fin.converged, hat: null, pearson, devianceResiduals: null, cooks: null,
     family: o.family, link: link.id, flags, nullDeviance: NaN, reml: false
   };
@@ -13458,7 +13598,9 @@ export function fitGlmm(y, X, random, o) {
 // outer parameter, by central differences.
 function hessianCov(f, x, nTheta, p) {
   const d = x.length;
-  const h = Float64Array.from(x, v => 1e-4 * Math.max(1, Math.abs(v)));
+  // A step of 1e-3: the inner solve leaves noise near 1e-12 in the objective, which a
+  // second difference over a step of 1e-4 magnifies into the standard errors.
+  const h = Float64Array.from(x, v => 1e-3 * Math.max(1, Math.abs(v)));
   const f0 = f(x);
   const H = zeros(d, d);
   const at = (i, di, j, dj) => { const z = Float64Array.from(x); z[i] += di; if (j != null) z[j] += dj; return f(z); };
@@ -14196,8 +14338,12 @@ export function residualSet(result, seed = RESIDUAL_SEED) {
     const aux = fit.family === 'normal' || fit.family === 'gamma' ? fit.dispersion : fit.aux;
     quantile = quantileResiduals(fit.family, y, fit.fitted, aux, u || new Float64Array(n));
   }
+  // The Pearson test of overdispersion has a chi-square reference only for counts: a 0/1
+  // response has variance p(1 - p) exactly, and an observation-level random effect takes
+  // up a count's extra spread (and shrinks the conditional residuals) by construction.
   let dispersion = null;
-  if (fit.pearson && (fit.family === 'binomial' || fit.family === 'poisson')) {
+  const olre = !!(fit.random && fit.random.terms.some(t => t.kind === 'olre'));
+  if (fit.pearson && fit.family === 'poisson' && !olre) {
     let s = 0;
     for (let i = 0; i < n; i++) s += fit.pearson[i] * fit.pearson[i];
     const df = fit.dfResidual;
@@ -17255,6 +17401,49 @@ export function shortNames(names) {
   if (parts.some(p => !p) || parts.some(p => p[0] !== parts[0][0])) return names.slice();
   const tails = parts.map(p => p[1]);
   return new Set(tails).size === tails.length ? tails : names.slice();
+}
+</script>
+<script type="text/plain" data-module="js/ui/scrollhint.js">
+// A box that scrolls sideways or down gives no sign of what lies beyond
+// its edges until the reader tries. This marks every `.scroll-box` with the
+// edges that have more content past them (`data-more="right bottom"`), kept
+// current as the box scrolls, resizes, or is replaced, and the page's CSS
+// shades those edges.
+
+/**
+ * Watches `root` for scroll boxes, present and future, and marks their edges.
+ * @param {HTMLElement} root
+ */
+export function installScrollHints(root) {
+  const update = el => {
+    const more = [];
+    if (el.scrollLeft > 1) more.push('left');
+    if (el.scrollLeft + el.clientWidth < el.scrollWidth - 1) more.push('right');
+    if (el.scrollTop > 1) more.push('top');
+    if (el.scrollTop + el.clientHeight < el.scrollHeight - 1) more.push('bottom');
+    if (more.length) el.setAttribute('data-more', more.join(' ')); else el.removeAttribute('data-more');
+  };
+  const seen = new WeakSet();
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => { for (const e of entries) update(e.target); }) : null;
+  const attach = el => {
+    if (seen.has(el)) return;
+    seen.add(el);
+    el.addEventListener('scroll', () => update(el), { passive: true });
+    if (ro) ro.observe(el);
+    // The content inside may change size without the box changing its own.
+    if (ro && el.firstElementChild) ro.observe(el.firstElementChild);
+    update(el);
+  };
+  const scan = node => {
+    if (!node || node.nodeType !== 1) return;
+    if (node.matches('.scroll-box')) attach(node);
+    node.querySelectorAll('.scroll-box').forEach(attach);
+  };
+  scan(root);
+  new MutationObserver(muts => { for (const m of muts) m.addedNodes.forEach(scan); }).observe(root, { childList: true, subtree: true });
+  const all = () => root.querySelectorAll('.scroll-box').forEach(update);
+  window.addEventListener('resize', all);
+  window.addEventListener('hashchange', () => setTimeout(all, 50));
 }
 </script>
 <script type="text/plain" data-module="js/ui/session.js">

@@ -373,7 +373,8 @@ fit_loglik <- function(m) as.numeric(logLik(m))
 fit_k <- function(m) as.integer(attr(logLik(m), "df"))
 fit_deviance <- function(m) switch(fit_class(m), lme4 = as.numeric(-2 * logLik(m)), tmb = as.numeric(-2 * logLik(m)), polr = m$deviance, betareg = NaN, deviance(m))
 fit_nulldev <- function(m) if (fit_class(m) %in% c("glm", "negbin")) m$null.deviance else NaN
-fit_dispersion <- function(m) switch(fit_class(m), glm = summary(m)$dispersion, lme4 = if (lme4::isLMM(m)) sigma(m)^2 else 1, 1)
+# A gamma glmer's dispersion is lme4's: the penalized weighted residual sum of squares over n.
+fit_dispersion <- function(m) switch(fit_class(m), glm = summary(m)$dispersion, lme4 = if (lme4::isLMM(m) || family(m)$family == "Gamma") sigma(m)^2 else 1, 1)
 fit_aux <- function(m) switch(fit_class(m), negbin = m$theta, betareg = unname(coef(m, model = "precision")), tmb = glmmTMB::sigma(m),
                               lme4 = if (!is.null(lme4::getME(m, "glmer.nb.theta"))) lme4::getME(m, "glmer.nb.theta") else NA, NA)
 fit_fitted <- function(m) switch(fit_class(m), polr = NaN, unname(fitted(m)))
@@ -1029,7 +1030,35 @@ function s = fit_dispersion(m)
 switch fit_class(m)
     case 'glm', s = m.Dispersion;
     case 'lme', s = m.MSE;
+    case 'glme'
+        if strcmpi(m.Distribution, 'Gamma')
+            % As lme4 estimates a gamma mixed model's dispersion: the penalized weighted residual
+            % sum of squares over n, the Pearson chi-square plus the squared spherical random effects.
+            pr = residuals(m, 'ResidualType', 'Pearson');
+            s = (sum(pr.^2) + spherical_ss(m)) / numel(pr);
+        else
+            s = 1;
+        end
     otherwise, s = 1;
+end
+end
+
+function ss = spherical_ss(m)
+% The squared length of the spherical random effects u = L \\ b, with L the Cholesky factor
+% of each grouping factor's covariance, level by level.
+[B, Bnames] = randomEffects(m);
+psi = covarianceParameters(m);
+grp = string(Bnames.Group); lev = string(Bnames.Level);
+groups = unique(grp, 'stable');
+ss = 0;
+for g = 1:numel(groups)
+    rows = grp == groups(g);
+    L = chol(psi{g}, 'lower');
+    levels = unique(lev(rows), 'stable');
+    for l = 1:numel(levels)
+        u = L \\ B(rows & lev == levels(l));
+        ss = ss + u' * u;
+    end
 end
 end
 

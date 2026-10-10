@@ -21,6 +21,7 @@ export function capability(spec) {
     if (fam === 'negbin') out.py = { ok: false, why: 'Python has no maximum-likelihood routine for a negative binomial mixed model. R\'s glmer.nb is the conventional tool.' };
     if (fam === 'beta' && out.m.ok) out.m = { ok: false, why: 'MATLAB has no beta mixed model. R\'s glmmTMB is the conventional tool.' };
     if (fam === 'ordinal') { out.py = { ok: false, why: 'A mixed ordinal model is outside this tool.' }; out.m = out.py; }
+    if (fam === 'gamma') out.m = { ok: false, why: 'MATLAB\'s fitglme fits a gamma mixed model with the dispersion as a free parameter of its Laplace likelihood, where lme4 and this page profile it, and the two land on different estimates. R\'s lme4 is the conventional tool.' };
     if (fam === 'normal' && (spec.nested)) out.py = { ok: false, why: 'statsmodels\' MixedLM takes a nested factor through variance-component formulas that this script does not write; R\'s lmer and MATLAB\'s fitlme are the conventional tools.' };
   } else {
     if (fam === 'negbin') out.m = { ok: false, why: 'MATLAB\'s fitglm has no negative binomial distribution. R\'s MASS::glm.nb and Python\'s statsmodels are the conventional tools.' };

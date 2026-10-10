@@ -466,6 +466,7 @@ import { chi2Cdf } from '../js/stats/special.js';
 const await0 = (x, d) => chi2Cdf(x, d);
 
 const ON_TIME = example('on-time'), CYCLE = example('cycle-time'), BALKS = example('balks'), UTIL = example('utilization'), COLONY = example('colony-recruits'), RATING = example('rating');
+const PAIRED = example('tour-paired');
 
 // The Model page on every family.
 checkRecipe('model, binomial logit with an interaction', modelOf(ON_TIME, specOf(ON_TIME, 'on_time', 'binomial', ['queue', 'policy', { of: ['queue', 'policy'] }])), { smoke: true });
@@ -494,6 +495,8 @@ checkRecipe('diagnostics, binomial', diagnosticsOf(ON_TIME, specOf(ON_TIME, 'on_
 checkRecipe('diagnostics, negative binomial', diagnosticsOf(BALKS, specOf(BALKS, 'balks', 'negbin', ['load', 'staffing'])));
 checkRecipe('diagnostics, beta', diagnosticsOf(UTIL, specOf(UTIL, 'utilization', 'beta', ['arrival_rate', 'day_type'])));
 checkRecipe('diagnostics, Poisson mixed', diagnosticsOf(COLONY, specOf(COLONY, 'recruits', 'poisson', ['temperature', 'treatment'], { group: 'colony' })), { smoke: true });
+checkRecipe('diagnostics, gamma mixed', diagnosticsOf(PAIRED, specOf(PAIRED, 'time', 'gamma', ['condition'], { group: 'subject' })));
+checkRecipe('model, gamma mixed', modelOf(PAIRED, specOf(PAIRED, 'time', 'gamma', ['condition'], { group: 'subject' })), { smoke: true });
 
 // Predict.
 checkRecipe('predict, gamma effect and means', predictOf(CYCLE, specOf(CYCLE, 'time_in_system', 'gamma', ['load', 'class']), { x: 'load', by: 'class', factor: 'class', row: { load: 0.7, class: 'express' } }), { smoke: true });
@@ -506,3 +509,26 @@ checkRecipe('compare, Poisson candidates', compareOf(BALKS, [['load only', specO
 checkRecipe('compare, mixed against fixed', compareOf(COLONY, [['fixed', specOf(COLONY, 'recruits', 'poisson', ['temperature', 'treatment'])], ['mixed', specOf(COLONY, 'recruits', 'poisson', ['temperature', 'treatment'], { group: 'colony' })]]));
 
 startMatlab();
+
+// The report names, in order, are the same in every language: a reader
+// comparing two scripts' output sees the same lines in the same places.
+test('report names come out in one order in every language', () => {
+  const namesOf = text => {
+    const out = [];
+    for (const m of text.matchAll(/\b(report|shapiro_check)\((["'])((?:\\.|[^\\])*?)\2/g)) {
+      if (m[1] === 'report') out.push(m[3]); else out.push(m[3] + ' W', m[3] + ' p');
+    }
+    return out;
+  };
+  const recipes = [
+    modelOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing'], { group: 'week' })),
+    diagnosticsOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing'])),
+    predictOf(CYCLE, specOf(CYCLE, 'time_in_system', 'gamma', ['load', 'class']), { x: 'load', by: 'class', factor: 'class', row: { load: 0.7, class: 'express' } }),
+    compareOf(BALKS, [['pois', specOf(BALKS, 'balks', 'poisson', ['load'])], ['pois2', specOf(BALKS, 'balks', 'poisson', ['load', 'staffing'])]])
+  ];
+  for (const recipe of recipes) {
+    const r = namesOf(writeScript(recipe, 'R'));
+    assert.ok(r.length > 3, 'the script reports');
+    for (const lang of ['py', 'm']) assert.deepEqual(namesOf(writeScript(recipe, lang)), r, lang + ' names and order against R, ' + recipe.title);
+  }
+});

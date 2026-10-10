@@ -59,6 +59,20 @@ export function ascii(s) {
     .replace(/[\x00-\x1f\x7f]/g, ' ');
 }
 
+// The R packages a recipe's models call, from what they fit rather than from
+// the helpers' text, which names every package it may call.
+function rPackages(recipe) {
+  const specs = recipe.candidates ? recipe.candidates : [recipe.spec];
+  const pk = new Set();
+  for (const s of specs) {
+    if (s.family === 'ordinal' || (s.family === 'negbin' && !s.mixed)) pk.add('MASS');
+    if (s.family === 'beta') pk.add(s.mixed ? 'glmmTMB' : 'betareg');
+    if (s.mixed && s.family !== 'beta') pk.add('lme4');
+  }
+  if (recipe.means) pk.add('emmeans');
+  return ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans'].filter(p => pk.has(p));
+}
+
 // ── Per-language syntax ──────────────────────────────────────────────────
 
 function dq(s) { return '"' + ascii(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
@@ -73,8 +87,8 @@ const LANG = {
     assign: (n, e) => n + ' <- ' + e,
     bool: b => (b ? 'TRUE' : 'FALSE'), nan: 'NaN', inf: 'Inf',
     prelude: () => ['options(digits = 10)'],
-    requires: code => {
-      const pk = ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans'].filter(p => new RegExp('\\b' + p + '::').test(code));
+    requires: (code, recipe) => {
+      const pk = rPackages(recipe);
       return 'R with its stats package' + (pk.length ? ' and the ' + pk.join(', ') + ' package' + (pk.length > 1 ? 's' : '') : '') + '.';
     }
   },
@@ -102,7 +116,7 @@ const LANG = {
 LANG.tidy = Object.assign({}, LANG.R, {
   tidy: true,
   prelude: () => ['options(digits = 10)', 'suppressPackageStartupMessages({ library(tibble); library(dplyr); library(ggplot2); library(broom) })'],
-  requires: code => LANG.R.requires(code).replace(/\.$/, '') + ', plus tibble, dplyr, broom, and ggplot2.'
+  requires: (code, recipe) => LANG.R.requires(code, recipe).replace(/\.$/, '') + ', plus tibble, dplyr, broom, and ggplot2.'
 });
 
 /**
@@ -251,7 +265,7 @@ function header(recipe, L, code) {
     if (v === undefined || v === null || v === '') continue;
     out.push(...commentLines(c + '  ', ascii(k) + ': ' + ascii(Array.isArray(v) ? v.join(', ') : String(v)), c + '    '));
   }
-  out.push(...commentLines(c, 'Requires: ' + (typeof L.requires === 'function' ? L.requires(code) : L.requires), c + '  '));
+  out.push(...commentLines(c, 'Requires: ' + (typeof L.requires === 'function' ? L.requires(code, recipe) : L.requires), c + '  '));
   return out;
 }
 
@@ -299,14 +313,19 @@ function settingsBlock(recipe, L) {
   out.push(L.assign('check_details', L.bool(false)));
   out.push(L.assign('level', String(recipe.level)));
   out.push(L.assign('alpha', '1 - level'));
+  if (recipe.page === 'compare') {
+    out.push(c + 'Each candidate\'s family, link, and formula are set in its own fit_model call below.');
+    return out;
+  }
   out.push(c + 'The family, the link, and the model, as the page fitted it. family is one of normal, binomial,');
   out.push(c + 'poisson, negbin, gamma, beta, ordinal.');
   out.push(L.assign('family', L.str(s.family)));
   out.push(L.assign('link', L.str(s.link)));
   out.push(L.assign('formula', L.str(recipe.formula[L.lang])));
   out.push(L.assign('reml', L.bool(!!s.reml)));
-  out.push(c + 'The degrees of freedom of the Wald intervals: the residual degrees of freedom where the');
-  out.push(c + 'dispersion is estimated, and none (a normal quantile) otherwise.');
+  out.push(c + 'The degrees of freedom of the Wald intervals: the residual degrees of freedom for a normal or');
+  out.push(c + 'gamma model without random effects, whose dispersion is estimated, and none (a normal');
+  out.push(c + 'quantile) otherwise, as the fitters report them.');
   out.push(L.assign('df_wald', lit(L, recipe.dfWald)));
   if (L.lang === 'py' && s.mixed) {
     out.push(L.assign('group', L.str(s.olre && !s.group ? 'obs' : s.group)));
@@ -459,6 +478,21 @@ function varName(L, name) {
 
 // ── Page bodies ──────────────────────────────────────────────────────────
 
+// The boundary-corrected p-value of a random part's likelihood ratio, as
+// stats/inference.js's boundaryP forms it, and the comment that says which
+// mixture the line uses.
+function boundaryExpr(L, k, withSlope) {
+  const upper = d => (d <= 0 ? (L.lang === 'R' ? 'as.numeric(s <= 0)' : L.lang === 'py' ? 'float(s <= 0)' : 'double(s <= 0)') : chisqUpper(L, 's', String(d)));
+  if (k === 1) return '0.5 * ' + upper(0) + ' + 0.5 * ' + upper(1);
+  if (k === 2 && !withSlope) return '0.25 * ' + upper(0) + ' + 0.5 * ' + upper(1) + ' + 0.25 * ' + upper(2);
+  return upper(k);
+}
+function boundaryNote(k, withSlope) {
+  if (k === 1) return 'One variance at the edge of its range: half the chi-square tail on one degree of freedom.';
+  if (k === 2 && !withSlope) return 'Two independent variances at their edges: the 1/4 : 1/2 : 1/4 mixture of the tails on 0, 1, and 2 degrees of freedom.';
+  return 'The random slope brings a covariance in, whose boundary mixture has no simple form: the plain tail on ' + k + ' degrees of freedom, which is conservative.';
+}
+
 export const BODIES = {};
 
 // The Wald quantile, the fit, and the coefficient lines every page starts from.
@@ -560,10 +594,9 @@ function randomLines(r, L) {
   out.push(L.assign('m0', L.lang === 'R' ? 'fit_model(d, family, link, ' + L.str(f) + ', FALSE)' : L.lang === 'py' ? 'fit_model(d, family, link, ' + L.str(f) + ', False)' : 'fit_model(tbl, family, link, ' + L.str(f) + ', false)'));
   if (!r.termTests || !r.termTests.length) out.push(L.lang === 'R' ? 'm_ml <- fit_ml(m, d, family, link, formula)' : L.lang === 'py' ? 'm_ml = fit_ml(m, d, family, link, formula' + (r.spec.mixed ? ', group=group, re_formula=re_formula' : '') + ')' : 'm_ml = fit_ml(m, tbl, family, link, formula);');
   out.push(L.assign('s', '2 * (fit_loglik(m_ml) - fit_loglik(m0))'));
-  const k = r.randomTest.k;
-  const upper = d => (d <= 0 ? (L.lang === 'R' ? 'as.numeric(s <= 0)' : L.lang === 'py' ? 'float(s <= 0)' : 'double(s <= 0)') : chisqUpper(L, 's', String(d)));
   out.push(rep(L, r, 'random LRT', 's'));
-  out.push(rep(L, r, 'random p', '0.5 * ' + upper(k - 1) + ' + 0.5 * ' + upper(k)));
+  out.push(c + boundaryNote(r.randomTest.k, !!r.spec.slope));
+  out.push(rep(L, r, 'random p', boundaryExpr(L, r.randomTest.k, !!r.spec.slope)));
   return out;
 }
 
@@ -687,7 +720,7 @@ function predictBody(r, L) {
       for (let i = 0; i < m.levels.length; i++) for (let j = i + 1; j < m.levels.length; j++) {
         p++;
         const k = m.levels[i] + ' - ' + m.levels[j];
-        out.push(rep(L, r, 'pair ' + k, 'ep[' + p + ', 2]'), rep(L, r, 'pair se ' + k, 'ep[' + p + ', 3]'), rep(L, r, 'pair lower ' + k, 'ep[' + p + ', 5]'), rep(L, r, 'pair upper ' + k, 'ep[' + p + ', 6]'), rep(L, r, 'pair t ' + k, 'ep[' + p + ', 7]'), rep(L, r, 'pair p ' + k, 'ep[' + p + ', 8]'));
+        out.push(rep(L, r, 'pair ' + k, 'ep[' + p + ', 2]'), rep(L, r, 'pair se ' + k, 'ep[' + p + ', 3]'), rep(L, r, 'pair t ' + k, 'ep[' + p + ', 7]'), rep(L, r, 'pair p ' + k, 'ep[' + p + ', 8]'), rep(L, r, 'pair lower ' + k, 'ep[' + p + ', 5]'), rep(L, r, 'pair upper ' + k, 'ep[' + p + ', 6]'));
       }
     } else {
       out.push(c + 'The reference grid by hand: each level with the other factors\' levels in every combination (equal weights) and the continuous predictors at their means over the fitted rows.');
@@ -758,8 +791,8 @@ function compareBody(r, L) {
       const ia = r.candidates.findIndex(x => x.name === p.a), ib = r.candidates.findIndex(x => x.name === p.b);
       out.push(L.assign('s', '2 * (fit_loglik(m' + (ib + 1) + ') - fit_loglik(m' + (ia + 1) + '))'));
       out.push(rep(L, r, 'LRT ' + p.a + ' vs ' + p.b, 's'));
-      const upper = d => (d <= 0 ? (L.lang === 'R' ? 'as.numeric(s <= 0)' : L.lang === 'py' ? 'float(s <= 0)' : 'double(s <= 0)') : chisqUpper(L, 's', String(d)));
-      out.push(rep(L, r, 'LRT p ' + p.a + ' vs ' + p.b, p.kind === 'random' ? '0.5 * ' + upper(p.df - 1) + ' + 0.5 * ' + upper(p.df) : chisqUpper(L, 's', String(p.df))));
+      if (p.kind === 'random') out.push(c + boundaryNote(p.df, !!r.candidates[ib].slope));
+      out.push(rep(L, r, 'LRT p ' + p.a + ' vs ' + p.b, p.kind === 'random' ? boundaryExpr(L, p.df, !!r.candidates[ib].slope) : chisqUpper(L, 's', String(p.df))));
     }
   }
   return { body: out, need: ['fit'] };

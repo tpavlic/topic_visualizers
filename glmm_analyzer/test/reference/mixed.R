@@ -1,8 +1,8 @@
 # Reference values for test/mixed.test.mjs: lme4's Laplace fits (glmer at
 # its default nAGQ = 1, lmer by ML and REML) on seeded data with one
 # grouping factor: a random intercept, a random intercept and slope, a
-# nested factor, an observation-level intercept, glmer.nb, and glmmTMB's beta
-# mixed model. Run from anywhere:
+# nested factor, an observation-level intercept, glmer.nb, a gamma glmer, and
+# glmmTMB's beta mixed model. Run from anywhere:
 #   Rscript glmm_analyzer/test/reference/mixed.R > glmm_analyzer/test/reference/mixed.json
 suppressPackageStartupMessages({ library(lme4); library(glmmTMB) })
 set.seed(20261014)
@@ -22,6 +22,7 @@ d$yover <- rpois(n, exp(0.5 + 0.4 * x + rnorm(n, 0, 0.5)))
 d$ynb <- rnbinom(n, size = 2, mu = exp(0.4 + 0.5 * x + bg))
 mu_b <- plogis(-0.4 + 0.7 * x + bg)
 d$ybeta <- pmin(pmax(round(rbeta(n, mu_b * 6, (1 - mu_b) * 6), 5), 1e-4), 1 - 1e-4)
+d$ygam <- round(rgamma(n, shape = 3, scale = exp(0.5 + 0.4 * x + bg) / 3), 4)
 d$obs <- factor(seq_len(n))
 
 vc_list <- function(m) {
@@ -52,13 +53,15 @@ olre <- glmer(yover ~ x + (1 | obs), data = d, family = poisson)
 olre_g <- glmer(yover ~ x + (1 | g) + (1 | obs), data = d, family = poisson)
 nb <- glmer.nb(ynb ~ x + (1 | g), data = d)
 tmb <- glmmTMB(ybeta ~ x + (1 | g), data = d, family = beta_family())
+gam <- glmer(ygam ~ x + (1 | g), data = d, family = Gamma(link = "log"))
 # The fixed-effects model, for the test of the random effect.
 pois0 <- glm(ycount ~ x + f, data = d, family = poisson, control = glm.control(epsilon = 1e-12, maxit = 100))
 out <- list(
-  data = list(g = as.character(d$g), h = as.character(d$h), x = d$x, f = as.character(d$f), ycount = d$ycount, ybin = d$ybin, ynorm = d$ynorm, yover = d$yover, ynb = d$ynb, ybeta = d$ybeta),
+  data = list(g = as.character(d$g), h = as.character(d$h), x = d$x, f = as.character(d$f), ycount = d$ycount, ybin = d$ybin, ynorm = d$ynorm, yover = d$yover, ynb = d$ynb, ybeta = d$ybeta, ygam = d$ygam),
   pois = out_lme4(pois, nd), bin = out_lme4(bin, data.frame(x = c(0.5, 1.5))), lmm_ml = out_lme4(lmm_ml, nd), lmm_reml = out_lme4(lmm_reml, nd),
   nested = c(out_lme4(nested), list(ranef2 = ran(nested, 2))), olre = out_lme4(olre), olre_g = out_lme4(olre_g),
   nb = c(out_lme4(nb), list(theta_nb = getME(nb, "glmer.nb.theta"))),
+  gam = c(out_lme4(gam, nd), list(sigma2 = sigma(gam)^2)),
   tmb = list(fixef = unname(fixef(tmb)$cond), se = unname(sqrt(diag(vcov(tmb)$cond))), loglik = as.numeric(logLik(tmb)), aic = AIC(tmb),
              phi = sigma(tmb), var_g = unname(VarCorr(tmb)$cond$g[1, 1]), ranef = unname(ranef(tmb)$cond$g[, 1])),
   lrt_pois = 2 * (as.numeric(logLik(pois)) - as.numeric(logLik(pois0)))

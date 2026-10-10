@@ -188,8 +188,12 @@ function compute() {
         : d.p < 0.05 && d.ratio < 1 ? 'The residual variance is below what the family allows (χ² / df = ' + num(d.ratio, 3) + '): underdispersion, which is rare and usually means the responses are not independent.'
           : 'The residual variance is consistent with the ' + esc(fam.label) + ' family (χ² / df = ' + num(d.ratio, 3) + ', ' + pEq(d.p) + ').'));
     tables.push({ name: 'Dispersion', headers: ['statistic', 'value'], rows: [['Pearson chi-square', d.chisq], ['df', d.df], ['ratio', d.ratio], ['p', d.p]] });
+  } else if (fit.family === 'binomial') {
+    els.disp.appendChild(notice('info', 'A 0/1 response has variance p(1 − p) exactly, and so overdispersion cannot be detected from it: the Pearson χ² of a binary model has no chi-square reference, and the page makes no dispersion test. The residual plots and the model’s terms are the check here.'));
+  } else if (fit.family === 'poisson') {
+    els.disp.appendChild(notice('info', 'The observation-level random effect takes up the extra spread a Poisson count shows, and shrinks the conditional residuals with it, and so there is no dispersion test here: its variance in the Random effects table is the measure of the overdispersion.'));
   } else if (fam.dispersion === 'estimated') {
-    els.disp.appendChild(cardRow([card('Dispersion', stat(fit.dispersion, 4), 'estimated by the Pearson χ² / df and used in every standard error')]));
+    els.disp.appendChild(cardRow([card('Dispersion', stat(fit.dispersion, 4), fit.mixed ? 'as lme4 estimates it: the penalized weighted residual sum of squares over n' : 'estimated by the Pearson χ² / df and used in every standard error')]));
     els.disp.appendChild(notice('info', 'The ' + esc(fam.label) + ' family estimates its dispersion rather than fixing it, and so there is no overdispersion test; the scale–location plot above says whether the spread changes with the mean.'));
   } else if (fit.family === 'negbin') {
     els.disp.appendChild(cardRow([card('θ', stat(fit.theta, 4), 'SE ' + stat(fit.thetaSe, 3)), card('Variance at the mean μ', 'μ + μ² / θ')]));

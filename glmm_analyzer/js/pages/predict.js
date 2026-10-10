@@ -5,7 +5,7 @@
 
 import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
-import { FAMILIES, LINKS } from '../stats/families.js';
+import { FAMILIES, LINKS, backWord } from '../stats/families.js';
 import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf } from '../stats/inference.js';
 import { ordinalProbs } from '../stats/ordinal.js';
 import { newDataMatrix } from '../stats/design.js';
@@ -55,7 +55,7 @@ export function render(root) {
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-x">Predictor on the x axis</label><select id="pr-x"></select></span>' +
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-by">Lines by</label><select id="pr-by"></select></span>' +
         '<label class="ctrl-chk"><input type="checkbox" id="pr-data" checked> show the data</label>' +
-        '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> <span class="tip" tabindex="0" data-tip="One thin line per group: the population curve shifted by the group\'s predicted random effect (and its slope, when the model has one).">show each group</span></label>' +
+        '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> show each group</label>' +
       '</div>' +
       '<div id="pr-effect"></div>' +
     '</div>' +
@@ -210,8 +210,10 @@ function drawEffect() {
       if (xc.col.type === 'continuous') {
         if (resp && (resp.type !== 'continuous' || support(resp, valuesOf(ds, resp.name)) === 'binary')) {
           // A binary response: binned proportions per series.
-          pts = curves.map(c => {
-            const idx = keep.map((row, k) => k).filter(k => !byc || matchesBy(ds.rows[keep[k]][byc.index], c.by, byc.col));
+          // One set of bins per level of a categorical "by"; a continuous "by" gets one set of all the data.
+          const byLevels = !!(byc && byc.col.type !== 'continuous');
+          pts = (byLevels ? curves : [{ by: null }]).map(c => {
+            const idx = keep.map((row, k) => k).filter(k => !byLevels || ds.rows[keep[k]][byc.index] === c.by);
             return { by: c.by, bins: binnedMeans(idx.map(k => xs[k]), idx.map(k => yData[k]), 10) };
           });
           for (const p of pts) for (const b of p.bins) allY.push(b.y);
@@ -231,7 +233,7 @@ function drawEffect() {
     if (xc.col.type !== 'continuous') pos = categoricalX(f, grid.xLevels); else f.axes({});
     if (showData) {
       if (xc.col.type === 'continuous') {
-        if (pts.length) pts.forEach((p, i) => dataPoints(f, p.bins, { color: by ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--est', hollow: true, r: 4.2, label: 'binned proportion' + (p.by != null ? ', ' + p.by : '') }));
+        if (pts.length) pts.forEach((p, i) => dataPoints(f, p.bins, { color: p.by != null ? LEVEL_COLORS[i % LEVEL_COLORS.length] : '--est', hollow: true, r: 4.2, label: 'binned proportion' + (p.by != null ? ', ' + p.by : '') }));
         else rawPoints(f, xs, Array.from(yData), { label: 'observation' });
       } else {
         // A categorical x: the observations jittered within each level.
@@ -269,17 +271,13 @@ function drawEffect() {
   p.className = 'muted-line';
   p.innerHTML = (held ? 'Other predictors held at ' + held + ' (a continuous one at its mean over the fitted rows, a categorical one at its first level). ' : '') +
     (result.fit.mixed ? 'The population curve is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
+    (els.groups.checked && result.fit.mixed && !by ? 'Each thin line is one group’s curve: the population curve shifted by the group’s predicted random effect' + (result.fit.random.terms[0].q === 2 ? ' and slope' : '') + '. ' : '') +
     (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
     (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
   els.effect.appendChild(p);
   figs.push(fig);
   last.effect = { x, by, series: curves.map(c => ({ label: c.label, by: c.by, rows: c.rows, pred: c.pred })) };
   registerResult();
-}
-
-function matchesBy(v, bv, col) {
-  if (col.type !== 'continuous') return v === bv;
-  return true;
 }
 
 function drawMeans() {
@@ -298,7 +296,7 @@ function drawMeans() {
   for (const r of m.means) html += '<tr><td>' + esc(r.level) + '</td><td>' + stat(r.eta, 5) + '</td><td>' + stat(r.se, 4) + '</td><td>[' + stat(r.lo, 5) + ', ' + stat(r.hi, 5) + ']</td><td>' + stat(r.fit, 5) + '</td><td>[' + stat(r.fitLo, 5) + ', ' + stat(r.fitHi, 5) + ']</td></tr>';
   html += '</tbody></table></div>';
   html += '<div class="ctrl-grp-lbl im-gap">Pairwise differences, Tukey-adjusted</div>' +
-    '<div class="scroll-box"><table class="ptab"><thead><tr><th>Pair</th><th>difference (link scale)</th><th>std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + (link.backName ? '<th>' + esc(link.backWord) + '</th><th>its interval</th>' : '') + '</tr></thead><tbody>';
+    '<div class="scroll-box"><table class="ptab"><thead><tr><th>Pair</th><th>difference (link scale)</th><th>std. error</th><th>' + (useT ? 't' : 'z') + '</th><th>p</th><th>' + esc(lvl(level)) + ' interval</th>' + (link.backName ? '<th>' + esc(backWord(result.fit.family, link)) + '</th><th>its interval</th>' : '') + '</tr></thead><tbody>';
   for (const p of m.pairs) html += '<tr><td>' + esc(p.a + ' − ' + p.b) + '</td><td>' + stat(p.diff, 5) + '</td><td>' + stat(p.se, 4) + '</td><td>' + stat(p.t, 4) + '</td><td>' + pValue(p.p) + '</td><td>[' + stat(p.lo, 5) + ', ' + stat(p.hi, 5) + ']</td>' +
     (link.backName ? '<td>' + stat(p.ratio, 4) + '</td><td>[' + stat(p.ratioLo, 4) + ', ' + stat(p.ratioHi, 4) + ']</td>' : '') + '</tr>';
   html += '</tbody></table></div>';
@@ -315,7 +313,7 @@ function drawMeans() {
   const p = document.createElement('p');
   p.className = 'muted-line';
   p.innerHTML = 'Each mean is the model’s prediction at the level' + (held ? ', with ' + held + ' (the means over the fitted rows)' : '') + (others.length ? ', averaged over the levels of ' + esc(others.join(', ')) + ' with equal weights' : '') + ', on the link scale and then carried to the response scale. ' +
-    'The pairwise p-values and intervals use the studentized range over ' + intl(m.k) + ' means' + (useT ? ' on ' + intl(m.df) + ' degrees of freedom' : ', with no finite degrees of freedom because the dispersion is fixed') + '.';
+    'The pairwise p-values and intervals use the studentized range over ' + intl(m.k) + ' means' + (useT ? ' on ' + intl(m.df) + ' degrees of freedom' : ', with no finite degrees of freedom' + (result.fit.mixed ? ', as a mixed model’s Wald tests use the normal reference' : result.fit.family === 'binomial' || result.fit.family === 'poisson' ? ' because the dispersion is fixed by the family' : ', as the fitter’s Wald tests are large-sample tests')) + '.';
   els.means.appendChild(p);
   last.means = m;
   registerResult();
