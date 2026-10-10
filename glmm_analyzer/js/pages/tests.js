@@ -229,7 +229,8 @@ function sectionChisq(root) {
     table([
       pair('Deviance, model with interaction', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'one coefficient per cell fits the table exactly'),
       pair('Deviance, model without interaction', '–', stat(r0.fit.deviance, 5), ''),
-      pair('Difference, on the interaction’s df', stat(cs.G2, 5) + ' on ' + intl(cs.df) + ' df', stat(ia.stat, 5) + ' on ' + intl(ia.df) + ' df', 'the likelihood-ratio test of outcome:channel'),
+      pair('Difference', stat(cs.G2, 5), stat(ia.stat, 5), 'the likelihood-ratio test of outcome:channel'),
+      pair('Degrees of freedom', intl(cs.df), intl(ia.df), 'coefficients of the interaction'),
       pair('p', pEq(cs.pG), pEq(ia.p), 'the Model page’s term test')
     ]) +
     '<p class="tm-sub">The model without interaction on its own</p>' +
