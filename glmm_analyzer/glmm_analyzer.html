@@ -716,15 +716,10 @@ footer a:hover { text-decoration: underline; }
         <a class="tab" data-tab="storage" href="#storage"><span class="tab-n">⑧</span> <span class="tab-t">Storage</span></a>
       </div>
     </div>
-    <div class="tab-group" role="group" aria-labelledby="pg-tests">
-      <span class="tab-group-lbl" id="pg-tests">Classic tests as GLMM</span>
-      <div class="tab-group-items">
-        <a class="tab" data-tab="tests" href="#tests"><span class="tab-n">⑨</span> <span class="tab-t">Tests as models</span></a>
-      </div>
-    </div>
     <div class="tab-group" role="group" aria-labelledby="pg-more">
       <span class="tab-group-lbl" id="pg-more">More information</span>
       <div class="tab-group-items">
+        <a class="tab" data-tab="tests" href="#tests"><span class="tab-n">⑨</span> <span class="tab-t">Classic tests as GLMM</span></a>
         <a class="tab" data-tab="references" href="#references"><span class="tab-n">⑩</span> <span class="tab-t">References</span></a>
       </div>
     </div>
@@ -745,10 +740,8 @@ footer a:hover { text-decoration: underline; }
       <option value="report">⑦ Report</option>
       <option value="storage">⑧ Storage</option>
     </optgroup>
-    <optgroup label="Classic tests as GLMM">
-      <option value="tests">⑨ Tests as models</option>
-    </optgroup>
     <optgroup label="More information">
+      <option value="tests">⑨ Classic tests as GLMM</option>
       <option value="references">⑩ References</option>
     </optgroup>
   </select>
@@ -763,7 +756,7 @@ footer a:hover { text-decoration: underline; }
   <section class="tp" id="tab-compare" aria-label="Compare"></section>
   <section class="tp" id="tab-report" aria-label="Report"></section>
   <section class="tp" id="tab-storage" aria-label="Storage"></section>
-  <section class="tp" id="tab-tests" aria-label="Tests as models"></section>
+  <section class="tp" id="tab-tests" aria-label="Classic tests as GLMM"></section>
   <section class="tp" id="tab-references" aria-label="References"></section>
   </div>
   </div>
@@ -10380,7 +10373,7 @@ const GROUPS = [
     'H. Akaike, “A new look at the statistical model identification,” <i>IEEE Transactions on Automatic Control</i> 19 (1974) 716–723; G. Schwarz, “Estimating the dimension of a model,” <i>Annals of Statistics</i> 6 (1978) 461–464.',
     'K. P. Burnham and D. R. Anderson, <i>Model Selection and Multimodel Inference</i>, 2nd ed. (Springer, 2002): comparing a set of candidate models by information criteria rather than searching for one.'
   ]],
-  ['Tests as models', [
+  ['Classic tests as GLMM', [
     'J. K. Lindeløv, “Common statistical tests are linear models (or: how to teach stats),” online (2019): the correspondence between the classical tests and the linear models this page draws.',
     'A. Agresti, <i>Categorical Data Analysis</i>, 3rd ed. (Wiley, 2013): the log-linear model behind the chi-square test of independence and the logistic model behind the comparison of two proportions.'
   ]]
@@ -10701,7 +10694,7 @@ import { registerTips } from '../ui/tooltip.js';
 /** The page's hash id. */
 export const id = 'tests';
 /** The page's title. */
-export const title = 'Tests as models';
+export const title = 'Classic tests as GLMM';
 /** The page's sections. */
 export const sections = [
   { id: 't', label: 'Two-sample t test', tip: 'A normal model with one binary predictor.' },
@@ -10753,7 +10746,7 @@ function pair(label, classical, model, note) {
   return '<tr><td>' + label + '</td><td>' + classical + '</td><td>' + model + '</td><td class="muted-line">' + (note || '') + '</td></tr>';
 }
 function table(rows) {
-  return '<div class="scroll-box"><table class="ptab"><thead><tr><th>Quantity</th><th>The classical test</th><th>The model</th><th></th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+  return '<div class="scroll-box"><table class="ptab"><thead><tr><th>Quantity</th><th>Classical test</th><th>GLMM</th><th></th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
 }
 
 function sectionT(root) {
@@ -10766,13 +10759,13 @@ function sectionT(root) {
   const t = twoSampleT(b, a);
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), tm = fit.beta[1] / se1, pm = waldP(tm, fit.dfResidual);
-  root.innerHTML = modelBlock(spec, 'Throughput on fifteen days of each of two lines.', 'The pooled two-sample t test.') + '<p class="exp-note">The two-sample t test asks whether the lines’ mean throughputs differ, and the model is its pooled version, the one whose variance is estimated by pooling the samples from both lines. The model has an intercept (line A’s mean) and one coefficient, the difference B − A, and its t test on that coefficient is the pooled two-sample t test, digit for digit. Welch’s test allows the lines different variances, which the one-variance model does not; where the spreads differ, Welch’s is the honest test and the model needs a separate variance per line, which a generalized least-squares fit gives and this tool does not.</p>';
+  root.innerHTML = modelBlock(spec, 'Throughput on fifteen days of each of two lines.', 'The pooled two-sample t test.') + '<p class="exp-note">A pooled two-sample t test can be realized as the GLMM above. The intercept of the GLMM is line A’s mean, and its one coefficient is the mean difference B − A, the change in mean from line A to line B; fitting the coefficient estimates the difference between the two population means. The GLMM’s p-value tests that estimated difference against a difference of 0, and it is identical to the p-value of the pooled two-sample t test. Welch’s two-sample t test allows the lines different variances, which calls for a generalized least-squares fit outside the GLMM’s structure; Welch’s results are in the table for comparison.</p>';
   root.innerHTML += table([
     pair('Difference of means, B − A', stat(t.diff, 5), stat(fit.beta[1], 5), 'the coefficient of lineB'),
     pair('Standard error', stat(t.pooled.se, 5), stat(se1, 5), 'the pooled estimate'),
-    pair('t', stat(t.pooled.t, 5) + ' (pooled), ' + stat(t.welch.t, 5) + ' (Welch)', stat(tm, 5), 'the model matches the pooled test'),
-    pair('Degrees of freedom', intl(t.pooled.df) + ' (pooled), ' + num(t.welch.df, 4) + ' (Welch)', intl(fit.dfResidual), ''),
-    pair('p', pValue(t.pooled.p) + ' (pooled), ' + pValue(t.welch.p) + ' (Welch)', pValue(pm), '')
+    pair('t', stat(t.pooled.t, 5) + ' (pooled), ' + stat(t.welch.t, 5) + ' (Welch)', stat(tm, 5), 'the GLMM matches the pooled test'),
+    pair('Degrees of freedom', intl(t.pooled.df) + ' (pooled), ' + num(t.welch.df, 4) + ' (Welch)', intl(fit.dfResidual), 'the GLMM matches the pooled test'),
+    pair('p', pValue(t.pooled.p) + ' (pooled), ' + pValue(t.welch.p) + ' (Welch)', pValue(pm), 'the GLMM matches the pooled test')
   ]);
   root.appendChild(loadButton('t', spec));
 }
@@ -10789,7 +10782,7 @@ function sectionAnova(root) {
   const F = ((fit.nullDeviance - fit.deviance) / df1) / (fit.deviance / df2);
   const pF = 1 - fCdf(F, df1, df2);
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'The defect rate on twelve days of each of three shifts.', 'One-way analysis of variance.') + '<p class="exp-note">One-way ANOVA asks whether the three means differ, through the F ratio of the between-shift to the within-shift mean square. The model has an intercept and two contrasts against the day shift, and the same F comes from its deviances: the null deviance is the total sum of squares and the deviance is the within-shift sum of squares. The Model page’s term test is the likelihood-ratio version of the same comparison, which agrees with the F test in large samples and is close here.</p>';
+  root.innerHTML = modelBlock(spec, 'The defect rate on twelve days of each of three shifts.', 'One-way analysis of variance.') + '<p class="exp-note">One-way ANOVA can be realized as the GLMM above. The intercept of the GLMM is the day shift’s mean, and its two coefficients are the other shifts’ differences from it. ANOVA asks whether the three means differ through the F ratio of the between-shift to the within-shift mean square, and the same F comes from the GLMM’s deviances: the null deviance is the total sum of squares and the deviance is the within-shift sum of squares, so the F and its p-value are the test’s. The Model page’s term test is the likelihood-ratio form of the same comparison; it agrees with the F test in large samples and is close here.</p>';
   root.innerHTML += table([
     pair('Between sum of squares', stat(av.ssBetween, 5), stat(fit.nullDeviance - fit.deviance, 5), 'null deviance − deviance'),
     pair('Within sum of squares', stat(av.ssWithin, 5), stat(fit.deviance, 5), 'the deviance'),
@@ -10813,7 +10806,7 @@ function sectionPaired(root) {
   const k = r.names.indexOf('conditionbefore');
   const est = -fit.beta[k], se = Math.sqrt(fit.vcov[k][k]);
   const ret = randomEffectTest(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'Fourteen operators timed before and after a change.', 'The paired t test.') + '<p class="exp-note">The paired t test works on each operator’s difference, and so removes the operator’s own level from the comparison. The model does the same with a random intercept per operator: its coefficient for the condition is the mean difference, and under REML its standard error is the paired test’s. The model reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the model also says how much of the variation sits between operators, which the t test never does.</p>';
+  root.innerHTML = modelBlock(spec, 'Fourteen operators timed before and after a change.', 'The paired t test.') + '<p class="exp-note">The paired t test can be realized as the GLMM above, a mixed model with a random intercept per operator. The paired test works on each operator’s difference, which removes the operator’s own level from the comparison; the random intercept does the same. The GLMM’s coefficient for the condition is the mean difference after − before, and under REML its standard error is the paired test’s. The GLMM reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the GLMM also says how much of the variation sits between operators, which the t test never does.</p>';
   root.innerHTML += table([
     pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
     pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
@@ -10837,7 +10830,7 @@ function sectionChisq(root) {
   const r0 = fitModel(ds, Object.assign({}, spec, { terms: ['outcome', 'channel'] }));
   let X2 = 0;
   for (const p of r0.fit.pearson) X2 += p * p;
-  root.innerHTML = modelBlock(spec, 'Orders counted by outcome (early, on time, late) and channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.') + '<p class="exp-note">The chi-square test of independence asks whether outcome and channel are associated. The Poisson model of the six counts fits the table exactly; dropping the interaction gives the independence model, whose expected counts are the test’s, and the likelihood-ratio test of the interaction is G², the likelihood-ratio form of the chi-square test. Pearson’s X² is the independence model’s Pearson statistic. The two agree in large samples.</p>';
+  root.innerHTML = modelBlock(spec, 'Orders counted by outcome (early, on time, late) and channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.') + '<p class="exp-note">The chi-square test of independence can be realized as the GLMM above, a Poisson model of the six counts with the outcome-by-channel interaction. The test asks whether outcome and channel are associated. With the interaction, the GLMM fits the table exactly; without it, it is the independence model, whose fitted counts are the test’s expected counts. The likelihood-ratio test of the interaction is G², the likelihood-ratio form of the chi-square test, and Pearson’s X² is the independence model’s Pearson statistic; the two agree in large samples.</p>';
   root.innerHTML += table([
     pair('Degrees of freedom', intl(cs.df), intl(ia.df), '(rows − 1)(columns − 1)'),
     pair('Pearson X²', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5), 'Σ Pearson residual² of the independence model'),
@@ -10858,7 +10851,7 @@ function sectionProportion(root) {
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), z = fit.beta[1] / se1;
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'Fifty customers shown each of two offers, and whether each converted.', 'The two-proportion z test.') + '<p class="exp-note">The two-proportion test compares the two conversion rates by a z test with the pooled proportion’s standard error (a score test; its square is the chi-square test on the 2 × 2 table). The logistic model estimates the log odds ratio of converting under B against A; its likelihood-ratio test is G² for the same table, and its Wald z uses the standard error at the estimate rather than under the null, which is why it differs from the score z.</p>';
+  root.innerHTML = modelBlock(spec, 'Fifty customers shown each of two offers, and whether each converted.', 'The two-proportion z test.') + '<p class="exp-note">The two-proportion test can be realized as the GLMM above, a logistic model with the offer as its one predictor. The GLMM’s coefficient is the log odds ratio of converting under B against A, and its likelihood-ratio test is G² for the 2 × 2 table. The classical test compares the two rates by a z test with the pooled proportion’s standard error (a score test, whose square is the chi-square test on the table), whereas the GLMM’s Wald z uses the standard error at the estimate, which is why the two z values differ a little.</p>';
   root.innerHTML += table([
     pair('Conversion rates', stat(pr.p2, 4) + ' (A), ' + stat(pr.p1, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
     pair('Effect', 'difference B − A ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', ''),
@@ -10877,7 +10870,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">The tests of a first statistics course are generalized linear models read the right way: a t test is a normal model with one binary predictor, ANOVA a normal model with a factor, the paired test a mixed model, the chi-square test a Poisson model of counts, and the comparison of two proportions a logistic model. Each section fits the model to a small bundled dataset and sets its numbers beside the classical test’s. The point is not that the model is better on these data; it is that the model keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
+    '<p class="lede">The tests of a first statistics course can each be realized as a generalized linear mixed model: a t test as a normal model with one binary predictor, ANOVA as a normal model with a factor, the paired test as a mixed model, the chi-square test as a Poisson model of counts, and the comparison of two proportions as a logistic model. Each section names the classical test, states the GLMM that realizes it, fits that GLMM to a small bundled dataset, and sets its numbers beside the test’s. The point is not that the GLMM is better on these data; it is that the GLMM keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
     '<div data-subnav class="subnav"></div>' +
     sections.map(s => '<div data-section="' + s.id + '" class="sec"><div class="sec-hd">' + esc(s.label) + '</div><div id="ts-' + s.id + '"></div></div>').join('');
   for (const [sec, fn] of [['t', sectionT], ['anova', sectionAnova], ['paired', sectionPaired], ['chisq', sectionChisq], ['proportion', sectionProportion]]) {

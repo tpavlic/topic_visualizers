@@ -40,7 +40,7 @@ const GROUPS = [
     'H. Akaike, “A new look at the statistical model identification,” <i>IEEE Transactions on Automatic Control</i> 19 (1974) 716–723; G. Schwarz, “Estimating the dimension of a model,” <i>Annals of Statistics</i> 6 (1978) 461–464.',
     'K. P. Burnham and D. R. Anderson, <i>Model Selection and Multimodel Inference</i>, 2nd ed. (Springer, 2002): comparing a set of candidate models by information criteria rather than searching for one.'
   ]],
-  ['Tests as models', [
+  ['Classic tests as GLMM', [
     'J. K. Lindeløv, “Common statistical tests are linear models (or: how to teach stats),” online (2019): the correspondence between the classical tests and the linear models this page draws.',
     'A. Agresti, <i>Categorical Data Analysis</i>, 3rd ed. (Wiley, 2013): the log-linear model behind the chi-square test of independence and the logistic model behind the comparison of two proportions.'
   ]]
