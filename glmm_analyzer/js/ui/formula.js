@@ -200,6 +200,12 @@ export function formulaBuilder(container, opts) {
   }
   state.on('spec', refresh);
   state.on('datasets', refresh);
+  // A dataset selected elsewhere (one just loaded on the Import page, or
+  // opened from the Tests page) becomes the model's dataset.
+  state.on('selection', sel => {
+    const ds = sel ? state.get(sel) : null;
+    if (ds && state.spec.dataset !== ds.id) { el.ds.value = ds.id; state.setPick(opts.page, 'dataset', ds.id); state.setSpec(defaultSpec(ds)); }
+  });
   refresh();
   return { refresh };
 }

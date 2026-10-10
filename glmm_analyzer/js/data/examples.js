@@ -3,7 +3,8 @@
 /**
  * Bundled example datasets. `text` is the file's contents as the importer reads it, and
  * `mapping` is the role assignment that loads it without a dialog.
- * @type {{id: string, title: string, file: string, description: string, text: string, mapping: object}[]}
+ * tour names the section of the Tests as models page an example serves, or is null.
+ * @type {{id: string, title: string, file: string, description: string, text: string, mapping: object, tour: string|null}[]}
  */
 export const EXAMPLES = [
   {
@@ -12,6 +13,7 @@ export const EXAMPLES = [
     file: "on_time.csv",
     description: "Whether each of the first fifty customers of a day was served within two minutes of arriving, against the number waiting in queue when the customer arrived and the service policy (A, mean service 0.8 minutes; B, mean service 0.7), in a single-server queue with exponential interarrival times of mean 1.0 minute. Eight days were run under each policy from the same eight random-number seeds, and so the seed is a grouping factor shared by both policies. A binomial model with a logit link, and a random intercept per seed.",
     mapping: {"name":"On-time service","response":"on_time","columns":{"on_time":{"role":"response","type":"continuous"},"queue":{"role":"predictor","type":"continuous"},"policy":{"role":"predictor","type":"categorical"},"seed":{"role":"group","type":"categorical"}}},
+    tour: null,
     text: `on_time,queue,policy,seed
 1,0,A,seed1
 1,0,A,seed1
@@ -821,6 +823,7 @@ export const EXAMPLES = [
     file: "cycle_time.csv",
     description: "The time in system of sixty jobs on each of six shifts, after a warm-up of two hundred jobs, in a single-server queue whose offered load (the arrival rate, with mean service time 1.0 for a standard job and 0.5 for an express job) differs by shift. Time in system is positive and right-skewed, and its spread grows with its mean as the load rises: a gamma model with a log link, with load as a continuous predictor and class as a categorical one.",
     mapping: {"name":"Cycle time","response":"time_in_system","columns":{"time_in_system":{"role":"response","type":"continuous"},"load":{"role":"predictor","type":"continuous"},"class":{"role":"predictor","type":"categorical"}}},
+    tour: null,
     text: `time_in_system,load,class
 0.1764,0.5,standard
 1.2661,0.5,standard
@@ -1182,6 +1185,712 @@ export const EXAMPLES = [
 1.7992,0.9,express
 0.5133,0.9,standard
 1.3584,0.9,express
+`
+  },
+  {
+    id: "balks",
+    title: "Balks per shift: an overdispersed count",
+    file: "balks.csv",
+    description: "The number of customers who balked (arrived and left without joining) on each of sixty shifts, against the shift’s offered load and its staffing, with the week as a grouping factor. The counts vary more from shift to shift than a Poisson allows, which the Pearson dispersion on the Model page shows: compare the Poisson family with the negative binomial, and with the Poisson-lognormal that an observation-level random effect gives, on the Compare page.",
+    mapping: {"name":"Balks","response":"balks","columns":{"balks":{"role":"response","type":"continuous"},"load":{"role":"predictor","type":"continuous"},"staffing":{"role":"predictor","type":"categorical"},"week":{"role":"group","type":"categorical"}}},
+    tour: null,
+    text: `balks,load,staffing,week
+11,0.83,2 servers,week01
+5,0.8,3 servers,week01
+9,0.86,2 servers,week01
+5,0.69,3 servers,week01
+4,0.76,3 servers,week01
+11,0.83,3 servers,week02
+7,0.67,2 servers,week02
+23,0.8,2 servers,week02
+20,0.89,2 servers,week02
+9,0.88,3 servers,week02
+20,0.68,2 servers,week03
+20,0.62,2 servers,week03
+33,0.8,2 servers,week03
+14,0.8,2 servers,week03
+15,0.88,2 servers,week03
+4,0.71,2 servers,week04
+12,0.77,2 servers,week04
+3,0.69,3 servers,week04
+9,0.82,2 servers,week04
+11,0.75,2 servers,week04
+6,0.94,3 servers,week05
+5,0.87,3 servers,week05
+5,0.82,3 servers,week05
+1,0.61,3 servers,week05
+7,0.67,2 servers,week05
+3,0.8,3 servers,week06
+6,0.78,3 servers,week06
+9,0.69,2 servers,week06
+10,0.84,3 servers,week06
+8,0.84,3 servers,week06
+5,0.78,3 servers,week07
+17,0.86,2 servers,week07
+13,0.67,2 servers,week07
+28,0.93,2 servers,week07
+18,0.94,2 servers,week07
+3,0.71,3 servers,week08
+11,0.84,2 servers,week08
+34,0.79,2 servers,week08
+8,0.91,3 servers,week08
+21,0.84,2 servers,week08
+1,0.72,3 servers,week09
+4,0.88,3 servers,week09
+3,0.94,3 servers,week09
+20,0.88,2 servers,week09
+2,0.68,3 servers,week09
+31,0.8,2 servers,week10
+24,0.9,2 servers,week10
+11,0.62,2 servers,week10
+34,0.93,2 servers,week10
+16,0.8,3 servers,week10
+3,0.66,3 servers,week11
+13,0.86,3 servers,week11
+13,0.72,2 servers,week11
+5,0.62,3 servers,week11
+3,0.64,3 servers,week11
+8,0.69,3 servers,week12
+2,0.92,3 servers,week12
+20,0.95,2 servers,week12
+19,0.78,2 servers,week12
+16,0.67,2 servers,week12
+`
+  },
+  {
+    id: "utilization",
+    title: "Utilization: a proportion against the arrival rate",
+    file: "utilization.csv",
+    description: "The fraction of an eight-hour day a single server was busy, on sixty days with different arrival rates and a shorter mean service on weekends. Utilization is a measured proportion, strictly between 0 and 1, whose spread shrinks toward both ends: the beta family with a logit link.",
+    mapping: {"name":"Utilization","response":"utilization","columns":{"utilization":{"role":"response","type":"continuous"},"arrival_rate":{"role":"predictor","type":"continuous"},"day_type":{"role":"predictor","type":"categorical"}}},
+    tour: null,
+    text: `utilization,arrival_rate,day_type
+0.5368,0.478,weekday
+0.846,0.843,weekday
+0.4376,0.473,weekday
+0.7186,0.718,weekday
+0.4588,0.497,weekday
+0.999,0.909,weekday
+0.8311,0.788,weekday
+0.5843,0.533,weekday
+0.7583,0.79,weekday
+0.4384,0.496,weekend
+0.4407,0.479,weekend
+0.7357,0.916,weekend
+0.487,0.486,weekday
+0.5805,0.558,weekday
+0.6136,0.618,weekday
+0.8288,0.932,weekday
+0.836,0.852,weekday
+0.6533,0.743,weekend
+0.6297,0.655,weekday
+0.6944,0.677,weekday
+0.4859,0.607,weekend
+0.694,0.805,weekend
+0.6038,0.641,weekday
+0.5369,0.485,weekday
+0.8134,0.862,weekday
+0.6525,0.717,weekend
+0.3682,0.467,weekend
+0.8552,0.855,weekday
+0.5765,0.561,weekday
+0.7029,0.672,weekday
+0.5065,0.725,weekend
+0.5515,0.546,weekday
+0.672,0.918,weekend
+0.5941,0.679,weekend
+0.5598,0.531,weekday
+0.4775,0.549,weekend
+0.7679,0.817,weekday
+0.9034,0.869,weekday
+0.3676,0.478,weekend
+0.6512,0.802,weekend
+0.6087,0.539,weekday
+0.9096,0.879,weekday
+0.4235,0.575,weekend
+0.8899,0.938,weekday
+0.5455,0.527,weekday
+0.999,0.94,weekday
+0.4754,0.572,weekend
+0.7571,0.727,weekday
+0.7558,0.944,weekend
+0.61,0.746,weekday
+0.6385,0.569,weekday
+0.7618,0.897,weekend
+0.8436,0.877,weekday
+0.4262,0.48,weekend
+0.7304,0.755,weekday
+0.4908,0.476,weekday
+0.5882,0.822,weekend
+0.6128,0.619,weekday
+0.6409,0.832,weekend
+0.4178,0.475,weekday
+`
+  },
+  {
+    id: "colony-recruits",
+    title: "Colony recruits: a count with a random slope",
+    file: "colony_recruits.csv",
+    description: "The number of nestmates recruited in each of eight trials at twelve colonies, against the temperature and a feeding treatment applied per colony. Colonies differ in their baseline and in how strongly temperature moves them: a Poisson model with a random intercept and a random slope on temperature by colony. The treatment varies only between colonies, and so its test leans on the colony effect being in the model.",
+    mapping: {"name":"Colony recruits","response":"recruits","columns":{"recruits":{"role":"response","type":"continuous"},"temperature":{"role":"predictor","type":"continuous"},"treatment":{"role":"predictor","type":"categorical"},"colony":{"role":"group","type":"categorical"}}},
+    tour: null,
+    text: `recruits,temperature,treatment,colony
+1,20.6,control,colony01
+1,33,control,colony01
+1,27.8,control,colony01
+2,26.7,control,colony01
+1,16.1,control,colony01
+0,25.3,control,colony01
+3,33,control,colony01
+2,16.6,control,colony01
+5,31.4,sugar,colony02
+11,33.2,sugar,colony02
+0,18.6,sugar,colony02
+2,21.6,sugar,colony02
+5,34.2,sugar,colony02
+1,24.4,sugar,colony02
+1,16.2,sugar,colony02
+3,22.2,sugar,colony02
+2,26.2,control,colony03
+1,31.3,control,colony03
+0,16.8,control,colony03
+1,15.7,control,colony03
+1,20.6,control,colony03
+0,20.2,control,colony03
+1,20.5,control,colony03
+4,15.4,control,colony03
+3,16.9,sugar,colony04
+2,30.3,sugar,colony04
+2,18.2,sugar,colony04
+3,23.9,sugar,colony04
+1,17.7,sugar,colony04
+1,20.6,sugar,colony04
+1,29.6,sugar,colony04
+2,18.1,sugar,colony04
+2,19.6,control,colony05
+2,22.8,control,colony05
+2,26.9,control,colony05
+0,21.3,control,colony05
+2,22,control,colony05
+3,34.1,control,colony05
+5,26.9,control,colony05
+1,20.3,control,colony05
+2,31.9,sugar,colony06
+4,22,sugar,colony06
+1,34.4,sugar,colony06
+3,17.9,sugar,colony06
+0,34.6,sugar,colony06
+0,26.8,sugar,colony06
+5,34.7,sugar,colony06
+2,33.2,sugar,colony06
+5,32.8,control,colony07
+0,29.6,control,colony07
+1,28.4,control,colony07
+2,32.1,control,colony07
+2,17.4,control,colony07
+2,34.4,control,colony07
+0,20,control,colony07
+3,32.4,control,colony07
+1,23,sugar,colony08
+0,15.4,sugar,colony08
+3,34.3,sugar,colony08
+3,23.8,sugar,colony08
+1,16.2,sugar,colony08
+1,25.7,sugar,colony08
+3,32.1,sugar,colony08
+1,21.9,sugar,colony08
+4,29.5,control,colony09
+5,29.5,control,colony09
+1,21.6,control,colony09
+2,27.6,control,colony09
+0,17.4,control,colony09
+4,21.2,control,colony09
+3,26.5,control,colony09
+1,17.4,control,colony09
+5,20.6,sugar,colony10
+4,33.6,sugar,colony10
+3,29.7,sugar,colony10
+1,19.9,sugar,colony10
+2,28.6,sugar,colony10
+4,25.6,sugar,colony10
+4,18.5,sugar,colony10
+1,33.5,sugar,colony10
+2,25,control,colony11
+0,16,control,colony11
+0,29.6,control,colony11
+1,27.6,control,colony11
+0,19.4,control,colony11
+0,26.9,control,colony11
+0,19.9,control,colony11
+2,21.1,control,colony11
+2,17,sugar,colony12
+1,23.9,sugar,colony12
+1,15.9,sugar,colony12
+3,32.1,sugar,colony12
+0,29.3,sugar,colony12
+3,19,sugar,colony12
+3,19.1,sugar,colony12
+2,28.8,sugar,colony12
+`
+  },
+  {
+    id: "rating",
+    title: "Visit ratings: an ordered response",
+    file: "rating.csv",
+    description: "Each of two hundred customers rated the visit poor, fair, good, or great, against the minutes waited and whether the express lane was used. The levels are ordered but not spaced: the ordinal family models the cumulative probabilities with one slope and three thresholds.",
+    mapping: {"name":"Visit ratings","response":"rating","columns":{"rating":{"role":"response","type":"ordinal","levels":["poor","fair","good","great"]},"wait":{"role":"predictor","type":"continuous"},"express":{"role":"predictor","type":"categorical"}}},
+    tour: null,
+    text: `rating,wait,express
+poor,5.55,no
+fair,1.46,no
+poor,1.77,yes
+poor,5.02,no
+good,1.56,yes
+fair,4.13,yes
+good,0.39,no
+poor,5.1,no
+poor,1.24,no
+fair,2,no
+poor,1.62,no
+good,1.7,no
+poor,4.12,no
+poor,1.69,no
+poor,2.32,no
+fair,2.18,yes
+fair,3.67,no
+poor,5.72,no
+poor,2.88,no
+fair,0.44,no
+good,0.6,no
+poor,5.12,no
+great,0.8,yes
+good,0.83,yes
+poor,3.33,no
+poor,3.07,no
+fair,2.86,yes
+poor,3.19,no
+good,1.16,yes
+poor,5.77,no
+fair,0.5,yes
+fair,0.63,no
+poor,3.01,yes
+great,0.63,no
+poor,5.24,no
+poor,5.37,no
+poor,2.42,no
+poor,2.19,yes
+poor,3.51,no
+poor,1.9,yes
+poor,1.93,no
+poor,1.3,no
+fair,3.22,yes
+poor,3.15,no
+fair,2.51,no
+fair,2.22,no
+fair,3.06,no
+great,1.08,no
+good,2.95,yes
+poor,3.48,yes
+poor,2.42,yes
+great,2.74,no
+great,1.11,no
+poor,3.41,yes
+fair,1.1,no
+fair,2.27,yes
+poor,5.24,yes
+poor,2.03,yes
+fair,0.35,no
+good,0.98,no
+poor,1.67,yes
+fair,1.37,yes
+fair,4.12,no
+poor,3.76,no
+poor,3.77,yes
+fair,3.81,no
+fair,3.66,no
+poor,3.36,no
+fair,1.59,no
+fair,5.49,no
+fair,0.87,no
+great,1.53,yes
+good,1.4,yes
+good,2.71,yes
+fair,2.24,no
+poor,1.85,no
+poor,4.34,no
+poor,5.36,no
+poor,3.96,no
+good,3.41,yes
+great,4.61,yes
+good,1.79,no
+poor,4,no
+poor,3.9,no
+poor,4.83,no
+good,2.78,yes
+poor,5.37,no
+poor,0.6,no
+poor,4.7,yes
+poor,5.23,yes
+poor,5.74,yes
+good,1.53,yes
+poor,2.36,no
+poor,2.67,no
+poor,4.36,no
+poor,3.63,no
+poor,3.56,yes
+poor,4.1,no
+good,2.68,no
+fair,1.84,no
+fair,0.18,no
+great,0.89,yes
+fair,3.99,no
+fair,3.2,yes
+great,2.56,no
+poor,1.6,no
+poor,1.84,no
+fair,1.05,no
+fair,2.71,no
+poor,2.19,no
+poor,2.02,no
+fair,2.27,no
+poor,4.24,yes
+poor,4.93,no
+poor,5.98,no
+poor,3.21,no
+poor,3.77,no
+poor,4.27,no
+fair,2.34,no
+fair,3.41,yes
+fair,1.1,yes
+fair,1.99,yes
+poor,4.62,no
+poor,5.16,yes
+poor,1.53,no
+poor,4.11,yes
+poor,3.75,no
+poor,3.96,no
+poor,3.82,no
+poor,3.87,yes
+fair,0.57,yes
+poor,5.59,no
+poor,0.99,yes
+poor,4.1,yes
+fair,1.63,no
+poor,3.86,no
+poor,2.82,no
+good,1.19,no
+poor,5.66,yes
+poor,5.14,no
+poor,3.04,no
+poor,3.09,no
+good,0.2,yes
+poor,3.41,no
+fair,4.35,no
+poor,4.73,yes
+good,0.47,no
+good,4.67,no
+fair,4.21,yes
+poor,0.77,no
+great,2.75,no
+fair,5.36,yes
+fair,4.91,yes
+good,2.2,yes
+poor,4.38,yes
+poor,6,yes
+poor,0.08,no
+poor,4.37,no
+poor,3.51,no
+fair,4.11,no
+great,3.15,no
+fair,3.77,yes
+fair,4.04,yes
+fair,3.54,yes
+good,0.28,yes
+poor,5,no
+fair,4.28,yes
+great,1.37,no
+good,0.69,yes
+fair,1.84,no
+poor,2.08,no
+poor,4.12,yes
+fair,4.73,yes
+fair,0.75,no
+poor,2.93,yes
+poor,1.45,yes
+poor,5.91,no
+great,0.33,no
+poor,5.53,yes
+fair,2.44,yes
+fair,1.28,yes
+poor,3.86,no
+fair,1.62,yes
+fair,5.2,yes
+good,1.2,no
+poor,4.59,no
+poor,4.94,yes
+poor,4.43,no
+poor,5.58,yes
+good,1.34,no
+fair,0.1,yes
+poor,3.65,no
+poor,4.52,no
+poor,4.76,no
+poor,4.83,yes
+good,2.23,yes
+poor,4.4,yes
+poor,3.19,no
+poor,2.16,no
+poor,3.29,no
+`
+  },
+  {
+    id: "tour-t",
+    title: "Two production lines (for the t test)",
+    file: "tour_t.csv",
+    description: "Throughput on fifteen days of each of two production lines.",
+    mapping: {"name":"Two lines","response":"throughput","columns":{"throughput":{"role":"response","type":"continuous"},"line":{"role":"predictor","type":"categorical"}}},
+    tour: "t",
+    text: `throughput,line
+45.97,A
+49.13,A
+42.32,A
+49.86,A
+54.98,A
+45.97,A
+46.73,A
+38.56,A
+52.07,A
+53.3,A
+44.82,A
+38.51,A
+46.21,A
+45.55,A
+43.76,A
+54.17,B
+55.42,B
+54.07,B
+51.88,B
+52.31,B
+44.58,B
+57.95,B
+49.62,B
+50.7,B
+44.67,B
+53.83,B
+54.14,B
+49.33,B
+45.64,B
+53.64,B
+`
+  },
+  {
+    id: "tour-anova",
+    title: "Three shifts (for one-way ANOVA)",
+    file: "tour_anova.csv",
+    description: "The defect rate on twelve days of each of three shifts.",
+    mapping: {"name":"Three shifts","response":"defect_rate","columns":{"defect_rate":{"role":"response","type":"continuous"},"shift":{"role":"predictor","type":"categorical"}}},
+    tour: "anova",
+    text: `defect_rate,shift
+1.91,day
+2.78,day
+1.61,day
+2.5,day
+1.01,day
+1.85,day
+2.48,day
+1.51,day
+3.01,day
+2.73,day
+1.29,day
+2.88,day
+2.47,evening
+2.25,evening
+2.91,evening
+2.51,evening
+1.46,evening
+2.09,evening
+3,evening
+2.17,evening
+2.25,evening
+2.46,evening
+2.68,evening
+2.85,evening
+2.32,night
+1.82,night
+2.51,night
+1.14,night
+3.69,night
+2.96,night
+2.08,night
+2.61,night
+1.94,night
+2.78,night
+1.62,night
+2.28,night
+`
+  },
+  {
+    id: "tour-paired",
+    title: "Before and after (for the paired t test)",
+    file: "tour_paired.csv",
+    description: "The task time of fourteen operators before and after a change.",
+    mapping: {"name":"Before and after","response":"time","columns":{"time":{"role":"response","type":"continuous"},"condition":{"role":"predictor","type":"categorical"},"subject":{"role":"group","type":"categorical"}}},
+    tour: "paired",
+    text: `time,condition,subject
+24.1,before,S01
+19.5,after,S01
+33.3,before,S02
+32.2,after,S02
+28,before,S03
+24.2,after,S03
+31.5,before,S04
+25.3,after,S04
+33.1,before,S05
+29.2,after,S05
+31.9,before,S06
+28.6,after,S06
+32.2,before,S07
+29.8,after,S07
+28.3,before,S08
+25.5,after,S08
+27.9,before,S09
+25.6,after,S09
+24.7,before,S10
+26.3,after,S10
+35.6,before,S11
+35.2,after,S11
+35,before,S12
+29.7,after,S12
+33.5,before,S13
+32.1,after,S13
+25.7,before,S14
+23.1,after,S14
+`
+  },
+  {
+    id: "tour-chisq",
+    title: "Delivery outcome by channel (for the chi-square test)",
+    file: "tour_chisq.csv",
+    description: "The count of orders delivered early, on time, or late, by the channel the order came through.",
+    mapping: {"name":"Outcome by channel","response":"count","columns":{"count":{"role":"response","type":"continuous"},"outcome":{"role":"predictor","type":"categorical"},"channel":{"role":"predictor","type":"categorical"}}},
+    tour: "chisq",
+    text: `count,outcome,channel
+18,early,web
+42,on_time,web
+20,late,web
+9,early,phone
+31,on_time,phone
+35,late,phone
+`
+  },
+  {
+    id: "tour-proportion",
+    title: "Two offers (for the two-proportion test)",
+    file: "tour_proportion.csv",
+    description: "Whether each of fifty customers shown each of two offers converted.",
+    mapping: {"name":"Two offers","response":"converted","columns":{"converted":{"role":"response","type":"continuous"},"offer":{"role":"predictor","type":"categorical"}}},
+    tour: "proportion",
+    text: `converted,offer
+1,A
+0,A
+1,A
+1,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+1,A
+1,A
+1,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+1,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+0,A
+1,A
+0,A
+0,A
+0,A
+1,A
+0,A
+0,A
+1,A
+1,A
+1,A
+1,A
+0,A
+1,A
+1,A
+1,B
+0,B
+0,B
+0,B
+0,B
+0,B
+1,B
+1,B
+1,B
+0,B
+1,B
+0,B
+1,B
+1,B
+0,B
+1,B
+1,B
+1,B
+1,B
+0,B
+0,B
+0,B
+1,B
+0,B
+1,B
+0,B
+1,B
+0,B
+1,B
+1,B
+1,B
+0,B
+0,B
+0,B
+1,B
+1,B
+1,B
+0,B
+1,B
+0,B
+1,B
+0,B
+1,B
+0,B
+0,B
+0,B
+1,B
+1,B
+1,B
+1,B
 `
   }
 ];

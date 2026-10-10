@@ -149,7 +149,8 @@ export function render(root) {
     enqueue('pasted data', s);
   });
 
-  els.ex.innerHTML = EXAMPLES.map(ex => '<option value="' + esc(ex.id) + '">' + esc(ex.title) + '</option>').join('');
+  // The Tests as models page's small datasets are listed after the others.
+  els.ex.innerHTML = EXAMPLES.filter(ex => !ex.tour).concat(EXAMPLES.filter(ex => ex.tour)).map(ex => '<option value="' + esc(ex.id) + '">' + esc(ex.title) + '</option>').join('');
   const showDesc = () => {
     const ex = EXAMPLES.find(x => x.id === els.ex.value);
     els.exDesc.textContent = ex ? ex.description : '';

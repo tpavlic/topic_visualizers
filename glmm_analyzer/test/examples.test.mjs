@@ -36,7 +36,7 @@ test('each example carries its data file text and loads with no flagged row', ()
     assert.equal(e.text, fs.readFileSync(path.join(ROOT, 'data', e.file), 'utf8'), e.file);
     const { dataset, issues } = buildTable(sniff(e.text, { name: e.mapping.name }), e.mapping);
     assert.equal(issues.length, 0, e.id);
-    assert.ok(dataset.rows.length >= 100, e.id);
+    assert.ok(dataset.rows.length >= (e.tour ? 6 : 60), e.id);
     assert.ok(responseColumn(dataset), e.id);
   }
 });
@@ -50,4 +50,9 @@ test('the examples show the supports their descriptions name', () => {
   };
   assert.equal(sup('on-time'), 'binary');
   assert.equal(sup('cycle-time'), 'positive');
+  assert.equal(sup('balks'), 'count');
+  assert.equal(sup('utilization'), 'unit');
+  assert.equal(sup('colony-recruits'), 'count');
+  assert.equal(sup('rating'), 'ordinal');
+  assert.deepEqual(EXAMPLES.filter(e => e.tour).map(e => e.tour), ['t', 'anova', 'paired', 'chisq', 'proportion']);
 });

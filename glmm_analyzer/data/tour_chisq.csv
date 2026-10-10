@@ -1,0 +1,7 @@
+count,outcome,channel
+18,early,web
+42,on_time,web
+20,late,web
+9,early,phone
+31,on_time,phone
+35,late,phone
