@@ -473,7 +473,7 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   residuals, plot its predictions, compare candidate models, and regenerate every result in R,
   Python, or MATLAB. Built as one entry page plus native ES modules under its `js/` directory with
   no build step, in the layout of the Output Analyzer in the course repository: a sticky left
-  sidebar in five groups (Data, Analysis, Session, Where the tests went, More information) that
+  sidebar in five groups (Data, Analysis, Session, Classic tests as GLMM, More information) that
   becomes a one-line tab strip and then a `<select>` as the page narrows. Ten pages: ① Import
   (bundled examples, a file, drag-and-drop, or pasted text, behind a mapping dialog that gives every
   column a role, response, predictor, group, or ignored, and a type, continuous, categorical, or
