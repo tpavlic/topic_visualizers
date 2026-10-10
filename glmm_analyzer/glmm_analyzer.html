@@ -10972,8 +10972,13 @@ function tourDataset(which) {
 
 // The section's facts, first and apart from the prose: the data, the
 // classical test, and the model that is that test.
+// Terms explained in a tooltip where they appear.
+const tipped = (text, tip) => '<span class="tip" tabindex="0" data-tip="' + esc(tip) + '">' + text + '</span>';
+const DEVIANCE_TIP = 'Twice the gap in log-likelihood between this model and a model that fits the data exactly. It is 0 for an exact fit and grows as the fit worsens. For a normal model, it is the residual sum of squares.';
+const REML_TIP = 'Restricted maximum likelihood. The variances are estimated after the fixed effects are removed, which undoes the downward bias of plain maximum likelihood, as dividing by n − 1 rather than n does for a sample variance. It is the default for a normal mixed model, and it is what makes the standard errors here match the classical test’s.';
+
 function modelRow(spec, label) {
-  return '<dt>' + esc(label) + '</dt><dd><code>' + esc(formulaOf(spec)) + '</code> <span class="tm-model-fam">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', fitted by REML' : '') + '</span></dd>';
+  return '<dt>' + esc(label) + '</dt><dd><code>' + esc(formulaOf(spec)) + '</code> <span class="tm-model-fam">' + esc(FAMILIES[spec.family].label) + ' family, ' + esc(LINKS[spec.link].label) + ' link' + (spec.reml ? ', fitted by ' + tipped('REML', REML_TIP) : '') + '</span></dd>';
 }
 function modelBlock(spec, data, test, label = 'Equivalent model') {
   return '<dl class="tm-model">' +
@@ -11122,10 +11127,6 @@ function sectionRepeated(root) {
   ]);
   root.appendChild(loadButton('repeated', spec));
 }
-
-// The deviance, explained once for the chi-square section's tables.
-const DEVIANCE_TIP = 'Twice the gap in log-likelihood between this model and a model that fits the data exactly. It is 0 for an exact fit and grows as the fit worsens. For a normal model, it is the residual sum of squares.';
-const tipped = (text, tip) => '<span class="tip" tabindex="0" data-tip="' + esc(tip) + '">' + text + '</span>';
 
 function sectionChisq(root) {
   const { ds } = tourDataset('chisq');
