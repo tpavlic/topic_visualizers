@@ -11124,7 +11124,7 @@ function sectionRepeated(root) {
 }
 
 // The deviance, explained once for the chi-square section's tables.
-const DEVIANCE_TIP = 'Twice the gap in log-likelihood between this model and a model that fits the data exactly: 0 for an exact fit, and larger the worse the fit. For a normal model it is the residual sum of squares.';
+const DEVIANCE_TIP = 'Twice the gap in log-likelihood between this model and a model that fits the data exactly. It is 0 for an exact fit and grows as the fit worsens. For a normal model, it is the residual sum of squares.';
 const tipped = (text, tip) => '<span class="tip" tabindex="0" data-tip="' + esc(tip) + '">' + text + '</span>';
 
 function sectionChisq(root) {
