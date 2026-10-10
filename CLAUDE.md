@@ -473,7 +473,7 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   residuals, plot its predictions, compare candidate models, and regenerate every result in R,
   Python, or MATLAB. Built as one entry page plus native ES modules under its `js/` directory with
   no build step, in the layout of the Output Analyzer in the course repository: a sticky left
-  sidebar in five groups (Data, Analysis, Where the tests went, Session, More information) that
+  sidebar in five groups (Data, Analysis, Session, Where the tests went, More information) that
   becomes a one-line tab strip and then a `<select>` as the page narrows. Ten pages: ① Import
   (bundled examples, a file, drag-and-drop, or pasted text, behind a mapping dialog that gives every
   column a role, response, predictor, group, or ignored, and a type, continuous, categorical, or
@@ -488,10 +488,12 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   distances, and the predicted random effects), ⑤ Predict (an effect plot with its band and the
   data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator), ⑥
   Compare (the kept models refitted by maximum likelihood, ranked by AIC and BIC, with the
-  likelihood-ratio test of every nested pair), ⑦ Tests as models (the two-sample t test, one-way
-  ANOVA, the paired t test, the chi-square test of independence, and the two-proportion test, each
-  run classically and as the GLM it is, with a button that opens that dataset and model), ⑧
-  Report, ⑨ Storage, and ⑩ References. Seven families (normal, binomial, Poisson, negative
+  likelihood-ratio test of every nested pair), ⑦ Report, ⑧ Storage, ⑨ Tests as models (the
+  two-sample t test, one-way ANOVA, the paired t test, the chi-square test of independence, and
+  the two-proportion test, each run classically and as the GLM it is, opened by a block naming
+  the data, the classical test, and the equivalent model, with a button that opens that dataset
+  and model), and ⑩ References. The strip of loaded datasets is hidden on the two pages that use
+  no data, Tests as models and References. Seven families (normal, binomial, Poisson, negative
   binomial, gamma, beta, and the cumulative-logit ordinal model), each with its links, with the
   support of the response detected and a family that does not fit it refused with the rows named.
   The fallback iframe height is about 2800 px (the Explore page at 780 px wide; the Report page runs

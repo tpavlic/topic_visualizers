@@ -197,6 +197,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 /* The loaded datasets, one chip each, under the navigation on every page. */
 .data-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 28px;
               font-size: .8rem; color: var(--muted); margin: 0 0 12px; }
+.data-strip[hidden] { display: none; }
 .ds-count { font-weight: 600; }
 .ds-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-width: 0; min-height: 26px;
            border: 1.5px solid var(--border); border-radius: 999px; padding: 1px 11px; color: var(--text); background: var(--card); }
@@ -708,17 +709,17 @@ footer a:hover { text-decoration: underline; }
         <a class="tab" data-tab="compare" href="#compare"><span class="tab-n">⑥</span> <span class="tab-t">Compare</span></a>
       </div>
     </div>
-    <div class="tab-group" role="group" aria-labelledby="pg-tests">
-      <span class="tab-group-lbl" id="pg-tests">Where the tests went</span>
-      <div class="tab-group-items">
-        <a class="tab" data-tab="tests" href="#tests"><span class="tab-n">⑦</span> <span class="tab-t">Tests as models</span></a>
-      </div>
-    </div>
     <div class="tab-group" role="group" aria-labelledby="pg-session">
       <span class="tab-group-lbl" id="pg-session">Session</span>
       <div class="tab-group-items">
-        <a class="tab" data-tab="report" href="#report"><span class="tab-n">⑧</span> <span class="tab-t">Report</span></a>
-        <a class="tab" data-tab="storage" href="#storage"><span class="tab-n">⑨</span> <span class="tab-t">Storage</span></a>
+        <a class="tab" data-tab="report" href="#report"><span class="tab-n">⑦</span> <span class="tab-t">Report</span></a>
+        <a class="tab" data-tab="storage" href="#storage"><span class="tab-n">⑧</span> <span class="tab-t">Storage</span></a>
+      </div>
+    </div>
+    <div class="tab-group" role="group" aria-labelledby="pg-tests">
+      <span class="tab-group-lbl" id="pg-tests">Where the tests went</span>
+      <div class="tab-group-items">
+        <a class="tab" data-tab="tests" href="#tests"><span class="tab-n">⑨</span> <span class="tab-t">Tests as models</span></a>
       </div>
     </div>
     <div class="tab-group" role="group" aria-labelledby="pg-more">
@@ -740,12 +741,12 @@ footer a:hover { text-decoration: underline; }
       <option value="predict">⑤ Predict</option>
       <option value="compare">⑥ Compare</option>
     </optgroup>
-    <optgroup label="Where the tests went">
-      <option value="tests">⑦ Tests as models</option>
-    </optgroup>
     <optgroup label="Session">
-      <option value="report">⑧ Report</option>
-      <option value="storage">⑨ Storage</option>
+      <option value="report">⑦ Report</option>
+      <option value="storage">⑧ Storage</option>
+    </optgroup>
+    <optgroup label="Where the tests went">
+      <option value="tests">⑨ Tests as models</option>
     </optgroup>
     <optgroup label="More information">
       <option value="references">⑩ References</option>
@@ -760,9 +761,9 @@ footer a:hover { text-decoration: underline; }
   <section class="tp" id="tab-diagnostics" aria-label="Diagnostics"></section>
   <section class="tp" id="tab-predict" aria-label="Predict"></section>
   <section class="tp" id="tab-compare" aria-label="Compare"></section>
-  <section class="tp" id="tab-tests" aria-label="Tests as models"></section>
   <section class="tp" id="tab-report" aria-label="Report"></section>
   <section class="tp" id="tab-storage" aria-label="Storage"></section>
+  <section class="tp" id="tab-tests" aria-label="Tests as models"></section>
   <section class="tp" id="tab-references" aria-label="References"></section>
   </div>
   </div>
@@ -8244,7 +8245,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, comparePage, testsPage, reportPage, storagePage, referencesPage];
+export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, comparePage, reportPage, storagePage, testsPage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 
@@ -8269,6 +8270,8 @@ function renderDataStrip() {
 // page's link stays gray and inert until the loaded datasets meet its
 // requirement, with the tooltip saying what is missing, and goes gray again
 // if a removal takes the requirement away while that page is open.
+const NO_DATA_PAGES = new Set(['tests', 'references']);
+
 const GATES = [
   { pages: ['explore', 'model', 'diagnostics', 'predict', 'compare', 'report'],
     ok: () => state.datasets.some(d => canModel(d).ok),
@@ -8322,6 +8325,10 @@ function boot() {
     sections: Object.fromEntries(PAGES.filter(p => Array.isArray(p.sections) && p.sections.length).map(p => [p.id, p.sections])),
     onShow: (id, section, pageChanged) => {
       const p = BY_ID.get(id);
+      // The strip of loaded datasets belongs to the pages that work on them; the
+      // Tests and References pages use none.
+      const strip = document.getElementById('data-strip');
+      if (strip) strip.hidden = NO_DATA_PAGES.has(id);
       if (p && pageChanged !== false) { try { p.onShow(); } catch (err) { console.error(err); } }
       if (p && section && p.onShowSection) { try { p.onShowSection(section); } catch (err) { console.error(err); } }
       // A figure drawn while its page or section was hidden had no width to measure.
@@ -10759,7 +10766,7 @@ function sectionT(root) {
   const t = twoSampleT(b, a);
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), tm = fit.beta[1] / se1, pm = waldP(tm, fit.dfResidual);
-  root.innerHTML = modelBlock(spec, 'Throughput on fifteen days of each of two lines.', 'The two-sample t test, pooled and Welch’s.') + '<p class="exp-note">The two-sample t test asks whether the lines’ mean throughputs differ. The model has an intercept (line A’s mean) and one coefficient, the difference B − A, and its t test on that coefficient is the pooled two-sample t test, digit for digit. Welch’s test allows the lines different variances, which the one-variance model does not; where the spreads differ, Welch’s is the honest test and the model needs a separate variance per line, which a generalized least-squares fit gives and this tool does not.</p>';
+  root.innerHTML = modelBlock(spec, 'Throughput on fifteen days of each of two lines.', 'The pooled two-sample t test.') + '<p class="exp-note">The two-sample t test asks whether the lines’ mean throughputs differ, and the model is its pooled version, the one whose variance is estimated by pooling the samples from both lines. The model has an intercept (line A’s mean) and one coefficient, the difference B − A, and its t test on that coefficient is the pooled two-sample t test, digit for digit. Welch’s test allows the lines different variances, which the one-variance model does not; where the spreads differ, Welch’s is the honest test and the model needs a separate variance per line, which a generalized least-squares fit gives and this tool does not.</p>';
   root.innerHTML += table([
     pair('Difference of means, B − A', stat(t.diff, 5), stat(fit.beta[1], 5), 'the coefficient of lineB'),
     pair('Standard error', stat(t.pooled.se, 5), stat(se1, 5), 'the pooled estimate'),

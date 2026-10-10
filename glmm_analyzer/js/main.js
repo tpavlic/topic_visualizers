@@ -44,7 +44,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, comparePage, testsPage, reportPage, storagePage, referencesPage];
+export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, comparePage, reportPage, storagePage, testsPage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 
@@ -69,6 +69,8 @@ function renderDataStrip() {
 // page's link stays gray and inert until the loaded datasets meet its
 // requirement, with the tooltip saying what is missing, and goes gray again
 // if a removal takes the requirement away while that page is open.
+const NO_DATA_PAGES = new Set(['tests', 'references']);
+
 const GATES = [
   { pages: ['explore', 'model', 'diagnostics', 'predict', 'compare', 'report'],
     ok: () => state.datasets.some(d => canModel(d).ok),
@@ -122,6 +124,10 @@ function boot() {
     sections: Object.fromEntries(PAGES.filter(p => Array.isArray(p.sections) && p.sections.length).map(p => [p.id, p.sections])),
     onShow: (id, section, pageChanged) => {
       const p = BY_ID.get(id);
+      // The strip of loaded datasets belongs to the pages that work on them; the
+      // Tests and References pages use none.
+      const strip = document.getElementById('data-strip');
+      if (strip) strip.hidden = NO_DATA_PAGES.has(id);
       if (p && pageChanged !== false) { try { p.onShow(); } catch (err) { console.error(err); } }
       if (p && section && p.onShowSection) { try { p.onShowSection(section); } catch (err) { console.error(err); } }
       // A figure drawn while its page or section was hidden had no width to measure.
