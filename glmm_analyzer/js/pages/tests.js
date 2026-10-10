@@ -28,7 +28,7 @@ export const sections = [
   { id: 'anova', label: 'One-way ANOVA', tip: 'A normal model with one categorical predictor.' },
   { id: 'paired', label: 'Paired t test', tip: 'A normal mixed model with the subject as the group.' },
   { id: 'repeated', label: 'Repeated measures', tip: 'A normal mixed model with no predictor and the day as the group.' },
-  { id: 'chisq', label: 'Chi-square test of independence', tip: 'Two Poisson models of the counts, without and with the interaction.' },
+  { id: 'chisq', label: 'Chi-square test of independence', tip: 'A Poisson model of the counts; the test is the term test of the interaction.' },
   { id: 'proportion', label: 'Two-proportion test', tip: 'A logistic model with one binary predictor.' }
 ];
 
@@ -56,13 +56,7 @@ function modelBlock(spec, data, test, label = 'Equivalent model') {
     modelRow(spec, label) +
     '</dl>';
 }
-// The data and the test alone, for a section that sets out its models one
-// by one below.
-function factsBlock(data, test) {
-  return '<dl class="tm-model"><dt>Data to compare</dt><dd>' + data + '</dd><dt>Classical test</dt><dd>' + test + '</dd></dl>';
-}
-// A model of the section set out on its own, under the facts or under the
-// previous model's table.
+// A second model of the section, set out under the first's table.
 function modelOnly(spec, label) {
   return '<dl class="tm-model tm-model-more">' + modelRow(spec, label) + '</dl>';
 }
@@ -231,26 +225,22 @@ function sectionChisq(root) {
   cells.forEach((row, i) => row.forEach((j, k) => { expectedByCell[j] = cs.expected[i][k]; }));
   const tt = termTests(ds, spec, r);
   const ia = tt.rows.find(x => x.term.includes(':'));
-  root.innerHTML = factsBlock('Delivery orders counted by outcome (early, on time, late) and by order channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.') +
-    '<p class="exp-note">The chi-square test asks whether the outcome’s distribution differs between the channels. As a GLMM, it is a Poisson model whose response is the count in a cell, and so the outcome and the channel are both predictors. The test of a term in a GLMM compares two models, one with the term and one without it. Here the term is the outcome-by-channel interaction, and the two models follow.</p>' +
+  root.innerHTML = modelBlock(spec, 'Delivery orders counted by outcome (early, on time, late) and by order channel (web, phone): a 3 × 2 table.', 'The chi-square test of independence.') +
+    '<p class="exp-note">The chi-square test of independence can be realized as the GLMM above, a Poisson model whose response is the count in a cell, with the outcome, the channel, and their interaction as its terms. On the Model page, the test is the term test of the interaction. It asks whether the outcome’s distribution differs between the channels, and its statistic and p-value are the likelihood-ratio chi-square test’s. The question is an interaction and not a main effect of channel because the count is the response, and so the outcome and the channel are both predictors: a channel term alone says only that one channel is busier, and whether the outcome’s distribution differs by channel is a question of how the two predictors combine. In the two-proportion section, where the response is the outcome itself, the same question is a main effect. With one coefficient per cell, the GLMM fits the six counts exactly, and its deviance is 0; a model that fits its data exactly is called saturated.</p>' +
+    table([
+      pair('Degrees of freedom', intl(cs.df), intl(ia.df), 'coefficients of the interaction'),
+      pair('Likelihood-ratio test of outcome:channel', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(ia.stat, 5) + ', ' + pEq(ia.p), 'the Model page’s term test'),
+      pair('Deviance', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'the table is fitted exactly')
+    ]) +
     modelOnly(spec0, 'Independence model') +
-    '<p class="exp-note">The GLMM above says that the count in a cell is set by two things only: the outcome’s overall frequency and the channel’s overall volume. The outcome term reproduces the outcome totals, and the channel term reproduces the channel totals. The fitted count is therefore one total times the other over the grand total, which is the classical test’s expected count under independence. This is also why the question is an interaction here and not a main effect of channel. With the count as the response, a channel term alone says only that one channel is busier. Whether the outcome’s distribution differs by channel is a question of how the two predictors combine. Under independence they combine additively on the log scale, and any departure from that is the interaction. In the two-proportion section, where the response is the outcome itself, the same question is a main effect.</p><p class="exp-note">The two statistics below measure, from this one fit, how far the observed counts sit from the fitted ones. Pearson’s chi-square sums (observed − fitted)²/fitted over the cells, which is the sum of the squared Pearson residuals. The likelihood-ratio chi-square, written G² in many texts, sums 2 × observed × log(observed/fitted), which is the GLMM’s deviance. Nothing about the fit differs between them. Expanding the logarithm about observed = fitted turns the second sum into the first, and so the two agree when the fitted counts lie near the observed ones, as they do in a large sample. Both are chi-square on (rows − 1)(columns − 1) degrees of freedom, the residual degrees of freedom of the fit.</p>';
-  root.innerHTML += table([
-    pairSpan('Expected counts', chi.col.levels.map((ch, i) => [esc(ch), counts(expectedByCell, i), counts(fittedByCell, i)]), 'the fitted counts'),
-    pair('Degrees of freedom', intl(cs.df), intl(r0.fit.dfResidual), '(rows − 1)(columns − 1)'),
-    pair('Pearson chi-square', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5) + ', ' + pEq(1 - chi2Cdf(X2, r0.fit.dfResidual)), 'Σ Pearson residual²'),
-    pair('Likelihood-ratio chi-square', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(r0.fit.deviance, 5) + ', ' + pEq(1 - chi2Cdf(r0.fit.deviance, r0.fit.dfResidual)), 'the deviance')
-  ]);
-  root.appendChild(loadButton('chisq', spec0, 'Open this dataset and the independence model on the Model page'));
-  const second = document.createElement('div');
-  second.innerHTML = modelOnly(spec, 'Saturated model') + '<p class="exp-note">The GLMM above adds the interaction, which lets the outcome’s distribution differ by channel. It exists because the likelihood-ratio test compares two models: this is the model with the term, and the independence model is the model without it. The statistic is the difference of the two deviances. With one coefficient per cell, this model fits the six counts exactly, and its deviance is 0, which is what saturated means. The difference is therefore the independence model’s deviance. The likelihood-ratio test of the interaction and the likelihood-ratio chi-square above are one number seen from two ends: the independence model’s lack of fit and the saturated model’s gain from the interaction. The Model page reports the test from this end. From this end, it keeps working once a third factor or a covariate joins the GLMM, where the chi-square test has no form to take.</p>';
-  second.innerHTML += table([
-    pair('Deviance', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'the table is fitted exactly'),
-    pair('Degrees of freedom', intl(cs.df), intl(ia.df), 'coefficients the interaction adds'),
-    pair('Likelihood-ratio test of outcome:channel', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(ia.stat, 5) + ', ' + pEq(ia.p), 'the Model page’s term test')
-  ]);
-  root.appendChild(second);
-  root.appendChild(loadButton('chisq', spec, 'Open this dataset and the saturated model on the Model page'));
+    '<p class="exp-note">The term test refits the GLMM without the interaction, which gives the model above: the independence model, under which the count in a cell is set by two things only, the outcome’s overall frequency and the channel’s overall volume. Its fitted counts are one total times the other over the grand total, which are the classical test’s expected counts, and the term test’s statistic is this model’s deviance, how far the six counts sit from those expected counts in log-likelihood. Pearson’s chi-square measures the same distance another way. It sums (observed − fitted)²/fitted over the cells, the squared Pearson residuals of this fit, where the deviance sums 2 × observed × log(observed/fitted). Nothing about the fit differs between them. Expanding the logarithm about observed = fitted turns the second sum into the first, and so the two agree when the fitted counts lie near the observed ones, as they do in a large sample. Both are chi-square on (rows − 1)(columns − 1) degrees of freedom, the residual degrees of freedom of this fit.</p>' +
+    table([
+      pairSpan('Expected counts', chi.col.levels.map((ch, i) => [esc(ch), counts(expectedByCell, i), counts(fittedByCell, i)]), 'the fitted counts'),
+      pair('Degrees of freedom', intl(cs.df), intl(r0.fit.dfResidual), '(rows − 1)(columns − 1)'),
+      pair('Pearson chi-square', stat(cs.X2, 5) + ', ' + pEq(cs.pX), stat(X2, 5) + ', ' + pEq(1 - chi2Cdf(X2, r0.fit.dfResidual)), 'Σ Pearson residual²'),
+      pair('Likelihood-ratio chi-square', stat(cs.G2, 5) + ', ' + pEq(cs.pG), stat(r0.fit.deviance, 5) + ', ' + pEq(1 - chi2Cdf(r0.fit.deviance, r0.fit.dfResidual)), 'the deviance')
+    ]);
+  root.appendChild(loadButton('chisq', spec));
 }
 
 function sectionProportion(root) {
