@@ -410,8 +410,12 @@ details.why.issues .why-body { padding-left: 11px; }
 /* Tables scroll inside their own box, never the page. */
 .tab-wrap { overflow-x: auto; }
 .scroll-box { max-height: 240px; overflow: auto; }
-/* The rail ui/scrollhint.js draws under a box that scrolls sideways, since the system's
-   own scrollbar hides itself: a 24px strip to touch, with the track and thumb inside. */
+/* The rail ui/scrollhint.js draws under a box that scrolls sideways, because the system's
+   own scrollbar hides itself: a 24px strip to touch, with the track and thumb inside. The
+   system's bar is suppressed so that the two never show together; the edge shadows mark a
+   box that scrolls down. */
+.scroll-box { scrollbar-width: none; }
+.scroll-box::-webkit-scrollbar { display: none; }
 .scroll-rail { height: 24px; padding: 8px 2px; box-sizing: border-box; cursor: pointer; touch-action: none; }
 .scroll-rail[hidden] { display: none; }
 .scroll-rail-track { position: relative; height: 8px; background: var(--chart-bg); border-radius: 4px; }
