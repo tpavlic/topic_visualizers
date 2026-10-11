@@ -51,7 +51,7 @@ For a new `my_demo.html`, the checklist is:
    * For Twitter/X, the image should be close to **2:1 aspect ratio**
      and under **5 MB**
 
-2. **Back-link footer** — add at the bottom of `<body>`:
+2. **Back-link footer** – add at the bottom of `<body>`:
 
    ```html
    <footer id="back-link-footer" style="max-width:CONTENT_MAX_WIDTH;margin:0 auto;padding:0 CONTENT_HPAD 1.5rem;">
@@ -70,11 +70,11 @@ For a new `my_demo.html`, the checklist is:
    matches the main footer's rule). The script hides the footer when the page is embedded in a
    Canvas iframe.
 
-3. **Index entry** — add a `<li>` to the appropriate `<section>` in [`index.html`](index.html),
+3. **Index entry** – add a `<li>` to the appropriate `<section>` in [`index.html`](index.html),
    following the existing pattern (thumbnail + title + one-sentence description). Create
    a new `<section class="demo-section">` block if no suitable section exists yet.
 
-4. **README entry** — add a row to the appropriate table under `## Contents`.
+4. **README entry** – add a row to the appropriate table under `## Contents`.
 
 ---
 
@@ -82,10 +82,10 @@ For a new `my_demo.html`, the checklist is:
 
 Other projects by the same author that visitors here may find complementary:
 
-* [Research Sandbox](https://tpavlic.github.io/research_sandbox/) — work-in-progress interactive demonstrations meant for communication and exploration of ideas related to ongoing research projects.
-* [Bio-Inspired AI & Optimization — Course Visualizations](https://tpavlic.github.io/asu-bioinspired-ai-and-optimization/) — supplemental interactive explorers for *IEE/CSE 598: Bio-Inspired AI and Optimization* at Arizona State University, spanning genetic algorithms, swarm intelligence, neural networks, and other bio-inspired methods.
-* [Simulating Stochastic Systems — Course Visualizations](https://tpavlic.github.io/asu-simulating-stochastic-systems/) — supplemental interactive explorers for *IEE 475: Simulating Stochastic Systems* at Arizona State University, spanning pseudorandom number generation, input modeling, output analysis, confidence intervals, statistical power, and comparison of alternative systems.
-* [Notes, Documents, & Guides](https://github.com/tpavlic/docs-and-guides) — Markdown-formatted notes and instructional guides on a variety of fundamental and applied science and engineering topics.
+* [Research Sandbox](https://tpavlic.github.io/research_sandbox/) – work-in-progress interactive demonstrations meant for communication and exploration of ideas related to ongoing research projects.
+* [Bio-Inspired AI & Optimization – Course Visualizations](https://tpavlic.github.io/asu-bioinspired-ai-and-optimization/) – supplemental interactive explorers for *IEE/CSE 598: Bio-Inspired AI and Optimization* at Arizona State University, spanning genetic algorithms, swarm intelligence, neural networks, and other bio-inspired methods.
+* [Simulating Stochastic Systems – Course Visualizations](https://tpavlic.github.io/asu-simulating-stochastic-systems/) – supplemental interactive explorers for *IEE 475: Simulating Stochastic Systems* at Arizona State University, spanning pseudorandom number generation, input modeling, output analysis, confidence intervals, statistical power, and comparison of alternative systems.
+* [Notes, Documents, & Guides](https://github.com/tpavlic/docs-and-guides) – Markdown-formatted notes and instructional guides on a variety of fundamental and applied science and engineering topics.
 * [Lectures and short video tutorials](https://www.youtube.com/@TedPavlic) on YouTube, including the [Office Hours](https://www.youtube.com/playlist?list=PLXBbGVSkQJqEFKCGlTbzBnvf96DRJ6_gi) playlist.
 
 ## License
