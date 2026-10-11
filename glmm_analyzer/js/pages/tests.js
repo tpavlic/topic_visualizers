@@ -149,7 +149,8 @@ function sectionAnova(root) {
   root.innerHTML += table([
     pair('Between sum of squares', stat(av.ssBetween, 5), stat(fit.nullDeviance - fit.deviance, 5), 'null deviance − deviance'),
     pair('Within sum of squares', stat(av.ssWithin, 5), stat(fit.deviance, 5), 'the deviance'),
-    pair('F', stat(av.F, 5) + ' on ' + intl(av.df1) + ' and ' + intl(av.df2) + ' df', stat(F, 5) + ' on ' + intl(df1) + ' and ' + intl(df2) + ' df', ''),
+    pair('F', stat(av.F, 5), stat(F, 5), ''),
+    pair('Degrees of freedom', intl(av.df1) + ' and ' + intl(av.df2), intl(df1) + ' and ' + intl(df2), 'between and within'),
     pair('p', pValue(av.p), pValue(pF), ''),
     pair('Likelihood-ratio test of shift', '–', stat(tt.rows[0].stat, 4) + ' on ' + intl(tt.rows[0].df) + ' df, ' + pEq(tt.rows[0].p), 'the Model page’s term test')
   ]);
@@ -173,7 +174,8 @@ function sectionPaired(root) {
   root.innerHTML += table([
     pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
     pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
-    pair('Statistic', 't = ' + stat(pt.t, 5) + ' on ' + intl(pt.df) + ' df', 'z = ' + stat(est / se, 5), ''),
+    pair('Statistic', 't = ' + stat(pt.t, 5), 'z = ' + stat(est / se, 5), ''),
+    pair('Degrees of freedom', intl(pt.df), '–', 'a z test has none'),
     pair('p', pValue(pt.p), pValue(waldP(est / se, Infinity)), 'z against t on 13 df'),
     pair('Between-operator variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
   ]);
@@ -191,12 +193,13 @@ function sectionRepeated(root) {
   const fit = r.fit;
   const se0 = Math.sqrt(fit.vcov[0][0]), z = fit.beta[0] / se0;
   const ret = randomEffectTest(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.', 'The one-sample t test on the ten daily means.') + '<p class="exp-note">A one-sample t test on repeated measures can be realized as the GLMM above, a mixed model with a random intercept per day and no predictor. The two hundred orders are not independent: orders on the same day share that day’s conditions, and a t test that treats them as two hundred independent observations takes a standard error that is too small. The classical remedy is to test the ten daily means, one number per day. The random intercept of the GLMM does the same: under REML, the standard error of its intercept is the standard error of the daily means, exactly, because every day carries the same number of orders and the between-day variance is estimated above 0. The GLMM reports a z test where the t test has 9 degrees of freedom, as on the paired test, and it also says how much of the variation sits between days. The paired t test is the two-condition form of this model; a factor with more levels in place of the condition gives one-way repeated-measures analysis of variance under compound symmetry.</p>';
+  root.innerHTML = modelBlock(spec, 'The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.', 'The one-sample t test on the ten daily means.') + '<p class="exp-note">A one-sample t test on repeated measures can be realized as the GLMM above, a mixed model with a random intercept per day and no predictor. The two hundred orders are not independent: orders on the same day share that day’s conditions. A t test that treats them as two hundred independent observations can be computed, and the table shows it, but it is not a valid test: its standard error assumes an independence the days deny, and its p-value comes out too small. The classical remedy is to test the ten daily means, one number per day. The random intercept of the GLMM does the same: under REML, the standard error of its intercept is the standard error of the daily means, exactly, because every day carries the same number of orders and the between-day variance is estimated above 0. The GLMM reports a z test where the t test has 9 degrees of freedom, as on the paired test, and it also says how much of the variation sits between days. The paired t test is the two-condition form of this model; a factor with more levels in place of the condition gives one-way repeated-measures analysis of variance under compound symmetry.</p>';
   root.innerHTML += table([
     pair('Mean deviation', stat(means.mean, 5) + ' (daily means), ' + stat(naive.mean, 5) + ' (all orders)', stat(fit.beta[0], 5), 'the intercept'),
-    pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders as if independent)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
-    pair('Statistic', 't = ' + stat(means.t, 5) + ' on ' + intl(means.df) + ' df (daily means), t = ' + stat(naive.t, 5) + ' on ' + intl(naive.df) + ' df (all orders)', 'z = ' + stat(z, 5), ''),
-    pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders)', pValue(waldP(z, Infinity)), 'z against t on 9 df'),
+    pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders, not valid)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
+    pair('Statistic', 't = ' + stat(means.t, 5) + ' (daily means), t = ' + stat(naive.t, 5) + ' (all orders, not valid)', 'z = ' + stat(z, 5), ''),
+    pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', '–', 'a z test has none'),
+    pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders, not valid)', pValue(waldP(z, Infinity)), 'z against t on 9 df'),
     pair('Between-day variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
   ]);
   root.appendChild(loadButton('repeated', spec));
