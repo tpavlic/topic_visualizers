@@ -10795,12 +10795,17 @@ function drawCalc() {
   const p = predictRows(ds, result, [row], level);
   const link = LINKS[result.link];
   const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
-  els.calc.appendChild(cardRow([
-    card('Linear predictor', stat(p.eta[0], 5), 'on the ' + esc(link.label) + ' scale, SE ' + stat(p.se[0], 4)),
-    card(esc(lvl(level)) + ' interval, link scale', '[' + stat(p.lo[0], 5) + ', ' + stat(p.hi[0], 5) + ']'),
-    card('Predicted ' + esc(yLabel), stat(p.fit[0], 5)),
-    card('Its interval', '[' + stat(p.fitLo[0], 5) + ', ' + stat(p.fitHi[0], 5) + ']', 'the link-scale interval carried through the inverse link')
-  ]));
+  // One row per scale: the linear predictor on the link scale, and its
+  // image on the response scale; with the identity link the two coincide.
+  const identity = link.id === 'identity';
+  const rows = [];
+  if (!identity) rows.push(['Link scale (' + esc(link.label) + ')', 'linear predictor η', stat(p.eta[0], 5), stat(p.se[0], 4), '[' + stat(p.lo[0], 5) + ', ' + stat(p.hi[0], 5) + ']', 'a Wald interval']);
+  rows.push(['Response scale', 'predicted ' + esc(yLabel), stat(p.fit[0], 5), identity ? stat(p.se[0], 4) : '–', '[' + stat(p.fitLo[0], 5) + ', ' + stat(p.fitHi[0], 5) + ']', identity ? 'a Wald interval' : 'the link-scale interval carried through the inverse link']);
+  const tbl = document.createElement('div');
+  tbl.className = 'scroll-box';
+  tbl.innerHTML = '<table class="ptab"><thead><tr><th>Scale</th><th>Quantity</th><th>Estimate</th><th>Standard error</th><th>' + esc(lvl(level)) + ' interval</th><th></th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td><td>' + r[4] + '</td><td class="muted-line">' + r[5] + '</td></tr>').join('') + '</tbody></table>';
+  els.calc.appendChild(tbl);
   last.calc = { row, pred: p };
   registerResult();
 }
