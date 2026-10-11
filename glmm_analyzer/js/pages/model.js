@@ -6,7 +6,7 @@
 
 import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
-import { FAMILIES, LINKS, familyOf, backWord } from '../stats/families.js';
+import { FAMILIES, LINKS, familyOf, backWord, linkOf } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
 import { termTests, randomEffectTest, waldTable, degenerateFit } from '../stats/inference.js';
 import { residualSet } from '../stats/residuals.js';
@@ -54,17 +54,19 @@ export function render(root) {
     '<div class="sec" id="md-keep"><div class="sec-hd">Keep for comparison</div>' +
       '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="md-keep-name">Name</label><input type="text" id="md-keep-name" class="txt-inp" autocomplete="off" spellcheck="false"></span>' +
       '<button type="button" class="btn-run2" id="md-keep-btn">Keep this model</button><span class="ctrl-note" id="md-keep-note" aria-live="polite"></span></div>' +
-      '<p class="exp-note">A kept model joins the table on the Compare page, where the candidates are ranked by AIC and tested against one another. Keeping the same model twice renames it.</p>' +
+      '<p class="exp-note">A kept model joins the table on the <a href="#compare">Compare</a> page, where the candidates are ranked by AIC and tested against one another. Keeping the same model twice renames it.</p>' +
     '</div>';
   els = { builder: root.querySelector('#md-builder'), flags: root.querySelector('#md-flags'), coef: root.querySelector('#md-coef-body'), stats: root.querySelector('#md-stats-body'),
     random: root.querySelector('#md-random'), randomBody: root.querySelector('#md-random-body'), terms: root.querySelector('#md-terms-body'), keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
   formulaBuilder(els.builder, { page: id });
+  els.keepName.addEventListener('input', () => { keepEdited = els.keepName.value.trim() !== ''; });
   els.keepBtn.addEventListener('click', () => {
     if (!lastFit || !lastFit.result || !lastFit.result.fit) return;
     const name = els.keepName.value.trim() || defaultName();
     const m = state.keepModel(name);
     els.keepNote.textContent = 'Kept as ' + m.name + '.';
-    els.keepName.value = '';
+    keepEdited = false;
+    els.keepName.value = defaultName();
   });
   installExportRow(root, id);
   state.on('spec', schedule);
@@ -76,10 +78,18 @@ export function render(root) {
 /** Called each time the page is shown. */
 export function onShow() { schedule(); }
 
+// The name a kept model gets unless the reader types one: the dataset, the
+// formula, and the family, with the link where it is not the family's own.
 function defaultName() {
-  const n = state.models.length + 1;
-  return 'Model ' + n + ': ' + formulaOf(state.spec);
+  const s = state.spec;
+  const ds = state.get(s.dataset);
+  const fam = FAMILIES[s.family] || FAMILIES.normal;
+  const link = linkOf(s.family, s.link);
+  return (ds ? ds.name + ' · ' : '') + formulaOf(s) + ' · ' + fam.label + (link.id === fam.defaultLink ? '' : ', ' + link.label + ' link');
 }
+// Whether the reader has typed a name of their own; until they do, the box
+// follows the model.
+let keepEdited = false;
 
 function schedule() {
   clearTimeout(timer);
@@ -140,6 +150,7 @@ function compute() {
   drawChecks(result);
   const tt = drawTerms(ds, result);
   els.keepBtn.disabled = false;
+  if (!keepEdited) els.keepName.value = defaultName();
   registerResult(ds, result, tt);
 }
 
