@@ -8,7 +8,7 @@ import { fitModel } from '../stats/fit.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { chi2Cdf } from '../stats/special.js';
 import { boundaryP } from '../stats/inference.js';
-import { notice, details } from '../ui/widgets.js';
+import { notice, details, term } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { compareRecipe, tooBig, capRecipe } from '../io/recipes.js';
 import { esc, num, stat, pValue, intl, plural } from '../ui/format.js';
@@ -88,7 +88,7 @@ function compute() {
   // Akaike weights: each candidate's share of exp(−ΔAIC/2) over the set.
   const wsum = fitted.reduce((a, r) => a + Math.exp(-(r.result.fit.aic - minAic) / 2), 0);
   const weightOf = r => Math.exp(-(r.result.fit.aic - minAic) / 2) / wsum;
-  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Model</th><th>Dataset</th><th>Formula</th><th>Family, link</th><th>k</th><th>log-likelihood</th><th>AIC</th><th>ΔAIC</th><th>Akaike weight</th><th>BIC</th><th class="no-print"></th></tr></thead><tbody>';
+  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Model</th><th>Dataset</th><th>Formula</th><th>Family, link</th><th>' + term('k', 'The number of parameters estimated: the coefficients, any variance component, and a dispersion or extra parameter where the family has one.') + '</th><th>' + term('log-likelihood', 'The log of the likelihood at the maximum-likelihood fit: how well the model fits, before any penalty for its size. A REML fit is refitted by maximum likelihood for this table.') + '</th><th>' + term('AIC', 'Akaike’s information criterion, −2 log-likelihood + 2k: the fit penalized by 2 for every parameter. Smaller is better, and only differences between models of one response on one dataset mean anything.') + '</th><th>' + term('ΔAIC', 'This model’s AIC above the smallest in the table. A difference under about 2 is slight; above about 10 the larger model has little support.') + '</th><th>' + term('Akaike weight', 'This model’s share of exp(−ΔAIC/2) over the candidates listed: its relative support as the best of this set, with the weights adding to 1. It says nothing about a model that was not kept.') + '</th><th>' + term('BIC', 'The Bayesian information criterion, −2 log-likelihood + k log n: the same fit penalized by log n for every parameter, which grows with the sample, and so BIC prefers smaller models in large samples.') + '</th><th class="no-print"></th></tr></thead><tbody>';
   const tableRows = [];
   for (const r of fitted) {
     const f = r.result.fit;
@@ -133,7 +133,7 @@ function compute() {
       pairRows.push([a.model.name, b.model.name, kind, df, stat_, p]);
     }
   }
-  els.pairs.innerHTML = ph ? '<div class="scroll-box"><table class="ptab"><thead><tr><th>Smaller model</th><th>Larger model</th><th>Adds</th><th>df</th><th>χ²</th><th>p</th></tr></thead><tbody>' + ph + '</tbody></table></div>' : '<p class="muted-line">No kept pair nests: a pair is tested when one model holds the other’s terms and more, with the same response, family, link, and random part, or adds a random part to the same fixed terms, and both were fitted to the same rows.</p>';
+  els.pairs.innerHTML = ph ? '<div class="scroll-box"><table class="ptab"><thead><tr><th>Smaller model</th><th>Larger model</th><th>' + term('Adds', 'What the larger model has that the smaller does not: fixed terms, or the random part.') + '</th><th>' + term('df', 'Degrees of freedom: the parameters the larger model adds.') + '</th><th>' + term('χ²', 'The likelihood-ratio statistic, twice the difference in log-likelihood, against a chi-square on the added parameters; for a random part, against the boundary mixture the Model page uses.') + '</th><th>' + term('p', 'The probability of a likelihood-ratio statistic this large if the added terms did nothing.') + '</th></tr></thead><tbody>' + ph + '</tbody></table></div>' : '<p class="muted-line">No kept pair nests: a pair is tested when one model holds the other’s terms and more, with the same response, family, link, and random part, or adds a random part to the same fixed terms, and both were fitted to the same rows.</p>';
   els.table.querySelectorAll('.cp-use').forEach(b => b.addEventListener('click', () => { const m = state.models.find(x => x.id === b.dataset.id); if (m) { state.setSpec(m.spec); location.hash = '#model'; } }));
   els.table.querySelectorAll('.cp-drop').forEach(b => b.addEventListener('click', () => state.dropModel(b.dataset.id)));
   const title = 'Compare: ' + plural(fitted.length, 'candidate model');
