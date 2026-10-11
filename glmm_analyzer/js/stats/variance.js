@@ -25,8 +25,8 @@ function fixedVariance(X, beta) {
   return n > 1 ? s / (n - 1) : 0;
 }
 
-// A random term's variance averaged over the rows: σ² for an intercept, and
-// for an intercept and slope the mean of z_i' Σ z_i with z_i = (1, x_i).
+// A random term's variance averaged over the rows: σ² for an intercept and,
+// for an intercept and slope, the mean of z_i' Σ z_i with z_i = (1, x_i).
 function termVariance(term, vc) {
   const v0 = vc.variances[0];
   if (vc.names.length < 2 || !term.slope) return v0;
@@ -70,7 +70,7 @@ export function varianceSupported(family, link) {
  * for a gamma; and log(1 + (1 − μ)/(μ(1 + φ))) for a beta at the
  * intercept-only model's μ.
  * @param {object} fit the full fit
- * @param {object|null} nullFit the intercept-only fit with the same random part, or null for the normal and binomial families
+ * @param {object|null} nullFit the intercept-only fit with the same random part or null for the normal and binomial families
  * @param {number} nullRandom the null fit's random variance apart from any observation-level effect
  * @returns {number}
  */

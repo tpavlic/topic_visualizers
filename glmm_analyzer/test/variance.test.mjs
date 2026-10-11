@@ -45,8 +45,8 @@ for (const [name, s] of Object.entries(MIXED)) {
     const r = ref[name];
     const v = parts(s);
     assert.ok(v.ok, v.why);
-    // A piece R declined (NA in the reference: a singular fit, or no random
-    // term apart from the observation level) is not compared.
+    // A piece R declined (NA in the reference, from a singular fit or from no
+    // random term apart from the observation level) is not compared.
     const has = k => typeof r[k] === 'number';
     // The random-slope binomial fit is near-singular (its slope-intercept
     // correlation is 0.99999), and the two optimizers land 0.3% apart on it.
@@ -55,7 +55,7 @@ for (const [name, s] of Object.entries(MIXED)) {
       ['residual', 'residual'], ['r2m', 'r2m'], ['r2c', 'r2c'], ['icc', 'icc'], ['iccUnadjusted', 'icc_unadj']];
     let compared = 0;
     for (const [ours, theirs] of pairs) if (has(theirs)) { close(v[ours], r[theirs], tol, theirs); compared++; }
-    // On the observation-level case R gives the fixed and dispersion pieces only.
+    // On the observation-level case, R gives the fixed and dispersion pieces only.
     assert.ok(compared >= (name === 'olre_g' ? 2 : 7), 'reference holds ' + compared + ' pieces');
   });
 }

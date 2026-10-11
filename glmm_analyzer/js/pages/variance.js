@@ -35,7 +35,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">How much of the response’s variation the model on the Model page accounts for, and where the rest sits. On the link scale, the variance splits into the part the fixed effects predict, the part each random term carries, and a residual part that the family’s own spread sets. The pieces add, and so one bar shows them. Marginal R² is the fixed effects’ share, conditional R² adds the random terms, and the ICC is the random terms’ share of what the fixed effects leave. The definitions are those in the References.</p>' +
+    '<p class="lede">This page shows how much of the response’s variation the model on the Model page accounts for and where the rest sits. On the link scale, the variance splits into the part the fixed effects predict, the part each random term carries, and a residual part that the family’s own spread sets. The pieces add, and so one bar shows them. Marginal R² is the fixed effects’ share, conditional R² adds the random terms, and the ICC is the random terms’ share of what the fixed effects leave. The definitions are those in the References.</p>' +
     '<div id="va-note"></div>' +
     '<div class="sec"><div class="sec-hd">The pieces of the variance</div><div id="va-bar"></div><div id="va-cards"></div><div id="va-table"></div></div>' +
     '<div class="sec"><div class="sec-hd">By term</div><div id="va-terms"></div></div>' +
@@ -161,7 +161,7 @@ function compute() {
 
   // The terms.
   if (v.terms.length) {
-    els.terms.innerHTML = '<p class="exp-note">Each term’s share is the fixed-effect variance the model loses when it is refitted without that term, over the total variance of the full model: the part of the marginal R² that term alone accounts for after the others. A term inside an interaction is not dropped on its own. The shares need not add up to the marginal R², because predictors that move together share their variance.</p>' +
+    els.terms.innerHTML = '<p class="exp-note">Each term’s share is the fixed-effect variance the model loses when it is refitted without that term, over the total variance of the full model: the part of the marginal R² that term alone accounts for after the others. A term inside an interaction is not dropped on its own. The shares need not add up to the marginal R² because predictors that move together share their variance.</p>' +
       '<div class="scroll-box"><table class="ptab"><thead><tr><th>Term</th><th>Fixed-effect variance without it</th><th>Share lost</th></tr></thead><tbody>' +
       v.terms.map(t => '<tr><td>' + esc(t.term) + '</td><td>' + stat(tidy(t.fixed, v.fixed), 5) + '</td><td>' + SHARE(t.delta) + '</td></tr>').join('') + '</tbody></table></div>';
   } else {
