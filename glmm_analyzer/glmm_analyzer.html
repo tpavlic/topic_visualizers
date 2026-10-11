@@ -410,13 +410,18 @@ details.why.issues .why-body { padding-left: 11px; }
 /* Tables scroll inside their own box, never the page. */
 .tab-wrap { overflow-x: auto; }
 .scroll-box { max-height: 240px; overflow: auto; }
-/* The scrollbar stays in view wherever the content overflows: a styled WebKit scrollbar
-   is drawn as a classic one rather than an overlay that hides, and Firefox draws its thin
-   one; the edge shadows below say the same at a glance. */
-.scroll-box { scrollbar-width: thin; scrollbar-color: var(--muted) var(--chart-bg); }
-.scroll-box::-webkit-scrollbar { height: 9px; width: 9px; }
-.scroll-box::-webkit-scrollbar-track { background: var(--chart-bg); border-radius: 5px; }
-.scroll-box::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 5px; }
+/* The rail ui/scrollhint.js draws under a box that scrolls sideways, since the system's
+   own scrollbar hides itself: a 24px strip to touch, with the track and thumb inside. */
+.scroll-rail { height: 24px; padding: 8px 2px; box-sizing: border-box; cursor: pointer; touch-action: none; }
+.scroll-rail[hidden] { display: none; }
+.scroll-rail-track { position: relative; height: 8px; background: var(--chart-bg); border-radius: 4px; }
+.scroll-rail-thumb { position: absolute; top: 0; height: 100%; background: var(--muted); border-radius: 4px; cursor: grab; }
+.scroll-rail-thumb:active { cursor: grabbing; background: var(--accent); }
+/* The first column stays in view while the rest scrolls, so a row keeps its name; a row
+   continuing a spanned label has a value there and is left to scroll. */
+.ptab th:first-child, .ptab td:first-child { position: sticky; left: 0; background: var(--card); z-index: 1; }
+.ptab th:first-child { z-index: 2; }
+.ptab tr.tm-cont td:first-child { position: static; }
 /* A shaded edge says more lies past it (ui/scrollhint.js marks the edges). */
 .scroll-box[data-more~="right"] { box-shadow: inset -22px 0 16px -14px rgba(0, 0, 0, .32); }
 .scroll-box[data-more~="left"] { box-shadow: inset 22px 0 16px -14px rgba(0, 0, 0, .32); }
@@ -11321,7 +11326,7 @@ function sectionPaired(root) {
     pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
     pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
     pair('Statistic', 't = ' + stat(pt.t, 5), 'z = ' + stat(est / se, 5), ''),
-    pair('Degrees of freedom', intl(pt.df), '–', 'a z test has none'),
+    pair('Degrees of freedom', intl(pt.df), 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
     pair('p', pValue(pt.p), pValue(waldP(est / se, Infinity)), 'z against t on 13 df'),
     pair('Between-operator variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
   ]);
@@ -11344,7 +11349,7 @@ function sectionRepeated(root) {
     pair('Mean deviation', stat(means.mean, 5) + ' (daily means), ' + stat(naive.mean, 5) + ' (all orders)', stat(fit.beta[0], 5), 'the intercept'),
     pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders, not valid)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
     pair('Statistic', 't = ' + stat(means.t, 5) + ' (daily means), t = ' + stat(naive.t, 5) + ' (all orders, not valid)', 'z = ' + stat(z, 5), ''),
-    pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', '–', 'a z test has none'),
+    pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
     pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders, not valid)', pValue(waldP(z, Infinity)), 'z against t on 9 df'),
     pair('Between-day variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
   ]);
@@ -18385,26 +18390,75 @@ export function shortNames(names) {
 </script>
 <script type="text/plain" data-module="js/ui/scrollhint.js">
 // A box that scrolls sideways or down gives no sign of what lies beyond
-// its edges until the reader tries. This marks every `.scroll-box` with the
-// edges that have more content past them (`data-more="right bottom"`), kept
-// current as the box scrolls, resizes, or is replaced, and the page's CSS
-// shades those edges.
+// its edges until the reader tries, and the scrollbar the system draws
+// hides itself on most laptops and phones. This marks every `.scroll-box`
+// with the edges that have more content past them (`data-more="right
+// bottom"`), which the page's CSS shades, and draws its own rail under a
+// box that scrolls sideways: a track with a thumb that follows the scroll
+// position, drags, and jumps on a tap, kept current as the box scrolls,
+// resizes, or is replaced.
 
 /**
- * Watches `root` for scroll boxes, present and future, and marks their edges.
+ * Watches `root` for scroll boxes, present and future, marks their edges,
+ * and rails the ones that scroll sideways.
  * @param {HTMLElement} root
  */
 export function installScrollHints(root) {
+  const rails = new WeakMap();   // scroll box -> its rail's elements
+
+  const rail = el => {
+    if (rails.has(el)) return rails.get(el);
+    const r = document.createElement('div');
+    r.className = 'scroll-rail';
+    r.setAttribute('aria-hidden', 'true');
+    r.hidden = true;
+    r.innerHTML = '<div class="scroll-rail-track"><div class="scroll-rail-thumb"></div></div>';
+    el.insertAdjacentElement('afterend', r);
+    const track = r.firstElementChild, thumb = track.firstElementChild;
+    const o = { rail: r, track, thumb };
+    rails.set(el, o);
+    // Dragging the thumb scrolls the box; a press on the track jumps a page toward it.
+    let drag = null;
+    thumb.addEventListener('pointerdown', ev => {
+      drag = { x: ev.clientX, left: el.scrollLeft };
+      thumb.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    thumb.addEventListener('pointermove', ev => {
+      if (!drag) return;
+      el.scrollLeft = drag.left + (ev.clientX - drag.x) * el.scrollWidth / track.clientWidth;
+    });
+    const end = () => { drag = null; };
+    thumb.addEventListener('pointerup', end);
+    thumb.addEventListener('pointercancel', end);
+    track.addEventListener('pointerdown', ev => {
+      if (ev.target === thumb) return;
+      const at = (ev.clientX - track.getBoundingClientRect().left) * el.scrollWidth / track.clientWidth;
+      el.scrollBy({ left: at < el.scrollLeft ? -el.clientWidth : el.clientWidth, behavior: 'smooth' });
+    });
+    return o;
+  };
+
   const update = el => {
     const more = [];
+    const across = el.scrollWidth > el.clientWidth + 1;
     if (el.scrollLeft > 1) more.push('left');
     if (el.scrollLeft + el.clientWidth < el.scrollWidth - 1) more.push('right');
     if (el.scrollTop > 1) more.push('top');
     if (el.scrollTop + el.clientHeight < el.scrollHeight - 1) more.push('bottom');
     if (more.length) el.setAttribute('data-more', more.join(' ')); else el.removeAttribute('data-more');
+    const o = across || rails.has(el) ? rail(el) : null;
+    if (!o) return;
+    o.rail.hidden = !across;
+    if (!across) return;
+    const w = o.track.clientWidth;
+    const tw = Math.max(24, w * el.clientWidth / el.scrollWidth);
+    const left = (w - tw) * el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth);
+    o.thumb.style.width = tw + 'px';
+    o.thumb.style.left = left + 'px';
   };
   const seen = new WeakSet();
-  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => { for (const e of entries) update(e.target); }) : null;
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => { for (const e of entries) update(e.target.closest('.scroll-box') || e.target); }) : null;
   const attach = el => {
     if (seen.has(el)) return;
     seen.add(el);

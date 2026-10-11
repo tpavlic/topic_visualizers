@@ -175,7 +175,7 @@ function sectionPaired(root) {
     pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
     pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
     pair('Statistic', 't = ' + stat(pt.t, 5), 'z = ' + stat(est / se, 5), ''),
-    pair('Degrees of freedom', intl(pt.df), '–', 'a z test has none'),
+    pair('Degrees of freedom', intl(pt.df), 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
     pair('p', pValue(pt.p), pValue(waldP(est / se, Infinity)), 'z against t on 13 df'),
     pair('Between-operator variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
   ]);
@@ -198,7 +198,7 @@ function sectionRepeated(root) {
     pair('Mean deviation', stat(means.mean, 5) + ' (daily means), ' + stat(naive.mean, 5) + ' (all orders)', stat(fit.beta[0], 5), 'the intercept'),
     pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders, not valid)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
     pair('Statistic', 't = ' + stat(means.t, 5) + ' (daily means), t = ' + stat(naive.t, 5) + ' (all orders, not valid)', 'z = ' + stat(z, 5), ''),
-    pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', '–', 'a z test has none'),
+    pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
     pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders, not valid)', pValue(waldP(z, Infinity)), 'z against t on 9 df'),
     pair('Between-day variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
   ]);
