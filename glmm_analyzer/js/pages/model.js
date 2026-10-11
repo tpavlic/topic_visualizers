@@ -51,20 +51,26 @@ export function render(root) {
     '<div class="sec" id="md-random" hidden><div class="sec-hd">Random effects</div><div id="md-random-body"></div></div>' +
     '<div class="sec" id="md-stats"><div class="sec-hd">Fit</div><div id="md-stats-body"></div></div>' +
     '<div class="sec" id="md-terms"><div class="sec-hd">Term tests</div><div id="md-terms-body"></div></div>' +
-    '<div class="sec" id="md-keep"><div class="sec-hd">Keep for comparison</div>' +
-      '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="md-keep-name">Name</label><input type="text" id="md-keep-name" class="txt-inp" autocomplete="off" spellcheck="false"></span>' +
-      '<button type="button" class="btn-run2" id="md-keep-btn">Keep this model</button><span class="ctrl-note" id="md-keep-note" aria-live="polite"></span></div>' +
-      '<p class="exp-note">A kept model joins the table on the <a href="#compare">Compare</a> page, where the candidates are ranked by AIC and tested against one another. Keeping the same model twice renames it.</p>' +
-    '</div>';
+    '';
   els = { builder: root.querySelector('#md-builder'), flags: root.querySelector('#md-flags'), coef: root.querySelector('#md-coef-body'), stats: root.querySelector('#md-stats-body'),
     random: root.querySelector('#md-random'), randomBody: root.querySelector('#md-random-body'), terms: root.querySelector('#md-terms-body'), keepName: root.querySelector('#md-keep-name'), keepBtn: root.querySelector('#md-keep-btn'), keepNote: root.querySelector('#md-keep-note') };
   formulaBuilder(els.builder, { page: id });
+  // The Keep controls sit under the model line, where the model is finished,
+  // so that a model can be kept as soon as it is built.
+  const keep = document.createElement('div');
+  keep.className = 'md-keep-row';
+  keep.id = 'md-keep';
+  keep.innerHTML = '<span class="ctrl-pair"><label class="ctrl-lbl" for="md-keep-name">Keep as</label><input type="text" id="md-keep-name" class="txt-inp" autocomplete="off" spellcheck="false"></span>' +
+    '<button type="button" class="btn-run2" id="md-keep-btn" data-tip="Adds this model to the candidates on the Compare page, where they are ranked by AIC and tested against one another. Keeping the same model again renames it." data-tip-press>Keep this model</button>' +
+    '<span class="ctrl-note" id="md-keep-note" aria-live="polite">A kept model joins the table on the <a href="#compare">Compare</a> page.</span>';
+  els.builder.querySelector('#fb-model').insertAdjacentElement('afterend', keep);
+  els.keepName = keep.querySelector('#md-keep-name'); els.keepBtn = keep.querySelector('#md-keep-btn'); els.keepNote = keep.querySelector('#md-keep-note');
   els.keepName.addEventListener('input', () => { keepEdited = els.keepName.value.trim() !== ''; });
   els.keepBtn.addEventListener('click', () => {
     if (!lastFit || !lastFit.result || !lastFit.result.fit) return;
     const name = els.keepName.value.trim() || defaultName();
     const m = state.keepModel(name);
-    els.keepNote.textContent = 'Kept as ' + m.name + '.';
+    els.keepNote.innerHTML = 'Kept as ' + esc(m.name) + '. See the <a href="#compare">Compare</a> page.';
     keepEdited = false;
     els.keepName.value = defaultName();
   });
