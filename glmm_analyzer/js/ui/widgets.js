@@ -289,3 +289,15 @@ export function listWords(a) {
 
 /** The card label for degrees of freedom: "df", expanded by its tooltip. */
 export const DF_LABEL = '<span class="tip" tabindex="0" data-tip="Degrees of freedom">df</span>';
+
+/** What a Wald interval or test is, for the term wherever a page uses it. */
+export const WALD_TIP = 'The familiar recipe, estimate ± quantile × standard error, applied to a coefficient. The standard error comes from the curvature of the log-likelihood at the fit; the quantile comes from the t distribution where the dispersion is estimated (a normal or gamma model with no random part) and from the normal otherwise; and the matching Wald test is the estimate over its standard error, a t or z statistic. The t interval for a mean is the Wald interval of the simplest linear model.';
+
+/**
+ * A term with a tooltip, in page text.
+ * @param {string} text the term as shown
+ * @param {string} tip what it means
+ */
+export function term(text, tip) {
+  return '<span class="tip" tabindex="0" data-tip="' + esc(tip) + '">' + text + '</span>';
+}

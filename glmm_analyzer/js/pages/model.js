@@ -14,7 +14,7 @@ import { shapiroWilk } from '../stats/normality.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
 import { normCdf, normInv, tCdf, tQuantile } from '../stats/special.js';
 import { formulaBuilder } from '../ui/formula.js';
-import { card, cardRow, notice, details, listWords } from '../ui/widgets.js';
+import { card, cardRow, notice, details, listWords, term, WALD_TIP } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { modelRecipe, tooBig, capRecipe } from '../io/recipes.js';
 import { esc, num, stat, pValue, pEq, intl, plural, lvl } from '../ui/format.js';
@@ -44,7 +44,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Choose the response, the family and link, and the terms, and the model is fitted as you build it. The coefficients are on the link scale, with the ratio each one implies where the link gives one, and every interval is a Wald interval at the shared confidence level. A term’s likelihood-ratio test refits the model without it.</p>' +
+    '<p class="lede">Choose the response, the family and link, and the terms, and the model is fitted as you build it. The coefficients are on the link scale, with the ratio each one implies where the link gives one, and every interval is a ' + term('Wald interval', WALD_TIP) + ' at the shared confidence level. A term’s likelihood-ratio test refits the model without it.</p>' +
     '<div class="sec ctrl-card" id="md-builder"></div>' +
     '<div id="md-flags"></div>' +
     '<div class="sec" id="md-coef"><div class="sec-hd">Coefficients</div><div id="md-coef-body"></div></div>' +
@@ -160,9 +160,9 @@ function drawCoefficients(result) {
   html += '</tbody></table></div>';
   const scale = result.link === 'identity' ? 'in the response’s units' : 'on the ' + link.label + ' scale';
   const fit = result.fit;
-  const zWhy = fit.mixed ? '; z tests: a mixed model’s Wald tests use the normal reference, as lme4 reports them.'
+  const zWhy = fit.mixed ? '; z tests: a mixed model’s ' + term('Wald tests', WALD_TIP) + ' use the normal reference, as lme4 reports them.'
     : fit.family === 'binomial' || fit.family === 'poisson' ? '; z tests, because the dispersion is fixed by the family.'
-      : '; z tests: large-sample Wald tests, as the fitter reports them.';
+      : '; z tests: large-sample ' + term('Wald tests', WALD_TIP) + ', as the fitter reports them.';
   html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : zWhy) +
     (word ? ' The last two columns carry each coefficient through the exponential: the ' + esc(word) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
   if (result.fit.family === 'ordinal') {

@@ -13,7 +13,7 @@ import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
 import { curveBand, dataPoints, rawPoints, categoricalX, LEVEL_COLORS, LEVEL_DASHES } from '../ui/modelplots.js';
-import { card, cardRow, notice } from '../ui/widgets.js';
+import { card, cardRow, notice, term, WALD_TIP } from '../ui/widgets.js';
 import { setSectionAvailable } from '../ui/tabs.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { predictRecipe, tooBig, capRecipe } from '../io/recipes.js';
@@ -46,7 +46,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the Wald intervals on the link scale; the other predictors are held at their means or their first levels, which the captions say.</p>' +
+    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the ' + term('Wald intervals', WALD_TIP) + ' on the link scale; the other predictors are held at their means or their first levels, which the captions say.</p>' +
     '<div id="pr-fit-note"></div>' +
     '<div data-subnav class="subnav"></div>' +
     '<div data-section="effect" class="sec">' +
@@ -415,8 +415,8 @@ function drawCalc() {
   // image on the response scale; with the identity link the two coincide.
   const identity = link.id === 'identity';
   const rows = [];
-  if (!identity) rows.push(['Link scale (' + esc(link.label) + ')', 'linear predictor η', stat(p.eta[0], 5), stat(p.se[0], 4), '[' + stat(p.lo[0], 5) + ', ' + stat(p.hi[0], 5) + ']', 'a Wald interval']);
-  rows.push(['Response scale', 'predicted ' + esc(yLabel), stat(p.fit[0], 5), identity ? stat(p.se[0], 4) : '–', '[' + stat(p.fitLo[0], 5) + ', ' + stat(p.fitHi[0], 5) + ']', identity ? 'a Wald interval' : 'the link-scale interval carried through the inverse link']);
+  if (!identity) rows.push(['Link scale (' + esc(link.label) + ')', 'linear predictor η', stat(p.eta[0], 5), stat(p.se[0], 4), '[' + stat(p.lo[0], 5) + ', ' + stat(p.hi[0], 5) + ']', 'a ' + term('Wald interval', WALD_TIP)]);
+  rows.push(['Response scale', 'predicted ' + esc(yLabel), stat(p.fit[0], 5), identity ? stat(p.se[0], 4) : '–', '[' + stat(p.fitLo[0], 5) + ', ' + stat(p.fitHi[0], 5) + ']', identity ? 'a ' + term('Wald interval', WALD_TIP) : 'the link-scale interval carried through the inverse link']);
   const tbl = document.createElement('div');
   tbl.className = 'scroll-box';
   tbl.innerHTML = '<table class="ptab"><thead><tr><th>Scale</th><th>Quantity</th><th>Estimate</th><th>Standard error</th><th>' + esc(lvl(level)) + ' interval</th><th></th></tr></thead><tbody>' +

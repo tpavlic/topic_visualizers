@@ -10,7 +10,7 @@ import { fitModel } from '../stats/fit.js';
 import { termTests, randomEffectTest, waldP } from '../stats/inference.js';
 import { oneSampleT, twoSampleT, onewayAnova, pairedT, chiSquareIndependence, twoProportions } from '../stats/classical.js';
 import { fCdf, chi2Cdf } from '../stats/special.js';
-import { card, cardRow, notice } from '../ui/widgets.js';
+import { card, cardRow, notice, term, WALD_TIP } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { esc, num, stat, pValue, pEq, intl } from '../ui/format.js';
 import { FAMILIES, LINKS } from '../stats/families.js';
@@ -47,7 +47,7 @@ function tourDataset(which) {
 // The section's facts, first and apart from the prose: the data, the
 // classical test, and the model that is that test.
 // Terms explained in a tooltip where they appear.
-const tipped = (text, tip) => '<span class="tip" tabindex="0" data-tip="' + esc(tip) + '">' + text + '</span>';
+const tipped = term;
 const DEVIANCE_TIP = 'Twice the gap in log-likelihood between this model and a model that fits the data exactly. It is 0 for an exact fit and grows as the fit worsens. For a normal model, it is the residual sum of squares.';
 const REML_TIP = 'Restricted maximum likelihood. The variances are estimated after the fixed effects are removed, which undoes the downward bias of plain maximum likelihood, as dividing by n − 1 rather than n does for a sample variance. It is the default for a normal mixed model, and it is what makes the standard errors here match the classical test’s.';
 
@@ -105,7 +105,7 @@ function sectionOne(root) {
   const t = oneSampleT(ds.rows.map(x => x[0]));
   const fit = r.fit;
   const se0 = Math.sqrt(fit.vcov[0][0]), tm = fit.beta[0] / se0, pm = waldP(tm, fit.dfResidual);
-  root.innerHTML = modelBlock(spec, 'The delivery time of twenty-five orders, each as its deviation from the thirty-minute target.', 'The one-sample t test of the mean against 0.') + '<p class="exp-note">The one-sample t test can be realized as the GLMM above, a normal model with no predictor. The intercept of the GLMM is the mean deviation, its standard error is s/√n, and the Wald test of the intercept against 0 is the one-sample t test, on the same n − 1 degrees of freedom. A test against a target other than 0 is the same test on the response minus the target, which is why these data are each order’s deviation from the target rather than its delivery time.</p>';
+  root.innerHTML = modelBlock(spec, 'The delivery time of twenty-five orders, each as its deviation from the thirty-minute target.', 'The one-sample t test of the mean against 0.') + '<p class="exp-note">The one-sample t test can be realized as the GLMM above, a normal model with no predictor. The intercept of the GLMM is the mean deviation, its standard error is s/√n, and the ' + term('Wald test', WALD_TIP) + ' of the intercept against 0 is the one-sample t test, on the same n − 1 degrees of freedom. A test against a target other than 0 is the same test on the response minus the target, which is why these data are each order’s deviation from the target rather than its delivery time.</p>';
   root.innerHTML += table([
     pair('Mean deviation', stat(t.mean, 5), stat(fit.beta[0], 5), 'the intercept'),
     pair('Standard error', stat(t.se, 5), stat(se0, 5), 's/√n'),
@@ -190,7 +190,7 @@ function sectionPaired(root) {
     ]) +
     chunk('The GLMM reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little.', [
       pair('Statistic', 't = ' + stat(pt.t, 5), 'z = ' + stat(est / se, 5), ''),
-      pair('Degrees of freedom', intl(pt.df), 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
+      pair('Degrees of freedom', intl(pt.df), 'none (z test)', 'the GLMM’s ' + term('Wald test', WALD_TIP) + ' is a z test, with no df'),
       pair('p', pValue(pt.p), pValue(waldP(est / se, Infinity)), 'z against t on 13 df')
     ]) +
     chunk('The GLMM also says how much of the variation sits between operators, which the t test never does. Its test of that variance compares the model with the random intercept to the one without; a small p-value says the operators differ beyond the within-operator noise, which is the dependence the paired design is there to handle.', [
@@ -218,7 +218,7 @@ function sectionRepeated(root) {
     chunk('Under REML, the standard error of the GLMM’s intercept is the standard error of the daily means, exactly, because every day carries the same number of orders and the between-day variance is estimated above 0. The t test on all two hundred orders can be computed, but it is not a valid test: its standard error assumes an independence the days deny, and its p-value comes out too small. The GLMM reports a z test where the t test has 9 degrees of freedom, as on the paired test.', [
       pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders, not valid)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
       pair('Statistic', 't = ' + stat(means.t, 5) + ' (daily means), t = ' + stat(naive.t, 5) + ' (all orders, not valid)', 'z = ' + stat(z, 5), ''),
-      pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
+      pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', 'none (z test)', 'the GLMM’s ' + term('Wald test', WALD_TIP) + ' is a z test, with no df'),
       pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders, not valid)', pValue(waldP(z, Infinity)), 'z against t on 9 df')
     ]) +
     chunk('The GLMM also says how much of the variation sits between days. Its test of that variance compares the model with the random intercept to the one without; the small p-value here says the days differ beyond the within-day noise, which is the dependence that makes the all-orders test invalid.', [
@@ -291,7 +291,7 @@ function sectionProportion(root) {
       pair('Conversion rates', stat(pr.p2, 4) + ' (A), ' + stat(pr.p1, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
       pair('Effect', 'difference B − A ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', '')
     ]) +
-    chunk('The classical test compares the two rates by a z test with the pooled proportion’s standard error (a score test, whose square is the chi-square test on the table), whereas the GLMM’s Wald z uses the standard error at the estimate, which is why the two z values differ a little. The GLMM’s likelihood-ratio test is a third test of the same hypothesis, the likelihood-ratio chi-square statistic for the 2 × 2 table.', [
+    chunk('The classical test compares the two rates by a z test with the pooled proportion’s standard error (a score test, whose square is the chi-square test on the table), whereas the GLMM’s ' + term('Wald z', WALD_TIP) + ' uses the standard error at the estimate, which is why the two z values differ a little. The GLMM’s likelihood-ratio test is a third test of the same hypothesis, the likelihood-ratio chi-square statistic for the 2 × 2 table.', [
       pair('z', stat(pr.z, 5) + ' (score, pooled SE)', stat(z, 5) + ' (Wald)', ''),
       pair('p', pValue(pr.p), pValue(waldP(z, Infinity)) + ' (Wald), ' + pValue(tt.rows[0].p) + ' (likelihood ratio)', 'three tests of one hypothesis'),
       pair('Chi-square on the 2 × 2 table', stat(pr.chisq, 5), stat(tt.rows[0].stat, 5) + ' (likelihood ratio)', '')
