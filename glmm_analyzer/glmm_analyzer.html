@@ -442,6 +442,8 @@ details.why.issues .why-body { padding-left: 11px; }
 .tm-model code { font-family: 'IBM Plex Mono', monospace; font-size: .92rem; background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
 .tm-model-fam { color: var(--muted); font-size: .84rem; margin-left: 4px; }
 /* A label over one of a section's tables, in the facts block's label style. */
+/* A sentence above one of a section's small tables, set off from the table before it. */
+.tm-chunk { margin: 16px 0 6px; }
 .tm-sub { font-size: .64rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
 @media (max-width: 520px) { .tm-model { grid-template-columns: 1fr; gap: 2px 0; } .tm-model dd { margin-bottom: 5px; } }
 .ptab { border-collapse: collapse; width: 100%; font-size: .8rem; }
@@ -11245,6 +11247,10 @@ function pairSpan(label, rows, note) {
     '<td>' + name + ': ' + classical + '</td><td>' + name + ': ' + model + '</td>' +
     (i === 0 ? '<td rowspan="' + rows.length + '" class="muted-line">' + (note || '') + '</td>' : '') + '</tr>').join('');
 }
+// A sentence or two directly above a small table, carrying what those rows say.
+function chunk(text, rows) {
+  return '<p class="exp-note tm-chunk">' + text + '</p>' + table(rows);
+}
 function table(rows) {
   return '<div class="scroll-box"><table class="ptab"><thead><tr><th>Quantity</th><th>Classical test</th><th>GLMM</th><th></th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
 }
@@ -11277,14 +11283,17 @@ function sectionT(root) {
   const t = twoSampleT(b, a);
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), tm = fit.beta[1] / se1, pm = waldP(tm, fit.dfResidual);
-  root.innerHTML = modelBlock(spec, 'Throughput on fifteen days of each of two production lines.', 'The pooled two-sample t test.') + '<p class="exp-note">A pooled two-sample t test can be realized as the GLMM above. The intercept of the GLMM is production line A’s mean, and its one coefficient is the mean difference B − A, the change in mean from line A to line B; fitting the coefficient estimates the difference between the two population means. The GLMM’s p-value tests that estimated difference against a difference of 0, and it is identical to the p-value of the pooled two-sample t test. Welch’s two-sample t test allows the lines different variances, which calls for a generalized least-squares fit outside the GLMM’s structure; Welch’s results are in the table for comparison.</p>';
-  root.innerHTML += table([
-    pair('Difference of means, B − A', stat(t.diff, 5), stat(fit.beta[1], 5), 'the coefficient of lineB'),
-    pair('Standard error', stat(t.pooled.se, 5), stat(se1, 5), 'the pooled estimate'),
-    pair('t', stat(t.pooled.t, 5) + ' (pooled), ' + stat(t.welch.t, 5) + ' (Welch)', stat(tm, 5), 'the GLMM matches the pooled test'),
-    pair('Degrees of freedom', intl(t.pooled.df) + ' (pooled), ' + num(t.welch.df, 4) + ' (Welch)', intl(fit.dfResidual), 'the GLMM matches the pooled test'),
-    pair('p', pValue(t.pooled.p) + ' (pooled), ' + pValue(t.welch.p) + ' (Welch)', pValue(pm), 'the GLMM matches the pooled test')
-  ]);
+  root.innerHTML = modelBlock(spec, 'Throughput on fifteen days of each of two production lines.', 'The pooled two-sample t test.') +
+    '<p class="exp-note">A pooled two-sample t test can be realized as the GLMM above. The intercept of the GLMM is production line A’s mean, and its one coefficient is the mean difference B − A, the change in mean from line A to line B. Welch’s two-sample t test allows the lines different variances, which calls for a generalized least-squares fit outside the GLMM’s structure; its results are in the tables for comparison.</p>' +
+    chunk('The GLMM’s coefficient is the difference of the two sample means, and its standard error is the pooled one: the within-line spread pooled across the lines, which is the t test’s assumption of one variance.', [
+      pair('Difference of means, B − A', stat(t.diff, 5), stat(fit.beta[1], 5), 'the coefficient of lineB'),
+      pair('Standard error', stat(t.pooled.se, 5), stat(se1, 5), 'the pooled estimate')
+    ]) +
+    chunk('The GLMM’s t tests the estimated difference against 0 on the residual degrees of freedom, and it is the pooled two-sample t test number for number. Welch’s version lowers the degrees of freedom to allow the lines different variances.', [
+      pair('t', stat(t.pooled.t, 5) + ' (pooled), ' + stat(t.welch.t, 5) + ' (Welch)', stat(tm, 5), 'the GLMM matches the pooled test'),
+      pair('Degrees of freedom', intl(t.pooled.df) + ' (pooled), ' + num(t.welch.df, 4) + ' (Welch)', intl(fit.dfResidual), 'the GLMM matches the pooled test'),
+      pair('p', pValue(t.pooled.p) + ' (pooled), ' + pValue(t.welch.p) + ' (Welch)', pValue(pm), 'the GLMM matches the pooled test')
+    ]);
   root.appendChild(loadButton('t', spec));
 }
 
@@ -11300,15 +11309,20 @@ function sectionAnova(root) {
   const F = ((fit.nullDeviance - fit.deviance) / df1) / (fit.deviance / df2);
   const pF = 1 - fCdf(F, df1, df2);
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'The daily defect rate on twelve days of each of three work shifts (day, evening, night).', 'One-way analysis of variance.') + '<p class="exp-note">One-way ANOVA can be realized as the GLMM above. The intercept of the GLMM is the day shift’s mean, and its two coefficients are the other shifts’ differences from it. ANOVA asks whether the three means differ through the F ratio of the between-shift to the within-shift mean square, and the same F comes from the GLMM’s deviances: the null deviance is the total sum of squares, and the deviance is the within-shift sum of squares; the F and its p-value are therefore the test’s. The Model page’s term test is the likelihood-ratio form of the same comparison; it agrees with the F test in large samples and is close here.</p>';
-  root.innerHTML += table([
-    pair('Between sum of squares', stat(av.ssBetween, 5), stat(fit.nullDeviance - fit.deviance, 5), 'null deviance − deviance'),
-    pair('Within sum of squares', stat(av.ssWithin, 5), stat(fit.deviance, 5), 'the deviance'),
-    pair('F', stat(av.F, 5), stat(F, 5), ''),
-    pair('Degrees of freedom', intl(av.df1) + ' and ' + intl(av.df2), intl(df1) + ' and ' + intl(df2), 'between and within'),
-    pair('p', pValue(av.p), pValue(pF), ''),
-    pair('Likelihood-ratio test of shift', '–', stat(tt.rows[0].stat, 4) + ' on ' + intl(tt.rows[0].df) + ' df, ' + pEq(tt.rows[0].p), 'the Model page’s term test')
-  ]);
+  root.innerHTML = modelBlock(spec, 'The daily defect rate on twelve days of each of three work shifts (day, evening, night).', 'One-way analysis of variance.') +
+    '<p class="exp-note">One-way ANOVA can be realized as the GLMM above. The intercept of the GLMM is the day shift’s mean, and its two coefficients are the other shifts’ differences from it. ANOVA asks whether the three means differ, through the F ratio of the between-shift to the within-shift mean square.</p>' +
+    chunk('The sums of squares come from the GLMM’s deviances: the null deviance is the total sum of squares, and the deviance is the within-shift sum of squares; their difference is the between-shift part.', [
+      pair('Between sum of squares', stat(av.ssBetween, 5), stat(fit.nullDeviance - fit.deviance, 5), 'null deviance − deviance'),
+      pair('Within sum of squares', stat(av.ssWithin, 5), stat(fit.deviance, 5), 'the deviance')
+    ]) +
+    chunk('The F ratio and its p-value are the test’s, formed from the same two sums of squares on the same degrees of freedom.', [
+      pair('F', stat(av.F, 5), stat(F, 5), ''),
+      pair('Degrees of freedom', intl(av.df1) + ' and ' + intl(av.df2), intl(df1) + ' and ' + intl(df2), 'between and within'),
+      pair('p', pValue(av.p), pValue(pF), '')
+    ]) +
+    chunk('The Model page tests the shift term by a likelihood ratio instead, which agrees with the F test in large samples and is close here.', [
+      pair('Likelihood-ratio test of shift', '–', stat(tt.rows[0].stat, 4) + ' on ' + intl(tt.rows[0].df) + ' df, ' + pEq(tt.rows[0].p), 'the Model page’s term test')
+    ]);
   root.appendChild(loadButton('anova', spec));
 }
 
@@ -11325,15 +11339,20 @@ function sectionPaired(root) {
   const k = r.names.indexOf('conditionbefore');
   const est = -fit.beta[k], se = Math.sqrt(fit.vcov[k][k]);
   const ret = randomEffectTest(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'Task times of fourteen operators, each timed before and after a process change.', 'The paired t test.') + '<p class="exp-note">The paired t test can be realized as the GLMM above, a mixed model with a random intercept per operator. The paired test works on each operator’s difference, which removes the operator’s own level from the comparison; the random intercept does the same. The GLMM’s coefficient for the condition is the mean difference after − before, and under REML, its standard error is the paired test’s. The GLMM reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little; the GLMM also says how much of the variation sits between operators, which the t test never does.</p>';
-  root.innerHTML += table([
-    pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
-    pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML'),
-    pair('Statistic', 't = ' + stat(pt.t, 5), 'z = ' + stat(est / se, 5), ''),
-    pair('Degrees of freedom', intl(pt.df), 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
-    pair('p', pValue(pt.p), pValue(waldP(est / se, Infinity)), 'z against t on 13 df'),
-    pair('Between-operator variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
-  ]);
+  root.innerHTML = modelBlock(spec, 'Task times of fourteen operators, each timed before and after a process change.', 'The paired t test.') +
+    '<p class="exp-note">The paired t test can be realized as the GLMM above, a mixed model with a random intercept per operator. The paired test works on each operator’s difference, which removes the operator’s own level from the comparison; the random intercept does the same.</p>' +
+    chunk('The GLMM’s coefficient for the condition is the mean difference after − before, and under REML, its standard error is the paired test’s.', [
+      pair('Mean difference, after − before', stat(pt.meanDiff, 5), stat(est, 5), 'minus the coefficient of conditionbefore'),
+      pair('Standard error', stat(pt.se, 5), stat(se, 5), 'REML')
+    ]) +
+    chunk('The GLMM reports a z test where the paired test has t on 13 degrees of freedom, which is why the p-values differ a little.', [
+      pair('Statistic', 't = ' + stat(pt.t, 5), 'z = ' + stat(est / se, 5), ''),
+      pair('Degrees of freedom', intl(pt.df), 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
+      pair('p', pValue(pt.p), pValue(waldP(est / se, Infinity)), 'z against t on 13 df')
+    ]) +
+    chunk('The GLMM also says how much of the variation sits between operators, which the t test never does. Its test of that variance compares the model with the random intercept to the one without; a small p-value says the operators differ beyond the within-operator noise, which is the dependence the paired design is there to handle.', [
+      pair('Between-operator variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
+    ]);
   root.appendChild(loadButton('paired', spec));
 }
 
@@ -11348,15 +11367,20 @@ function sectionRepeated(root) {
   const fit = r.fit;
   const se0 = Math.sqrt(fit.vcov[0][0]), z = fit.beta[0] / se0;
   const ret = randomEffectTest(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.', 'The one-sample t test on the ten daily means.') + '<p class="exp-note">A one-sample t test on repeated measures can be realized as the GLMM above, a mixed model with a random intercept per day and no predictor. The two hundred orders are not independent: orders on the same day share that day’s conditions. A t test that treats them as two hundred independent observations can be computed, and the table shows it, but it is not a valid test: its standard error assumes an independence the days deny, and its p-value comes out too small. The classical remedy is to test the ten daily means, one number per day. The random intercept of the GLMM does the same: under REML, the standard error of its intercept is the standard error of the daily means, exactly, because every day carries the same number of orders and the between-day variance is estimated above 0. The GLMM reports a z test where the t test has 9 degrees of freedom, as on the paired test, and it also says how much of the variation sits between days. The paired t test is the two-condition form of this model; a factor with more levels in place of the condition gives one-way repeated-measures analysis of variance under compound symmetry.</p>';
-  root.innerHTML += table([
-    pair('Mean deviation', stat(means.mean, 5) + ' (daily means), ' + stat(naive.mean, 5) + ' (all orders)', stat(fit.beta[0], 5), 'the intercept'),
-    pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders, not valid)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
-    pair('Statistic', 't = ' + stat(means.t, 5) + ' (daily means), t = ' + stat(naive.t, 5) + ' (all orders, not valid)', 'z = ' + stat(z, 5), ''),
-    pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
-    pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders, not valid)', pValue(waldP(z, Infinity)), 'z against t on 9 df'),
-    pair('Between-day variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
-  ]);
+  root.innerHTML = modelBlock(spec, 'The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.', 'The one-sample t test on the ten daily means.') +
+    '<p class="exp-note">A one-sample t test on repeated measures can be realized as the GLMM above, a mixed model with a random intercept per day and no predictor. The two hundred orders are not independent: orders on the same day share that day’s conditions. The classical remedy is to test the ten daily means, one number per day, and the random intercept of the GLMM does the same. The paired t test is the two-condition form of this model; a factor with more levels in place of the condition gives one-way repeated-measures analysis of variance under compound symmetry.</p>' +
+    chunk('The estimate is the same by every route: the mean of the daily means is the mean of all orders when every day carries the same number, and the GLMM’s intercept is that mean.', [
+      pair('Mean deviation', stat(means.mean, 5) + ' (daily means), ' + stat(naive.mean, 5) + ' (all orders)', stat(fit.beta[0], 5), 'the intercept')
+    ]) +
+    chunk('Under REML, the standard error of the GLMM’s intercept is the standard error of the daily means, exactly, because every day carries the same number of orders and the between-day variance is estimated above 0. The t test on all two hundred orders can be computed, but it is not a valid test: its standard error assumes an independence the days deny, and its p-value comes out too small. The GLMM reports a z test where the t test has 9 degrees of freedom, as on the paired test.', [
+      pair('Standard error', stat(means.se, 5) + ' (daily means), ' + stat(naive.se, 5) + ' (all orders, not valid)', stat(se0, 5), 'the GLMM matches the test on the daily means'),
+      pair('Statistic', 't = ' + stat(means.t, 5) + ' (daily means), t = ' + stat(naive.t, 5) + ' (all orders, not valid)', 'z = ' + stat(z, 5), ''),
+      pair('Degrees of freedom', intl(means.df) + ' (daily means), ' + intl(naive.df) + ' (all orders, not valid)', 'none (z test)', 'the GLMM’s Wald test is a z test, with no df'),
+      pair('p', pValue(means.p) + ' (daily means), ' + pValue(naive.p) + ' (all orders, not valid)', pValue(waldP(z, Infinity)), 'z against t on 9 df')
+    ]) +
+    chunk('The GLMM also says how much of the variation sits between days. Its test of that variance compares the model with the random intercept to the one without; the small p-value here says the days differ beyond the within-day noise, which is the dependence that makes the all-orders test invalid.', [
+      pair('Between-day variance', '–', stat(fit.varcomp[0].variances[0], 5) + ' (residual ' + stat(fit.sigma2, 5) + ')', 'random part LRT ' + pEq(ret.p))
+    ]);
   root.appendChild(loadButton('repeated', spec));
 }
 
@@ -11418,14 +11442,17 @@ function sectionProportion(root) {
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), z = fit.beta[1] / se1;
   const tt = termTests(ds, spec, r);
-  root.innerHTML = modelBlock(spec, 'Fifty customers shown each of two offers (A and B), and whether each customer converted.', 'The two-proportion z test.') + '<p class="exp-note">Whereas a chi-square test treats any difference from expectation the same, a two-proportion z test allows a one-sided test of which of two proportions is the greater. Such a two-proportion z test can be realized as the GLMM above, a logistic model with the offer as its one predictor. The GLMM’s coefficient is the log odds ratio of converting under B against A, and its likelihood-ratio test is the likelihood-ratio chi-square statistic for the 2 × 2 table. The classical test compares the two rates by a z test with the pooled proportion’s standard error (a score test, whose square is the chi-square test on the table), whereas the GLMM’s Wald z uses the standard error at the estimate, which is why the two z values differ a little. Fisher’s exact test can also be used for a 2 × 2 table (and agrees on a table this size), but its conservatism makes it appropriate only for small experiments.</p>';
-  root.innerHTML += table([
-    pair('Conversion rates', stat(pr.p2, 4) + ' (A), ' + stat(pr.p1, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
-    pair('Effect', 'difference B − A ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', ''),
-    pair('z', stat(pr.z, 5) + ' (score, pooled SE)', stat(z, 5) + ' (Wald)', ''),
-    pair('p', pValue(pr.p), pValue(waldP(z, Infinity)) + ' (Wald), ' + pValue(tt.rows[0].p) + ' (likelihood ratio)', 'three tests of one hypothesis'),
-    pair('Chi-square on the 2 × 2 table', stat(pr.chisq, 5), stat(tt.rows[0].stat, 5) + ' (likelihood ratio)', '')
-  ]);
+  root.innerHTML = modelBlock(spec, 'Fifty customers shown each of two offers (A and B), and whether each customer converted.', 'The two-proportion z test.') +
+    '<p class="exp-note">Whereas a chi-square test treats any difference from expectation the same, a two-proportion z test allows a one-sided test of which of two proportions is the greater. Such a two-proportion z test can be realized as the GLMM above, a logistic model with the offer as its one predictor. Fisher’s exact test can also be used for a 2 × 2 table (and agrees on a table this size), but its conservatism makes it appropriate only for small experiments.</p>' +
+    chunk('The GLMM’s fitted probabilities are the two sample rates, and its coefficient is the log odds ratio of converting under B against A, where the classical test reports the difference of the rates.', [
+      pair('Conversion rates', stat(pr.p2, 4) + ' (A), ' + stat(pr.p1, 4) + ' (B)', stat(1 / (1 + Math.exp(-fit.beta[0])), 4) + ' (A), ' + stat(1 / (1 + Math.exp(-(fit.beta[0] + fit.beta[1]))), 4) + ' (B)', 'the fitted probabilities'),
+      pair('Effect', 'difference B − A ' + stat(pr.diff, 4), 'odds ratio ' + stat(Math.exp(fit.beta[1]), 4) + ' (log odds ratio ' + stat(fit.beta[1], 4) + ')', '')
+    ]) +
+    chunk('The classical test compares the two rates by a z test with the pooled proportion’s standard error (a score test, whose square is the chi-square test on the table), whereas the GLMM’s Wald z uses the standard error at the estimate, which is why the two z values differ a little. The GLMM’s likelihood-ratio test is a third test of the same hypothesis, the likelihood-ratio chi-square statistic for the 2 × 2 table.', [
+      pair('z', stat(pr.z, 5) + ' (score, pooled SE)', stat(z, 5) + ' (Wald)', ''),
+      pair('p', pValue(pr.p), pValue(waldP(z, Infinity)) + ' (Wald), ' + pValue(tt.rows[0].p) + ' (likelihood ratio)', 'three tests of one hypothesis'),
+      pair('Chi-square on the 2 × 2 table', stat(pr.chisq, 5), stat(tt.rows[0].stat, 5) + ' (likelihood ratio)', '')
+    ]);
   root.appendChild(loadButton('proportion', spec));
 }
 
