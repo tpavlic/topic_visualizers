@@ -319,3 +319,31 @@ fig_resid <- function(x, r, xlab, ylab, title) {
   invisible(NULL)
 }
 `;
+
+FIG_R.stack = `
+# One horizontal bar of the values' shares of their sum, each piece labeled with its share.
+fig_stack <- function(values, labels, title, xlab = "Share of the total variance") {
+  values <- as.numeric(values)
+  labels <- as.character(labels)
+  keep <- is.finite(values) & values > 0
+  values <- values[keep]
+  labels <- labels[keep]
+  if (length(values) == 0) {
+    fig_empty(title, xlab)
+    return(invisible(NULL))
+  }
+  share <- values / sum(values)
+  cols <- grDevices::hcl.colors(length(share), "Dark 3")
+  old <- par(mar = c(4, 1.5, 3, 1.5))
+  on.exit(par(old))
+  plot(NA, xlim = c(0, 1), ylim = c(0, 1), axes = FALSE, xlab = xlab, ylab = "", main = title)
+  axis(1, at = seq(0, 1, 0.25), labels = paste0(seq(0, 100, 25), "%"))
+  right <- cumsum(share)
+  left <- right - share
+  rect(left, 0.45, right, 0.75, col = cols, border = "white")
+  mid <- (left + right) / 2
+  text(mid, 0.6, ifelse(share >= 0.06, sprintf("%.0f%%", 100 * share), ""), col = "white", cex = 0.85)
+  legend("bottom", legend = sprintf("%s (%.1f%%)", labels, 100 * share), fill = cols, border = NA,
+         bty = "n", horiz = length(share) <= 3, cex = 0.85, inset = 0.02)
+}
+`;

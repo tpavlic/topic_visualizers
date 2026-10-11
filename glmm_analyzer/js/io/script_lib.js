@@ -417,6 +417,68 @@ lrt_stat <- function(full, red, family) {
 }
 `;
 
+LIB.R.variance = `
+# The variance decomposition: the variance of the fixed-effect linear predictor, each random
+# term's variance averaged over the rows (an observation-level effect's counted as dispersion),
+# and the distribution-specific variance on the link scale, as insight::get_variance forms them
+# for a mixed model, with performance's r2_nakagawa and icc; a model with no random part gets
+# the same pieces written out here, where those packages decline.
+fixed_predictor <- function(m) switch(fit_class(m), lme4 = predict(m, re.form = NA), tmb = predict(m, re.form = NA), betareg = predict(m, type = "link"), predict(m, type = "link"))
+null_formula <- function(formula) {
+  # The intercept-only model with the same random part.
+  resp <- sub("~.*$", "", formula)
+  bars <- regmatches(formula, gregexpr("\\\\([^()]*\\\\|[^()]*\\\\)", formula))[[1]]
+  paste(resp, "~ 1", if (length(bars)) paste("+", paste(bars, collapse = " + ")) else "")
+}
+pick <- function(x, nm) { if (!is.list(x)) return(NA); out <- x[[nm]]; if (is.null(out) || length(out) == 0) NA else unname(out) }
+# The distribution-specific variance by hand: at the mean the intercept-only model implies.
+distribution_variance <- function(m, null, family, link, random_null) {
+  b0 <- unname(fit_coef(null)[1])
+  switch(family,
+    normal = fit_dispersion(m),
+    binomial = switch(link, logit = pi^2 / 3, probit = 1, cloglog = pi^2 / 6, NaN),
+    poisson = log1p(1 / exp(b0 + 0.5 * random_null)),
+    negbin = log1p(1 / exp(b0 + 0.5 * random_null) + 1 / fit_aux(m)),
+    gamma = log1p(fit_dispersion(m)),
+    beta = { mu <- plogis(b0); log1p((mu * (1 - mu) / (1 + fit_aux(m))) / mu^2) },
+    NaN)
+}
+variance_parts <- function(m, d, family, link, formula) {
+  vf <- var(as.vector(fixed_predictor(m)))
+  mixed <- fit_class(m) %in% c("lme4", "tmb")
+  # The intercept-only model with the same random part, fitted here and handed to insight and
+  # performance: their own refit of it cannot see fit_model's local variables.
+  null <- fit_model(d, family, link, null_formula(formula), FALSE)
+  vr <- 0; vo <- 0; vd <- NA; r2m <- NA; r2c <- NA; ic <- NA
+  if (mixed) {
+    v <- suppressWarnings(insight::get_variance(m, null_model = null))
+    if (is.list(v)) {
+      vr <- pick(v, "var.random"); if (is.na(vr)) vr <- 0
+      vo <- pick(v, "var.dispersion"); if (is.na(vo)) vo <- 0
+      vd <- pick(v, "var.distribution")
+      r2 <- suppressWarnings(performance::r2_nakagawa(m, null_model = null))
+      r2m <- pick(r2, "R2_marginal"); r2c <- pick(r2, "R2_conditional")
+      ic <- pick(suppressWarnings(performance::icc(m, null_model = null)), "ICC_adjusted")
+    } else {
+      # insight declines a model whose only random term is the observation level; its
+      # variance is read from the fit, and the pieces are formed below.
+      vc <- fit_varcomp(m)
+      ints <- vc$var2 == "" & vc$var1 == "(Intercept)"
+      vo <- sum(vc$value[ints & vc$grp == "obs"])
+      vr <- sum(vc$value[ints & vc$grp != "obs"])
+    }
+  }
+  if (is.na(vd)) {
+    random_null <- if (mixed) { rn <- pick(suppressWarnings(insight::get_variance(null, null_model = null)), "var.random"); if (is.na(rn)) 0 else rn } else 0
+    vd <- distribution_variance(m, null, family, link, random_null)
+  }
+  tot <- vf + vr + vo + vd
+  if (is.na(r2m)) r2m <- vf / tot
+  if (is.na(r2c)) r2c <- (vf + vr) / tot
+  list(fixed = vf, random = vr, dispersion = vo, distribution = vd, total = tot, r2m = r2m, r2c = r2c, icc = ic)
+}
+`;
+
 LIB.R.grid = `
 # The design rows of new data, with the columns the page's coefficients name: the fixed part
 # of the fitted formula applied to the new rows, whose factors carry the data's levels.

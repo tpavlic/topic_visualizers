@@ -2,7 +2,7 @@
 // has computed (a CSV with `#` provenance lines), any files the page adds,
 // and a Print button that prints the page as shown, without the navigation.
 // The row follows the page's results as they change. When the page's result
-// carries `regen: { spec | specs, ds, build, tooBig, uniforms? }`, a second
+// carries `regen: { spec | specs, ds, build, tooBig, uniforms?, capability? }`, a second
 // line offers the scripts that regenerate its results in MATLAB, Base R,
 // Tidy R, and Python, each button live only where that language has a
 // commonly used routine for the model (`io/capability.js`), and the recipe
@@ -179,7 +179,7 @@ export function installExportRow(root, pageId, opts = {}) {
     regen.hidden = !rg;
     if (rg) {
       const g = r.regen;
-      const cap = g.specs ? scriptsApi.capabilityAll(g.specs) : scriptsApi.capability(g.spec || state.spec);
+      const cap = g.capability || (g.specs ? scriptsApi.capabilityAll(g.specs) : scriptsApi.capability(g.spec || state.spec));
       const big = typeof g.tooBig === 'function' && g.tooBig();
       regenBtns.innerHTML = Object.entries(scriptsApi.ANALYSIS_WRITERS).map(([k, w]) => {
         const c = cap[k] || { ok: true };

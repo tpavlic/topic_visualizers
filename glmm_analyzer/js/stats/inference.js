@@ -51,9 +51,18 @@ export function waldP(z, df) {
   return Number.isFinite(df) ? 2 * (1 - tCdf(a, df)) : 2 * (1 - normCdf(a));
 }
 
-// Refits the fixed part with the given terms, holding the negative
-// binomial's θ at the full fit's value, as drop1 holds the family fixed.
-function refitTerms(ds, spec, full, terms) {
+/**
+ * Refits the fixed part with the given terms, holding the negative
+ * binomial's θ at the full fit's value, as drop1 holds the family fixed. A
+ * mixed model is refitted whole, by maximum likelihood, keeping its random
+ * part.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @param {object} full fitModel's output
+ * @param {(string|object)[]} terms the fixed terms to keep
+ * @returns {object} the reduced fit
+ */
+export function refitTerms(ds, spec, full, terms) {
   // A mixed model is refitted whole, by maximum likelihood, keeping its random part.
   if (spec.group || spec.olre) return full.refit(ds, Object.assign({}, spec, { terms, reml: false })).fit;
   const s = Object.assign({}, spec, { terms, group: null, nested: null, slope: null, olre: false });

@@ -15,7 +15,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analysisScript as writeScript, parseReport, scriptFileName, ascii, sectionLine, ANALYSIS_WRITERS, tolFor } from '../js/io/analysis_scripts.js';
-import { modelRecipe, diagnosticsRecipe, predictRecipe, compareRecipe } from '../js/io/recipes.js';
+import { modelRecipe, diagnosticsRecipe, predictRecipe, compareRecipe, varianceRecipe } from '../js/io/recipes.js';
+import { varianceParts } from '../js/stats/variance.js';
 import { capability, capabilityAll } from '../js/io/capability.js';
 import { csvMode } from '../js/io/recipes.js';
 import { dataFileText, uniformsFileText } from '../js/io/datafiles.js';
@@ -440,6 +441,14 @@ export function predictOf(ds, spec, { x, by = null, factor = null, row = null },
   return predictRecipe({ ds, spec, result, level: LEVEL, title: title || 'Predict: ' + result.formula, provenance: { dataset: ds.name, formula: result.formula }, effect, means, calc });
 }
 
+/** The Variance explained page's recipe. */
+export function varianceOf(ds, spec, title) {
+  const result = fitModel(ds, spec);
+  const parts = varianceParts(ds, spec, result);
+  if (!parts.ok) throw new Error(parts.why);
+  return varianceRecipe({ ds, spec, result, level: LEVEL, title: title || 'Variance explained: ' + result.formula, provenance: { dataset: ds.name, formula: result.formula }, parts });
+}
+
 /** The Compare page's recipe of several specs on one dataset. */
 export function compareOf(ds, named, title) {
   const candidates = named.map(([name, spec]) => ({ name, spec: Object.assign({}, spec, { reml: false }), result: fitModel(ds, Object.assign({}, spec, { reml: false })) }));
@@ -507,6 +516,16 @@ checkRecipe('predict, mixed Poisson effect', predictOf(COLONY, specOf(COLONY, 'r
 // Compare.
 checkRecipe('compare, Poisson candidates', compareOf(BALKS, [['load only', specOf(BALKS, 'balks', 'poisson', ['load'])], ['load and staffing', specOf(BALKS, 'balks', 'poisson', ['load', 'staffing'])], ['negative binomial', specOf(BALKS, 'balks', 'negbin', ['load', 'staffing'])]]), { smoke: true });
 checkRecipe('compare, mixed against fixed', compareOf(COLONY, [['fixed', specOf(COLONY, 'recruits', 'poisson', ['temperature', 'treatment'])], ['mixed', specOf(COLONY, 'recruits', 'poisson', ['temperature', 'treatment'], { group: 'colony' })]]));
+
+// The Variance explained page: R and Tidy R only (its capability grays Python and MATLAB).
+checkRecipe('variance, normal with a factor', varianceOf(CYCLE, specOf(CYCLE, 'time_in_system', 'normal', ['load', 'class'])), { smoke: true });
+checkRecipe('variance, binomial logit', varianceOf(ON_TIME, specOf(ON_TIME, 'on_time', 'binomial', ['queue', 'policy'])));
+checkRecipe('variance, Poisson with a random intercept', varianceOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing'], { group: 'week' })), { smoke: true });
+checkRecipe('variance, negative binomial', varianceOf(BALKS, specOf(BALKS, 'balks', 'negbin', ['load', 'staffing'])));
+checkRecipe('variance, Poisson-lognormal', varianceOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load'], { olre: true })));
+checkRecipe('variance, gamma with a random intercept', varianceOf(PAIRED, specOf(PAIRED, 'time', 'gamma', ['condition'], { group: 'subject' })));
+checkRecipe('variance, beta logit', varianceOf(UTIL, specOf(UTIL, 'utilization', 'beta', ['arrival_rate'])));
+checkRecipe('variance, binomial with a random intercept', varianceOf(ON_TIME, specOf(ON_TIME, 'on_time', 'binomial', ['queue', 'policy'], { group: 'seed' })));
 
 startMatlab();
 

@@ -36,6 +36,12 @@ const GROUPS = [
     'R. V. Lenth, <i>emmeans: estimated marginal means, aka least-squares means</i>, R package (2024): the marginal means and their pairwise comparisons as this tool forms them.',
     'J. W. Tukey, “Comparing individual means in the analysis of variance,” <i>Biometrics</i> 5 (1949) 99–114: the studentized-range correction on the pairwise differences.'
   ]],
+  ['Variance explained', [
+    'S. Nakagawa and H. Schielzeth, “A general and simple method for obtaining R² from generalized linear mixed-effects models,” <i>Methods in Ecology and Evolution</i> 4 (2013) 133–142: the marginal and conditional R² as the variance of the fixed-effect predictor, the random variances, and a distribution-specific residual variance.',
+    'P. C. D. Johnson, “Extension of Nakagawa & Schielzeth’s R²GLMM to random slopes models,” <i>Methods in Ecology and Evolution</i> 5 (2014) 944–946: a random slope’s variance averaged over the rows.',
+    'S. Nakagawa, P. C. D. Johnson, and H. Schielzeth, “The coefficient of determination R² and intra-class correlation coefficient from generalized linear mixed-effects models revisited and expanded,” <i>Journal of the Royal Society Interface</i> 14 (2017) 20170213: the distribution-specific variances for the count, gamma, and beta families, and the ICC that goes with them.',
+    'D. Lüdecke, M. S. Ben-Shachar, I. Patil, P. Waggoner, and D. Makowski, “performance: an R package for assessment, comparison and testing of statistical models,” <i>Journal of Open Source Software</i> 6 (2021) 3139: the r2_nakagawa and icc routines the exported R script calls, and the insight package whose get_variance they rest on.'
+  ]],
   ['Compare', [
     'H. Akaike, “A new look at the statistical model identification,” <i>IEEE Transactions on Automatic Control</i> 19 (1974) 716–723; G. Schwarz, “Estimating the dimension of a model,” <i>Annals of Statistics</i> 6 (1978) 461–464.',
     'K. P. Burnham and D. R. Anderson, <i>Model Selection and Multimodel Inference</i>, 2nd ed. (Springer, 2002): comparing a set of candidate models by information criteria rather than searching for one.'

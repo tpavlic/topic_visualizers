@@ -305,3 +305,22 @@ fig_resid <- function(x, r, xlab, ylab, title) {
   invisible(p)
 }
 `;
+
+FIG_TIDY.stack = `
+# One horizontal bar of the values' shares of their sum, each piece labeled with its share.
+fig_stack <- function(values, labels, title, xlab = "Share of the total variance") {
+  values <- as.numeric(values)
+  labels <- as.character(labels)
+  keep <- is.finite(values) & values > 0
+  d <- tibble(piece = factor(labels[keep], levels = labels[keep]), share = values[keep] / sum(values[keep]))
+  if (nrow(d) == 0) return(fig_empty(title, xlab))
+  d <- d %>% mutate(right = cumsum(share), mid = right - share / 2, text = ifelse(share >= 0.06, sprintf("%.0f%%", 100 * share), ""))
+  p <- ggplot(d, aes(x = share, y = "", fill = piece)) +
+    geom_col(position = position_stack(reverse = TRUE), width = 0.5, color = "white") +
+    geom_text(aes(x = mid, label = text), color = "white", size = 3) +
+    scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+    labs(title = title, x = xlab, y = NULL, fill = NULL) +
+    theme_minimal() + theme(legend.position = "bottom")
+  print(p)
+}
+`;

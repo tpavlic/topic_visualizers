@@ -70,7 +70,8 @@ function rPackages(recipe) {
     if (s.mixed && s.family !== 'beta') pk.add('lme4');
   }
   if (recipe.means) pk.add('emmeans');
-  return ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans'].filter(p => pk.has(p));
+  if (recipe.page === 'variance' && recipe.spec.mixed) { pk.add('insight'); pk.add('performance'); }
+  return ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans', 'insight', 'performance'].filter(p => pk.has(p));
 }
 
 // ── Per-language syntax ──────────────────────────────────────────────────
@@ -798,6 +799,31 @@ function compareBody(r, L) {
   return { body: out, need: ['fit'] };
 }
 BODIES.compare = { R: compareBody, py: compareBody, m: compareBody };
+
+function varianceBody(r, L) {
+  const c = L.comment;
+  const out = ['report_start(check_details)', L.sect('Fit'), 'm <- fit_model(d, family, link, formula, reml)', L.sect('Variance explained')];
+  out.push(c + 'The pieces of the variance on the link scale: the fixed-effect linear predictor, the random');
+  out.push(c + 'terms, an observation-level effect as dispersion, and the distribution-specific residual.');
+  out.push('v <- variance_parts(m, d, family, link, formula)');
+  out.push(rep(L, r, 'variance fixed', 'v$fixed'), rep(L, r, 'variance random', 'v$random'), rep(L, r, 'variance dispersion', 'v$dispersion'));
+  out.push(rep(L, r, 'variance distribution', 'v$distribution'), rep(L, r, 'variance total', 'v$total'));
+  out.push(rep(L, r, 'R2 marginal', 'v$r2m'), rep(L, r, 'R2 conditional', 'v$r2c'));
+  if (r.variance.hasRandom) out.push(rep(L, r, 'ICC', 'v$icc'));
+  if (r.variance.terms.length) {
+    out.push(L.sect('Terms'));
+    out.push(c + 'Each term\'s share: the fixed-effect variance lost when the model is refitted without it,');
+    out.push(c + 'over the total variance of the full model.');
+    r.variance.terms.forEach((t, i) => {
+      out.push('red <- fit_reduced(m, d, family, link, ' + L.str(t.reduced.R) + ')');
+      out.push('vred <- var(as.vector(fixed_predictor(red)))');
+      out.push(rep(L, r, 'term ' + t.term + ' fixed variance', 'vred'));
+      out.push(rep(L, r, 'term ' + t.term + ' delta R2', '(v$fixed - vred) / v$total'));
+    });
+  }
+  return { body: out, need: ['fit', 'variance'] };
+}
+BODIES.variance = { R: varianceBody };
 
 // ── Assembly ─────────────────────────────────────────────────────────────
 

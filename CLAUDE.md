@@ -487,14 +487,21 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   against the normal, the fitted values, and each predictor, the Pearson dispersion test, Cook's
   distances, and the predicted random effects), ⑤ Predict (an effect plot with its band and the
   data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator), ⑥
-  Compare (the kept models refitted by maximum likelihood, ranked by AIC and BIC, with the
-  likelihood-ratio test of every nested pair), ⑦ Report, ⑧ Storage, ⑨ Classic tests as GLMM (the
+  Variance explained (the fit's variance on the link scale as one stacked bar and a table: the
+  fixed-effect predictor's variance, each random term's averaged over the rows, an
+  observation-level effect's as dispersion, and the distribution-specific residual variance,
+  with the marginal and conditional R² and the adjusted ICC, as insight::get_variance and
+  performance form them, and each term's share as the fixed-effect variance lost when it is
+  dropped; defined for the normal with the identity link, the binomial with logit, probit, or
+  cloglog, the count and gamma families with log, and the beta with logit), ⑦ Compare (the kept
+  models refitted by maximum likelihood, ranked by AIC and BIC, with the likelihood-ratio test of
+  every nested pair), ⑧ Report, ⑨ Storage, ⑩ Classic tests as GLMM (the
   one-sample t test as an intercept-only normal model, the two-sample t test, one-way ANOVA, the
   paired t test, a one-sample test on repeated measures as an intercept-only mixed model by REML
   beside the t test on the group means and the too-narrow t test on every observation, the
   chi-square test of independence, and the two-proportion z test, each run classically and as the
   GLM it is, opened by a block naming the data, the classical test, and the equivalent model,
-  with a button that opens that dataset and model), and ⑩ References. The strip of loaded datasets is hidden on the two pages that use
+  with a button that opens that dataset and model), and ⑪ References. The strip of loaded datasets is hidden on the two pages that use
   no data, Classic tests as GLMM and References. Seven families (normal, binomial, Poisson, negative
   binomial, gamma, beta, and the cumulative-logit ordinal model), each with its links, with the
   support of the response detected and a family that does not fit it refused with the rows named.

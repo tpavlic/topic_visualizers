@@ -277,6 +277,35 @@ export function predictRecipe(o) {
 }
 
 /**
+ * The Variance explained page's recipe.
+ * @param {object} o `{ ds, spec, result, level, title, provenance, parts }` where
+ *   `parts` is varianceParts's output.
+ */
+export function varianceRecipe(o) {
+  const r = baseRecipe(Object.assign({ page: 'variance' }, o));
+  const v = o.parts;
+  r.variance = { hasRandom: v.random.length > 0, terms: v.terms.map(t => ({ term: t.term, reduced: reducedFormulas(o.spec, o.ds, t.term) })) };
+  const e = r.expect;
+  e['variance fixed'] = v.fixed;
+  e['variance random'] = v.randomTotal;
+  e['variance dispersion'] = v.dispersion;
+  e['variance distribution'] = v.distribution;
+  e['variance total'] = v.total;
+  e['R2 marginal'] = v.r2m;
+  e['R2 conditional'] = v.r2c;
+  if (v.random.length) e['ICC'] = v.icc;
+  for (const t of v.terms) { e['term ' + t.term + ' fixed variance'] = t.fixed; e['term ' + t.term + ' delta R2'] = t.delta; }
+  r.capability = VARIANCE_CAPABILITY;
+  return r;
+}
+
+// The decomposition is R's: performance and insight carry it, and neither
+// Python nor MATLAB has a commonly used routine for it.
+const noRoutine = lang => lang + ' has no commonly used routine for the Nakagawa decomposition. R\'s performance package is the conventional tool.';
+/** The script languages of the Variance explained page: R and Tidy R only. */
+export const VARIANCE_CAPABILITY = { R: { ok: true, why: null }, tidy: { ok: true, why: null }, py: { ok: false, why: noRoutine('Python') }, m: { ok: false, why: noRoutine('MATLAB') } };
+
+/**
  * The Compare page's recipe: the candidates fitted to the current dataset,
  * by maximum likelihood, and the tests between nested pairs.
  * @param {object} o `{ ds, level, title, provenance, candidates: [{ name, spec, result }], pairs: [{ a, b, kind, df, stat, p }] }`

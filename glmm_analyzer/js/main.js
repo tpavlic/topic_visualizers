@@ -23,6 +23,7 @@ import * as diagnosticsPage from './pages/diagnostics.js';
 import * as predictPage from './pages/predict.js';
 import * as comparePage from './pages/compare.js';
 import * as testsPage from './pages/tests.js';
+import * as variancePage from './pages/variance.js';
 import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
 import * as referencesPage from './pages/references.js';
@@ -44,7 +45,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, comparePage, reportPage, storagePage, testsPage, referencesPage];
+export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, variancePage, comparePage, reportPage, storagePage, testsPage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 
@@ -72,7 +73,7 @@ function renderDataStrip() {
 const NO_DATA_PAGES = new Set(['tests', 'references']);
 
 const GATES = [
-  { pages: ['explore', 'model', 'diagnostics', 'predict', 'compare', 'report'],
+  { pages: ['explore', 'model', 'diagnostics', 'predict', 'variance', 'compare', 'report'],
     ok: () => state.datasets.some(d => canModel(d).ok),
     tip: 'Load a file or an example on the Import page first.' }
 ];

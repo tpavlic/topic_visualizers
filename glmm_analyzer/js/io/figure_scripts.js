@@ -16,6 +16,8 @@
 //     curve with its band (several, as lists) and data points.
 //   fig_resid(x, r, xlab, ylab, title): residuals against a variable with
 //     the mean in ten bins of equal count.
+//   fig_stack(values, labels, title): one horizontal bar of the values'
+//     shares of their sum, each labeled (R and Tidy R only).
 
 import { FIG_R } from './figure_lib_r.js';
 import { FIG_TIDY } from './figure_lib_tidy.js';
@@ -109,8 +111,16 @@ function predictFigures(r, L) {
   return { notes: ['The effect plot and the marginal means as the page drew them.'], calls, fig, need: [] };
 }
 
+function varianceFigures(r, L) {
+  if (L.lang !== 'R') return { calls: [] };
+  const labels = ['fixed effects'].concat(r.variance.hasRandom ? ['random terms'] : [], ['dispersion', 'distribution']);
+  const values = ['v$fixed'].concat(r.variance.hasRandom ? ['v$random'] : [], ['v$dispersion', 'v$distribution']);
+  const calls = call(L, 'fig_stack', [vecOf(L, values), strsOf(L, labels), L.str('Variance explained: ' + r.spec.response)]);
+  return { notes: ['The pieces of the variance as one stacked bar, each as its share of the total.'], calls, fig: ['stack'], need: [] };
+}
+
 /** The figure emitters by page. */
-export const FIGURES = { model: modelFigures, diagnostics: diagnosticsFigures, predict: predictFigures };
+export const FIGURES = { model: modelFigures, diagnostics: diagnosticsFigures, predict: predictFigures, variance: varianceFigures };
 
 /**
  * The Figures section of a script, or nothing when the page's view shows no figure.

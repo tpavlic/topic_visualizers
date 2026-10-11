@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GLMM Analyzer – generalized linear mixed models in the browser</title>
-<meta name="description" content="Fit generalized linear models, and mixed models with one grouping factor, to a table in the browser: normal, binomial, Poisson, negative binomial, gamma, beta, and ordinal responses with interactions and a random intercept or slope, residual diagnostics, effect plots and marginal means, model comparison by AIC, and scripts that refit the model in R, Python, and MATLAB.">
+<meta name="description" content="Fit generalized linear models, and mixed models with one grouping factor, to a table in the browser: normal, binomial, Poisson, negative binomial, gamma, beta, and ordinal responses with interactions and a random intercept or slope, residual diagnostics, effect plots and marginal means, a variance decomposition with marginal and conditional R², model comparison by AIC, and scripts that refit the model in R, Python, and MATLAB.">
 
 <!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="GLMM Analyzer – generalized linear mixed models in the browser">
-<meta property="og:description" content="Fit generalized linear models, and mixed models with one grouping factor, to a table in the browser: normal, binomial, Poisson, negative binomial, gamma, beta, and ordinal responses with interactions and a random intercept or slope, residual diagnostics, effect plots and marginal means, model comparison by AIC, and scripts that refit the model in R, Python, and MATLAB.">
+<meta property="og:description" content="Fit generalized linear models, and mixed models with one grouping factor, to a table in the browser: normal, binomial, Poisson, negative binomial, gamma, beta, and ordinal responses with interactions and a random intercept or slope, residual diagnostics, effect plots and marginal means, a variance decomposition with marginal and conditional R², model comparison by AIC, and scripts that refit the model in R, Python, and MATLAB.">
 <meta property="og:image" content="https://tpavlic.github.io/topic_visualizers/glmm_analyzer/glmm_analyzer-preview.png">
 <meta property="og:image:width" content="2040">
 <meta property="og:image:height" content="1020">
@@ -19,7 +19,7 @@
 <!-- Twitter/X card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="GLMM Analyzer – generalized linear mixed models in the browser">
-<meta name="twitter:description" content="Fit generalized linear models, and mixed models with one grouping factor, to a table in the browser: normal, binomial, Poisson, negative binomial, gamma, beta, and ordinal responses with interactions and a random intercept or slope, residual diagnostics, effect plots and marginal means, model comparison by AIC, and scripts that refit the model in R, Python, and MATLAB.">
+<meta name="twitter:description" content="Fit generalized linear models, and mixed models with one grouping factor, to a table in the browser: normal, binomial, Poisson, negative binomial, gamma, beta, and ordinal responses with interactions and a random intercept or slope, residual diagnostics, effect plots and marginal means, a variance decomposition with marginal and conditional R², model comparison by AIC, and scripts that refit the model in R, Python, and MATLAB.">
 <meta name="twitter:image" content="https://tpavlic.github.io/topic_visualizers/glmm_analyzer/glmm_analyzer-preview.png">
 
 <!-- Google Analytics -->
@@ -106,7 +106,7 @@ body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--te
 .tab-group-items { display: flex; gap: 4px; }
 
 /* The tab row: each group is bracketed by a thin overline whose small-caps
-   label sits centered on it. Where the ten tabs do not fit on one line, the
+   label sits centered on it. Where the eleven tabs do not fit on one line, the
    row wraps a whole group at a time, so that every group stays under its own
    label; between 700px and 1000px, that is two lines, with More information
    and then Session on the second. A group is never narrower than its widest
@@ -703,7 +703,7 @@ footer a:hover { text-decoration: underline; }
 <div class="widget">
   <div class="wh">
     <div class="wh-title">GLMM Analyzer</div>
-    <div class="wh-sub">Load a table, choose a family and link, fit a generalized linear model with or without a random effect, check its residuals, plot its predictions, and compare candidate models.</div>
+    <div class="wh-sub">Load a table, choose a family and link, fit a generalized linear model with or without a random effect, check its residuals, plot its predictions, see how much of the variance it explains, and compare candidate models.</div>
     <div class="wh-copy">&copy; 2026 Theodore P. Pavlic<br class="cr-br"><span class="cr-sep"> &middot; </span><a href="https://github.com/tpavlic/topic_visualizers/blob/main/LICENSE" target="_blank" rel="noopener">MIT&nbsp;License</a></div>
   </div>
   <div class="oa-layout">
@@ -721,21 +721,22 @@ footer a:hover { text-decoration: underline; }
         <a class="tab" data-tab="model" href="#model"><span class="tab-n">③</span> <span class="tab-t">Model</span></a>
         <a class="tab" data-tab="diagnostics" href="#diagnostics"><span class="tab-n">④</span> <span class="tab-t">Diagnostics</span></a>
         <a class="tab" data-tab="predict" href="#predict"><span class="tab-n">⑤</span> <span class="tab-t">Predict</span></a>
-        <a class="tab" data-tab="compare" href="#compare"><span class="tab-n">⑥</span> <span class="tab-t">Compare</span></a>
+        <a class="tab" data-tab="variance" href="#variance"><span class="tab-n">⑥</span> <span class="tab-t">Variance explained</span></a>
+        <a class="tab" data-tab="compare" href="#compare"><span class="tab-n">⑦</span> <span class="tab-t">Compare</span></a>
       </div>
     </div>
     <div class="tab-group" role="group" aria-labelledby="pg-session">
       <span class="tab-group-lbl" id="pg-session">Session</span>
       <div class="tab-group-items">
-        <a class="tab" data-tab="report" href="#report"><span class="tab-n">⑦</span> <span class="tab-t">Report</span></a>
-        <a class="tab" data-tab="storage" href="#storage"><span class="tab-n">⑧</span> <span class="tab-t">Storage</span></a>
+        <a class="tab" data-tab="report" href="#report"><span class="tab-n">⑧</span> <span class="tab-t">Report</span></a>
+        <a class="tab" data-tab="storage" href="#storage"><span class="tab-n">⑨</span> <span class="tab-t">Storage</span></a>
       </div>
     </div>
     <div class="tab-group" role="group" aria-labelledby="pg-more">
       <span class="tab-group-lbl" id="pg-more">More information</span>
       <div class="tab-group-items">
-        <a class="tab" data-tab="tests" href="#tests"><span class="tab-n">⑨</span> <span class="tab-t">Classic tests as GLMM</span></a>
-        <a class="tab" data-tab="references" href="#references"><span class="tab-n">⑩</span> <span class="tab-t">References</span></a>
+        <a class="tab" data-tab="tests" href="#tests"><span class="tab-n">⑩</span> <span class="tab-t">Classic tests as GLMM</span></a>
+        <a class="tab" data-tab="references" href="#references"><span class="tab-n">⑪</span> <span class="tab-t">References</span></a>
       </div>
     </div>
   </nav>
@@ -749,15 +750,16 @@ footer a:hover { text-decoration: underline; }
       <option value="model">③ Model</option>
       <option value="diagnostics">④ Diagnostics</option>
       <option value="predict">⑤ Predict</option>
-      <option value="compare">⑥ Compare</option>
+      <option value="variance">⑥ Variance explained</option>
+      <option value="compare">⑦ Compare</option>
     </optgroup>
     <optgroup label="Session">
-      <option value="report">⑦ Report</option>
-      <option value="storage">⑧ Storage</option>
+      <option value="report">⑧ Report</option>
+      <option value="storage">⑨ Storage</option>
     </optgroup>
     <optgroup label="More information">
-      <option value="tests">⑨ Classic tests as GLMM</option>
-      <option value="references">⑩ References</option>
+      <option value="tests">⑩ Classic tests as GLMM</option>
+      <option value="references">⑪ References</option>
     </optgroup>
   </select>
   <div id="data-strip" class="data-strip" aria-live="polite"><span class="ds-empty">No data loaded yet. Open <a href="#import">Import</a> to load a file or an example.</span></div>
@@ -768,6 +770,7 @@ footer a:hover { text-decoration: underline; }
   <section class="tp" id="tab-model" aria-label="Model"></section>
   <section class="tp" id="tab-diagnostics" aria-label="Diagnostics"></section>
   <section class="tp" id="tab-predict" aria-label="Predict"></section>
+  <section class="tp" id="tab-variance" aria-label="Variance explained"></section>
   <section class="tp" id="tab-compare" aria-label="Compare"></section>
   <section class="tp" id="tab-report" aria-label="Report"></section>
   <section class="tp" id="tab-storage" aria-label="Storage"></section>
@@ -3282,7 +3285,8 @@ function rPackages(recipe) {
     if (s.mixed && s.family !== 'beta') pk.add('lme4');
   }
   if (recipe.means) pk.add('emmeans');
-  return ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans'].filter(p => pk.has(p));
+  if (recipe.page === 'variance' && recipe.spec.mixed) { pk.add('insight'); pk.add('performance'); }
+  return ['MASS', 'betareg', 'lme4', 'glmmTMB', 'emmeans', 'insight', 'performance'].filter(p => pk.has(p));
 }
 
 // ── Per-language syntax ──────────────────────────────────────────────────
@@ -4010,6 +4014,31 @@ function compareBody(r, L) {
   return { body: out, need: ['fit'] };
 }
 BODIES.compare = { R: compareBody, py: compareBody, m: compareBody };
+
+function varianceBody(r, L) {
+  const c = L.comment;
+  const out = ['report_start(check_details)', L.sect('Fit'), 'm <- fit_model(d, family, link, formula, reml)', L.sect('Variance explained')];
+  out.push(c + 'The pieces of the variance on the link scale: the fixed-effect linear predictor, the random');
+  out.push(c + 'terms, an observation-level effect as dispersion, and the distribution-specific residual.');
+  out.push('v <- variance_parts(m, d, family, link, formula)');
+  out.push(rep(L, r, 'variance fixed', 'v$fixed'), rep(L, r, 'variance random', 'v$random'), rep(L, r, 'variance dispersion', 'v$dispersion'));
+  out.push(rep(L, r, 'variance distribution', 'v$distribution'), rep(L, r, 'variance total', 'v$total'));
+  out.push(rep(L, r, 'R2 marginal', 'v$r2m'), rep(L, r, 'R2 conditional', 'v$r2c'));
+  if (r.variance.hasRandom) out.push(rep(L, r, 'ICC', 'v$icc'));
+  if (r.variance.terms.length) {
+    out.push(L.sect('Terms'));
+    out.push(c + 'Each term\'s share: the fixed-effect variance lost when the model is refitted without it,');
+    out.push(c + 'over the total variance of the full model.');
+    r.variance.terms.forEach((t, i) => {
+      out.push('red <- fit_reduced(m, d, family, link, ' + L.str(t.reduced.R) + ')');
+      out.push('vred <- var(as.vector(fixed_predictor(red)))');
+      out.push(rep(L, r, 'term ' + t.term + ' fixed variance', 'vred'));
+      out.push(rep(L, r, 'term ' + t.term + ' delta R2', '(v$fixed - vred) / v$total'));
+    });
+  }
+  return { body: out, need: ['fit', 'variance'] };
+}
+BODIES.variance = { R: varianceBody };
 
 // ── Assembly ─────────────────────────────────────────────────────────────
 
@@ -5709,6 +5738,34 @@ fig_resid <- function(x, r, xlab, ylab, title) {
   invisible(NULL)
 }
 `;
+
+FIG_R.stack = `
+# One horizontal bar of the values' shares of their sum, each piece labeled with its share.
+fig_stack <- function(values, labels, title, xlab = "Share of the total variance") {
+  values <- as.numeric(values)
+  labels <- as.character(labels)
+  keep <- is.finite(values) & values > 0
+  values <- values[keep]
+  labels <- labels[keep]
+  if (length(values) == 0) {
+    fig_empty(title, xlab)
+    return(invisible(NULL))
+  }
+  share <- values / sum(values)
+  cols <- grDevices::hcl.colors(length(share), "Dark 3")
+  old <- par(mar = c(4, 1.5, 3, 1.5))
+  on.exit(par(old))
+  plot(NA, xlim = c(0, 1), ylim = c(0, 1), axes = FALSE, xlab = xlab, ylab = "", main = title)
+  axis(1, at = seq(0, 1, 0.25), labels = paste0(seq(0, 100, 25), "%"))
+  right <- cumsum(share)
+  left <- right - share
+  rect(left, 0.45, right, 0.75, col = cols, border = "white")
+  mid <- (left + right) / 2
+  text(mid, 0.6, ifelse(share >= 0.06, sprintf("%.0f%%", 100 * share), ""), col = "white", cex = 0.85)
+  legend("bottom", legend = sprintf("%s (%.1f%%)", labels, 100 * share), fill = cols, border = NA,
+         bty = "n", horiz = length(share) <= 3, cex = 0.85, inset = 0.02)
+}
+`;
 </script>
 <script type="text/plain" data-module="js/io/figure_lib_tidy.js">
 // Literal Tidy R code for the figures the regenerate scripts draw: one ggplot2 helper per kind
@@ -6018,6 +6075,25 @@ fig_resid <- function(x, r, xlab, ylab, title) {
   invisible(p)
 }
 `;
+
+FIG_TIDY.stack = `
+# One horizontal bar of the values' shares of their sum, each piece labeled with its share.
+fig_stack <- function(values, labels, title, xlab = "Share of the total variance") {
+  values <- as.numeric(values)
+  labels <- as.character(labels)
+  keep <- is.finite(values) & values > 0
+  d <- tibble(piece = factor(labels[keep], levels = labels[keep]), share = values[keep] / sum(values[keep]))
+  if (nrow(d) == 0) return(fig_empty(title, xlab))
+  d <- d %>% mutate(right = cumsum(share), mid = right - share / 2, text = ifelse(share >= 0.06, sprintf("%.0f%%", 100 * share), ""))
+  p <- ggplot(d, aes(x = share, y = "", fill = piece)) +
+    geom_col(position = position_stack(reverse = TRUE), width = 0.5, color = "white") +
+    geom_text(aes(x = mid, label = text), color = "white", size = 3) +
+    scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+    labs(title = title, x = xlab, y = NULL, fill = NULL) +
+    theme_minimal() + theme(legend.position = "bottom")
+  print(p)
+}
+`;
 </script>
 <script type="text/plain" data-module="js/io/figure_scripts.js">
 // The figures of the regenerate scripts: every figure the page shows in
@@ -6038,6 +6114,8 @@ fig_resid <- function(x, r, xlab, ylab, title) {
 //     curve with its band (several, as lists) and data points.
 //   fig_resid(x, r, xlab, ylab, title): residuals against a variable with
 //     the mean in ten bins of equal count.
+//   fig_stack(values, labels, title): one horizontal bar of the values'
+//     shares of their sum, each labeled (R and Tidy R only).
 
 import { FIG_R } from './figure_lib_r.js';
 import { FIG_TIDY } from './figure_lib_tidy.js';
@@ -6131,8 +6209,16 @@ function predictFigures(r, L) {
   return { notes: ['The effect plot and the marginal means as the page drew them.'], calls, fig, need: [] };
 }
 
+function varianceFigures(r, L) {
+  if (L.lang !== 'R') return { calls: [] };
+  const labels = ['fixed effects'].concat(r.variance.hasRandom ? ['random terms'] : [], ['dispersion', 'distribution']);
+  const values = ['v$fixed'].concat(r.variance.hasRandom ? ['v$random'] : [], ['v$dispersion', 'v$distribution']);
+  const calls = call(L, 'fig_stack', [vecOf(L, values), strsOf(L, labels), L.str('Variance explained: ' + r.spec.response)]);
+  return { notes: ['The pieces of the variance as one stacked bar, each as its share of the total.'], calls, fig: ['stack'], need: [] };
+}
+
 /** The figure emitters by page. */
-export const FIGURES = { model: modelFigures, diagnostics: diagnosticsFigures, predict: predictFigures };
+export const FIGURES = { model: modelFigures, diagnostics: diagnosticsFigures, predict: predictFigures, variance: varianceFigures };
 
 /**
  * The Figures section of a script, or nothing when the page's view shows no figure.
@@ -6700,6 +6786,35 @@ export function predictRecipe(o) {
 }
 
 /**
+ * The Variance explained page's recipe.
+ * @param {object} o `{ ds, spec, result, level, title, provenance, parts }` where
+ *   `parts` is varianceParts's output.
+ */
+export function varianceRecipe(o) {
+  const r = baseRecipe(Object.assign({ page: 'variance' }, o));
+  const v = o.parts;
+  r.variance = { hasRandom: v.random.length > 0, terms: v.terms.map(t => ({ term: t.term, reduced: reducedFormulas(o.spec, o.ds, t.term) })) };
+  const e = r.expect;
+  e['variance fixed'] = v.fixed;
+  e['variance random'] = v.randomTotal;
+  e['variance dispersion'] = v.dispersion;
+  e['variance distribution'] = v.distribution;
+  e['variance total'] = v.total;
+  e['R2 marginal'] = v.r2m;
+  e['R2 conditional'] = v.r2c;
+  if (v.random.length) e['ICC'] = v.icc;
+  for (const t of v.terms) { e['term ' + t.term + ' fixed variance'] = t.fixed; e['term ' + t.term + ' delta R2'] = t.delta; }
+  r.capability = VARIANCE_CAPABILITY;
+  return r;
+}
+
+// The decomposition is R's: performance and insight carry it, and neither
+// Python nor MATLAB has a commonly used routine for it.
+const noRoutine = lang => lang + ' has no commonly used routine for the Nakagawa decomposition. R\'s performance package is the conventional tool.';
+/** The script languages of the Variance explained page: R and Tidy R only. */
+export const VARIANCE_CAPABILITY = { R: { ok: true, why: null }, tidy: { ok: true, why: null }, py: { ok: false, why: noRoutine('Python') }, m: { ok: false, why: noRoutine('MATLAB') } };
+
+/**
  * The Compare page's recipe: the candidates fitted to the current dataset,
  * by maximum likelihood, and the tests between nested pairs.
  * @param {object} o `{ ds, level, title, provenance, candidates: [{ name, spec, result }], pairs: [{ a, b, kind, df, stat, p }] }`
@@ -7143,6 +7258,68 @@ lrt_stat <- function(full, red, family) {
     return(deviance(red) - deviance(full))
   }
   2 * (fit_loglik(full) - fit_loglik(red))
+}
+`;
+
+LIB.R.variance = `
+# The variance decomposition: the variance of the fixed-effect linear predictor, each random
+# term's variance averaged over the rows (an observation-level effect's counted as dispersion),
+# and the distribution-specific variance on the link scale, as insight::get_variance forms them
+# for a mixed model, with performance's r2_nakagawa and icc; a model with no random part gets
+# the same pieces written out here, where those packages decline.
+fixed_predictor <- function(m) switch(fit_class(m), lme4 = predict(m, re.form = NA), tmb = predict(m, re.form = NA), betareg = predict(m, type = "link"), predict(m, type = "link"))
+null_formula <- function(formula) {
+  # The intercept-only model with the same random part.
+  resp <- sub("~.*$", "", formula)
+  bars <- regmatches(formula, gregexpr("\\\\([^()]*\\\\|[^()]*\\\\)", formula))[[1]]
+  paste(resp, "~ 1", if (length(bars)) paste("+", paste(bars, collapse = " + ")) else "")
+}
+pick <- function(x, nm) { if (!is.list(x)) return(NA); out <- x[[nm]]; if (is.null(out) || length(out) == 0) NA else unname(out) }
+# The distribution-specific variance by hand: at the mean the intercept-only model implies.
+distribution_variance <- function(m, null, family, link, random_null) {
+  b0 <- unname(fit_coef(null)[1])
+  switch(family,
+    normal = fit_dispersion(m),
+    binomial = switch(link, logit = pi^2 / 3, probit = 1, cloglog = pi^2 / 6, NaN),
+    poisson = log1p(1 / exp(b0 + 0.5 * random_null)),
+    negbin = log1p(1 / exp(b0 + 0.5 * random_null) + 1 / fit_aux(m)),
+    gamma = log1p(fit_dispersion(m)),
+    beta = { mu <- plogis(b0); log1p((mu * (1 - mu) / (1 + fit_aux(m))) / mu^2) },
+    NaN)
+}
+variance_parts <- function(m, d, family, link, formula) {
+  vf <- var(as.vector(fixed_predictor(m)))
+  mixed <- fit_class(m) %in% c("lme4", "tmb")
+  # The intercept-only model with the same random part, fitted here and handed to insight and
+  # performance: their own refit of it cannot see fit_model's local variables.
+  null <- fit_model(d, family, link, null_formula(formula), FALSE)
+  vr <- 0; vo <- 0; vd <- NA; r2m <- NA; r2c <- NA; ic <- NA
+  if (mixed) {
+    v <- suppressWarnings(insight::get_variance(m, null_model = null))
+    if (is.list(v)) {
+      vr <- pick(v, "var.random"); if (is.na(vr)) vr <- 0
+      vo <- pick(v, "var.dispersion"); if (is.na(vo)) vo <- 0
+      vd <- pick(v, "var.distribution")
+      r2 <- suppressWarnings(performance::r2_nakagawa(m, null_model = null))
+      r2m <- pick(r2, "R2_marginal"); r2c <- pick(r2, "R2_conditional")
+      ic <- pick(suppressWarnings(performance::icc(m, null_model = null)), "ICC_adjusted")
+    } else {
+      # insight declines a model whose only random term is the observation level; its
+      # variance is read from the fit, and the pieces are formed below.
+      vc <- fit_varcomp(m)
+      ints <- vc$var2 == "" & vc$var1 == "(Intercept)"
+      vo <- sum(vc$value[ints & vc$grp == "obs"])
+      vr <- sum(vc$value[ints & vc$grp != "obs"])
+    }
+  }
+  if (is.na(vd)) {
+    random_null <- if (mixed) { rn <- pick(suppressWarnings(insight::get_variance(null, null_model = null)), "var.random"); if (is.na(rn)) 0 else rn } else 0
+    vd <- distribution_variance(m, null, family, link, random_null)
+  }
+  tot <- vf + vr + vo + vd
+  if (is.na(r2m)) r2m <- vf / tot
+  if (is.na(r2c)) r2c <- (vf + vr) / tot
+  list(fixed = vf, random = vr, dispersion = vo, distribution = vd, total = tot, r2m = r2m, r2c = r2c, icc = ic)
 }
 `;
 
@@ -8477,6 +8654,7 @@ import * as diagnosticsPage from './pages/diagnostics.js';
 import * as predictPage from './pages/predict.js';
 import * as comparePage from './pages/compare.js';
 import * as testsPage from './pages/tests.js';
+import * as variancePage from './pages/variance.js';
 import * as reportPage from './pages/report.js';
 import * as storagePage from './pages/storage.js';
 import * as referencesPage from './pages/references.js';
@@ -8498,7 +8676,7 @@ function pageOf(mod) {
 }
 
 /** The page modules, in navigation order; the analysis pages join as they are built. */
-export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, comparePage, reportPage, storagePage, testsPage, referencesPage];
+export const PAGE_MODULES = [importPage, explorePage, modelPage, diagnosticsPage, predictPage, variancePage, comparePage, reportPage, storagePage, testsPage, referencesPage];
 const PAGES = PAGE_MODULES.map(pageOf);
 const BY_ID = new Map(PAGES.map(p => [p.id, p]));
 
@@ -8526,7 +8704,7 @@ function renderDataStrip() {
 const NO_DATA_PAGES = new Set(['tests', 'references']);
 
 const GATES = [
-  { pages: ['explore', 'model', 'diagnostics', 'predict', 'compare', 'report'],
+  { pages: ['explore', 'model', 'diagnostics', 'predict', 'variance', 'compare', 'report'],
     ok: () => state.datasets.some(d => canModel(d).ok),
     tip: 'Load a file or an example on the Import page first.' }
 ];
@@ -10650,6 +10828,12 @@ const GROUPS = [
     'R. V. Lenth, <i>emmeans: estimated marginal means, aka least-squares means</i>, R package (2024): the marginal means and their pairwise comparisons as this tool forms them.',
     'J. W. Tukey, “Comparing individual means in the analysis of variance,” <i>Biometrics</i> 5 (1949) 99–114: the studentized-range correction on the pairwise differences.'
   ]],
+  ['Variance explained', [
+    'S. Nakagawa and H. Schielzeth, “A general and simple method for obtaining R² from generalized linear mixed-effects models,” <i>Methods in Ecology and Evolution</i> 4 (2013) 133–142: the marginal and conditional R² as the variance of the fixed-effect predictor, the random variances, and a distribution-specific residual variance.',
+    'P. C. D. Johnson, “Extension of Nakagawa & Schielzeth’s R²GLMM to random slopes models,” <i>Methods in Ecology and Evolution</i> 5 (2014) 944–946: a random slope’s variance averaged over the rows.',
+    'S. Nakagawa, P. C. D. Johnson, and H. Schielzeth, “The coefficient of determination R² and intra-class correlation coefficient from generalized linear mixed-effects models revisited and expanded,” <i>Journal of the Royal Society Interface</i> 14 (2017) 20170213: the distribution-specific variances for the count, gamma, and beta families, and the ICC that goes with them.',
+    'D. Lüdecke, M. S. Ben-Shachar, I. Patil, P. Waggoner, and D. Makowski, “performance: an R package for assessment, comparison and testing of statistical models,” <i>Journal of Open Source Software</i> 6 (2021) 3139: the r2_nakagawa and icc routines the exported R script calls, and the insight package whose get_variance they rest on.'
+  ]],
   ['Compare', [
     'H. Akaike, “A new look at the statistical model identification,” <i>IEEE Transactions on Automatic Control</i> 19 (1974) 716–723; G. Schwarz, “Estimating the dimension of a model,” <i>Annals of Statistics</i> 6 (1978) 461–464.',
     'K. P. Burnham and D. R. Anderson, <i>Model Selection and Multimodel Inference</i>, 2nd ed. (Springer, 2002): comparing a set of candidate models by information criteria rather than searching for one.'
@@ -10696,7 +10880,7 @@ export const title = 'Report';
 
 // Results are listed in the order the pages appear in the navigation; a page
 // not named here follows, in the order its result arrived.
-const PAGE_ORDER = ['import', 'explore', 'model', 'diagnostics', 'predict', 'compare', 'tests'];
+const PAGE_ORDER = ['import', 'explore', 'model', 'diagnostics', 'predict', 'variance', 'compare', 'tests'];
 
 let el = null;
 
@@ -11249,6 +11433,206 @@ export function render(root) {
 export function onShow() {}
 
 export default { id, title, render, onShow, sections };
+</script>
+<script type="text/plain" data-module="js/pages/variance.js">
+// The Variance explained page: the fit on the Model page split into the
+// pieces of its variance on the link scale, as one stacked bar and a table:
+// the fixed-effect linear predictor, each random term, an observation-level
+// effect as dispersion, and the distribution-specific residual, with the
+// marginal and conditional R² and the ICC that follow, and each term's
+// share as the fixed-effect variance lost when it is dropped.
+
+import * as state from '../state.js';
+import { FAMILIES, LINKS } from '../stats/families.js';
+import { varianceParts } from '../stats/variance.js';
+import { degenerateFit } from '../stats/inference.js';
+import { currentFit } from './model.js';
+import { makeFigure, exportButtons, svgEl, tok, legend } from '../ui/plots.js';
+import { card, cardRow, notice } from '../ui/widgets.js';
+import { installExportRow } from '../ui/exportrow.js';
+import { varianceRecipe, tooBig, capRecipe, VARIANCE_CAPABILITY } from '../io/recipes.js';
+import { esc, num, stat, intl } from '../ui/format.js';
+import { registerTips } from '../ui/tooltip.js';
+
+/** The page's hash id. */
+export const id = 'variance';
+/** The page's title. */
+export const title = 'Variance explained';
+
+let rootEl = null;
+let els = {};
+let figs = [];
+let timer = null;
+
+/**
+ * Renders the page into its section.
+ * @param {HTMLElement} root
+ */
+export function render(root) {
+  rootEl = root;
+  root.innerHTML =
+    '<h2>' + title + '</h2>' +
+    '<p class="lede">How much of the response’s variation the model on the Model page accounts for, and where the rest sits. On the link scale, the variance splits into the part the fixed effects predict, the part each random term carries, and a residual part that the family’s own spread sets. The pieces add, and so one bar shows them. Marginal R² is the fixed effects’ share, conditional R² adds the random terms, and the ICC is the random terms’ share of what the fixed effects leave. The definitions are those in the References.</p>' +
+    '<div id="va-note"></div>' +
+    '<div class="sec"><div class="sec-hd">The pieces of the variance</div><div id="va-bar"></div><div id="va-cards"></div><div id="va-table"></div></div>' +
+    '<div class="sec"><div class="sec-hd">By term</div><div id="va-terms"></div></div>' +
+    '<div class="sec"><div class="sec-hd">Reading the bar</div><div id="va-text"></div></div>';
+  els = { note: root.querySelector('#va-note'), bar: root.querySelector('#va-bar'), cards: root.querySelector('#va-cards'), table: root.querySelector('#va-table'), terms: root.querySelector('#va-terms'), text: root.querySelector('#va-text') };
+  installExportRow(root, id);
+  state.on('results', ({ pageId } = {}) => { if (pageId === 'model') schedule(); });
+  state.on('settings', schedule);
+  schedule();
+}
+
+/** Called each time the page is shown. */
+export function onShow() { schedule(); }
+
+function schedule() { clearTimeout(timer); timer = setTimeout(compute, 40); }
+
+const SHARE = v => (100 * v).toFixed(1) + '%';
+// A variance that is rounding noise beside the scale it is read against shows as 0.
+const tidy = (x, scale) => (Math.abs(x) < 1e-10 * Math.max(1, Math.abs(scale)) ? 0 : x);
+
+// What the residual piece is, by family.
+function residualWord(fit) {
+  const link = LINKS[fit.link].label;
+  switch (fit.family) {
+    case 'normal': return 'the error variance σ²';
+    case 'binomial': return fit.link === 'logit' ? 'π²/3, the variance of the logistic distribution, which stands for a 0/1 response’s spread on the logit scale' : fit.link === 'probit' ? '1, the variance of the standard normal, which stands for a 0/1 response’s spread on the probit scale' : 'π²/6, which stands for a 0/1 response’s spread on the ' + link + ' scale';
+    case 'poisson': return 'log(1 + 1/λ), a Poisson count’s spread on the log scale at the mean λ the intercept-only model implies';
+    case 'negbin': return 'log(1 + 1/λ + 1/θ), a negative binomial count’s spread on the log scale at the mean λ the intercept-only model implies';
+    case 'gamma': return 'log(1 + φ), a gamma response’s spread on the log scale at its dispersion φ';
+    case 'beta': return 'log(1 + (1 − μ)/(μ(1 + φ))), a beta response’s spread on the logit scale at the mean μ the intercept-only model implies';
+    default: return 'the residual variance';
+  }
+}
+
+function compute() {
+  for (const f of figs) if (f.ro) f.ro.disconnect();
+  figs = [];
+  const cf = currentFit();
+  for (const k of ['note', 'bar', 'cards', 'table', 'terms', 'text']) els[k].innerHTML = '';
+  if (!cf) {
+    els.note.appendChild(notice('info', 'No model is fitted. Build one on the <a href="#model">Model</a> page.'));
+    state.setResult(id, null);
+    return;
+  }
+  const { ds, result, spec } = cf;
+  const fit = result.fit;
+  const fam = FAMILIES[fit.family];
+  const why = degenerateFit(result);
+  if (why) {
+    els.note.appendChild(notice('warn', esc(why)));
+    state.setResult(id, null);
+    return;
+  }
+  let v;
+  try { v = varianceParts(ds, spec, result); } catch (err) { els.note.appendChild(notice('warn', 'The decomposition could not be computed: ' + esc(err.message))); state.setResult(id, null); return; }
+  if (!v.ok) {
+    els.note.appendChild(notice('info', esc(v.why)));
+    state.setResult(id, null);
+    return;
+  }
+  els.note.appendChild(notice('info', 'Model: <code>' + esc(result.formula) + '</code>, ' + esc(fam.label) + ' family with the ' + esc(LINKS[result.link].label) + ' link, fitted to ' + esc(ds.name) + ' (' + intl(fit.n) + ' rows).'));
+
+  // The pieces, in the order the bar stacks them.
+  const pieces = [{ key: 'fixed', label: 'Fixed effects', value: v.fixed, color: tok('--est') }];
+  const randomColors = ['--ok', '--accent', '--truth'];
+  v.random.forEach((t, i) => pieces.push({ key: 'random', label: (t.kind === 'nested' ? 'Nested random intercept: ' : t.slope ? 'Random intercept and slope: ' : 'Random intercept: ') + t.term, value: t.variance, color: tok(randomColors[i % randomColors.length]) }));
+  if (v.dispersion > 0) pieces.push({ key: 'dispersion', label: 'Observation-level effect', value: v.dispersion, color: tok('--truth') });
+  pieces.push({ key: 'distribution', label: 'Residual', value: v.distribution, color: tok('--muted') });
+  const total = v.total;
+
+  // The bar.
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.bar.appendChild(box);
+  const fig = makeFigure(box, { height: 150, xLabel: 'Share of the total variance', title: 'Variance on the ' + LINKS[result.link].label + ' scale', margin: { l: 16, r: 16, t: 30, b: 44 } });
+  exportButtons(box, fig, ds.name + ' variance explained');
+  figs.push(fig);
+  fig.render(f => {
+    const sx = f.x([0, 1]);
+    f.axes({ y: false });
+    const y0 = f.ih * 0.22, y1 = f.ih * 0.78;
+    let left = 0;
+    const rec = { kind: 'rects', x0: [], x1: [], y0: [], y1: [], color: pieces.map(p => p.color), label: pieces.map(p => p.label) };
+    const txt = { kind: 'text', x: [], y: [], text: [], color: tok('--card'), anchor: 'middle' };
+    pieces.forEach(p => {
+      const share = total > 0 ? p.value / total : 0;
+      const a = sx(left), b = sx(left + share);
+      svgEl('rect', { x: a, y: y0, width: Math.max(0, b - a), height: y1 - y0, fill: p.color, stroke: tok('--card'), 'stroke-width': 1 }, f.inner);
+      rec.x0.push(left); rec.x1.push(left + share); rec.y0.push(0.22); rec.y1.push(0.78);
+      if (b - a > 34) {
+        svgEl('text', { x: (a + b) / 2, y: (y0 + y1) / 2 + 4, 'text-anchor': 'middle', 'font-size': 11.5, fill: tok('--card') }, f.inner).textContent = SHARE(share);
+        txt.x.push(left + share / 2); txt.y.push(0.5); txt.text.push(SHARE(share));
+      }
+      left += share;
+    });
+    f.series.push(rec);
+    if (txt.x.length) f.series.push(txt);
+    f.readout((dx) => {
+      let acc = 0;
+      for (const p of pieces) { const share = total > 0 ? p.value / total : 0; if (dx >= acc && dx <= acc + share) return [p.label, stat(p.value, 4) + '  (' + SHARE(share) + ')']; acc += share; }
+      return null;
+    });
+  });
+  const lg = document.createElement('div');
+  box.appendChild(lg);
+  legend(lg, pieces.map(p => ({ label: p.label, color: p.color, swatch: 'bar' })));
+
+  // The cards.
+  const cards = [card('Marginal R²', SHARE(v.r2m), 'the fixed effects’ share')];
+  if (v.random.length) {
+    cards.push(card('Conditional R²', SHARE(v.r2c), 'the fixed effects and the random terms together'));
+    cards.push(card('ICC', SHARE(v.icc), 'the random terms’ share of what the fixed effects leave'));
+  } else if (v.dispersion > 0) {
+    cards.push(card('Conditional R²', SHARE(v.r2c), 'the same here: the observation-level effect counts as residual'));
+  }
+  els.cards.appendChild(cardRow(cards));
+
+  // The table of pieces.
+  const rows = pieces.map(p => [p.label, p.value, p.value / total]);
+  rows.push(['Total', total, 1]);
+  els.table.innerHTML = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Piece</th><th>Variance</th><th>Share</th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + stat(r[1], 5) + '</td><td>' + SHARE(r[2]) + '</td></tr>').join('') + '</tbody></table></div>';
+
+  // The terms.
+  if (v.terms.length) {
+    els.terms.innerHTML = '<p class="exp-note">Each term’s share is the fixed-effect variance the model loses when it is refitted without that term, over the total variance of the full model: the part of the marginal R² that term alone accounts for after the others. A term inside an interaction is not dropped on its own. The shares need not add up to the marginal R², because predictors that move together share their variance.</p>' +
+      '<div class="scroll-box"><table class="ptab"><thead><tr><th>Term</th><th>Fixed-effect variance without it</th><th>Share lost</th></tr></thead><tbody>' +
+      v.terms.map(t => '<tr><td>' + esc(t.term) + '</td><td>' + stat(tidy(t.fixed, v.fixed), 5) + '</td><td>' + SHARE(t.delta) + '</td></tr>').join('') + '</tbody></table></div>';
+  } else {
+    els.terms.innerHTML = '<p class="muted-line">The model has no fixed term to drop.</p>';
+  }
+
+  // The text.
+  const parts = [];
+  parts.push('The bar is the variance of the response on the ' + esc(LINKS[result.link].label) + ' scale, split into the pieces that add to it. The fixed effects’ piece is the variance of the linear predictor Xβ across the rows: how much the predictors move the response. ');
+  if (v.random.length) parts.push('A random term’s piece is its variance' + (v.random.some(t => t.slope) ? ', averaged over the rows where a slope varies by group' : '') + ': how much the groups differ beyond what the predictors say. ');
+  if (v.dispersion > 0) parts.push('The observation-level effect’s piece is its variance, which counts as residual: it is extra spread per row, not structure. ');
+  parts.push('The residual piece is ' + residualWord(fit) + '. ');
+  parts.push('Marginal R² = ' + SHARE(v.r2m) + ' is the fixed effects’ share of the whole' + (v.random.length ? '; conditional R² = ' + SHARE(v.r2c) + ' adds the random terms, which is how much the model predicts once the group is known; and the ICC = ' + SHARE(v.icc) + ' is the random terms’ share of the bar with the fixed effects taken out, the correlation between two rows of one group that the predictors do not explain' : '') + '. ');
+  if (fit.family !== 'normal') parts.push('For a non-normal family, the residual piece is an approximation on the link scale, and the shares are best read against each other rather than as a fraction of a variance the data show directly. ');
+  if (fit.family === 'normal' && !fit.mixed) parts.push('With a normal model and no random part, the marginal R² is the ordinary R² up to the degrees of freedom in the residual variance, which is estimated on n − p rather than n.');
+  els.text.innerHTML = '<p class="exp-note">' + parts.join('') + '</p>';
+
+  const provenance = { dataset: ds.name, formula: result.formula, family: fam.label, link: LINKS[result.link].label };
+  const tables = [
+    { name: 'Variance pieces', headers: ['piece', 'variance', 'share'], rows: rows.map(r => [r[0], r[1], r[2]]) },
+    { name: 'R-squared', headers: ['statistic', 'value'], rows: [['marginal R2', v.r2m], ['conditional R2', v.r2c], ['ICC', v.icc == null ? NaN : v.icc]] }
+  ];
+  if (v.terms.length) tables.push({ name: 'Terms', headers: ['term', 'fixed variance without it', 'share lost'], rows: v.terms.map(t => [t.term, t.fixed, t.delta]) });
+  const title_ = 'Variance explained: ' + result.formula;
+  const level = state.settings.level;
+  state.setResult(id, { title: title_, provenance, tables, regen: {
+    spec, ds, capability: VARIANCE_CAPABILITY,
+    tooBig: () => tooBig(ds, [spec]),
+    build: () => capRecipe(varianceRecipe({ ds, spec, result, level, title: title_, provenance, parts: v }), ds, [spec])
+  } });
+  registerTips(rootEl);
+}
+
+export default { id, title, render, onShow };
 </script>
 <script type="text/plain" data-module="js/state.js">
 // The application's shared state: the loaded datasets, the one a page last
@@ -12995,9 +13379,18 @@ export function waldP(z, df) {
   return Number.isFinite(df) ? 2 * (1 - tCdf(a, df)) : 2 * (1 - normCdf(a));
 }
 
-// Refits the fixed part with the given terms, holding the negative
-// binomial's θ at the full fit's value, as drop1 holds the family fixed.
-function refitTerms(ds, spec, full, terms) {
+/**
+ * Refits the fixed part with the given terms, holding the negative
+ * binomial's θ at the full fit's value, as drop1 holds the family fixed. A
+ * mixed model is refitted whole, by maximum likelihood, keeping its random
+ * part.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @param {object} full fitModel's output
+ * @param {(string|object)[]} terms the fixed terms to keep
+ * @returns {object} the reduced fit
+ */
+export function refitTerms(ds, spec, full, terms) {
   // A mixed model is refitted whole, by maximum likelihood, keeping its random part.
   if (spec.group || spec.olre) return full.refit(ds, Object.assign({}, spec, { terms, reml: false })).fit;
   const s = Object.assign({}, spec, { terms, group: null, nested: null, slope: null, olre: false });
@@ -15403,12 +15796,152 @@ export function smallestN(ok, guess, lo, cap) {
   return { n: good, evaluations };
 }
 </script>
+<script type="text/plain" data-module="js/stats/variance.js">
+// The variance decomposition of a fit, as insight::get_variance and
+// performance::r2_nakagawa form it (Nakagawa and Schielzeth 2013; Johnson
+// 2014 for a random slope; Nakagawa, Johnson, and Schielzeth 2017 for the
+// distribution-specific variance of a non-normal family): the variance of
+// the fixed-effect linear predictor, each random term's variance averaged
+// over the rows, an observation-level effect's variance as dispersion, and
+// the distribution-specific residual variance on the link scale, with the
+// marginal and conditional R² and the adjusted ICC that follow. A model
+// with no random part gets the same decomposition with no random term.
+// Pure functions, no DOM.
+
+import { FAMILIES } from './families.js';
+import { orderedTerms, termLabel, termVars, modelMatrix } from './design.js';
+import { refitTerms } from './inference.js';
+
+// The sample variance (n − 1) of the fixed-effect linear predictor Xβ.
+function fixedVariance(X, beta) {
+  const n = X.length;
+  const eta = new Float64Array(n);
+  let m = 0;
+  for (let i = 0; i < n; i++) { let e = 0; for (let j = 0; j < beta.length; j++) e += X[i][j] * beta[j]; eta[i] = e; m += e; }
+  m /= n;
+  let s = 0;
+  for (let i = 0; i < n; i++) s += (eta[i] - m) * (eta[i] - m);
+  return n > 1 ? s / (n - 1) : 0;
+}
+
+// A random term's variance averaged over the rows: σ² for an intercept, and
+// for an intercept and slope the mean of z_i' Σ z_i with z_i = (1, x_i).
+function termVariance(term, vc) {
+  const v0 = vc.variances[0];
+  if (vc.names.length < 2 || !term.slope) return v0;
+  const v1 = vc.variances[1];
+  const cov = (vc.correlation || 0) * Math.sqrt(v0 * v1);
+  const x = term.slope;
+  let s = 0;
+  for (let i = 0; i < x.length; i++) s += v0 + 2 * x[i] * cov + x[i] * x[i] * v1;
+  return s / x.length;
+}
+
+// The random part of a mixed fit: each term's averaged variance, the
+// observation-level effect's apart, as insight separates them.
+function randomParts(fit) {
+  const out = { terms: [], dispersion: 0 };
+  if (!fit.mixed) return out;
+  fit.random.terms.forEach((t, k) => {
+    const vc = fit.varcomp[k];
+    const v = termVariance(t, vc);
+    if (t.kind === 'olre') out.dispersion += v;
+    else out.terms.push({ term: t.name, kind: t.kind, slope: vc.names.length > 1, variance: v, intercept: vc.variances[0] });
+  });
+  return out;
+}
+
+/** The families and links the decomposition is defined for. */
+export function varianceSupported(family, link) {
+  if (family === 'normal') return link === 'identity';
+  if (family === 'binomial') return link === 'logit' || link === 'probit' || link === 'cloglog';
+  if (family === 'poisson' || family === 'negbin' || family === 'gamma') return link === 'log';
+  if (family === 'beta') return link === 'logit';
+  return false;
+}
+
+/**
+ * The distribution-specific variance of a fit, on the link scale, under
+ * the lognormal approximation: σ² for the normal; π²/3, 1, or π²/6 for a
+ * binomial logit, probit, or cloglog; log(1 + 1/λ) for a Poisson and
+ * log(1 + 1/λ + 1/θ) for a negative binomial, where λ is the mean the
+ * intercept-only model implies, exp(β₀ + ½ its random variance); log(1 + φ)
+ * for a gamma; and log(1 + (1 − μ)/(μ(1 + φ))) for a beta at the
+ * intercept-only model's μ.
+ * @param {object} fit the full fit
+ * @param {object|null} nullFit the intercept-only fit with the same random part, or null for the normal and binomial families
+ * @param {number} nullRandom the null fit's random variance apart from any observation-level effect
+ * @returns {number}
+ */
+export function distributionVariance(fit, nullFit, nullRandom) {
+  const fam = fit.family, link = fit.link;
+  if (fam === 'normal') return fit.mixed ? fit.sigma2 : fit.dispersion;
+  if (fam === 'binomial') return link === 'logit' ? Math.PI * Math.PI / 3 : link === 'probit' ? 1 : Math.PI * Math.PI / 6;
+  if (fam === 'gamma') return Math.log1p(fit.dispersion);
+  const b0 = nullFit.beta[0];
+  if (fam === 'poisson') return Math.log1p(1 / Math.exp(b0 + 0.5 * nullRandom));
+  if (fam === 'negbin') return Math.log1p(1 / Math.exp(b0 + 0.5 * nullRandom) + 1 / fit.theta);
+  if (fam === 'beta') { const mu = 1 / (1 + Math.exp(-b0)); const v = mu * (1 - mu) / (1 + fit.phi); return Math.log1p(v / (mu * mu)); }
+  return NaN;
+}
+
+/**
+ * The decomposition of a fit's variance.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} spec
+ * @param {object} result fitModel's output
+ * @returns {{ ok: boolean, why: string|null, fixed: number, random: {term: string, kind: string, slope: boolean, variance: number, intercept: number}[],
+ *   randomTotal: number, dispersion: number, distribution: number, residual: number, total: number,
+ *   r2m: number, r2c: number, icc: number|null, iccUnadjusted: number|null,
+ *   terms: {term: string, fixed: number, delta: number}[] }}
+ */
+export function varianceParts(ds, spec, result) {
+  const fit = result.fit;
+  const fam = FAMILIES[fit.family];
+  if (!varianceSupported(fit.family, fit.link)) {
+    const why = fit.family === 'ordinal'
+      ? 'The decomposition is not defined for the ordinal model, whose response has no variance on one scale.'
+      : 'The decomposition is defined for the ' + fam.label + ' family with its ' + (fit.family === 'normal' ? 'identity' : fit.family === 'binomial' ? 'logit, probit, or complementary log-log' : fit.family === 'beta' ? 'logit' : 'log') + ' link only, where the distribution-specific variance has a form.';
+    return { ok: false, why };
+  }
+  const fixed = fixedVariance(result.design.X, fit.beta);
+  const rnd = randomParts(fit);
+  const randomTotal = rnd.terms.reduce((a, t) => a + t.variance, 0);
+  let nullFit = null, nullRandom = 0;
+  if (fit.family === 'poisson' || fit.family === 'negbin' || fit.family === 'beta') {
+    nullFit = refitTerms(ds, spec, result, []);
+    nullRandom = randomParts(nullFit).terms.reduce((a, t) => a + t.variance, 0);
+  }
+  const distribution = distributionVariance(fit, nullFit, nullRandom);
+  const residual = distribution + rnd.dispersion;
+  const total = fixed + randomTotal + residual;
+  const terms = [];
+  const all = orderedTerms(spec);
+  all.forEach((t, i) => {
+    const vars = termVars(t);
+    const needed = all.some((u, j) => j !== i && typeof u === 'object' && u.of && vars.every(v => u.of.includes(v)) && u.of.length > vars.length);
+    if (needed) return;
+    const kept = all.filter((_, j) => j !== i);
+    const red = refitTerms(ds, spec, result, kept);
+    const X = modelMatrix(ds, Object.assign({}, spec, { terms: kept })).X;
+    const f = X.length && X[0].length === red.beta.length ? fixedVariance(X, red.beta) : NaN;
+    terms.push({ term: termLabel(t), fixed: f, delta: (fixed - f) / total });
+  });
+  return {
+    ok: true, why: null, fixed, random: rnd.terms, randomTotal, dispersion: rnd.dispersion, distribution, residual, total,
+    r2m: fixed / total, r2c: (fixed + randomTotal) / total,
+    icc: rnd.terms.length ? randomTotal / (randomTotal + residual) : null,
+    iccUnadjusted: rnd.terms.length ? randomTotal / total : null,
+    terms
+  };
+}
+</script>
 <script type="text/plain" data-module="js/ui/exportrow.js">
 // The export row at the foot of a page: one button per result table the page
 // has computed (a CSV with `#` provenance lines), any files the page adds,
 // and a Print button that prints the page as shown, without the navigation.
 // The row follows the page's results as they change. When the page's result
-// carries `regen: { spec | specs, ds, build, tooBig, uniforms? }`, a second
+// carries `regen: { spec | specs, ds, build, tooBig, uniforms?, capability? }`, a second
 // line offers the scripts that regenerate its results in MATLAB, Base R,
 // Tidy R, and Python, each button live only where that language has a
 // commonly used routine for the model (`io/capability.js`), and the recipe
@@ -15585,7 +16118,7 @@ export function installExportRow(root, pageId, opts = {}) {
     regen.hidden = !rg;
     if (rg) {
       const g = r.regen;
-      const cap = g.specs ? scriptsApi.capabilityAll(g.specs) : scriptsApi.capability(g.spec || state.spec);
+      const cap = g.capability || (g.specs ? scriptsApi.capabilityAll(g.specs) : scriptsApi.capability(g.spec || state.spec));
       const big = typeof g.tooBig === 'function' && g.tooBig();
       regenBtns.innerHTML = Object.entries(scriptsApi.ANALYSIS_WRITERS).map(([k, w]) => {
         const c = cap[k] || { ok: true };
