@@ -8,7 +8,7 @@ import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf, backWord } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
-import { termTests, randomEffectTest, waldTable } from '../stats/inference.js';
+import { termTests, randomEffectTest, waldTable, degenerateFit } from '../stats/inference.js';
 import { residualSet } from '../stats/residuals.js';
 import { shapiroWilk } from '../stats/normality.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
@@ -130,6 +130,8 @@ function compute() {
     if (f === 'aliased') text += ' Dropped: ' + result.design.aliased.join(', ') + '.';
     els.flags.appendChild(notice('warn', esc(text)));
   }
+  const why = degenerateFit(result);
+  if (why && !(result.flags || []).includes('singular')) els.flags.appendChild(notice('warn', esc(why)));
   if (result.design.dropped) els.flags.appendChild(notice('info', esc(plural(result.design.dropped, 'row was', 'rows were') + ' left out for a missing value in a column the model uses; ' + intl(result.design.X.length) + ' rows remain.')));
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
   drawCoefficients(result);

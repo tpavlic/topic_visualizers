@@ -127,3 +127,23 @@ test('effectGrid and binnedMeans', () => {
   const b = binnedMeans([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [0, 0, 1, 0, 1, 1, 1, 0, 1, 1], 2);
   assert.deepEqual(b, [{ x: 3, y: 0.4, n: 5 }, { x: 8, y: 0.8, n: 5 }]);
 });
+
+// A fit with no usable standard errors: a normal model with as many
+// coefficients as distinct rows (dispersion 0/0), and a singular design.
+test('degenerateFit names a saturated normal fit and a singular design', async () => {
+  const { EXAMPLES } = await import('../js/data/examples.js');
+  const { sniff, buildTable } = await import('../js/io/parse.js');
+  const { fitModel } = await import('../js/stats/fit.js');
+  const { degenerateFit } = await import('../js/stats/inference.js');
+  const ex = EXAMPLES.find(e => e.tour === 'chisq');
+  const ds = buildTable(sniff(ex.text, { name: ex.mapping.name }), ex.mapping).dataset;
+  const terms = ['outcome', 'channel', { of: ['outcome', 'channel'] }];
+  const base = { response: 'count', group: null, nested: null, slope: null, olre: false, reml: false, terms };
+  const sat = fitModel(ds, Object.assign({}, base, { family: 'normal', link: 'identity' }));
+  assert.match(degenerateFit(sat), /no residual degrees of freedom/);
+  const pois = fitModel(ds, Object.assign({}, base, { family: 'poisson', link: 'log' }));
+  assert.equal(degenerateFit(pois), null);
+  const nb = fitModel(ds, Object.assign({}, base, { family: 'negbin', link: 'log' }));
+  assert.ok(nb.flags.includes('singular'));
+  assert.match(degenerateFit(nb), /singular/);
+});

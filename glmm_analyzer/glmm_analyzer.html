@@ -8767,7 +8767,7 @@ import { column } from '../data/model.js';
 import { FAMILIES, LINKS } from '../stats/families.js';
 import { residualSet, RESIDUAL_SEED } from '../stats/residuals.js';
 import { shapiroWilk, normalQQ } from '../stats/normality.js';
-import { binnedMeans } from '../stats/inference.js';
+import { binnedMeans, degenerateFit } from '../stats/inference.js';
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, qqPlot, exportButtons, legend, intervals } from '../ui/plots.js';
@@ -8854,6 +8854,13 @@ function compute() {
     return;
   }
   const { ds, result } = cf;
+  const why = degenerateFit(result);
+  if (why) {
+    els.note.appendChild(notice('warn', esc(why)));
+    setSectionAvailable(id, { residuals: 'The fit has no residuals to check.', dispersion: 'The fit has no residuals to check.', random: 'The fit has no residuals to check.' });
+    state.setResult(id, null);
+    return;
+  }
   const fit = result.fit;
   const fam = FAMILIES[fit.family];
   const res = residualSet(result);
@@ -8880,9 +8887,13 @@ function compute() {
   if (sw) els.qq.appendChild(notice(sw.p < 0.05 ? 'warn' : 'ok', sw.p < 0.05
     ? 'The quantile residuals depart from the normal (' + pEq(sw.p) + '): the family or the link does not describe the response’s distribution well, or a predictor enters in a different shape. The plots below say where.'
     : 'The quantile residuals are consistent with a standard normal (' + pEq(sw.p) + '), as a well-fitting model leaves them.'));
-  const q = normalQQ(r);
-  const qf = figBox(els.qq, { height: 300, xLabel: 'Standard normal quantiles', yLabel: 'Quantile residuals', title: 'Normal quantile plot of the quantile residuals' }, ds.name + ' residual qq');
-  qf.fig.render(f => qqPlot(f, q));
+  if (r.length >= 2) {
+    const q = normalQQ(r);
+    const qf = figBox(els.qq, { height: 300, xLabel: 'Standard normal quantiles', yLabel: 'Quantile residuals', title: 'Normal quantile plot of the quantile residuals' }, ds.name + ' residual qq');
+    qf.fig.render(f => qqPlot(f, q));
+  } else {
+    els.qq.appendChild(notice('info', 'Too few finite residuals for a quantile plot.'));
+  }
   tables.push({ name: 'Residual summary', headers: ['statistic', 'value'], rows: [['Shapiro–Wilk W', sw ? sw.W : NaN], ['Shapiro–Wilk p', sw ? sw.p : NaN], ['mean', m], ['sd', Math.sqrt(s2)]] });
 
   // Against the fitted values, and the scale–location plot.
@@ -9858,7 +9869,7 @@ import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, LINKS, familyOf, backWord } from '../stats/families.js';
 import { fitModel, FLAG_TEXT } from '../stats/fit.js';
-import { termTests, randomEffectTest, waldTable } from '../stats/inference.js';
+import { termTests, randomEffectTest, waldTable, degenerateFit } from '../stats/inference.js';
 import { residualSet } from '../stats/residuals.js';
 import { shapiroWilk } from '../stats/normality.js';
 import { formulaOf, termLabel, orderedTerms } from '../stats/design.js';
@@ -9980,6 +9991,8 @@ function compute() {
     if (f === 'aliased') text += ' Dropped: ' + result.design.aliased.join(', ') + '.';
     els.flags.appendChild(notice('warn', esc(text)));
   }
+  const why = degenerateFit(result);
+  if (why && !(result.flags || []).includes('singular')) els.flags.appendChild(notice('warn', esc(why)));
   if (result.design.dropped) els.flags.appendChild(notice('info', esc(plural(result.design.dropped, 'row was', 'rows were') + ' left out for a missing value in a column the model uses; ' + intl(result.design.X.length) + ' rows remain.')));
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
   drawCoefficients(result);
@@ -10181,7 +10194,7 @@ export default { id, title, render, onShow };
 import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
 import { FAMILIES, LINKS, backWord } from '../stats/families.js';
-import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf } from '../stats/inference.js';
+import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerateFit } from '../stats/inference.js';
 import { ordinalProbs } from '../stats/ordinal.js';
 import { newDataMatrix } from '../stats/design.js';
 import { termVars } from '../stats/design.js';
@@ -10285,6 +10298,14 @@ function compute() {
     return;
   }
   const { ds, result } = cf;
+  const why = degenerateFit(result);
+  if (why) {
+    els.note.appendChild(notice('warn', esc(why) + ' Predictions need standard errors for their intervals, and so this page waits for a model that has them.'));
+    els.effect.innerHTML = ''; els.means.innerHTML = ''; els.calc.innerHTML = ''; els.calcInputs.innerHTML = '';
+    setSectionAvailable(id, { effect: 'The fit has no standard errors.', means: 'The fit has no standard errors.', calculator: 'The fit has no standard errors.' });
+    state.setResult(id, null);
+    return;
+  }
   const preds = predictorsOf(ds, result);
   const cats = preds.filter(c => c.type !== 'continuous');
   const off = {};
@@ -12940,6 +12961,24 @@ import { chi2Cdf, normCdf, normInv, tCdf, tQuantile, ptukey, qtukey } from './sp
  * degrees of freedom where the dispersion is estimated, infinite otherwise.
  * @param {object} fit
  */
+/**
+ * Why a fit has no usable standard errors, or null when it has them: no
+ * covariance at all (a singular design), or a covariance that is not finite
+ * (a normal or gamma model with no residual degrees of freedom, whose
+ * dispersion is 0/0).
+ * @param {object} result the fit result
+ * @returns {string|null}
+ */
+export function degenerateFit(result) {
+  const fit = result.fit;
+  const V = fit.vcov;
+  const finite = V && V.every(row => Array.from(row).every(Number.isFinite));
+  if (finite) return null;
+  if ((result.flags || []).includes('singular')) return 'The design is singular at the solution, and so the standard errors are undefined.';
+  if (!(fit.dfResidual > 0)) return 'The model has as many coefficients as the data have distinct rows, and so it fits them exactly, with no residual degrees of freedom: the dispersion and the standard errors are undefined, and there is no residual to examine.';
+  return 'The fit has no finite standard errors.';
+}
+
 export function waldDf(fit) {
   if (fit.mixed) return Infinity;
   return FAMILIES[fit.family].dispersion === 'estimated' ? fit.dfResidual : Infinity;

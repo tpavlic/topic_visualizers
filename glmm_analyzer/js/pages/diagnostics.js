@@ -10,7 +10,7 @@ import { column } from '../data/model.js';
 import { FAMILIES, LINKS } from '../stats/families.js';
 import { residualSet, RESIDUAL_SEED } from '../stats/residuals.js';
 import { shapiroWilk, normalQQ } from '../stats/normality.js';
-import { binnedMeans } from '../stats/inference.js';
+import { binnedMeans, degenerateFit } from '../stats/inference.js';
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, qqPlot, exportButtons, legend, intervals } from '../ui/plots.js';
@@ -97,6 +97,13 @@ function compute() {
     return;
   }
   const { ds, result } = cf;
+  const why = degenerateFit(result);
+  if (why) {
+    els.note.appendChild(notice('warn', esc(why)));
+    setSectionAvailable(id, { residuals: 'The fit has no residuals to check.', dispersion: 'The fit has no residuals to check.', random: 'The fit has no residuals to check.' });
+    state.setResult(id, null);
+    return;
+  }
   const fit = result.fit;
   const fam = FAMILIES[fit.family];
   const res = residualSet(result);
@@ -123,9 +130,13 @@ function compute() {
   if (sw) els.qq.appendChild(notice(sw.p < 0.05 ? 'warn' : 'ok', sw.p < 0.05
     ? 'The quantile residuals depart from the normal (' + pEq(sw.p) + '): the family or the link does not describe the response’s distribution well, or a predictor enters in a different shape. The plots below say where.'
     : 'The quantile residuals are consistent with a standard normal (' + pEq(sw.p) + '), as a well-fitting model leaves them.'));
-  const q = normalQQ(r);
-  const qf = figBox(els.qq, { height: 300, xLabel: 'Standard normal quantiles', yLabel: 'Quantile residuals', title: 'Normal quantile plot of the quantile residuals' }, ds.name + ' residual qq');
-  qf.fig.render(f => qqPlot(f, q));
+  if (r.length >= 2) {
+    const q = normalQQ(r);
+    const qf = figBox(els.qq, { height: 300, xLabel: 'Standard normal quantiles', yLabel: 'Quantile residuals', title: 'Normal quantile plot of the quantile residuals' }, ds.name + ' residual qq');
+    qf.fig.render(f => qqPlot(f, q));
+  } else {
+    els.qq.appendChild(notice('info', 'Too few finite residuals for a quantile plot.'));
+  }
   tables.push({ name: 'Residual summary', headers: ['statistic', 'value'], rows: [['Shapiro–Wilk W', sw ? sw.W : NaN], ['Shapiro–Wilk p', sw ? sw.p : NaN], ['mean', m], ['sd', Math.sqrt(s2)]] });
 
   // Against the fitted values, and the scale–location plot.

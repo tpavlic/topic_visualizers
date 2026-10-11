@@ -17,6 +17,24 @@ import { chi2Cdf, normCdf, normInv, tCdf, tQuantile, ptukey, qtukey } from './sp
  * degrees of freedom where the dispersion is estimated, infinite otherwise.
  * @param {object} fit
  */
+/**
+ * Why a fit has no usable standard errors, or null when it has them: no
+ * covariance at all (a singular design), or a covariance that is not finite
+ * (a normal or gamma model with no residual degrees of freedom, whose
+ * dispersion is 0/0).
+ * @param {object} result the fit result
+ * @returns {string|null}
+ */
+export function degenerateFit(result) {
+  const fit = result.fit;
+  const V = fit.vcov;
+  const finite = V && V.every(row => Array.from(row).every(Number.isFinite));
+  if (finite) return null;
+  if ((result.flags || []).includes('singular')) return 'The design is singular at the solution, and so the standard errors are undefined.';
+  if (!(fit.dfResidual > 0)) return 'The model has as many coefficients as the data have distinct rows, and so it fits them exactly, with no residual degrees of freedom: the dispersion and the standard errors are undefined, and there is no residual to examine.';
+  return 'The fit has no finite standard errors.';
+}
+
 export function waldDf(fit) {
   if (fit.mixed) return Infinity;
   return FAMILIES[fit.family].dispersion === 'estimated' ? fit.dfResidual : Infinity;

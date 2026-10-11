@@ -6,7 +6,7 @@
 import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
 import { FAMILIES, LINKS, backWord } from '../stats/families.js';
-import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf } from '../stats/inference.js';
+import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerateFit } from '../stats/inference.js';
 import { ordinalProbs } from '../stats/ordinal.js';
 import { newDataMatrix } from '../stats/design.js';
 import { termVars } from '../stats/design.js';
@@ -110,6 +110,14 @@ function compute() {
     return;
   }
   const { ds, result } = cf;
+  const why = degenerateFit(result);
+  if (why) {
+    els.note.appendChild(notice('warn', esc(why) + ' Predictions need standard errors for their intervals, and so this page waits for a model that has them.'));
+    els.effect.innerHTML = ''; els.means.innerHTML = ''; els.calc.innerHTML = ''; els.calcInputs.innerHTML = '';
+    setSectionAvailable(id, { effect: 'The fit has no standard errors.', means: 'The fit has no standard errors.', calculator: 'The fit has no standard errors.' });
+    state.setResult(id, null);
+    return;
+  }
   const preds = predictorsOf(ds, result);
   const cats = preds.filter(c => c.type !== 'continuous');
   const off = {};
