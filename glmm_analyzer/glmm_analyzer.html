@@ -419,7 +419,7 @@ details.why.issues .why-body { padding-left: 11px; }
 .scroll-rail-thumb:active { cursor: grabbing; background: var(--accent); }
 /* The first column stays in view while the rest scrolls, so a row keeps its name; a row
    continuing a spanned label has a value there and is left to scroll. */
-.ptab th:first-child, .ptab td:first-child { position: sticky; left: 0; background: var(--card); z-index: 1; }
+.ptab th:first-child, .ptab td:first-child { position: sticky; left: 0; background: var(--card); z-index: 1; box-shadow: -4px 0 0 var(--card); }
 .ptab th:first-child { z-index: 2; }
 .ptab tr.tm-cont td:first-child { position: static; }
 /* A shaded edge says more lies past it (ui/scrollhint.js marks the edges). */
