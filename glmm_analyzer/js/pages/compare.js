@@ -85,13 +85,16 @@ function compute() {
   const fitted = rows.filter(r => r.result);
   const minAic = Math.min(...fitted.map(r => r.result.fit.aic));
   fitted.sort((a, b) => a.result.fit.aic - b.result.fit.aic);
-  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Model</th><th>Dataset</th><th>Formula</th><th>Family, link</th><th>k</th><th>log-likelihood</th><th>AIC</th><th>ΔAIC</th><th>BIC</th><th class="no-print"></th></tr></thead><tbody>';
+  // Akaike weights: each candidate's share of exp(−ΔAIC/2) over the set.
+  const wsum = fitted.reduce((a, r) => a + Math.exp(-(r.result.fit.aic - minAic) / 2), 0);
+  const weightOf = r => Math.exp(-(r.result.fit.aic - minAic) / 2) / wsum;
+  let html = '<div class="scroll-box"><table class="ptab"><thead><tr><th>Model</th><th>Dataset</th><th>Formula</th><th>Family, link</th><th>k</th><th>log-likelihood</th><th>AIC</th><th>ΔAIC</th><th>Akaike weight</th><th>BIC</th><th class="no-print"></th></tr></thead><tbody>';
   const tableRows = [];
   for (const r of fitted) {
     const f = r.result.fit;
-    html += '<tr><td>' + esc(r.model.name) + '</td><td>' + esc(r.ds.name) + '</td><td><code>' + esc(formulaOf(r.spec)) + '</code></td><td>' + esc(FAMILIES[f.family].label + ', ' + LINKS[r.result.link].label) + '</td><td>' + intl(f.df) + '</td><td>' + stat(f.logLik, 5) + '</td><td>' + stat(f.aic, 5) + '</td><td>' + stat(f.aic - minAic, 4) + '</td><td>' + stat(f.bic, 5) + '</td>' +
+    html += '<tr><td>' + esc(r.model.name) + '</td><td>' + esc(r.ds.name) + '</td><td><code>' + esc(formulaOf(r.spec)) + '</code></td><td>' + esc(FAMILIES[f.family].label + ', ' + LINKS[r.result.link].label) + '</td><td>' + intl(f.df) + '</td><td>' + stat(f.logLik, 5) + '</td><td>' + stat(f.aic, 5) + '</td><td>' + stat(f.aic - minAic, 4) + '</td><td>' + stat(weightOf(r), 3) + '</td><td>' + stat(f.bic, 5) + '</td>' +
       '<td class="no-print"><button type="button" class="btn-clear cp-use" data-id="' + esc(r.model.id) + '">Open</button> <button type="button" class="btn-clear cp-drop" data-id="' + esc(r.model.id) + '">Drop</button></td></tr>';
-    tableRows.push([r.model.name, r.ds.name, formulaOf(r.spec), FAMILIES[f.family].label + ', ' + LINKS[r.result.link].label, f.df, f.logLik, f.aic, f.aic - minAic, f.bic]);
+    tableRows.push([r.model.name, r.ds.name, formulaOf(r.spec), FAMILIES[f.family].label + ', ' + LINKS[r.result.link].label, f.df, f.logLik, f.aic, f.aic - minAic, weightOf(r), f.bic]);
   }
   for (const r of rows.filter(x => !x.result)) {
     html += '<tr><td>' + esc(r.model.name) + '</td><td>' + esc(r.ds.name) + '</td><td><code>' + esc(formulaOf(r.spec)) + '</code></td><td colspan="5" class="muted-line">could not be fitted: ' + esc(r.error) + '</td><td class="no-print"><button type="button" class="btn-clear cp-drop" data-id="' + esc(r.model.id) + '">Drop</button></td></tr>';
@@ -106,6 +109,7 @@ function compute() {
   for (const n of notes) els.table.appendChild(notice('warn', esc(n)));
   els.table.appendChild(details('What the criteria measure',
     '<p>AIC is −2 log-likelihood + 2k, and BIC is −2 log-likelihood + k log n, for k estimated parameters. AIC adds 2 for every parameter, and BIC adds log n; a term stays only if it raises the log-likelihood by more than that. BIC’s addition grows with the sample, and so it prefers smaller models in large samples. Neither says the best model is a good one; the Diagnostics page says that.</p>' +
+    '<p>The Akaike weight is each candidate’s share of exp(−ΔAIC/2) over the candidates listed: the relative support for it as the best of this set, with the weights adding to 1. A weight is read against the other candidates only, and it says nothing about a model that was not kept.</p>' +
     '<p>A likelihood-ratio test asks whether the extra terms of the larger model improve the fit by more than chance would: twice the difference in log-likelihood, against a chi-square with the extra parameters as its degrees of freedom. It applies only where one model nests inside the other.</p>'));
   const pairRows = [];
   let ph = '';
@@ -149,7 +153,7 @@ function compute() {
     provenance,
     regen,
     tables: [
-      { name: 'Candidate models', headers: ['model', 'dataset', 'formula', 'family_link', 'k', 'log_likelihood', 'AIC', 'delta_AIC', 'BIC'], rows: tableRows }
+      { name: 'Candidate models', headers: ['model', 'dataset', 'formula', 'family_link', 'k', 'log_likelihood', 'AIC', 'delta_AIC', 'akaike_weight', 'BIC'], rows: tableRows }
     ].concat(pairRows.length ? [{ name: 'Likelihood-ratio tests', headers: ['smaller', 'larger', 'adds', 'df', 'chi_square', 'p'], rows: pairRows }] : [])
   });
   registerTips(rootEl);

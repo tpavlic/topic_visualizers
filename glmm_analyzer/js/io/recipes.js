@@ -322,6 +322,9 @@ export function compareRecipe(o) {
   });
   const e = r.expect;
   o.candidates.forEach(c => { e['loglik ' + c.name] = c.result.fit.logLik; e['k ' + c.name] = c.result.fit.df; e['AIC ' + c.name] = c.result.fit.aic; e['BIC ' + c.name] = c.result.fit.bic; });
+  const minAic = Math.min(...o.candidates.map(c => c.result.fit.aic));
+  const wsum = o.candidates.reduce((a, c) => a + Math.exp(-(c.result.fit.aic - minAic) / 2), 0);
+  o.candidates.forEach(c => { e['weight ' + c.name] = Math.exp(-(c.result.fit.aic - minAic) / 2) / wsum; });
   r.pairs = o.pairs.map(p => ({ a: p.a, b: p.b, kind: p.kind, df: p.df }));
   o.pairs.forEach(p => { e['LRT ' + p.a + ' vs ' + p.b] = p.stat; e['LRT p ' + p.a + ' vs ' + p.b] = p.p; });
   return r;

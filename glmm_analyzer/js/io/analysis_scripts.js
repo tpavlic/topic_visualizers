@@ -786,6 +786,13 @@ function compareBody(r, L) {
     out.push(rep(L, r, 'loglik ' + cand.name, 'fit_loglik(' + v + ')'), rep(L, r, 'k ' + cand.name, 'fit_k(' + v + ')'));
     out.push(rep(L, r, 'AIC ' + cand.name, '-2 * fit_loglik(' + v + ') + 2 * fit_k(' + v + ')'), rep(L, r, 'BIC ' + cand.name, '-2 * fit_loglik(' + v + ') + fit_k(' + v + ') * ' + (L.lang === 'py' ? 'np.log(len(d))' : L.lang === 'm' ? 'log(height(tbl))' : 'log(nrow(d))')));
   });
+  out.push(L.sect('Akaike weights'));
+  out.push(c + 'Each candidate\'s share of exp(-dAIC/2) over the set.');
+  const aicOf = v => '-2 * fit_loglik(' + v + ') + 2 * fit_k(' + v + ')';
+  out.push(L.assign('aics', L.lang === 'py' ? 'np.array([' + fits.map(aicOf).join(', ') + '])' : L.lang === 'm' ? '[' + fits.map(aicOf).join(', ') + ']' : 'c(' + fits.map(aicOf).join(', ') + ')'));
+  out.push(L.assign('wts', L.lang === 'py' ? 'np.exp(-(aics - aics.min()) / 2)' : 'exp(-(aics - min(aics)) / 2)'));
+  out.push(L.assign('wts', 'wts / sum(wts)'));
+  r.candidates.forEach((cand, i) => out.push(rep(L, r, 'weight ' + cand.name, L.lang === 'py' ? 'wts[' + i + ']' : L.lang === 'm' ? 'wts(' + (i + 1) + ')' : 'wts[' + (i + 1) + ']')));
   if (r.pairs.length) {
     out.push(L.sect('Likelihood-ratio tests'));
     for (const p of r.pairs) {
