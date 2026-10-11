@@ -10135,14 +10135,16 @@ export function render(root) {
 /** Called each time the page is shown. */
 export function onShow() { schedule(); }
 
-// The name a kept model gets unless the reader types one: the dataset, the
-// formula, and the family, with the link where it is not the family's own.
+// The name a kept model gets unless the reader types one: the formula, and
+// the family and link only where a kept candidate already has that formula
+// under another family or link, so that the two can be told apart.
 function defaultName() {
   const s = state.spec;
-  const ds = state.get(s.dataset);
+  const f = formulaOf(s);
   const fam = FAMILIES[s.family] || FAMILIES.normal;
   const link = linkOf(s.family, s.link);
-  return (ds ? ds.name + ' · ' : '') + formulaOf(s) + ' · ' + fam.label + (link.id === fam.defaultLink ? '' : ', ' + link.label + ' link');
+  const clash = state.models.some(m => formulaOf(m.spec) === f && (m.spec.family !== s.family || linkOf(m.spec.family, m.spec.link).id !== link.id));
+  return clash ? f + ' · ' + fam.label + (link.id === fam.defaultLink ? '' : ', ' + link.label + ' link') : f;
 }
 // Whether the reader has typed a name of their own; until they do, the box
 // follows the model.
