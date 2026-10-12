@@ -1765,6 +1765,134 @@ poor,3.29,no
 `
   },
   {
+    id: "tour-twoway",
+    title: "Temperature and catalyst (for two-way ANOVA)",
+    file: "tour_twoway.csv",
+    description: "The yield of six runs in each of the six combinations of a temperature (low, high) and a catalyst (A, B, C).",
+    mapping: {"name":"Temperature and catalyst","response":"yield","columns":{"yield":{"role":"response","type":"continuous"},"temperature":{"role":"predictor","type":"categorical"},"catalyst":{"role":"predictor","type":"categorical"}}},
+    tour: "twoway",
+    text: `yield,temperature,catalyst
+71,low,A
+72.4,low,A
+67.9,low,A
+66.7,low,A
+71.7,low,A
+71.7,low,A
+73.5,low,B
+73,low,B
+82.6,low,B
+71.9,low,B
+66.5,low,B
+77.2,low,B
+74.6,low,C
+66.6,low,C
+65.6,low,C
+68,low,C
+70.7,low,C
+71.7,low,C
+74.1,high,A
+78.7,high,A
+74.7,high,A
+75,high,A
+76.5,high,A
+78.9,high,A
+84.3,high,B
+80.8,high,B
+71.5,high,B
+78.9,high,B
+76.5,high,B
+80.3,high,B
+85.1,high,C
+84.9,high,C
+84.9,high,C
+86.5,high,C
+85.1,high,C
+84.1,high,C
+`
+  },
+  {
+    id: "tour-regression",
+    title: "Delivery time against distance (for correlation and regression)",
+    file: "tour_regression.csv",
+    description: "The delivery time of thirty orders against the distance driven.",
+    mapping: {"name":"Time against distance","response":"delivery_time","columns":{"delivery_time":{"role":"response","type":"continuous"},"distance":{"role":"predictor","type":"continuous"}}},
+    tour: "regression",
+    text: `delivery_time,distance
+29.5,5.4
+23.6,9.7
+14,2.5
+11.8,1.8
+19.1,1.6
+24,3
+19.1,4.3
+46.8,11.8
+14.5,1.2
+16.7,2.8
+38.8,10.5
+29.2,8.1
+14.7,3
+35.3,10.5
+32.1,10
+15.6,3.1
+40.2,9
+24.5,3.2
+25.1,6.2
+24.1,6.5
+24.7,4.9
+39.2,11.6
+26.1,7.6
+15.3,1.6
+24.9,3.9
+26.2,9.7
+36.3,10.6
+37.9,11.4
+20,3.1
+30.8,6.3
+`
+  },
+  {
+    id: "tour-ancova",
+    title: "Two machines and the job size (for ANCOVA)",
+    file: "tour_ancova.csv",
+    description: "The processing time of sixteen jobs on each of two machines, against the size of the job.",
+    mapping: {"name":"Two machines","response":"time","columns":{"time":{"role":"response","type":"continuous"},"machine":{"role":"predictor","type":"categorical"},"size":{"role":"predictor","type":"continuous"}}},
+    tour: "ancova",
+    text: `time,machine,size
+10.54,old,7.6
+17.19,old,14.4
+20.73,old,19.3
+14.34,old,11.2
+13.23,old,10.4
+12.97,old,7.2
+17.68,old,16.1
+17.93,old,17.4
+10.75,old,8
+9.66,old,5.8
+14.82,old,13.3
+15.21,old,12.8
+9.08,old,5.6
+14.29,old,12.2
+11.29,old,10.1
+15.78,old,10.4
+15.23,new,14.7
+10.07,new,9.1
+12.02,new,13.9
+9.61,new,9.2
+11.73,new,9.1
+8.54,new,6.2
+4.65,new,4.4
+8.98,new,5.8
+6.57,new,8
+5.54,new,5.4
+15.44,new,14.6
+8.44,new,8
+15.07,new,14.9
+11.06,new,7.7
+13.19,new,14.5
+12.06,new,12.7
+`
+  },
+  {
     id: "tour-paired",
     title: "Before and after (for the paired t test)",
     file: "tour_paired.csv",
@@ -2026,6 +2154,22 @@ poor,3.29,no
 9,early,phone
 31,on_time,phone
 35,late,phone
+`
+  },
+  {
+    id: "tour-gof",
+    title: "Breakdowns by weekday (for the chi-square goodness-of-fit test)",
+    file: "tour_gof.csv",
+    description: "The count of machine breakdowns on each of the six working days of the week over a quarter.",
+    mapping: {"name":"Breakdowns by weekday","response":"count","columns":{"count":{"role":"response","type":"continuous"},"weekday":{"role":"predictor","type":"categorical"}}},
+    tour: "gof",
+    text: `count,weekday
+16,Mon
+9,Tue
+12,Wed
+10,Thu
+26,Fri
+8,Sat
 `
   },
   {

@@ -2617,6 +2617,134 @@ poor,3.29,no
 `
   },
   {
+    id: "tour-twoway",
+    title: "Temperature and catalyst (for two-way ANOVA)",
+    file: "tour_twoway.csv",
+    description: "The yield of six runs in each of the six combinations of a temperature (low, high) and a catalyst (A, B, C).",
+    mapping: {"name":"Temperature and catalyst","response":"yield","columns":{"yield":{"role":"response","type":"continuous"},"temperature":{"role":"predictor","type":"categorical"},"catalyst":{"role":"predictor","type":"categorical"}}},
+    tour: "twoway",
+    text: `yield,temperature,catalyst
+71,low,A
+72.4,low,A
+67.9,low,A
+66.7,low,A
+71.7,low,A
+71.7,low,A
+73.5,low,B
+73,low,B
+82.6,low,B
+71.9,low,B
+66.5,low,B
+77.2,low,B
+74.6,low,C
+66.6,low,C
+65.6,low,C
+68,low,C
+70.7,low,C
+71.7,low,C
+74.1,high,A
+78.7,high,A
+74.7,high,A
+75,high,A
+76.5,high,A
+78.9,high,A
+84.3,high,B
+80.8,high,B
+71.5,high,B
+78.9,high,B
+76.5,high,B
+80.3,high,B
+85.1,high,C
+84.9,high,C
+84.9,high,C
+86.5,high,C
+85.1,high,C
+84.1,high,C
+`
+  },
+  {
+    id: "tour-regression",
+    title: "Delivery time against distance (for correlation and regression)",
+    file: "tour_regression.csv",
+    description: "The delivery time of thirty orders against the distance driven.",
+    mapping: {"name":"Time against distance","response":"delivery_time","columns":{"delivery_time":{"role":"response","type":"continuous"},"distance":{"role":"predictor","type":"continuous"}}},
+    tour: "regression",
+    text: `delivery_time,distance
+29.5,5.4
+23.6,9.7
+14,2.5
+11.8,1.8
+19.1,1.6
+24,3
+19.1,4.3
+46.8,11.8
+14.5,1.2
+16.7,2.8
+38.8,10.5
+29.2,8.1
+14.7,3
+35.3,10.5
+32.1,10
+15.6,3.1
+40.2,9
+24.5,3.2
+25.1,6.2
+24.1,6.5
+24.7,4.9
+39.2,11.6
+26.1,7.6
+15.3,1.6
+24.9,3.9
+26.2,9.7
+36.3,10.6
+37.9,11.4
+20,3.1
+30.8,6.3
+`
+  },
+  {
+    id: "tour-ancova",
+    title: "Two machines and the job size (for ANCOVA)",
+    file: "tour_ancova.csv",
+    description: "The processing time of sixteen jobs on each of two machines, against the size of the job.",
+    mapping: {"name":"Two machines","response":"time","columns":{"time":{"role":"response","type":"continuous"},"machine":{"role":"predictor","type":"categorical"},"size":{"role":"predictor","type":"continuous"}}},
+    tour: "ancova",
+    text: `time,machine,size
+10.54,old,7.6
+17.19,old,14.4
+20.73,old,19.3
+14.34,old,11.2
+13.23,old,10.4
+12.97,old,7.2
+17.68,old,16.1
+17.93,old,17.4
+10.75,old,8
+9.66,old,5.8
+14.82,old,13.3
+15.21,old,12.8
+9.08,old,5.6
+14.29,old,12.2
+11.29,old,10.1
+15.78,old,10.4
+15.23,new,14.7
+10.07,new,9.1
+12.02,new,13.9
+9.61,new,9.2
+11.73,new,9.1
+8.54,new,6.2
+4.65,new,4.4
+8.98,new,5.8
+6.57,new,8
+5.54,new,5.4
+15.44,new,14.6
+8.44,new,8
+15.07,new,14.9
+11.06,new,7.7
+13.19,new,14.5
+12.06,new,12.7
+`
+  },
+  {
     id: "tour-paired",
     title: "Before and after (for the paired t test)",
     file: "tour_paired.csv",
@@ -2878,6 +3006,22 @@ poor,3.29,no
 9,early,phone
 31,on_time,phone
 35,late,phone
+`
+  },
+  {
+    id: "tour-gof",
+    title: "Breakdowns by weekday (for the chi-square goodness-of-fit test)",
+    file: "tour_gof.csv",
+    description: "The count of machine breakdowns on each of the six working days of the week over a quarter.",
+    mapping: {"name":"Breakdowns by weekday","response":"count","columns":{"count":{"role":"response","type":"continuous"},"weekday":{"role":"predictor","type":"categorical"}}},
+    tour: "gof",
+    text: `count,weekday
+16,Mon
+9,Tue
+12,Wed
+10,Thu
+26,Fri
+8,Sat
 `
   },
   {
@@ -10898,7 +11042,7 @@ const GROUPS = [
     'K. P. Burnham and D. R. Anderson, <i>Model Selection and Multimodel Inference</i>, 2nd ed. (Springer, 2002): comparing a set of candidate models by information criteria rather than searching for one.'
   ]],
   ['Classic tests as GLMM', [
-    'J. K. Lindeløv, “Common statistical tests are linear models (or: how to teach stats),” online (2019): the correspondence between the classical tests and the linear models this page draws.',
+    'J. K. Lindeløv, “Common statistical tests are linear models (or: how to teach stats),” online (2019), <a href="https://lindeloev.github.io/tests-as-linear/" target="_blank" rel="noopener">lindeloev.github.io/tests-as-linear</a>: the correspondence between the classical tests and the linear models this page draws, with the rank-transformed approximations to the nonparametric tests that this page leaves out.',
     'A. Agresti, <i>Categorical Data Analysis</i>, 3rd ed. (Wiley, 2013): the log-linear model behind the chi-square test of independence and the logistic model behind the comparison of two proportions.'
   ]]
 ];
@@ -11196,7 +11340,7 @@ export function onShow() { refresh(); }
 export default { id, title, render, onShow };
 </script>
 <script type="text/plain" data-module="js/pages/tests.js">
-// The Classic tests as GLMM page: seven classical tests beside the models
+// The Classic tests as GLMM page: eleven classical tests beside the models
 // that contain them, each on a bundled dataset, with the matching numbers
 // side by side and one paragraph on what matches and what does not.
 
@@ -11205,8 +11349,8 @@ import { EXAMPLES } from '../data/examples.js';
 import { sniff, buildTable } from '../io/parse.js';
 import { column, sameData } from '../data/model.js';
 import { fitModel } from '../stats/fit.js';
-import { termTests, randomEffectTest, waldP } from '../stats/inference.js';
-import { oneSampleT, twoSampleT, onewayAnova, pairedT, chiSquareIndependence, twoProportions } from '../stats/classical.js';
+import { termTests, randomEffectTest, waldP, refitTerms } from '../stats/inference.js';
+import { oneSampleT, twoSampleT, onewayAnova, twowayAnova, correlation, ancova, pairedT, chiSquareIndependence, chiSquareGoodnessOfFit, twoProportions } from '../stats/classical.js';
 import { fCdf, chi2Cdf } from '../stats/special.js';
 import { card, cardRow, notice, term, WALD_TIP } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
@@ -11224,9 +11368,13 @@ export const sections = [
   { id: 'one', label: 'One-sample t test', tip: 'A normal model with no predictor.' },
   { id: 't', label: 'Two-sample t test', tip: 'A normal model with one binary predictor.' },
   { id: 'anova', label: 'One-way ANOVA', tip: 'A normal model with one categorical predictor.' },
+  { id: 'twoway', label: 'Two-way ANOVA', tip: 'A normal model with two categorical predictors and their interaction.' },
+  { id: 'regression', label: 'Correlation and simple regression', tip: 'A normal model with one continuous predictor.' },
+  { id: 'ancova', label: 'ANCOVA', tip: 'A normal model with one categorical and one continuous predictor.' },
   { id: 'paired', label: 'Paired t test', tip: 'A normal mixed model with the subject as the group.' },
   { id: 'repeated', label: 'Repeated measures', tip: 'A normal mixed model with no predictor and the day as the group.' },
   { id: 'chisq', label: 'Chi-square test of independence', tip: 'Two Poisson models of the counts, with and without the interaction.' },
+  { id: 'gof', label: 'Chi-square goodness-of-fit test', tip: 'Two Poisson models of the counts, with and without the category.' },
   { id: 'proportion', label: 'Two-proportion z test', tip: 'A logistic model with one binary predictor.' }
 ];
 
@@ -11367,6 +11515,136 @@ function sectionAnova(root) {
   root.appendChild(loadButton('anova', spec));
 }
 
+function sectionTwoway(root) {
+  const { ds } = tourDataset('twoway');
+  const spec = { response: 'yield', family: 'normal', link: 'identity', terms: ['temperature', 'catalyst', { of: ['temperature', 'catalyst'] }], group: null, nested: null, slope: null, olre: false, reml: false };
+  const r = fitModel(ds, spec);
+  const ti = column(ds, 'temperature'), ci = column(ds, 'catalyst');
+  const tw = twowayAnova(ds.rows.map(x => x[0]), ds.rows.map(x => x[ti.index]), ds.rows.map(x => x[ci.index]));
+  const fit = r.fit;
+  // The sequential deviances: the temperature alone, both main effects, and the full model.
+  const dA = refitTerms(ds, spec, r, ['temperature']).deviance;
+  const dAB = refitTerms(ds, spec, r, ['temperature', 'catalyst']).deviance;
+  const ss = [fit.nullDeviance - dA, dA - dAB, dAB - fit.deviance];
+  const names = ['temperature', 'catalyst', 'temperature:catalyst'];
+  const F = ss.map((v, i) => (v / tw.rows[i].df) / (fit.deviance / fit.dfResidual));
+  const tt = termTests(ds, spec, r);
+  const ia = tt.rows.find(x => x.term.includes(':'));
+  root.innerHTML = modelBlock(spec, 'The yield of six runs in each of the six combinations of a temperature (low, high) and a catalyst (A, B, C): a balanced 2 × 3 layout.', 'Two-way analysis of variance with interaction.') +
+    '<p class="exp-note">Two-way ANOVA can be realized as the GLMM above, a normal model with two factors and their interaction. The interaction term is the one that one-way ANOVA has no room for: it asks whether the gain from the high temperature is the same under every catalyst. On a balanced layout, each term’s sum of squares is the drop in deviance when it enters the model, in any order, and the three F ratios divide those drops by the residual mean square. On an unbalanced layout, the order matters, and the sequential, partial, and marginal sums of squares part ways; the Model page’s term tests are the partial kind, each term dropped from a model that keeps every other term it is not part of.</p>' +
+    chunk('The sums of squares come from the GLMM’s deviances as each term enters: the null deviance less the deviance with the temperature alone, the further drop when the catalyst enters, and the further drop when the interaction enters.', [
+      pairSpan('Sum of squares', names.map((nm, i) => [nm, stat(tw.rows[i].ss, 5), stat(ss[i], 5)]), 'drops in deviance'),
+      pair('Residual sum of squares', stat(tw.ssResidual, 5), stat(fit.deviance, 5), 'the deviance')
+    ]) +
+    chunk('Each F ratio and its p-value are the test’s, each term’s mean square over the one residual mean square.', [
+      pairSpan('F', names.map((nm, i) => [nm, stat(tw.rows[i].F, 5), stat(F[i], 5)]), 'the GLMM matches the test'),
+      pair('Degrees of freedom', tw.rows.map(x => intl(x.df)).join(', ') + ' against ' + intl(tw.dfResidual), tw.rows.map(x => intl(x.df)).join(', ') + ' against ' + intl(fit.dfResidual), 'each term, against the residual'),
+      pairSpan('p', names.map((nm, i) => [nm, pValue(tw.rows[i].p), pValue(1 - fCdf(F[i], tw.rows[i].df, fit.dfResidual))]), 'the GLMM matches the test')
+    ]) +
+    chunk('The Model page tests the interaction by a likelihood ratio instead, which agrees with the F test in large samples and is close here. While the interaction is in the model, it tests no main effect: a main effect cannot be dropped from a model that keeps its interaction.', [
+      pair('Likelihood-ratio test of temperature:catalyst', '–', stat(ia.stat, 4) + ' on ' + intl(ia.df) + ' df, ' + pEq(ia.p), 'the Model page’s term test')
+    ]);
+  root.appendChild(loadButton('twoway', spec));
+}
+
+function sectionRegression(root) {
+  const { ds } = tourDataset('regression');
+  const spec = { response: 'delivery_time', family: 'normal', link: 'identity', terms: ['distance'], group: null, nested: null, slope: null, olre: false, reml: false };
+  const r = fitModel(ds, spec);
+  const xi = column(ds, 'distance');
+  const c = correlation(ds.rows.map(x => x[xi.index]), ds.rows.map(x => x[0]));
+  const fit = r.fit;
+  const se1 = Math.sqrt(fit.vcov[1][1]), tm = fit.beta[1] / se1, pm = waldP(tm, fit.dfResidual);
+  const r2 = 1 - fit.deviance / fit.nullDeviance;
+  root.innerHTML = modelBlock(spec, 'The delivery time of thirty orders against the distance driven.', 'Pearson’s correlation and its t test, with the least-squares line.') +
+    '<p class="exp-note">Pearson’s correlation can be realized as the GLMM above, a normal model with one continuous predictor, which is simple linear regression. The GLMM’s coefficient is the least-squares slope, and r is that slope rescaled by the ratio of the two standard deviations, and so the test of r against 0 and the test of the slope against 0 are one test. When the predictor or the response is ordinal, it can make more sense to measure the correlation between the ranks than between the values themselves. That is Spearman’s correlation: Pearson’s r on the ranks, and so the same model fitted to the ranked columns.</p>' +
+    chunk('The GLMM’s two coefficients are the line’s intercept and slope. Its r² is the share of the null deviance the line removes, and r is the square root with the slope’s sign.', [
+      pair('Slope', stat(c.slope, 5), stat(fit.beta[1], 5), 'the coefficient of distance'),
+      pair('Intercept', stat(c.intercept, 5), stat(fit.beta[0], 5), 'the intercept'),
+      pair('Correlation r', stat(c.r, 5), stat(Math.sign(fit.beta[1]) * Math.sqrt(r2), 5), '±√(1 − deviance/null deviance)')
+    ]) +
+    chunk('The t test of r on n − 2 degrees of freedom is the ' + term('Wald t test', WALD_TIP) + ' of the slope on the residual degrees of freedom, number for number.', [
+      pair('Standard error of the slope', stat(c.seSlope, 5), stat(se1, 5), ''),
+      pair('t', stat(c.t, 5), stat(tm, 5), 'the GLMM matches the test'),
+      pair('Degrees of freedom', intl(c.df), intl(fit.dfResidual), 'the GLMM matches the test'),
+      pair('p', pValue(c.p), pValue(pm), 'the GLMM matches the test')
+    ]);
+  root.appendChild(loadButton('regression', spec));
+}
+
+function sectionAncova(root) {
+  const { ds } = tourDataset('ancova');
+  const spec = { response: 'time', family: 'normal', link: 'identity', terms: ['size', 'machine'], group: null, nested: null, slope: null, olre: false, reml: false };
+  const r = fitModel(ds, spec);
+  const mi = column(ds, 'machine'), si = column(ds, 'size');
+  const y = ds.rows.map(x => x[0]), g = ds.rows.map(x => x[mi.index]), x = ds.rows.map(v => v[si.index]);
+  const a = ancova(y, g, x);
+  const iNew = a.levels.indexOf('new'), iOld = a.levels.indexOf('old');
+  const naive = twoSampleT(y.filter((_, i) => g[i] === 'new'), y.filter((_, i) => g[i] === 'old'));
+  const fit = r.fit;
+  // The coefficient of the machine, read as new − old whichever level is the reference.
+  const km = r.names.findIndex(nm => nm.startsWith('machine')), ks = r.names.indexOf('size');
+  const sign = r.names[km] === 'machinenew' ? 1 : -1;
+  const est = sign * fit.beta[km], se = Math.sqrt(fit.vcov[km][km]), tm = est / se;
+  const reduced = refitTerms(ds, spec, r, ['size']);
+  const ssM = reduced.deviance - fit.deviance;
+  const F = ssM / (fit.deviance / fit.dfResidual);
+  const tt = termTests(ds, spec, r);
+  const row = tt.rows.find(v => v.term === 'machine');
+  root.innerHTML = modelBlock(spec, 'The processing time of sixteen jobs on each of two machines (old, new), against the size of the job.', 'Analysis of covariance: the machines compared at a common job size.') +
+    '<p class="exp-note">Analysis of covariance can be realized as the GLMM above, a normal model with one factor (the machine) and one continuous covariate (the size of the job). The new machine was given the smaller jobs, and so the plain difference of the two mean times overstates its advantage. ANCOVA fits one slope on the size within each machine and compares the machines at a common size. The GLMM’s coefficient for the size is that pooled within-machine slope, and its coefficient for the machine is the adjusted difference, the gap between the two parallel lines.</p>' +
+    chunk('The unadjusted difference is the two-sample comparison of the means, which the covariate corrects.', [
+      pair('Unadjusted difference, new − old', stat(naive.diff, 5), '–', 'the difference of the two mean times'),
+      pair('Common slope on size', stat(a.slope, 5), stat(fit.beta[ks], 5), 'the coefficient of size'),
+      pair('Adjusted difference, new − old', stat(a.adjustedMeans[iNew] - a.adjustedMeans[iOld], 5), stat(est, 5), 'the coefficient of the machine')
+    ]) +
+    chunk('The F test of the machine adjusted for the size compares the model with both terms to the model with the size alone: the drop in deviance over the residual mean square, on 1 and n − 3 degrees of freedom. With one degree of freedom, that F is the square of the ' + term('Wald t', WALD_TIP) + ' of the coefficient.', [
+      pair('Sum of squares for the machine, adjusted', stat(a.ss, 5), stat(ssM, 5), 'deviance without the machine − deviance'),
+      pair('F', stat(a.F, 5), stat(F, 5) + ' (t = ' + stat(tm, 5) + ')', 'the GLMM matches the test'),
+      pair('Degrees of freedom', intl(a.df) + ' and ' + intl(a.dfResidual), intl(fit.rank - reduced.rank) + ' and ' + intl(fit.dfResidual), 'the GLMM matches the test'),
+      pair('p', pValue(a.p), pValue(1 - fCdf(F, 1, fit.dfResidual)), 'the GLMM matches the test')
+    ]) +
+    chunk('The Model page tests the machine by a likelihood ratio instead, which agrees with the F test in large samples and is close here.', [
+      pair('Likelihood-ratio test of machine', '–', stat(row.stat, 4) + ' on ' + intl(row.df) + ' df, ' + pEq(row.p), 'the Model page’s term test')
+    ]);
+  root.appendChild(loadButton('ancova', spec));
+}
+
+function sectionGof(root) {
+  const { ds } = tourDataset('gof');
+  const spec0 = { response: 'count', family: 'poisson', link: 'log', terms: [], group: null, nested: null, slope: null, olre: false, reml: false };
+  const spec = Object.assign({}, spec0, { terms: ['weekday'] });
+  const r0 = fitModel(ds, spec0), r = fitModel(ds, spec);
+  const counts = ds.rows.map(x => x[0]);
+  const gf = chiSquareGoodnessOfFit(counts);
+  let X2 = 0;
+  for (const v of r0.fit.pearson) X2 += v * v;
+  const tt = termTests(ds, spec, r);
+  const row = tt.rows[0];
+  root.innerHTML = '<dl class="tm-model">' +
+    '<dt>Data to compare</dt><dd>Machine breakdowns counted on each of the six working days of the week over a quarter: six counts.</dd>' +
+    '<dt>Classical test</dt><dd>The chi-square goodness-of-fit test against equal expected counts.</dd>' +
+    modelRow(spec, 'Model with the weekday') + modelRow(spec0, 'Model without the weekday') + '</dl>' +
+    '<p class="exp-note">The chi-square goodness-of-fit test is the comparison of the two GLMMs above, Poisson models of the six counts. The model without the weekday says that every day has the same mean count, and its one fitted count is the test’s expected count, the total over six. The model with the weekday gives each day its own mean and fits the six counts exactly. The likelihood-ratio test of the weekday term asks whether the counts depart from equal: that test is the goodness-of-fit test, and because the model with the weekday fits exactly, its statistic is the deviance of the model without. This is the one-factor form of the test of independence in the section above, whose model without the interaction fits the margins and leaves the cells to test.</p>' +
+    '<p class="tm-sub">Comparing the two models</p>' +
+    table([
+      pair(tipped('Deviance', DEVIANCE_TIP) + ', model with the weekday', '–', Math.abs(r.fit.deviance) < 1e-8 ? '0' : stat(r.fit.deviance, 3), 'one coefficient per day fits the counts exactly'),
+      pair(tipped('Deviance', DEVIANCE_TIP) + ', model without the weekday', '–', stat(r0.fit.deviance, 5), ''),
+      pair('Difference', stat(gf.G2, 5), stat(row.stat, 5), 'the likelihood-ratio test of weekday'),
+      pair('Degrees of freedom', intl(gf.df), intl(row.df), 'coefficients of the weekday'),
+      pair('p', pEq(gf.pG), pEq(row.p), 'the Model page’s term test')
+    ]) +
+    '<p class="tm-sub">The model without the weekday on its own</p>' +
+    '<p class="exp-note">Pearson’s chi-square is the same lack of fit measured as Σ (observed − fitted)²/fitted instead of the deviance’s Σ 2 × observed × log(observed/fitted); the two agree in large samples, and both are chi-square on k − 1 degrees of freedom for k counts.</p>' +
+    table([
+      pair('Expected count', stat(gf.expected, 5), stat(r0.fit.fitted[0], 5), 'the fitted count, the same on every day'),
+      pair('Degrees of freedom', intl(gf.df), intl(r0.fit.dfResidual), 'k − 1'),
+      pair('Pearson chi-square', stat(gf.X2, 5) + ', ' + pEq(gf.pX), stat(X2, 5) + ', ' + pEq(1 - chi2Cdf(X2, r0.fit.dfResidual)), 'Σ Pearson residual²'),
+      pair('Likelihood-ratio chi-square', stat(gf.G2, 5) + ', ' + pEq(gf.pG), stat(r0.fit.deviance, 5) + ', ' + pEq(1 - chi2Cdf(r0.fit.deviance, r0.fit.dfResidual)), 'the ' + tipped('deviance', DEVIANCE_TIP))
+    ]);
+  root.appendChild(loadButton('gof', spec, 'Open this dataset and the model with the weekday on the Model page'));
+}
+
 function sectionPaired(root) {
   const { ds } = tourDataset('paired');
   const spec = { response: 'time', family: 'normal', link: 'identity', terms: ['condition'], group: 'subject', nested: null, slope: null, olre: false, reml: true };
@@ -11505,10 +11783,10 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">The tests of a first statistics course can each be realized as a generalized linear mixed model: the one-sample t test as a normal model with no predictor, the two-sample t test as one with a binary predictor, ANOVA as a normal model with a factor, the paired test and a test on repeated measures as mixed models, the chi-square test as a Poisson model of counts, and the comparison of two proportions as a logistic model. Each section names the classical test, states the GLMM that realizes it, fits that GLMM to a small bundled dataset, and sets its numbers beside the test’s; a dash marks a quantity the classical test has no counterpart for. The GLMM is no better than the test on these data, but it keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
+    '<p class="lede">The tests of a first statistics course can each be realized as a generalized linear mixed model: the one-sample t test as a normal model with no predictor, the two-sample t test as one with a binary predictor, one-way and two-way ANOVA as normal models with one factor or two, correlation as a normal model with a continuous predictor, ANCOVA as one with a factor and a covariate, the paired test and a test on repeated measures as mixed models, the chi-square tests as Poisson models of counts, and the comparison of two proportions as a logistic model. Each section names the classical test, states the GLMM that realizes it, fits that GLMM to a small bundled dataset, and sets its numbers beside the test’s; a dash marks a quantity the other column has no counterpart for. The GLMM is no better than the test on these data, but it keeps working when a second predictor, a covariate, a count, or a grouping factor arrives, where the test stops.</p>' +
     '<div data-subnav class="subnav"></div>' +
     sections.map(s => '<div data-section="' + s.id + '" class="sec"><div class="sec-hd">' + esc(s.label) + '</div><div id="ts-' + s.id + '"></div></div>').join('');
-  for (const [sec, fn] of [['one', sectionOne], ['t', sectionT], ['anova', sectionAnova], ['paired', sectionPaired], ['repeated', sectionRepeated], ['chisq', sectionChisq], ['proportion', sectionProportion]]) {
+  for (const [sec, fn] of [['one', sectionOne], ['t', sectionT], ['anova', sectionAnova], ['twoway', sectionTwoway], ['regression', sectionRegression], ['ancova', sectionAncova], ['paired', sectionPaired], ['repeated', sectionRepeated], ['chisq', sectionChisq], ['gof', sectionGof], ['proportion', sectionProportion]]) {
     const box = root.querySelector('#ts-' + sec);
     try { fn(box); } catch (err) { console.error(err); box.appendChild(notice('warn', 'This section could not be computed: ' + esc(err.message))); }
   }
@@ -12163,10 +12441,12 @@ function lsq(X, z) {
 <script type="text/plain" data-module="js/stats/classical.js">
 // The classical tests the Classic tests as GLMM page sets beside their
 // models: the one-sample t test, the pooled and Welch two-sample t tests,
-// one-way ANOVA's F, the paired t test, the chi-square test of independence with Pearson's and the
-// likelihood-ratio statistics, and the two-proportion test as a score test.
-// Conventions are R's (t.test, aov, chisq.test with no continuity
-// correction, prop.test with no correction). Pure functions, no DOM.
+// one-way and balanced two-way ANOVA, Pearson's correlation with its t test,
+// analysis of covariance, the paired t test, the chi-square tests of
+// independence and of goodness of fit with Pearson's and the likelihood-ratio
+// statistics, and the two-proportion test as a score test.
+// Conventions are R's (t.test, aov, cor.test, anova on lm, chisq.test with no
+// continuity correction, prop.test with no correction). Pure functions, no DOM.
 
 import { tCdf, fCdf, chi2Cdf, normCdf } from './special.js';
 
@@ -12232,6 +12512,92 @@ export function onewayAnova(groups) {
 }
 
 /**
+ * Two-way analysis of variance on a balanced layout: the sums of squares of
+ * the two factors, their interaction, and the residual, with F tests. On a
+ * balanced layout, the sequential and the partial sums of squares coincide,
+ * and so this is also what aov(y ~ a * b) reports.
+ * @param {ArrayLike<number>} y
+ * @param {ArrayLike<string>} a the first factor's level per observation
+ * @param {ArrayLike<string>} b the second factor's level per observation
+ * @returns {{ rows: { term: string, ss: number, df: number, F: number, p: number }[], ssResidual: number, dfResidual: number }}
+ */
+export function twowayAnova(y, a, b) {
+  const n = y.length;
+  const grand = meanVar(Array.from(y)).mean;
+  const levelsA = [...new Set(Array.from(a))], levelsB = [...new Set(Array.from(b))];
+  const means = (key) => {
+    const sums = new Map();
+    for (let i = 0; i < n; i++) {
+      const k = key(i);
+      const s = sums.get(k) || { n: 0, sum: 0 };
+      s.n++; s.sum += y[i]; sums.set(k, s);
+    }
+    return sums;
+  };
+  const between = sums => { let ss = 0; for (const s of sums.values()) ss += s.n * (s.sum / s.n - grand) ** 2; return ss; };
+  const mA = means(i => a[i]), mB = means(i => b[i]), mAB = means(i => a[i] + '\u0000' + b[i]);
+  const ssA = between(mA), ssB = between(mB), ssCells = between(mAB);
+  const ssAB = ssCells - ssA - ssB;
+  let ssE = 0;
+  for (let i = 0; i < n; i++) { const s = mAB.get(a[i] + '\u0000' + b[i]); ssE += (y[i] - s.sum / s.n) ** 2; }
+  const dfA = levelsA.length - 1, dfB = levelsB.length - 1, dfAB = dfA * dfB, dfE = n - levelsA.length * levelsB.length;
+  const row = (term, ss, df) => { const F = (ss / df) / (ssE / dfE); return { term, ss, df, F, p: 1 - fCdf(F, df, dfE) }; };
+  return { rows: [row('a', ssA, dfA), row('b', ssB, dfB), row('a:b', ssAB, dfAB)], ssResidual: ssE, dfResidual: dfE };
+}
+
+/**
+ * Pearson's correlation with its t test, as cor.test computes it, beside
+ * the least-squares line of y on x.
+ * @param {ArrayLike<number>} x
+ * @param {ArrayLike<number>} y
+ * @returns {{ r: number, t: number, df: number, p: number, slope: number, intercept: number, seSlope: number }}
+ */
+export function correlation(x, y) {
+  const a = meanVar(Array.from(x)), b = meanVar(Array.from(y));
+  let sxy = 0;
+  for (let i = 0; i < a.n; i++) sxy += (x[i] - a.mean) * (y[i] - b.mean);
+  const sxx = a.variance * (a.n - 1), syy = b.variance * (b.n - 1);
+  const r = sxy / Math.sqrt(sxx * syy);
+  const df = a.n - 2;
+  const t = r * Math.sqrt(df / (1 - r * r));
+  const slope = sxy / sxx, intercept = b.mean - slope * a.mean;
+  const rss = syy - sxy * sxy / sxx;
+  return { r, t, df, p: 2 * (1 - tCdf(Math.abs(t), df)), slope, intercept, seSlope: Math.sqrt(rss / df / sxx) };
+}
+
+/**
+ * Analysis of covariance with one factor and one covariate: the pooled
+ * within-group slope, the group means adjusted to the covariate's grand
+ * mean, and the F test of the factor adjusted for the covariate, which is
+ * the factor's row of anova(lm(y ~ x + g)).
+ * @param {ArrayLike<number>} y
+ * @param {ArrayLike<string>} g the factor's level per observation
+ * @param {ArrayLike<number>} x the covariate
+ * @returns {{ slope: number, levels: string[], means: number[], adjustedMeans: number[], xMeans: number[], ss: number, df: number, F: number, p: number, ssResidual: number, dfResidual: number }}
+ */
+export function ancova(y, g, x) {
+  const n = y.length;
+  const levels = [...new Set(Array.from(g))];
+  const xm = meanVar(Array.from(x)).mean, ym = meanVar(Array.from(y)).mean;
+  // Total and pooled within-group corrected sums.
+  let txx = 0, txy = 0, tyy = 0, wxx = 0, wxy = 0, wyy = 0;
+  const stats = levels.map(l => {
+    const idx = []; for (let i = 0; i < n; i++) if (g[i] === l) idx.push(i);
+    const mx = meanVar(idx.map(i => x[i])).mean, my = meanVar(idx.map(i => y[i])).mean;
+    for (const i of idx) { wxx += (x[i] - mx) ** 2; wxy += (x[i] - mx) * (y[i] - my); wyy += (y[i] - my) ** 2; }
+    return { mx, my };
+  });
+  for (let i = 0; i < n; i++) { txx += (x[i] - xm) ** 2; txy += (x[i] - xm) * (y[i] - ym); tyy += (y[i] - ym) ** 2; }
+  const slope = wxy / wxx;
+  const ssResidual = wyy - wxy * wxy / wxx;
+  const ssAfterX = tyy - txy * txy / txx;
+  const ss = ssAfterX - ssResidual;
+  const df = levels.length - 1, dfResidual = n - levels.length - 1;
+  const F = (ss / df) / (ssResidual / dfResidual);
+  return { slope, levels, means: stats.map(s => s.my), adjustedMeans: stats.map(s => s.my - slope * (s.mx - xm)), xMeans: stats.map(s => s.mx), ss, df, F, p: 1 - fCdf(F, df, dfResidual), ssResidual, dfResidual };
+}
+
+/**
  * The paired t test on x − y.
  * @param {ArrayLike<number>} x
  * @param {ArrayLike<number>} y
@@ -12264,6 +12630,24 @@ export function chiSquareIndependence(table) {
     return e;
   }));
   const df = (r - 1) * (c - 1);
+  return { X2, G2, df, pX: 1 - chi2Cdf(X2, df), pG: 1 - chi2Cdf(G2, df), expected };
+}
+
+/**
+ * The chi-square goodness-of-fit test of counts against equal expected
+ * counts: Pearson's X² and the likelihood-ratio G², both on k − 1 degrees of
+ * freedom.
+ * @param {ArrayLike<number>} counts
+ * @returns {{ X2: number, G2: number, df: number, pX: number, pG: number, expected: number }}
+ */
+export function chiSquareGoodnessOfFit(counts) {
+  const k = counts.length;
+  let total = 0;
+  for (const c of counts) total += c;
+  const expected = total / k;
+  let X2 = 0, G2 = 0;
+  for (const o of counts) { X2 += (o - expected) ** 2 / expected; if (o > 0) G2 += 2 * o * Math.log(o / expected); }
+  const df = k - 1;
   return { X2, G2, df, pX: 1 - chi2Cdf(X2, df), pG: 1 - chi2Cdf(G2, df), expected };
 }
 

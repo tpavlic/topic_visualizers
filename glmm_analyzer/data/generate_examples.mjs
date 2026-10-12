@@ -25,7 +25,7 @@
 //   colony_recruits.csv recruits per trial at 12 colonies (count) against temperature and a
 //                       treatment, with a random intercept and slope by colony
 //   rating.csv          a four-level rating (ordinal) against the wait and the express lane
-//   tour_*.csv          the seven small datasets of the Classic tests as GLMM page
+//   tour_*.csv          the eleven small datasets of the Classic tests as GLMM page
 //
 // Usage, from anywhere:
 //   node glmm_analyzer/data/generate_examples.mjs [--out <dir>]
@@ -209,9 +209,9 @@ function ratingCsv() {
   return csv(['rating', 'wait', 'express'], rows);
 }
 
-/** The five small datasets of the Tests as models page. */
+/** The eleven small datasets of the Classic tests as GLMM page. */
 function tourCsv(which) {
-  const rng = mulberry32(SEEDS.tour + { one: 5, t: 1, anova: 2, paired: 3, repeated: 6, chisq: 4, proportion: 9 }[which]);
+  const rng = mulberry32(SEEDS.tour + { one: 5, t: 1, anova: 2, twoway: 10, regression: 7, ancova: 8, paired: 3, repeated: 6, chisq: 4, gof: 11, proportion: 9 }[which]);
   const rows = [];
   if (which === 'one') {
     for (let i = 0; i < 25; i++) rows.push([fmt(1.5 + 3.5 * normal([rng(), rng()]), 2)]);
@@ -232,6 +232,29 @@ function tourCsv(which) {
     for (const [shift, m] of [['day', 2.0], ['evening', 2.6], ['night', 2.3]]) for (let i = 0; i < 12; i++) rows.push([fmt(Math.max(0.1, m + 0.6 * normal([rng(), rng()])), 2), shift]);
     return csv(['defect_rate', 'shift'], rows);
   }
+  if (which === 'twoway') {
+    // A balanced 2 x 3 layout, six runs per cell, with a modest interaction:
+    // catalyst C gains more from the high temperature than A and B do.
+    const cell = { low: { A: 70, B: 74, C: 72 }, high: { A: 76, B: 79, C: 83 } };
+    for (const temperature of ['low', 'high']) for (const catalyst of ['A', 'B', 'C']) for (let i = 0; i < 6; i++) rows.push([fmt(cell[temperature][catalyst] + 3 * normal([rng(), rng()]), 1), temperature, catalyst]);
+    return csv(['yield', 'temperature', 'catalyst'], rows);
+  }
+  if (which === 'regression') {
+    for (let i = 0; i < 30; i++) {
+      const distance = 1 + 11 * rng();
+      rows.push([fmt(12 + 2.2 * distance + 4 * normal([rng(), rng()]), 1), fmt(distance, 1)]);
+    }
+    return csv(['delivery_time', 'distance'], rows);
+  }
+  if (which === 'ancova') {
+    // The new machine is faster at any size, but it was given the smaller
+    // jobs, and so the unadjusted comparison overstates its advantage.
+    for (const [machine, lo, hi, shift] of [['old', 4, 20, 0], ['new', 2, 16, -2]]) for (let i = 0; i < 16; i++) {
+      const size = lo + (hi - lo) * rng();
+      rows.push([fmt(5 + 0.8 * size + shift + 1.5 * normal([rng(), rng()]), 2), machine, fmt(size, 1)]);
+    }
+    return csv(['time', 'machine', 'size'], rows);
+  }
   if (which === 'paired') {
     for (let s = 1; s <= 14; s++) {
       const base = 30 + 5 * normal([rng(), rng()]);
@@ -244,6 +267,11 @@ function tourCsv(which) {
     const counts = { web: { early: 18, on_time: 42, late: 20 }, phone: { early: 9, on_time: 31, late: 35 } };
     for (const channel of ['web', 'phone']) for (const outcome of ['early', 'on_time', 'late']) rows.push([counts[channel][outcome], outcome, channel]);
     return csv(['count', 'outcome', 'channel'], rows);
+  }
+  if (which === 'gof') {
+    const counts = { Mon: 16, Tue: 9, Wed: 12, Thu: 10, Fri: 26, Sat: 8 };
+    for (const weekday of Object.keys(counts)) rows.push([counts[weekday], weekday]);
+    return csv(['count', 'weekday'], rows);
   }
   for (const [offer, p] of [['A', 0.30], ['B', 0.55]]) for (let i = 0; i < 50; i++) rows.push([rng() < p ? 1 : 0, offer]);
   return csv(['converted', 'offer'], rows);
@@ -317,6 +345,24 @@ const EXAMPLES = [
     mapping: { name: 'Three shifts', response: 'defect_rate', columns: { defect_rate: { role: 'response', type: 'continuous' }, shift: { role: 'predictor', type: 'categorical' } } }
   },
   {
+    id: 'tour-twoway', tour: 'twoway', title: 'Temperature and catalyst (for two-way ANOVA)', file: 'tour_twoway.csv',
+    description: 'The yield of six runs in each of the six combinations of a temperature (low, high) and a catalyst (A, B, C).',
+    build: () => tourCsv('twoway'),
+    mapping: { name: 'Temperature and catalyst', response: 'yield', columns: { yield: { role: 'response', type: 'continuous' }, temperature: { role: 'predictor', type: 'categorical' }, catalyst: { role: 'predictor', type: 'categorical' } } }
+  },
+  {
+    id: 'tour-regression', tour: 'regression', title: 'Delivery time against distance (for correlation and regression)', file: 'tour_regression.csv',
+    description: 'The delivery time of thirty orders against the distance driven.',
+    build: () => tourCsv('regression'),
+    mapping: { name: 'Time against distance', response: 'delivery_time', columns: { delivery_time: { role: 'response', type: 'continuous' }, distance: { role: 'predictor', type: 'continuous' } } }
+  },
+  {
+    id: 'tour-ancova', tour: 'ancova', title: 'Two machines and the job size (for ANCOVA)', file: 'tour_ancova.csv',
+    description: 'The processing time of sixteen jobs on each of two machines, against the size of the job.',
+    build: () => tourCsv('ancova'),
+    mapping: { name: 'Two machines', response: 'time', columns: { time: { role: 'response', type: 'continuous' }, machine: { role: 'predictor', type: 'categorical' }, size: { role: 'predictor', type: 'continuous' } } }
+  },
+  {
     id: 'tour-paired', tour: 'paired', title: 'Before and after (for the paired t test)', file: 'tour_paired.csv',
     description: 'The task time of fourteen operators before and after a change.',
     build: () => tourCsv('paired'),
@@ -333,6 +379,12 @@ const EXAMPLES = [
     description: 'The count of orders delivered early, on time, or late, by the channel the order came through.',
     build: () => tourCsv('chisq'),
     mapping: { name: 'Outcome by channel', response: 'count', columns: { count: { role: 'response', type: 'continuous' }, outcome: { role: 'predictor', type: 'categorical' }, channel: { role: 'predictor', type: 'categorical' } } }
+  },
+  {
+    id: 'tour-gof', tour: 'gof', title: 'Breakdowns by weekday (for the chi-square goodness-of-fit test)', file: 'tour_gof.csv',
+    description: 'The count of machine breakdowns on each of the six working days of the week over a quarter.',
+    build: () => tourCsv('gof'),
+    mapping: { name: 'Breakdowns by weekday', response: 'count', columns: { count: { role: 'response', type: 'continuous' }, weekday: { role: 'predictor', type: 'categorical' } } }
   },
   {
     id: 'tour-proportion', tour: 'proportion', title: 'Two offers (for the two-proportion z test)', file: 'tour_proportion.csv',

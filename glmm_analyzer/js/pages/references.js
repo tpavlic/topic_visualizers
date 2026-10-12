@@ -47,7 +47,7 @@ const GROUPS = [
     'K. P. Burnham and D. R. Anderson, <i>Model Selection and Multimodel Inference</i>, 2nd ed. (Springer, 2002): comparing a set of candidate models by information criteria rather than searching for one.'
   ]],
   ['Classic tests as GLMM', [
-    'J. K. Lindeløv, “Common statistical tests are linear models (or: how to teach stats),” online (2019): the correspondence between the classical tests and the linear models this page draws.',
+    'J. K. Lindeløv, “Common statistical tests are linear models (or: how to teach stats),” online (2019), <a href="https://lindeloev.github.io/tests-as-linear/" target="_blank" rel="noopener">lindeloev.github.io/tests-as-linear</a>: the correspondence between the classical tests and the linear models this page draws, with the rank-transformed approximations to the nonparametric tests that this page leaves out.',
     'A. Agresti, <i>Categorical Data Analysis</i>, 3rd ed. (Wiley, 2013): the log-linear model behind the chi-square test of independence and the logistic model behind the comparison of two proportions.'
   ]]
 ];
