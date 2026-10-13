@@ -9,6 +9,9 @@
 // continuity correction, prop.test with no correction). Pure functions, no DOM.
 
 import { tCdf, fCdf, chi2Cdf, normCdf } from './special.js';
+import { ranks } from './descriptive.js';
+
+export { ranks };
 
 function meanVar(a) {
   const n = a.length;
@@ -123,26 +126,6 @@ export function correlation(x, y) {
   const slope = sxy / sxx, intercept = b.mean - slope * a.mean;
   const rss = syy - sxy * sxy / sxx;
   return { r, t, df, p: 2 * (1 - tCdf(Math.abs(t), df)), slope, intercept, seSlope: Math.sqrt(rss / df / sxx) };
-}
-
-/**
- * The ranks of a sample, 1 for the smallest value, with ties given the
- * average of the ranks they span, as R's rank() does by default.
- * @param {ArrayLike<number>} a
- * @returns {number[]}
- */
-export function ranks(a) {
-  const n = a.length;
-  const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => a[i] - a[j]);
-  const out = new Array(n);
-  for (let k = 0; k < n;) {
-    let m = k;
-    while (m + 1 < n && a[order[m + 1]] === a[order[k]]) m++;
-    const r = (k + m) / 2 + 1;
-    for (let q = k; q <= m; q++) out[order[q]] = r;
-    k = m + 1;
-  }
-  return out;
 }
 
 /**

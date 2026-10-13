@@ -121,3 +121,11 @@ test('tallyBins matches per-bin means, empty bins NaN, last bin closed', () => {
   const { t, v, edges } = ref.tally;
   closeBins(D.tallyBins(t, v, edges), ref.tally.bins, 1e-12, 'tally bins');
 });
+
+import { ranks } from '../js/stats/descriptive.js';
+test('ranks gives tied values the average of the ranks they span', () => {
+  assert.deepEqual(ranks([3, 1, 1, 2]), [4, 1.5, 1.5, 3]);
+  assert.deepEqual(ranks([5, 5, 5]), [2, 2, 2]);
+  assert.deepEqual(ranks([2.5]), [1]);
+  assert.deepEqual(ranks([]), []);
+});

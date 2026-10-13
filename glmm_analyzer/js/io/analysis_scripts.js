@@ -335,6 +335,22 @@ function settingsBlock(recipe, L) {
   return out;
 }
 
+// How a derived column was made, in each language's own words, for the
+// comment the data block carries; the values themselves are embedded or read
+// from the file like any other column's.
+const DERIVED_EXPR = {
+  rank: { R: n => 'rank(' + n + ')', py: n => 'pd.Series(' + n + ').rank()', m: n => 'tiedrank(' + n + ')' },
+  log: { R: n => 'log(' + n + ')', py: n => 'np.log(' + n + ')', m: n => 'log(' + n + ')' },
+  sqrt: { R: n => 'sqrt(' + n + ')', py: n => 'np.sqrt(' + n + ')', m: n => 'sqrt(' + n + ')' },
+  center: { R: n => n + ' - mean(' + n + ')', py: n => n + ' - np.mean(' + n + ')', m: n => n + ' - mean(' + n + ')' },
+  standardize: { R: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', py: n => '(' + n + ' - np.mean(' + n + ')) / np.std(' + n + ', ddof=1)', m: n => '(' + n + ' - mean(' + n + ')) / std(' + n + ')' }
+};
+function derivedComments(recipe, L) {
+  const names = new Set(recipe.data.columns.map(col => col.name));
+  return (recipe.derived || []).filter(x => names.has(x.name) && DERIVED_EXPR[x.transform]).map(x =>
+    L.comment + ascii(x.name) + ' was derived on the Import page as ' + DERIVED_EXPR[x.transform][L.lang](ascii(x.of)) + (x.transform === 'rank' ? ' (ties averaged)' : '') + '; its values are ' + (recipe.csvOnly ? 'in the data file' : 'embedded above') + '.');
+}
+
 function dataBlock(recipe, L) {
   const c = L.comment;
   const d = recipe.data;
@@ -343,6 +359,7 @@ function dataBlock(recipe, L) {
     (L.lang === 'R' ? 'NA' : L.lang === 'py' ? 'nan or None' : 'NaN or an empty name') + ', and the fitter drops the rows with one, as the page did.', c));
   if (recipe.csvOnly) {
     out.push(...csvReadLines(recipe, L));
+    out.push(...derivedComments(recipe, L));
     out.push(c + 'The coefficient names as the page prints them (R\'s).');
     out.push(...strsAssign(L, 'coef_names', recipe.names));
     return out;
@@ -352,6 +369,7 @@ function dataBlock(recipe, L) {
     const v = col.type === 'continuous' ? vals : vals.map(x => (x == null ? null : String(x)));
     out.push(...(col.type === 'continuous' ? vecAssign(L, varName(L, col.name), v) : strsAssign(L, varName(L, col.name), v)));
   }
+  out.push(...derivedComments(recipe, L));
   const resp = recipe.response;
   const coded = col => {
     // A binomial model of a two-level response takes the event as 1; an ordinal response is its level codes in MATLAB.

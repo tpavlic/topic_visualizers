@@ -477,7 +477,13 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   becomes a one-line tab strip and then a `<select>` as the page narrows. Ten pages: ① Import
   (bundled examples, a file, drag-and-drop, or pasted text, behind a mapping dialog that gives every
   column a role, response, predictor, group, or ignored, and a type, continuous, categorical, or
-  ordinal, with every rejected row listed by line number), ② Explore (the response's distribution
+  ordinal, with every rejected row listed by line number; and, on each loaded dataset's row, a
+  Derive a column control that adds the rank (ties averaged), natural log, square root, centered,
+  or standardized version of a continuous column as a predictor or as the response, stored as
+  data with `derived: { of, transform }` on the column (`deriveColumn` and `removeDerivedColumn`
+  in `js/data/model.js`), named in the Source cell, in the data files' `# derived columns` line,
+  and in a comment in the scripts' data block, and removable where an original column is not),
+  ② Explore (the response's distribution
   and its relation to each predictor), ③ Model (a formula builder of chips for the fixed terms,
   powers, and interactions, a grouping factor with an optional random slope and an optional
   observation-level random effect, REML for the normal family; the coefficient table with Wald

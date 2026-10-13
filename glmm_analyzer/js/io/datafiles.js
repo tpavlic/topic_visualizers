@@ -6,6 +6,7 @@
 
 import { datasetCsv, tableCsv, slug } from './export.js';
 import { RESIDUAL_SEED } from '../stats/residuals.js';
+import { derivedColumns, derivationText } from '../data/model.js';
 
 /** The most numbers a script embeds; past it, the scripts read these files. */
 export const MAX_NUMBERS = 200000;
@@ -39,6 +40,8 @@ export function dsProvenance(ds, extra) {
   if (preds.length) p.predictors = preds.join(', ');
   if (groups.length) p.group = groups.join(', ');
   if (ds.source && ds.source.file) p['source file'] = ds.source.file;
+  const der = derivedColumns(ds).map(derivationText);
+  if (der.length) p['derived columns'] = der.join('; ');
   Object.assign(p, extra || {});
   p.exported = stamp(new Date());
   return p;

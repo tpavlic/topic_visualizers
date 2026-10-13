@@ -116,6 +116,7 @@ export function baseRecipe({ page, title, provenance, level, ds, spec, result })
     page, title, provenance: Object.assign({}, provenance), level,
     dataset: ds.name,
     data: dataFor(ds, [spec]),
+    derived: ds.columns.filter(c => c.derived).map(c => ({ name: c.name, of: c.derived.of, transform: c.derived.transform })),
     spec: { response: spec.response, family: spec.family, link: link.id, group: spec.group || null, nested: spec.nested || null, slope: spec.slope || null, olre: !!spec.olre, reml: !!spec.reml, mixed },
     formula: { R: f.R, py: f.py, m: f.m },
     terms: f.terms,

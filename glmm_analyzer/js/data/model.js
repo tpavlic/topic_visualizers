@@ -4,11 +4,19 @@
 // read from its values, says which families can describe it. Pure
 // functions, no DOM.
 
+
+import { mean, sd, ranks } from '../stats/descriptive.js';
+
 /**
  * @typedef {{ name: string, role: 'response'|'predictor'|'group'|'ignored',
- *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null }} Column
+ *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null,
+ *   derived?: { of: string, transform: string, replaced?: string|null }|null }} Column
  *   `levels` holds a categorical or ordinal column's distinct values, sorted
- *   as R sorts character levels, and null for a continuous column.
+ *   as R sorts character levels, and null for a continuous column. `derived`
+ *   names the continuous column and the transform a derived column was made
+ *   from (see DERIVATIONS), with `replaced` naming the column it stepped back
+ *   from the response when it was made the response, and is absent or null
+ *   on a column read from the data.
  */
 /**
  * @typedef {{
@@ -66,7 +74,8 @@ export function makeDataset(fields = {}) {
     name: String(c.name),
     role: ROLES.includes(c.role) ? c.role : 'ignored',
     type: TYPES.includes(c.type) ? c.type : 'continuous',
-    levels: null
+    levels: null,
+    derived: c.derived && c.derived.of != null && DERIVATIONS[c.derived.transform] ? { of: String(c.derived.of), transform: String(c.derived.transform), replaced: c.derived.replaced != null ? String(c.derived.replaced) : null } : null
   }));
   const rows = (fields.rows || []).map(r => columns.map((c, j) => {
     const v = r[j];
@@ -236,4 +245,111 @@ export function canModel(ds) {
   const n = valuesOf(ds, resp.name).filter(v => v != null).length;
   if (n < 2) return { ok: false, reason: 'The response has fewer than two values.' };
   return { ok: true, reason: null };
+}
+
+/**
+ * The transforms a derived column applies to a continuous column: the label
+ * the page shows, the suffix of the default name, how the derivation is
+ * written out, and the domain the source values must satisfy.
+ */
+export const DERIVATIONS = {
+  rank: { label: 'rank (ties averaged)', suffix: 'rank', text: n => 'rank(' + n + ')', domain: null },
+  log: { label: 'natural log', suffix: 'log', text: n => 'log(' + n + ')', domain: v => v > 0, needs: 'positive values' },
+  sqrt: { label: 'square root', suffix: 'sqrt', text: n => 'sqrt(' + n + ')', domain: v => v >= 0, needs: 'non-negative values' },
+  center: { label: 'centered', suffix: 'centered', text: n => n + ' - mean(' + n + ')', domain: null },
+  standardize: { label: 'standardized', suffix: 'std', text: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', domain: null }
+};
+
+/**
+ * The derived columns of a dataset.
+ * @param {Dataset} ds
+ * @returns {Column[]}
+ */
+export function derivedColumns(ds) { return ds.columns.filter(c => c.derived); }
+
+/**
+ * How a derived column was made, as `name = rank(source)`.
+ * @param {Column} col
+ * @returns {string}
+ */
+export function derivationText(col) { return col.name + ' = ' + DERIVATIONS[col.derived.transform].text(col.derived.of); }
+
+/**
+ * The default name of a derived column: the source's name and the transform's suffix.
+ * @param {string} of
+ * @param {string} transform
+ * @returns {string}
+ */
+export function derivedName(of, transform) { return of + '_' + DERIVATIONS[transform].suffix; }
+
+/**
+ * Adds a derived column to a dataset, in place: a continuous column's
+ * ranks, natural log, square root, centered values, or standardized values,
+ * stored as data like any other column, with the derivation kept on the
+ * column. A missing value stays missing. A derived column made the
+ * response steps the current response back to ignored and remembers it,
+ * so that removing the derived column restores it. Nothing changes when
+ * the request is refused.
+ * @param {Dataset} ds
+ * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response' }} req
+ * @returns {{ ok: boolean, reason: string|null }}
+ */
+export function deriveColumn(ds, req) {
+  const d = DERIVATIONS[req.transform];
+  if (!d) return { ok: false, reason: 'Choose a transform.' };
+  const src = column(ds, req.of);
+  if (!src) return { ok: false, reason: 'There is no column named ' + req.of + '.' };
+  if (src.col.type !== 'continuous') return { ok: false, reason: req.of + ' is ' + src.col.type + '; a derived column is made from a continuous one.' };
+  const name = String(req.name || '').trim();
+  if (!name) return { ok: false, reason: 'Name the new column.' };
+  if (column(ds, name)) return { ok: false, reason: 'There is already a column named ' + name + '.' };
+  const role = req.role || 'predictor';
+  if (role !== 'predictor' && role !== 'response') return { ok: false, reason: 'A derived column is a predictor or the response.' };
+  const vals = ds.rows.map(r => r[src.index]);
+  if (d.domain) {
+    const bad = [];
+    vals.forEach((v, i) => { if (v != null && !d.domain(v)) bad.push(i + 1); });
+    if (bad.length) return { ok: false, reason: d.text(req.of) + ' needs ' + d.needs + ', and ' + (bad.length === 1 ? 'row ' + bad[0] + ' has a value that is not.' : bad.length + ' rows have a value that is not (rows ' + bad.slice(0, 8).join(', ') + (bad.length > 8 ? ', …' : '') + ').') };
+  }
+  const present = vals.filter(v => v != null);
+  const out = new Array(vals.length).fill(null);
+  if (req.transform === 'rank') {
+    const idx = []; vals.forEach((v, i) => { if (v != null) idx.push(i); });
+    const r = ranks(idx.map(i => vals[i]));
+    idx.forEach((i, k) => { out[i] = r[k]; });
+  } else if (req.transform === 'log' || req.transform === 'sqrt') {
+    const f = req.transform === 'log' ? Math.log : Math.sqrt;
+    vals.forEach((v, i) => { if (v != null) out[i] = f(v); });
+  } else {
+    if (present.length < 2) return { ok: false, reason: d.text(req.of) + ' needs at least two values.' };
+    const m = mean(present), s = req.transform === 'standardize' ? sd(present) : 1;
+    if (req.transform === 'standardize' && !(s > 0)) return { ok: false, reason: req.of + ' has no spread, and so it cannot be standardized.' };
+    vals.forEach((v, i) => { if (v != null) out[i] = (v - m) / s; });
+  }
+  let replaced = null;
+  if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'ignored'; replaced = c.name; }
+  ds.columns.push({ name, role, type: 'continuous', levels: null, derived: { of: req.of, transform: req.transform, replaced } });
+  ds.rows.forEach((r, i) => { r.push(out[i]); });
+  return { ok: true, reason: null };
+}
+
+/**
+ * Removes a derived column from a dataset, in place, and gives the response
+ * role back to the column the derived one took it from, when it was the
+ * response and that column is still there. A column read from the data is
+ * never removed.
+ * @param {Dataset} ds
+ * @param {string} name
+ * @returns {boolean} whether a column was removed
+ */
+export function removeDerivedColumn(ds, name) {
+  const c = column(ds, name);
+  if (!c || !c.col.derived) return false;
+  ds.columns.splice(c.index, 1);
+  for (const r of ds.rows) r.splice(c.index, 1);
+  if (c.col.role === 'response' && c.col.derived.replaced && !ds.columns.some(x => x.role === 'response')) {
+    const back = column(ds, c.col.derived.replaced);
+    if (back && back.col.role === 'ignored') back.col.role = 'response';
+  }
+  return true;
 }

@@ -645,6 +645,17 @@ footer a:hover { text-decoration: underline; }
 .im-ds-wrap { container-type: inline-size; }
 .im-xp-box { position: sticky; left: 10px; max-width: calc(100cqw - 20px); padding: 2px 0; }
 .im-xp-box details.why { margin-top: 6px; }
+/* A dataset's Derive a column row: the form's controls wrap within the
+   table's scrolling frame like the Export row's buttons do. */
+.im-dv-box { position: sticky; left: 10px; max-width: calc(100cqw - 20px); padding: 2px 0 4px; }
+.im-dv-form { gap: 8px 14px; align-items: flex-end; flex-wrap: wrap; }
+.im-dv-form label { display: flex; flex-direction: column; gap: 3px; font-size: .8rem; color: var(--muted); }
+.im-dv-form select, .im-dv-form .txt-inp { font-size: .85rem; }
+.im-dv-name { width: 22ch; }
+.im-dv-msg .notice { margin-top: 8px; }
+.im-dv-items { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.im-dv-items code { font-size: .8rem; }
+.im-src .im-derived { display: block; margin-top: 2px; font-size: .78rem; }
 .xp-peek { margin-top: 8px; }
 .xp-peek + .xp-peek { margin-top: 18px; }
 .xp-peek .scroll-box { max-height: none; overflow-x: auto; }
@@ -3143,11 +3154,19 @@ poor,3.29,no
 // read from its values, says which families can describe it. Pure
 // functions, no DOM.
 
+
+import { mean, sd, ranks } from '../stats/descriptive.js';
+
 /**
  * @typedef {{ name: string, role: 'response'|'predictor'|'group'|'ignored',
- *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null }} Column
+ *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null,
+ *   derived?: { of: string, transform: string, replaced?: string|null }|null }} Column
  *   `levels` holds a categorical or ordinal column's distinct values, sorted
- *   as R sorts character levels, and null for a continuous column.
+ *   as R sorts character levels, and null for a continuous column. `derived`
+ *   names the continuous column and the transform a derived column was made
+ *   from (see DERIVATIONS), with `replaced` naming the column it stepped back
+ *   from the response when it was made the response, and is absent or null
+ *   on a column read from the data.
  */
 /**
  * @typedef {{
@@ -3205,7 +3224,8 @@ export function makeDataset(fields = {}) {
     name: String(c.name),
     role: ROLES.includes(c.role) ? c.role : 'ignored',
     type: TYPES.includes(c.type) ? c.type : 'continuous',
-    levels: null
+    levels: null,
+    derived: c.derived && c.derived.of != null && DERIVATIONS[c.derived.transform] ? { of: String(c.derived.of), transform: String(c.derived.transform), replaced: c.derived.replaced != null ? String(c.derived.replaced) : null } : null
   }));
   const rows = (fields.rows || []).map(r => columns.map((c, j) => {
     const v = r[j];
@@ -3375,6 +3395,113 @@ export function canModel(ds) {
   const n = valuesOf(ds, resp.name).filter(v => v != null).length;
   if (n < 2) return { ok: false, reason: 'The response has fewer than two values.' };
   return { ok: true, reason: null };
+}
+
+/**
+ * The transforms a derived column applies to a continuous column: the label
+ * the page shows, the suffix of the default name, how the derivation is
+ * written out, and the domain the source values must satisfy.
+ */
+export const DERIVATIONS = {
+  rank: { label: 'rank (ties averaged)', suffix: 'rank', text: n => 'rank(' + n + ')', domain: null },
+  log: { label: 'natural log', suffix: 'log', text: n => 'log(' + n + ')', domain: v => v > 0, needs: 'positive values' },
+  sqrt: { label: 'square root', suffix: 'sqrt', text: n => 'sqrt(' + n + ')', domain: v => v >= 0, needs: 'non-negative values' },
+  center: { label: 'centered', suffix: 'centered', text: n => n + ' - mean(' + n + ')', domain: null },
+  standardize: { label: 'standardized', suffix: 'std', text: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', domain: null }
+};
+
+/**
+ * The derived columns of a dataset.
+ * @param {Dataset} ds
+ * @returns {Column[]}
+ */
+export function derivedColumns(ds) { return ds.columns.filter(c => c.derived); }
+
+/**
+ * How a derived column was made, as `name = rank(source)`.
+ * @param {Column} col
+ * @returns {string}
+ */
+export function derivationText(col) { return col.name + ' = ' + DERIVATIONS[col.derived.transform].text(col.derived.of); }
+
+/**
+ * The default name of a derived column: the source's name and the transform's suffix.
+ * @param {string} of
+ * @param {string} transform
+ * @returns {string}
+ */
+export function derivedName(of, transform) { return of + '_' + DERIVATIONS[transform].suffix; }
+
+/**
+ * Adds a derived column to a dataset, in place: a continuous column's
+ * ranks, natural log, square root, centered values, or standardized values,
+ * stored as data like any other column, with the derivation kept on the
+ * column. A missing value stays missing. A derived column made the
+ * response steps the current response back to ignored and remembers it,
+ * so that removing the derived column restores it. Nothing changes when
+ * the request is refused.
+ * @param {Dataset} ds
+ * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response' }} req
+ * @returns {{ ok: boolean, reason: string|null }}
+ */
+export function deriveColumn(ds, req) {
+  const d = DERIVATIONS[req.transform];
+  if (!d) return { ok: false, reason: 'Choose a transform.' };
+  const src = column(ds, req.of);
+  if (!src) return { ok: false, reason: 'There is no column named ' + req.of + '.' };
+  if (src.col.type !== 'continuous') return { ok: false, reason: req.of + ' is ' + src.col.type + '; a derived column is made from a continuous one.' };
+  const name = String(req.name || '').trim();
+  if (!name) return { ok: false, reason: 'Name the new column.' };
+  if (column(ds, name)) return { ok: false, reason: 'There is already a column named ' + name + '.' };
+  const role = req.role || 'predictor';
+  if (role !== 'predictor' && role !== 'response') return { ok: false, reason: 'A derived column is a predictor or the response.' };
+  const vals = ds.rows.map(r => r[src.index]);
+  if (d.domain) {
+    const bad = [];
+    vals.forEach((v, i) => { if (v != null && !d.domain(v)) bad.push(i + 1); });
+    if (bad.length) return { ok: false, reason: d.text(req.of) + ' needs ' + d.needs + ', and ' + (bad.length === 1 ? 'row ' + bad[0] + ' has a value that is not.' : bad.length + ' rows have a value that is not (rows ' + bad.slice(0, 8).join(', ') + (bad.length > 8 ? ', …' : '') + ').') };
+  }
+  const present = vals.filter(v => v != null);
+  const out = new Array(vals.length).fill(null);
+  if (req.transform === 'rank') {
+    const idx = []; vals.forEach((v, i) => { if (v != null) idx.push(i); });
+    const r = ranks(idx.map(i => vals[i]));
+    idx.forEach((i, k) => { out[i] = r[k]; });
+  } else if (req.transform === 'log' || req.transform === 'sqrt') {
+    const f = req.transform === 'log' ? Math.log : Math.sqrt;
+    vals.forEach((v, i) => { if (v != null) out[i] = f(v); });
+  } else {
+    if (present.length < 2) return { ok: false, reason: d.text(req.of) + ' needs at least two values.' };
+    const m = mean(present), s = req.transform === 'standardize' ? sd(present) : 1;
+    if (req.transform === 'standardize' && !(s > 0)) return { ok: false, reason: req.of + ' has no spread, and so it cannot be standardized.' };
+    vals.forEach((v, i) => { if (v != null) out[i] = (v - m) / s; });
+  }
+  let replaced = null;
+  if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'ignored'; replaced = c.name; }
+  ds.columns.push({ name, role, type: 'continuous', levels: null, derived: { of: req.of, transform: req.transform, replaced } });
+  ds.rows.forEach((r, i) => { r.push(out[i]); });
+  return { ok: true, reason: null };
+}
+
+/**
+ * Removes a derived column from a dataset, in place, and gives the response
+ * role back to the column the derived one took it from, when it was the
+ * response and that column is still there. A column read from the data is
+ * never removed.
+ * @param {Dataset} ds
+ * @param {string} name
+ * @returns {boolean} whether a column was removed
+ */
+export function removeDerivedColumn(ds, name) {
+  const c = column(ds, name);
+  if (!c || !c.col.derived) return false;
+  ds.columns.splice(c.index, 1);
+  for (const r of ds.rows) r.splice(c.index, 1);
+  if (c.col.role === 'response' && c.col.derived.replaced && !ds.columns.some(x => x.role === 'response')) {
+    const back = column(ds, c.col.derived.replaced);
+    if (back && back.col.role === 'ignored') back.col.role = 'response';
+  }
+  return true;
 }
 </script>
 <script type="text/plain" data-module="js/io/analysis_scripts.js">
@@ -3715,6 +3842,22 @@ function settingsBlock(recipe, L) {
   return out;
 }
 
+// How a derived column was made, in each language's own words, for the
+// comment the data block carries; the values themselves are embedded or read
+// from the file like any other column's.
+const DERIVED_EXPR = {
+  rank: { R: n => 'rank(' + n + ')', py: n => 'pd.Series(' + n + ').rank()', m: n => 'tiedrank(' + n + ')' },
+  log: { R: n => 'log(' + n + ')', py: n => 'np.log(' + n + ')', m: n => 'log(' + n + ')' },
+  sqrt: { R: n => 'sqrt(' + n + ')', py: n => 'np.sqrt(' + n + ')', m: n => 'sqrt(' + n + ')' },
+  center: { R: n => n + ' - mean(' + n + ')', py: n => n + ' - np.mean(' + n + ')', m: n => n + ' - mean(' + n + ')' },
+  standardize: { R: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', py: n => '(' + n + ' - np.mean(' + n + ')) / np.std(' + n + ', ddof=1)', m: n => '(' + n + ' - mean(' + n + ')) / std(' + n + ')' }
+};
+function derivedComments(recipe, L) {
+  const names = new Set(recipe.data.columns.map(col => col.name));
+  return (recipe.derived || []).filter(x => names.has(x.name) && DERIVED_EXPR[x.transform]).map(x =>
+    L.comment + ascii(x.name) + ' was derived on the Import page as ' + DERIVED_EXPR[x.transform][L.lang](ascii(x.of)) + (x.transform === 'rank' ? ' (ties averaged)' : '') + '; its values are ' + (recipe.csvOnly ? 'in the data file' : 'embedded above') + '.');
+}
+
 function dataBlock(recipe, L) {
   const c = L.comment;
   const d = recipe.data;
@@ -3723,6 +3866,7 @@ function dataBlock(recipe, L) {
     (L.lang === 'R' ? 'NA' : L.lang === 'py' ? 'nan or None' : 'NaN or an empty name') + ', and the fitter drops the rows with one, as the page did.', c));
   if (recipe.csvOnly) {
     out.push(...csvReadLines(recipe, L));
+    out.push(...derivedComments(recipe, L));
     out.push(c + 'The coefficient names as the page prints them (R\'s).');
     out.push(...strsAssign(L, 'coef_names', recipe.names));
     return out;
@@ -3732,6 +3876,7 @@ function dataBlock(recipe, L) {
     const v = col.type === 'continuous' ? vals : vals.map(x => (x == null ? null : String(x)));
     out.push(...(col.type === 'continuous' ? vecAssign(L, varName(L, col.name), v) : strsAssign(L, varName(L, col.name), v)));
   }
+  out.push(...derivedComments(recipe, L));
   const resp = recipe.response;
   const coded = col => {
     // A binomial model of a two-level response takes the event as 1; an ordinal response is its level codes in MATLAB.
@@ -4350,6 +4495,7 @@ export function capabilityAll(specs) {
 
 import { datasetCsv, tableCsv, slug } from './export.js';
 import { RESIDUAL_SEED } from '../stats/residuals.js';
+import { derivedColumns, derivationText } from '../data/model.js';
 
 /** The most numbers a script embeds; past it, the scripts read these files. */
 export const MAX_NUMBERS = 200000;
@@ -4383,6 +4529,8 @@ export function dsProvenance(ds, extra) {
   if (preds.length) p.predictors = preds.join(', ');
   if (groups.length) p.group = groups.join(', ');
   if (ds.source && ds.source.file) p['source file'] = ds.source.file;
+  const der = derivedColumns(ds).map(derivationText);
+  if (der.length) p['derived columns'] = der.join('; ');
   Object.assign(p, extra || {});
   p.exported = stamp(new Date());
   return p;
@@ -6797,6 +6945,7 @@ export function baseRecipe({ page, title, provenance, level, ds, spec, result })
     page, title, provenance: Object.assign({}, provenance), level,
     dataset: ds.name,
     data: dataFor(ds, [spec]),
+    derived: ds.columns.filter(c => c.derived).map(c => ({ name: c.name, of: c.derived.of, transform: c.derived.transform })),
     spec: { response: spec.response, family: spec.family, link: link.id, group: spec.group || null, nested: spec.nested || null, slope: spec.slope || null, olre: !!spec.olre, reml: !!spec.reml, mixed },
     formula: { R: f.R, py: f.py, m: f.m },
     terms: f.terms,
@@ -9599,12 +9748,13 @@ export default { id, title, render, onShow };
 // The Import page: a drop zone, a file chooser, a paste box, and the bundled
 // examples; the mapping dialog that assigns each column a role and a type;
 // and the table of loaded datasets, where each can be renamed, exported as
-// CSV, or removed. Every dataset enters the application through state.add,
+// CSV, given a derived column, or removed. Every dataset enters the application through state.add,
 // and so a restored session goes through the same door.
 
 import * as state from '../state.js';
 import { sniff, buildTable } from '../io/parse.js';
-import { sameData, support, SUPPORT_LABEL, sortLevels } from '../data/model.js';
+import { sameData, support, SUPPORT_LABEL, sortLevels, DERIVATIONS, deriveColumn, removeDerivedColumn, derivedColumns, derivationText, derivedName } from '../data/model.js';
+import { orderedTerms, termVars } from '../stats/design.js';
 import { EXAMPLES } from '../data/examples.js';
 import { details, issueList, notice } from '../ui/widgets.js';
 import { esc, intl, plural, breakPoints } from '../ui/format.js';
@@ -9642,6 +9792,9 @@ const expanded = new Set();
 const exportOpen = new Set();
 /** Ids of datasets whose data preview is open under their data file. */
 const previewOpen = new Set();
+// The datasets whose Derive a column form is open, and the form's state per dataset.
+const deriveOpen = new Set();
+const deriveForm = new Map();
 let removeAllTimer = null;
 
 function visible() { return !!rootEl && rootEl.classList.contains('active'); }
@@ -9660,7 +9813,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently.</p>' +
+    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
     '<div class="sec">' +
       '<div class="sec-hd">Loaded datasets</div>' +
       '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page with its roles suggested from its # lines.</p>' +
@@ -10079,6 +10232,82 @@ function renderStatus() {
 
 // ── The loaded datasets ─────────────────────────────────────────────────
 
+// Whether a model specification names a column.
+function specUses(s, name) {
+  if (!s) return false;
+  if (s.response === name || s.group === name || s.nested === name || s.slope === name) return true;
+  return orderedTerms(s).some(t => termVars(t).includes(name));
+}
+
+// The Derive a column form under a dataset's row: the source column, the
+// transform, the new column's name and role, and the derived columns the
+// dataset already has, each removable.
+function deriveBox(ds) {
+  const box = document.createElement('div');
+  box.className = 'im-dv-box';
+  const sources = ds.columns.filter(c => c.type === 'continuous');
+  const f = deriveForm.get(ds.id) || { of: sources[0] ? sources[0].name : '', transform: 'rank', name: '', edited: false, role: 'predictor', message: null };
+  deriveForm.set(ds.id, f);
+  if (!sources.some(c => c.name === f.of)) { f.of = sources[0] ? sources[0].name : ''; f.edited = false; }
+  if (!f.edited) f.name = f.of ? derivedName(f.of, f.transform) : '';
+  const opt = (v, label, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(label) + '</option>';
+  box.innerHTML =
+    '<div class="ctrl-grp-lbl">Derived column</div>' +
+    (sources.length ? '<div class="ctrl-row im-dv-form">' +
+      '<label>From <select class="im-dv-of" aria-label="Source column">' + sources.map(c => opt(c.name, c.name, c.name === f.of)).join('') + '</select></label>' +
+      '<label>Transform <select class="im-dv-tr" aria-label="Transform">' + Object.keys(DERIVATIONS).map(k => opt(k, DERIVATIONS[k].label, k === f.transform)).join('') + '</select></label>' +
+      '<label>Name <input type="text" class="txt-inp im-dv-name" aria-label="Name of the derived column"></label>' +
+      '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + '</select></label>' +
+      '<button type="button" class="btn-run2 im-dv-add">Add the column</button>' +
+    '</div>' : '<p class="exp-note">This dataset has no continuous column to derive from.</p>') +
+    '<div class="im-dv-msg"></div>' +
+    '<div class="im-dv-list"></div>';
+  const q = sel => box.querySelector(sel);
+  if (sources.length) {
+    q('.im-dv-name').value = f.name;
+    q('.im-dv-of').addEventListener('change', e => { f.of = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
+    q('.im-dv-tr').addEventListener('change', e => { f.transform = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
+    q('.im-dv-name').addEventListener('input', e => { f.name = e.target.value; f.edited = e.target.value.trim() !== '' && e.target.value !== derivedName(f.of, f.transform); });
+    q('.im-dv-role').addEventListener('change', e => { f.role = e.target.value; });
+    q('.im-dv-add').dataset.focus = 'dvadd:' + ds.id;
+    q('.im-dv-add').addEventListener('click', () => {
+      const r = deriveColumn(ds, { of: f.of, transform: f.transform, name: f.name, role: f.role });
+      if (!r.ok) { f.message = r.reason; renderList('dvadd:' + ds.id); return; }
+      f.message = null; f.edited = false; f.name = '';
+      state.emit('datasets', { type: 'change', id: ds.id });
+      renderList('dvadd:' + ds.id);
+    });
+  }
+  if (f.message) q('.im-dv-msg').appendChild(notice('warn', esc(f.message)));
+  const list = q('.im-dv-list');
+  const der = derivedColumns(ds);
+  if (der.length) {
+    const ul = document.createElement('ul');
+    ul.className = 'im-dv-items';
+    for (const c of der) {
+      const li = document.createElement('li');
+      li.innerHTML = '<code>' + esc(derivationText(c)) + '</code> <span class="kind-badge">' + esc(c.role) + '</span> ';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'im-link';
+      b.textContent = 'Remove';
+      b.setAttribute('aria-label', 'Remove the derived column ' + c.name);
+      b.addEventListener('click', () => {
+        if (!removeDerivedColumn(ds, c.name)) return;
+        // A kept model or the current specification naming the column no longer fits the data.
+        for (const m of state.models.filter(x => x.spec.dataset === ds.id && specUses(x.spec, c.name))) state.dropModel(m.id);
+        if (state.spec.dataset === ds.id && specUses(state.spec, c.name)) state.setSpec(state.emptySpec());
+        state.emit('datasets', { type: 'change', id: ds.id });
+        renderList('dv:' + ds.id);
+      });
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    list.appendChild(ul);
+  }
+  return box;
+}
+
 function renderList() {
   const box = els.list;
   if (!box) return;
@@ -10111,9 +10340,9 @@ function renderList() {
       '<td>' + (resp ? esc(resp.name) : '–') + '</td>' +
       '<td class="im-src">' + (preds.length ? preds.map(p => p.replace(/^([^ ]+)/, (s) => esc(s))).join(', ') : '–') + '</td>' +
       '<td>' + (groups.length ? esc(groups.join(' / ')) : '–') + '</td>' +
-      '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + '</td>' +
+      '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + derivedColumns(ds).map(c => '<span class="im-derived">' + esc(derivationText(c)) + '</span>').join('') + '</td>' +
       '<td class="im-rej"></td>' +
-      '<td class="no-print"><button type="button" class="im-link im-xp"></button></td>' +
+      '<td class="no-print"><button type="button" class="im-link im-xp"></button> <button type="button" class="im-link im-dv">Derive a column</button></td>' +
       '<td class="no-print"><button type="button" class="btn-clear im-rm">Remove</button></td>';
     const inp = tr.querySelector('.im-name');
     inp.value = ds.name;
@@ -10142,9 +10371,14 @@ function renderList() {
     xp.setAttribute('aria-expanded', String(exportOpen.has(ds.id)));
     xp.dataset.focus = 'xp:' + ds.id;
     xp.addEventListener('click', () => { if (exportOpen.has(ds.id)) exportOpen.delete(ds.id); else exportOpen.add(ds.id); renderList(); });
+    const dv = tr.querySelector('.im-dv');
+    dv.setAttribute('aria-label', 'Derive a column of ' + ds.name);
+    dv.setAttribute('aria-expanded', String(deriveOpen.has(ds.id)));
+    dv.dataset.focus = 'dv:' + ds.id;
+    dv.addEventListener('click', () => { if (deriveOpen.has(ds.id)) deriveOpen.delete(ds.id); else deriveOpen.add(ds.id); renderList(); });
     const rm = tr.querySelector('.im-rm');
     rm.dataset.focus = 'rm:' + ds.id;
-    rm.addEventListener('click', () => { expanded.delete(ds.id); exportOpen.delete(ds.id); previewOpen.delete(ds.id); state.remove(ds.id); });
+    rm.addEventListener('click', () => { expanded.delete(ds.id); exportOpen.delete(ds.id); previewOpen.delete(ds.id); deriveOpen.delete(ds.id); deriveForm.delete(ds.id); state.remove(ds.id); });
     tb.appendChild(tr);
     if (expanded.has(ds.id) && nIss) {
       const er = document.createElement('tr');
@@ -10180,6 +10414,15 @@ function renderList() {
       er.appendChild(td);
       tb.appendChild(er);
       fileButtons(files, datasetFiles(ds));
+    }
+    if (deriveOpen.has(ds.id)) {
+      const er = document.createElement('tr');
+      er.className = 'im-exp-row no-print';
+      const td = document.createElement('td');
+      td.colSpan = 9;
+      td.appendChild(deriveBox(ds));
+      er.appendChild(td);
+      tb.appendChild(er);
     }
   }
   tbl.appendChild(tb);
@@ -12484,6 +12727,9 @@ function lsq(X, z) {
 // continuity correction, prop.test with no correction). Pure functions, no DOM.
 
 import { tCdf, fCdf, chi2Cdf, normCdf } from './special.js';
+import { ranks } from './descriptive.js';
+
+export { ranks };
 
 function meanVar(a) {
   const n = a.length;
@@ -12598,26 +12844,6 @@ export function correlation(x, y) {
   const slope = sxy / sxx, intercept = b.mean - slope * a.mean;
   const rss = syy - sxy * sxy / sxx;
   return { r, t, df, p: 2 * (1 - tCdf(Math.abs(t), df)), slope, intercept, seSlope: Math.sqrt(rss / df / sxx) };
-}
-
-/**
- * The ranks of a sample, 1 for the smallest value, with ties given the
- * average of the ranks they span, as R's rank() does by default.
- * @param {ArrayLike<number>} a
- * @returns {number[]}
- */
-export function ranks(a) {
-  const n = a.length;
-  const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => a[i] - a[j]);
-  const out = new Array(n);
-  for (let k = 0; k < n;) {
-    let m = k;
-    while (m + 1 < n && a[order[m + 1]] === a[order[k]]) m++;
-    const r = (k + m) / 2 + 1;
-    for (let q = k; q <= m; q++) out[order[q]] = r;
-    k = m + 1;
-  }
-  return out;
 }
 
 /**
@@ -13003,6 +13229,26 @@ export function lagPairs(a, lag) {
  * @param {ArrayLike<number>} y
  * @returns {number} NaN when either sample has no spread or n < 2
  */
+/**
+ * The ranks of a sample, 1 for the smallest value, with ties given the
+ * average of the ranks they span, as R's rank() does by default.
+ * @param {ArrayLike<number>} a
+ * @returns {number[]}
+ */
+export function ranks(a) {
+  const n = a.length;
+  const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => a[i] - a[j]);
+  const out = new Array(n);
+  for (let k = 0; k < n;) {
+    let m = k;
+    while (m + 1 < n && a[order[m + 1]] === a[order[k]]) m++;
+    const r = (k + m) / 2 + 1;
+    for (let q = k; q <= m; q++) out[order[q]] = r;
+    k = m + 1;
+  }
+  return out;
+}
+
 export function pearson(x, y) {
   const n = x.length;
   if (y.length !== n) throw new RangeError('pearson: x and y differ in length');
@@ -19042,7 +19288,7 @@ function serializeDataset(ds) {
   return {
     id: ds.id,
     name: ds.name,
-    columns: ds.columns.map(c => ({ name: c.name, role: c.role, type: c.type, levels: c.levels })),
+    columns: ds.columns.map(c => ({ name: c.name, role: c.role, type: c.type, levels: c.levels, derived: c.derived || null })),
     // JSON writes NaN as null, which restores as a missing value.
     rows: ds.rows,
     source: ds.source,
@@ -19136,7 +19382,7 @@ function restoreDataset(o) {
   const columns = [];
   for (const c of o.columns) {
     if (!c || typeof c !== 'object' || !isStr(c.name) || !ROLES.includes(c.role) || !TYPES.includes(c.type)) return null;
-    columns.push({ name: c.name, role: c.role, type: c.type, levels: Array.isArray(c.levels) ? c.levels.filter(isStr) : null });
+    columns.push({ name: c.name, role: c.role, type: c.type, levels: Array.isArray(c.levels) ? c.levels.filter(isStr) : null, derived: c.derived && typeof c.derived === 'object' && isStr(c.derived.of) && isStr(c.derived.transform) ? { of: c.derived.of, transform: c.derived.transform, replaced: isStr(c.derived.replaced) ? c.derived.replaced : null } : null });
   }
   const rows = [];
   for (const r of o.rows) {

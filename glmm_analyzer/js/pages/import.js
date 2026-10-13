@@ -1,12 +1,13 @@
 // The Import page: a drop zone, a file chooser, a paste box, and the bundled
 // examples; the mapping dialog that assigns each column a role and a type;
 // and the table of loaded datasets, where each can be renamed, exported as
-// CSV, or removed. Every dataset enters the application through state.add,
+// CSV, given a derived column, or removed. Every dataset enters the application through state.add,
 // and so a restored session goes through the same door.
 
 import * as state from '../state.js';
 import { sniff, buildTable } from '../io/parse.js';
-import { sameData, support, SUPPORT_LABEL, sortLevels } from '../data/model.js';
+import { sameData, support, SUPPORT_LABEL, sortLevels, DERIVATIONS, deriveColumn, removeDerivedColumn, derivedColumns, derivationText, derivedName } from '../data/model.js';
+import { orderedTerms, termVars } from '../stats/design.js';
 import { EXAMPLES } from '../data/examples.js';
 import { details, issueList, notice } from '../ui/widgets.js';
 import { esc, intl, plural, breakPoints } from '../ui/format.js';
@@ -44,6 +45,9 @@ const expanded = new Set();
 const exportOpen = new Set();
 /** Ids of datasets whose data preview is open under their data file. */
 const previewOpen = new Set();
+// The datasets whose Derive a column form is open, and the form's state per dataset.
+const deriveOpen = new Set();
+const deriveForm = new Map();
 let removeAllTimer = null;
 
 function visible() { return !!rootEl && rootEl.classList.contains('active'); }
@@ -62,7 +66,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently.</p>' +
+    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
     '<div class="sec">' +
       '<div class="sec-hd">Loaded datasets</div>' +
       '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page with its roles suggested from its # lines.</p>' +
@@ -481,6 +485,82 @@ function renderStatus() {
 
 // ── The loaded datasets ─────────────────────────────────────────────────
 
+// Whether a model specification names a column.
+function specUses(s, name) {
+  if (!s) return false;
+  if (s.response === name || s.group === name || s.nested === name || s.slope === name) return true;
+  return orderedTerms(s).some(t => termVars(t).includes(name));
+}
+
+// The Derive a column form under a dataset's row: the source column, the
+// transform, the new column's name and role, and the derived columns the
+// dataset already has, each removable.
+function deriveBox(ds) {
+  const box = document.createElement('div');
+  box.className = 'im-dv-box';
+  const sources = ds.columns.filter(c => c.type === 'continuous');
+  const f = deriveForm.get(ds.id) || { of: sources[0] ? sources[0].name : '', transform: 'rank', name: '', edited: false, role: 'predictor', message: null };
+  deriveForm.set(ds.id, f);
+  if (!sources.some(c => c.name === f.of)) { f.of = sources[0] ? sources[0].name : ''; f.edited = false; }
+  if (!f.edited) f.name = f.of ? derivedName(f.of, f.transform) : '';
+  const opt = (v, label, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(label) + '</option>';
+  box.innerHTML =
+    '<div class="ctrl-grp-lbl">Derived column</div>' +
+    (sources.length ? '<div class="ctrl-row im-dv-form">' +
+      '<label>From <select class="im-dv-of" aria-label="Source column">' + sources.map(c => opt(c.name, c.name, c.name === f.of)).join('') + '</select></label>' +
+      '<label>Transform <select class="im-dv-tr" aria-label="Transform">' + Object.keys(DERIVATIONS).map(k => opt(k, DERIVATIONS[k].label, k === f.transform)).join('') + '</select></label>' +
+      '<label>Name <input type="text" class="txt-inp im-dv-name" aria-label="Name of the derived column"></label>' +
+      '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + '</select></label>' +
+      '<button type="button" class="btn-run2 im-dv-add">Add the column</button>' +
+    '</div>' : '<p class="exp-note">This dataset has no continuous column to derive from.</p>') +
+    '<div class="im-dv-msg"></div>' +
+    '<div class="im-dv-list"></div>';
+  const q = sel => box.querySelector(sel);
+  if (sources.length) {
+    q('.im-dv-name').value = f.name;
+    q('.im-dv-of').addEventListener('change', e => { f.of = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
+    q('.im-dv-tr').addEventListener('change', e => { f.transform = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
+    q('.im-dv-name').addEventListener('input', e => { f.name = e.target.value; f.edited = e.target.value.trim() !== '' && e.target.value !== derivedName(f.of, f.transform); });
+    q('.im-dv-role').addEventListener('change', e => { f.role = e.target.value; });
+    q('.im-dv-add').dataset.focus = 'dvadd:' + ds.id;
+    q('.im-dv-add').addEventListener('click', () => {
+      const r = deriveColumn(ds, { of: f.of, transform: f.transform, name: f.name, role: f.role });
+      if (!r.ok) { f.message = r.reason; renderList('dvadd:' + ds.id); return; }
+      f.message = null; f.edited = false; f.name = '';
+      state.emit('datasets', { type: 'change', id: ds.id });
+      renderList('dvadd:' + ds.id);
+    });
+  }
+  if (f.message) q('.im-dv-msg').appendChild(notice('warn', esc(f.message)));
+  const list = q('.im-dv-list');
+  const der = derivedColumns(ds);
+  if (der.length) {
+    const ul = document.createElement('ul');
+    ul.className = 'im-dv-items';
+    for (const c of der) {
+      const li = document.createElement('li');
+      li.innerHTML = '<code>' + esc(derivationText(c)) + '</code> <span class="kind-badge">' + esc(c.role) + '</span> ';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'im-link';
+      b.textContent = 'Remove';
+      b.setAttribute('aria-label', 'Remove the derived column ' + c.name);
+      b.addEventListener('click', () => {
+        if (!removeDerivedColumn(ds, c.name)) return;
+        // A kept model or the current specification naming the column no longer fits the data.
+        for (const m of state.models.filter(x => x.spec.dataset === ds.id && specUses(x.spec, c.name))) state.dropModel(m.id);
+        if (state.spec.dataset === ds.id && specUses(state.spec, c.name)) state.setSpec(state.emptySpec());
+        state.emit('datasets', { type: 'change', id: ds.id });
+        renderList('dv:' + ds.id);
+      });
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    list.appendChild(ul);
+  }
+  return box;
+}
+
 function renderList() {
   const box = els.list;
   if (!box) return;
@@ -513,9 +593,9 @@ function renderList() {
       '<td>' + (resp ? esc(resp.name) : '–') + '</td>' +
       '<td class="im-src">' + (preds.length ? preds.map(p => p.replace(/^([^ ]+)/, (s) => esc(s))).join(', ') : '–') + '</td>' +
       '<td>' + (groups.length ? esc(groups.join(' / ')) : '–') + '</td>' +
-      '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + '</td>' +
+      '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + derivedColumns(ds).map(c => '<span class="im-derived">' + esc(derivationText(c)) + '</span>').join('') + '</td>' +
       '<td class="im-rej"></td>' +
-      '<td class="no-print"><button type="button" class="im-link im-xp"></button></td>' +
+      '<td class="no-print"><button type="button" class="im-link im-xp"></button> <button type="button" class="im-link im-dv">Derive a column</button></td>' +
       '<td class="no-print"><button type="button" class="btn-clear im-rm">Remove</button></td>';
     const inp = tr.querySelector('.im-name');
     inp.value = ds.name;
@@ -544,9 +624,14 @@ function renderList() {
     xp.setAttribute('aria-expanded', String(exportOpen.has(ds.id)));
     xp.dataset.focus = 'xp:' + ds.id;
     xp.addEventListener('click', () => { if (exportOpen.has(ds.id)) exportOpen.delete(ds.id); else exportOpen.add(ds.id); renderList(); });
+    const dv = tr.querySelector('.im-dv');
+    dv.setAttribute('aria-label', 'Derive a column of ' + ds.name);
+    dv.setAttribute('aria-expanded', String(deriveOpen.has(ds.id)));
+    dv.dataset.focus = 'dv:' + ds.id;
+    dv.addEventListener('click', () => { if (deriveOpen.has(ds.id)) deriveOpen.delete(ds.id); else deriveOpen.add(ds.id); renderList(); });
     const rm = tr.querySelector('.im-rm');
     rm.dataset.focus = 'rm:' + ds.id;
-    rm.addEventListener('click', () => { expanded.delete(ds.id); exportOpen.delete(ds.id); previewOpen.delete(ds.id); state.remove(ds.id); });
+    rm.addEventListener('click', () => { expanded.delete(ds.id); exportOpen.delete(ds.id); previewOpen.delete(ds.id); deriveOpen.delete(ds.id); deriveForm.delete(ds.id); state.remove(ds.id); });
     tb.appendChild(tr);
     if (expanded.has(ds.id) && nIss) {
       const er = document.createElement('tr');
@@ -582,6 +667,15 @@ function renderList() {
       er.appendChild(td);
       tb.appendChild(er);
       fileButtons(files, datasetFiles(ds));
+    }
+    if (deriveOpen.has(ds.id)) {
+      const er = document.createElement('tr');
+      er.className = 'im-exp-row no-print';
+      const td = document.createElement('td');
+      td.colSpan = 9;
+      td.appendChild(deriveBox(ds));
+      er.appendChild(td);
+      tb.appendChild(er);
     }
   }
   tbl.appendChild(tb);

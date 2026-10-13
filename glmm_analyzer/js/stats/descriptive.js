@@ -266,6 +266,26 @@ export function lagPairs(a, lag) {
  * @param {ArrayLike<number>} y
  * @returns {number} NaN when either sample has no spread or n < 2
  */
+/**
+ * The ranks of a sample, 1 for the smallest value, with ties given the
+ * average of the ranks they span, as R's rank() does by default.
+ * @param {ArrayLike<number>} a
+ * @returns {number[]}
+ */
+export function ranks(a) {
+  const n = a.length;
+  const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => a[i] - a[j]);
+  const out = new Array(n);
+  for (let k = 0; k < n;) {
+    let m = k;
+    while (m + 1 < n && a[order[m + 1]] === a[order[k]]) m++;
+    const r = (k + m) / 2 + 1;
+    for (let q = k; q <= m; q++) out[order[q]] = r;
+    k = m + 1;
+  }
+  return out;
+}
+
 export function pearson(x, y) {
   const n = x.length;
   if (y.length !== n) throw new RangeError('pearson: x and y differ in length');
