@@ -6,9 +6,7 @@
 import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
 import { FAMILIES, LINKS, backWord } from '../stats/families.js';
-import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerateFit } from '../stats/inference.js';
-import { ordinalProbs } from '../stats/ordinal.js';
-import { newDataMatrix } from '../stats/design.js';
+import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerateFit, ordinalPredictRows } from '../stats/inference.js';
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
@@ -71,7 +69,9 @@ export function render(root) {
     '</div>';
   els = { note: root.querySelector('#pr-fit-note'), x: root.querySelector('#pr-x'), by: root.querySelector('#pr-by'), data: root.querySelector('#pr-data'), effect: root.querySelector('#pr-effect'),
     factor: root.querySelector('#pr-factor'), means: root.querySelector('#pr-means'), calcInputs: root.querySelector('#pr-calc-inputs'), calc: root.querySelector('#pr-calc') };
-  els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); drawEffect(); });
+  els.xPair = els.x.closest('.ctrl-pair');
+  els.byPair = els.by.closest('.ctrl-pair');
+  els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); fillBy(); drawEffect(); });
   els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); drawEffect(); });
   els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
   els.groups = root.querySelector('#pr-groups');
@@ -94,6 +94,19 @@ function predictorsOf(ds, result) {
   const names = [];
   for (const t of result.design.terms) for (const v of termVars(t)) if (!names.includes(v)) names.push(v);
   return names.map(n => column(ds, n).col);
+}
+
+// The predictors of the fitted model, kept for the Lines by picker.
+let curPreds = [];
+// Lines by offers the predictors other than the one on the x axis, and is
+// hidden when there is none: a model with one predictor has nothing to
+// split its lines by.
+function fillBy() {
+  const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
+  const others = curPreds.filter(c => c.name !== els.x.value);
+  const wantBy = state.getPick(id, 'by');
+  els.by.innerHTML = opt('', 'none', !others.some(c => c.name === wantBy)) + others.map(c => opt(c.name, c.name, c.name === wantBy)).join('');
+  els.byPair.hidden = !others.length;
 }
 
 function compute() {
@@ -119,9 +132,9 @@ function compute() {
     return;
   }
   const preds = predictorsOf(ds, result);
+  curPreds = preds;
   const cats = preds.filter(c => c.type !== 'continuous');
   const off = {};
-  if (!preds.length) { off.effect = 'The model has no predictor to plot against.'; off.calculator = 'The model has no predictor to set.'; }
   if (!cats.length) off.means = 'The model has no categorical predictor.';
   if (result.fit.family === 'ordinal') off.means = 'Marginal means are not formed for the ordinal model; the effect plot shows each level’s probability.';
   setSectionAvailable(id, off);
@@ -129,14 +142,18 @@ function compute() {
   const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
   const wantX = state.getPick(id, 'x');
   els.x.innerHTML = preds.map((c, i) => opt(c.name, c.name, c.name === wantX || (!preds.some(p => p.name === wantX) && i === 0))).join('');
-  const wantBy = state.getPick(id, 'by');
-  els.by.innerHTML = opt('', 'none', !wantBy) + preds.map(c => opt(c.name, c.name, c.name === wantBy)).join('');
+  // With no predictor there is nothing to put on the x axis or to split by.
+  els.xPair.hidden = !preds.length;
+  fillBy();
   els.data.checked = state.getPick(id, 'data') !== false;
+  // The ordinal effect plot draws probabilities, not the observations.
+  els.data.closest('label, .ctrl-chk, .ctrl-pair').hidden = result.fit.family === 'ordinal';
   root_.querySelector('#pr-groups-lbl').hidden = !(result.fit.mixed && result.fit.random.terms[0].kind === 'group');
   els.groups.checked = state.getPick(id, 'groups') === true;
   const wantF = state.getPick(id, 'factor');
   els.factor.innerHTML = cats.map((c, i) => opt(c.name, c.name, c.name === wantF || (!cats.some(p => p.name === wantF) && i === 0))).join('');
   buildCalcInputs(ds, result, preds);
+  if (!preds.length) els.calcInputs.innerHTML = '<span class="muted-line">The model has no predictor to set; its one prediction is the intercept.</span>';
   drawEffect();
   drawMeans();
   drawCalc();
@@ -144,14 +161,37 @@ function compute() {
 }
 
 // The ordinal model's predictions: a probability per level.
-function ordinalPredict(ds, result, rows) {
-  const X = newDataMatrix(ds, result.design, rows).map(r => r.slice(1));
-  const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
-  return ordinalProbs(result.fit, eta);
+const ordinalPredict = ordinalPredictRows;
+
+// The ordinal model with no predictor: one probability per level, drawn
+// across the observations in the order loaded.
+function drawOrdinalInterceptEffect(ds, result) {
+  const levels = column(ds, state.spec.response).col.levels;
+  const probs = ordinalPredict(ds, result, [{}])[0];
+  const n = result.design.keep.length;
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.effect.appendChild(box);
+  const fig = makeFigure(box, { height: 320, xLabel: 'observation', yLabel: 'probability', title: 'Predicted probability of each level with no predictor' });
+  exportButtons(box, fig, ds.name + ' ordinal probabilities');
+  fig.render(f => {
+    f.x([1, Math.max(2, n)], { pad: 0.03, nice: true });
+    f.y([0, 1]);
+    f.axes({});
+    levels.forEach((l, k) => curveBand(f, { x: [1, n], y: [probs[k], probs[k]] }, { band: false, color: LEVEL_COLORS[k % LEVEL_COLORS.length], dash: LEVEL_DASHES[k % LEVEL_DASHES.length], label: 'P(' + l + ')' }));
+  });
+  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = 'The model has no predictor, and so it predicts the same probabilities for every observation: ' + levels.map((l, k) => 'P(' + esc(l) + ') = ' + num(probs[k], 4)).join(', ') + ', which sum to 1 and are the levels’ shares of the fitted rows. The observations are drawn in the order loaded.';
+  els.effect.appendChild(p);
+  figs.push(fig);
+  last.effect = { x: null, by: null, ordinal: true, levels: levels.slice(), series: [{ label: 'probabilities', by: null, rows: [{}], probs: [probs] }] };
 }
 
 function drawOrdinalEffect(ds, result) {
   const x = els.x.value;
+  if (!x) { drawOrdinalInterceptEffect(ds, result); return; }
   const grid = effectGrid(ds, result, x, null, 60);
   const xc = column(ds, x);
   const levels = column(ds, state.spec.response).col.levels;
@@ -162,6 +202,7 @@ function drawOrdinalEffect(ds, result) {
   exportButtons(box, fig, ds.name + ' ordinal effect of ' + x);
   const s = grid.series[0];
   const probs = ordinalPredict(ds, result, s.rows);
+  last.effect = { x, by: null, ordinal: true, levels: levels.slice(), series: [{ label: 'probabilities', by: null, rows: s.rows, probs }] };
   fig.render(f => {
     const xs = xc.col.type === 'continuous' ? s.xs : null;
     if (xs) f.x([Math.min(...xs), Math.max(...xs)], { pad: 0.03, nice: true });
@@ -184,13 +225,78 @@ function drawOrdinalEffect(ds, result) {
   figs.push(fig);
 }
 
+// With no predictor, the model predicts one mean for every observation:
+// the observations in the order loaded, with the fitted mean and its band
+// across them, and each group's own mean where the model has groups.
+function drawInterceptEffect(ds, result) {
+  const level = state.settings.level;
+  const resp = column(ds, state.spec.response).col;
+  const link = LINKS[result.link];
+  const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
+  const pred = predictRows(ds, result, [{}], level);
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.effect.appendChild(box);
+  const fig = makeFigure(box, { height: 320, xLabel: 'observation', yLabel, title: 'Predicted ' + yLabel + ' with no predictor' });
+  exportButtons(box, fig, ds.name + ' predicted mean');
+  const showData = els.data.checked;
+  const yData = result.codedY || result.design.y;
+  const n = result.design.keep.length;
+  const idx = Array.from({ length: n }, (_, k) => k + 1);
+  const binary = resp && (resp.type !== 'continuous' || support(resp, valuesOf(ds, resp.name)) === 'binary');
+  const bins = showData && binary ? binnedMeans(idx, Array.from(yData), 10) : null;
+  const groupLines = els.groups.checked && result.fit.mixed && result.fit.random.terms[0].kind === 'group';
+  const legendItems = [];
+  fig.render(f => {
+    const allY = [pred.fitLo[0], pred.fitHi[0]];
+    if (showData) { if (bins) for (const b of bins) allY.push(b.y); else for (let k = 0; k < n; k++) allY.push(yData[k]); }
+    const lo = Math.min(...allY), hi = Math.max(...allY);
+    const prob = result.fit.family === 'binomial' || result.fit.family === 'beta';
+    f.x([1, Math.max(2, n)], { pad: 0.03, nice: true });
+    if (prob) f.y([Math.min(0, lo), Math.max(1, hi)]); else f.y([lo, hi], { pad: 0.06, nice: true });
+    f.axes({});
+    if (showData) {
+      if (bins) dataPoints(f, bins, { color: '--est', hollow: true, r: 4.2, label: 'binned proportion' });
+      else rawPoints(f, idx, Array.from(yData), { label: 'observation' });
+    }
+    if (groupLines) {
+      // Each group's mean, drawn across that group's own observations.
+      const re = result.fit.ranef[0], ids = result.fit.random.terms[0].ids;
+      re.levels.forEach((l, g) => {
+        let lo = Infinity, hi = -Infinity;
+        ids.forEach((gid, k) => { if (gid === g) { if (k + 1 < lo) lo = k + 1; if (k + 1 > hi) hi = k + 1; } });
+        if (lo > hi) return;
+        const yg = link.linkinv(pred.eta[0] + re.modes[g][0]);
+        curveBand(f, { x: [lo, Math.max(hi, lo + 0.5)], y: [yg, yg] }, { band: false, color: '--pair', width: 1.5, label: 'group ' + l });
+      });
+    }
+    curveBand(f, { x: [1, n], y: [pred.fit[0], pred.fit[0]], lo: [pred.fitLo[0], pred.fitLo[0]], hi: [pred.fitHi[0], pred.fitHi[0]] }, { color: '--truth', label: 'predicted mean' });
+    legendItems.length = 0;
+    legendItems.push({ swatch: 'line', color: '--truth', label: 'predicted mean with its ' + lvl(level) + ' band' });
+    if (showData) legendItems.push(bins ? { swatch: 'hollow', color: '--est', label: 'observed proportion in a bin of consecutive observations (ten bins of equal count)' } : { swatch: 'dot', color: '--est', label: 'observation' });
+    if (groupLines) legendItems.push({ swatch: 'thin', color: '--pair', label: 'one group’s mean, from its predicted random effect' });
+  });
+  legend(box.appendChild(document.createElement('div')), legendItems);
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = 'The model has no predictor, and so it predicts one mean for every observation: the intercept carried through the inverse link, with its ' + term('Wald band', WALD_TIP) + '. The observations are drawn in the order loaded. ' +
+    (result.fit.mixed ? 'The population mean is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
+    (groupLines ? 'Each thin line is one group’s mean, drawn across that group’s observations: the population mean shifted by the group’s predicted random effect. ' : '') +
+    (bins ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin.' : '');
+  els.effect.appendChild(p);
+  figs.push(fig);
+  last.effect = { x: null, by: null, series: [{ label: 'predicted mean', by: null, rows: [{}], pred }] };
+}
+
 function drawEffect() {
   const cf = currentFit();
   els.effect.innerHTML = '';
   last.effect = null;
-  if (!cf || !els.x.value) { registerResult(); return; }
+  if (!cf) { registerResult(); return; }
   const { ds, result } = cf;
   if (result.fit.family === 'ordinal') { drawOrdinalEffect(ds, result); registerResult(); return; }
+  if (!predictorsOf(ds, result).length) { drawInterceptEffect(ds, result); registerResult(); return; }
+  if (!els.x.value) { registerResult(); return; }
   const x = els.x.value, by = els.by.value && els.by.value !== x ? els.by.value : null;
   const level = state.settings.level;
   const grid = effectGrid(ds, result, x, by, 60);
@@ -339,12 +445,19 @@ function registerResult() {
   const title = 'Predict: ' + result.formula;
   const provenance = { dataset: ds.name, formula: result.formula, family: FAMILIES[result.fit.family].label, link: link.label, level: lvl(level) };
   const tables = [];
-  if (last.effect) {
+  if (last.effect && last.effect.ordinal) {
     const e = last.effect;
-    provenance['effect plot'] = e.x + (e.by ? ' by ' + e.by : '');
-    const headers = [e.x].concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
+    provenance['effect plot'] = e.x ? e.x : 'the thresholds alone';
+    const headers = (e.x ? [e.x] : []).concat(e.levels.map(l => 'P(' + l + ')'));
     const rows = [];
-    for (const s of e.series) s.rows.forEach((row, i) => rows.push([row[e.x]].concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
+    for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(s.probs[i])));
+    tables.push({ name: 'Effect plot', headers, rows });
+  } else if (last.effect) {
+    const e = last.effect;
+    provenance['effect plot'] = e.x ? e.x + (e.by ? ' by ' + e.by : '') : 'the intercept alone';
+    const headers = (e.x ? [e.x] : []).concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
+    const rows = [];
+    for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
     tables.push({ name: 'Effect plot', headers, rows });
   }
   if (last.means) {
@@ -355,12 +468,16 @@ function registerResult() {
       { name: 'Pairwise differences', headers: ['pair', 'difference', 'std_error', useT ? 't' : 'z', 'p_tukey', 'ci_lower', 'ci_upper'].concat(link.backName ? ['ratio', 'ratio_lower', 'ratio_upper'] : []),
         rows: m.pairs.map(p => [p.a + ' - ' + p.b, p.diff, p.se, p.t, p.p, p.lo, p.hi].concat(link.backName ? [p.ratio, p.ratioLo, p.ratioHi] : [])) });
   }
-  if (last.calc) {
+  if (last.calc && last.calc.ordinal) {
+    const { row, levels, probs } = last.calc;
+    provenance.calculator = Object.entries(row).map(([k, v]) => k + ' = ' + v).join(', ') || 'no predictor';
+    tables.push({ name: 'Calculator', headers: ['quantity', 'value'], rows: Object.entries(row).concat(levels.map((l, k) => ['P(' + l + ')', probs[k]])) });
+  } else if (last.calc) {
     const { row, pred } = last.calc;
     provenance.calculator = Object.entries(row).map(([k, v]) => k + ' = ' + v).join(', ');
     tables.push({ name: 'Calculator', headers: ['quantity', 'value'], rows: Object.entries(row).concat([['linear predictor', pred.eta[0]], ['std_error', pred.se[0]], ['ci_lower', pred.lo[0]], ['ci_upper', pred.hi[0]], ['prediction', pred.fit[0]], ['prediction_lower', pred.fitLo[0]], ['prediction_upper', pred.fitHi[0]]]) });
   }
-  const regen = result.fit.family === 'ordinal' ? null : {
+  const regen = {
     spec, ds,
     tooBig: () => tooBig(ds, [spec]),
     build: () => capRecipe(predictRecipe({ ds, spec, result, level, title, provenance, effect: last.effect, means: last.means, calc: last.calc }), ds, [spec])
@@ -405,6 +522,7 @@ function drawCalc() {
     const pr = ordinalPredict(ds, result, [row])[0];
     const levels = column(ds, state.spec.response).col.levels;
     els.calc.appendChild(cardRow(levels.map((l, k) => card('P(' + esc(l) + ')', stat(pr[k], 4)))));
+    last.calc = { row, ordinal: true, levels: levels.slice(), probs: pr };
     registerResult();
     return;
   }

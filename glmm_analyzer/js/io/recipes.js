@@ -250,7 +250,18 @@ export function diagnosticsRecipe(o) {
 export function predictRecipe(o) {
   const r = baseRecipe(Object.assign({ page: 'predict' }, o));
   const e = r.expect;
-  if (o.effect) {
+  // With no predictor, the effect plot is the one predicted mean across the
+  // observations and the calculator is that same mean; the scripts take both
+  // from the intercept rather than from new-data rows.
+  r.interceptOnly = !!((o.effect && !o.effect.x) || (o.calc && !Object.keys(o.calc.row).length));
+  if (o.effect && o.effect.ordinal) {
+    // The ordinal model: a probability per level at each reported point.
+    const s = o.effect.series[0];
+    const n = s.rows.length;
+    const at = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
+    r.effect = { x: o.effect.x, by: null, ordinal: true, levels: o.effect.levels.slice(), series: [{ label: s.label, rows: s.rows, report: at }] };
+    for (const i of at) o.effect.levels.forEach((l, k) => { e['effect P(' + l + ') point ' + (i + 1)] = s.probs[i][k]; });
+  } else if (o.effect) {
     r.effect = { x: o.effect.x, by: o.effect.by, series: o.effect.series.map(s => ({ label: s.label, rows: s.rows })) };
     o.effect.series.forEach((s, k) => {
       const n = s.rows.length;
@@ -270,7 +281,10 @@ export function predictRecipe(o) {
     m.means.forEach(x => { e['emm ' + x.level] = x.eta; e['emm se ' + x.level] = x.se; e['emm lower ' + x.level] = x.lo; e['emm upper ' + x.level] = x.hi; e['emm response ' + x.level] = x.fit; });
     m.pairs.forEach(p => { const k = p.a + ' - ' + p.b; e['pair ' + k] = p.diff; e['pair se ' + k] = p.se; e['pair t ' + k] = p.t; e['pair p ' + k] = p.p; e['pair lower ' + k] = p.lo; e['pair upper ' + k] = p.hi; });
   }
-  if (o.calc) {
+  if (o.calc && o.calc.ordinal) {
+    r.calc = { row: Object.assign({}, o.calc.row), ordinal: true, levels: o.calc.levels.slice() };
+    o.calc.levels.forEach((l, k) => { e['calc P(' + l + ')'] = o.calc.probs[k]; });
+  } else if (o.calc) {
     r.calc = { row: Object.assign({}, o.calc.row) };
     e['calc eta'] = o.calc.pred.eta[0]; e['calc se'] = o.calc.pred.se[0]; e['calc fit'] = o.calc.pred.fit[0]; e['calc lower'] = o.calc.pred.fitLo[0]; e['calc upper'] = o.calc.pred.fitHi[0];
   }

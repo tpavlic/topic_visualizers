@@ -147,3 +147,19 @@ test('degenerateFit names a saturated normal fit and a singular design', async (
   assert.ok(nb.flags.includes('singular'));
   assert.match(degenerateFit(nb), /singular/);
 });
+
+test('a prediction from an intercept-only model is the mean with its t interval', async () => {
+  const { oneSampleT } = await import('../js/stats/classical.js');
+  const y = [5.1, 4.8, 6.2, 5.5, 4.9, 5.8, 6.1, 5.0, 5.4, 4.7];
+  const ds = makeDataset({ name: 'd', columns: [{ name: 'y', role: 'response', type: 'continuous' }], rows: y.map(v => [v]) });
+  const r = fitModel(ds, { response: 'y', family: 'normal', link: 'identity', terms: [], group: null, nested: null, slope: null, olre: false, reml: false });
+  const p = predictRows(ds, r, [{}], 0.95);
+  const t = oneSampleT(y);
+  const { tQuantile } = await import('../js/stats/special.js');
+  const h = tQuantile(0.975, t.df) * t.se;
+  assert.ok(Math.abs(p.fit[0] - t.mean) < 1e-12);
+  assert.ok(Math.abs(p.se[0] - t.se) < 1e-10);
+  assert.equal(p.df, t.df);
+  assert.ok(Math.abs(p.fitLo[0] - (t.mean - h)) < 1e-8 && Math.abs(p.fitHi[0] - (t.mean + h)) < 1e-8);
+  assert.deepEqual(referenceGrid(ds, r).names, []);
+});

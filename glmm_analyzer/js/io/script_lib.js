@@ -496,6 +496,12 @@ grid_rows <- function(m, d, newdata, names) {
   X <- model.matrix(tt, mf)
   X[, names, drop = FALSE]
 }
+# The ordinal model's probability of each level at the linear predictors eta (no intercept):
+# one row per eta, one column per level, from the thresholds zeta.
+ordinal_probs <- function(zeta, eta) {
+  cum <- matrix(plogis(outer(eta, zeta, function(e, z) z - e)), nrow = length(eta))
+  cbind(cum, 1) - cbind(0, cum)
+}
 # The mean on the response scale from the linear predictor.
 linkinv_of <- function(m, eta) {
   cls <- fit_class(m)
@@ -847,6 +853,15 @@ def grid_rows(m, d, newdata, names):
     return np.asarray(X[names], float)
 
 
+def ordinal_probs(zeta, eta):
+    """The ordinal model's probability of each level at the linear predictors eta (no intercept):
+    one row per eta, one column per level, from the thresholds zeta."""
+    eta = np.atleast_1d(np.asarray(eta, float))
+    cum = 1.0 / (1.0 + np.exp(-(np.asarray(zeta, float)[None, :] - eta[:, None])))
+    ones = np.ones((len(eta), 1))
+    return np.hstack([cum, ones]) - np.hstack([0 * ones, cum])
+
+
 def linkinv_of(m, eta):
     cls = fit_class(m)
     if cls == "mixedlm":
@@ -925,12 +940,14 @@ function m = fit_ordinal(tbl, formula)
 rhs = strtrim(extractAfter(formula, '~'));
 resp = strtrim(extractBefore(formula, '~'));
 terms = strtrim(strsplit(rhs, '+'));
-X = []; names = {};
+% A model with no predictor (y ~ 1) has thresholds only.
+terms = terms(~strcmp(terms, '1'));
+y = double(tbl.(resp));
+X = zeros(numel(y), 0); names = {};
 for i = 1:numel(terms)
     [cols, nm] = term_columns(tbl, terms{i});
     X = [X cols]; names = [names nm];
 end
-y = double(tbl.(resp));
 [B, ~, st] = mnrfit(X, y, 'model', 'ordinal');
 K = max(y);
 m = struct('ordinal', true, 'names', {names}, 'B', B, 'stats', st, 'K', K, 'X', X, 'y', y, 'n', numel(y));
@@ -1282,6 +1299,14 @@ end
 `;
 
 LIB.m.grid = `
+function P = ordinal_probs(zeta, eta)
+% The ordinal model's probability of each level at the linear predictors eta (no intercept):
+% one row per eta, one column per level, from the thresholds zeta.
+eta = eta(:); zeta = zeta(:)';
+cum = 1 ./ (1 + exp(-(zeta - eta)));
+P = [cum ones(numel(eta), 1)] - [zeros(numel(eta), 1) cum];
+end
+
 function X = grid_rows(m, tbl, newrows, names)
 % The design rows of new data in the columns the given coefficient names give: a name is a
 % product of pieces joined by ':', each a numeric variable or a dummy var_level.

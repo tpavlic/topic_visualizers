@@ -3398,6 +3398,20 @@ export function canModel(ds) {
 }
 
 /**
+ * The fixed terms of the default model for a response: every other column
+ * with the predictor or response role, as a main effect, in the dataset's
+ * column order. A column that was the response at import is a candidate
+ * predictor for any other response, and the group columns stay out of the
+ * fixed part.
+ * @param {Dataset} ds
+ * @param {string|null} response
+ * @returns {string[]}
+ */
+export function defaultTerms(ds, response) {
+  return ds.columns.filter(c => c.name !== response && (c.role === 'predictor' || c.role === 'response')).map(c => c.name);
+}
+
+/**
  * The transforms a derived column applies to a continuous column: the label
  * the page shows, the suffix of the default name, how the derivation is
  * written out, and the domain the source values must satisfy.
@@ -4213,16 +4227,44 @@ const linkinv = (L, eta) => (L.lang === 'R' ? 'linkinv_of(m, ' + eta + ')' : L.l
 function predictBody(r, L) {
   const out = [...fitLines(r, L)];
   const c = L.comment;
-  out.push(L.lang === 'm' ? 'V = vcov_at(m, names_here);' : L.lang === 'py' ? 'V = vcov_at(m, names_here)' : 'V <- vcov_at(m, coef_names)');
+  // An intercept-only ordinal model has no coefficient, and so no covariance to take.
+  if (r.names.length) out.push(L.lang === 'm' ? 'V = vcov_at(m, names_here);' : L.lang === 'py' ? 'V = vcov_at(m, names_here)' : 'V <- vcov_at(m, coef_names)');
+  const ordinal = r.spec.family === 'ordinal';
+  if (ordinal && (r.effect || r.calc)) out.push(L.assign('zeta', 'fit_thresholds(m)'));
+  // A cell of a probability matrix, one row per point and one column per level.
+  const cell = (name, i, k) => (L.lang === 'R' ? name + '[' + (i + 1) + ', ' + (k + 1) + ']' : L.lang === 'py' ? name + '[' + i + ', ' + k + ']' : name + '(' + (i + 1) + ', ' + (k + 1) + ')');
+  // The ordinal model's linear predictor with no predictor is 0 for every row.
+  const zeroEta = (eta, n) => (L.lang === 'R' ? [eta + ' <- rep(0, ' + n + ')'] : L.lang === 'py' ? [eta + ' = np.zeros(' + n + ')'] : [eta + ' = zeros(' + n + ', 1);']);
+  // With no predictor, the one prediction is the intercept: its coefficient
+  // and the root of its variance, as length-one vectors so that the report
+  // lines below read them as they read a curve's points.
+  const interceptLines = (eta, se) => L.lang === 'R' ? [eta + ' <- b[1]', se + ' <- sqrt(V[1, 1])']
+    : L.lang === 'py' ? [eta + ' = np.array([b[0]])', se + ' = np.array([np.sqrt(V[0, 0])])']
+      : [eta + ' = b(1);', se + ' = sqrt(V(1, 1));'];
   if (r.effect) {
     out.push(L.sect('Effect plot'));
-    out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held as the page held them; three points of each curve are checked.');
+    if (r.effect.ordinal) out.push(c + (r.effect.x ? 'The probability of each level along ' + ascii(r.effect.x) + ', the other predictors held as the page held them; three points are checked.' : 'The model has no predictor: the probability of each level is the same at every observation, from the thresholds alone.'));
+    else if (r.effect.x) out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held as the page held them; three points of each curve are checked.');
+    else out.push(c + 'The model has no predictor: the effect plot is the one predicted mean, the intercept, drawn across the observations in the order loaded.');
     r.effect.series.forEach((s, k) => {
       const nm = 'nd' + (k + 1);
-      out.push(...newRows(r, L, nm, s.rows));
-      out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
-      out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
-      out.push(L.assign('se' + (k + 1), rowSe(L, 'X' + (k + 1), 'V')));
+      if (r.effect.ordinal) {
+        if (r.effect.x) {
+          out.push(...newRows(r, L, nm, s.rows));
+          out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+          out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
+        } else out.push(...zeroEta('eta' + (k + 1), 1));
+        out.push(L.assign('P' + (k + 1), 'ordinal_probs(zeta, eta' + (k + 1) + ')'));
+        for (const i of s.report) r.effect.levels.forEach((l, j) => out.push(rep(L, r, 'effect P(' + l + ') point ' + (i + 1), cell('P' + (k + 1), i, j))));
+        return;
+      }
+      if (!r.effect.x) out.push(...interceptLines('eta' + (k + 1), 'se' + (k + 1)));
+      else {
+        out.push(...newRows(r, L, nm, s.rows));
+        out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+        out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
+        out.push(L.assign('se' + (k + 1), rowSe(L, 'X' + (k + 1), 'V')));
+      }
       for (const i of s.report) {
         const key = 'effect ' + (s.label || 'curve') + ' point ' + (i + 1);
         out.push(rep(L, r, key + ' eta', at(L, 'eta' + (k + 1), i)));
@@ -4283,12 +4325,30 @@ function predictBody(r, L) {
   }
   if (r.calc) {
     out.push(L.sect('Calculator'));
-    out.push(...newRows(r, L, 'nc', [r.calc.row]));
-    out.push(L.assign('Xc', 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', nc, ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
-    out.push(L.assign('etac', matvec(L, 'Xc', 'b')), L.assign('sec', rowSe(L, 'Xc', 'V')));
-    out.push(rep(L, r, 'calc eta', at(L, 'etac', 0)), rep(L, r, 'calc se', at(L, 'sec', 0)), rep(L, r, 'calc fit', linkinv(L, at(L, 'etac', 0))));
-    out.push(rep(L, r, 'calc lower', 'min(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
-    out.push(rep(L, r, 'calc upper', 'max(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
+    if (r.calc.ordinal) {
+      if (Object.keys(r.calc.row).length) {
+        out.push(...newRows(r, L, 'nc', [r.calc.row]));
+        out.push(L.assign('Xc', 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', nc, ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+        out.push(L.assign('etac', matvec(L, 'Xc', 'b')));
+      } else {
+        out.push(c + 'The model has no predictor to set: the probabilities come from the thresholds alone.');
+        out.push(...zeroEta('etac', 1));
+      }
+      out.push(L.assign('Pc', 'ordinal_probs(zeta, etac)'));
+      r.calc.levels.forEach((l, j) => out.push(rep(L, r, 'calc P(' + l + ')', cell('Pc', 0, j))));
+    } else if (!Object.keys(r.calc.row).length) {
+      out.push(c + 'The model has no predictor to set: the prediction is the intercept.');
+      out.push(...interceptLines('etac', 'sec'));
+    } else {
+      out.push(...newRows(r, L, 'nc', [r.calc.row]));
+      out.push(L.assign('Xc', 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', nc, ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+      out.push(L.assign('etac', matvec(L, 'Xc', 'b')), L.assign('sec', rowSe(L, 'Xc', 'V')));
+    }
+    if (!r.calc.ordinal) {
+      out.push(rep(L, r, 'calc eta', at(L, 'etac', 0)), rep(L, r, 'calc se', at(L, 'sec', 0)), rep(L, r, 'calc fit', linkinv(L, at(L, 'etac', 0))));
+      out.push(rep(L, r, 'calc lower', 'min(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
+      out.push(rep(L, r, 'calc upper', 'max(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
+    }
   }
   return { body: out, need: ['fit', 'grid'].concat(L.lang === 'm' && r.means ? ['studrange'] : []) };
 }
@@ -6499,7 +6559,31 @@ function diagnosticsFigures(r, L) {
 
 function predictFigures(r, L) {
   const calls = [], fig = [];
-  if (r.effect) {
+  const yLabel = r.response.event ? 'probability of ' + r.response.event : r.spec.response;
+  const yData = L.lang === 'R' ? (r.response.event != null && r.spec.family === 'binomial' ? 'as.numeric(d$' + r.spec.response + ' == ' + L.str(r.response.event) + ')' : 'd$' + r.spec.response)
+    : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.spec.response) + '], float)' : 'tbl.' + r.spec.response;
+  if (r.effect && r.effect.ordinal) {
+    // The ordinal model: one curve per level's probability, with no band; along a continuous
+    // predictor, or flat across the observations when the model has none.
+    const cont = r.effect.x ? r.data.columns.find(c => c.name === r.effect.x).type === 'continuous' : true;
+    if (cont) {
+      const idx = L.lang === 'R' ? 'seq_len(nrow(d))' : L.lang === 'py' ? 'np.arange(1, len(d) + 1, dtype=float)' : "(1:height(tbl))'";
+      const xExpr = r.effect.x ? (L.lang === 'R' ? 'nd1$' + r.effect.x : L.lang === 'py' ? 'nd1[' + L.str(r.effect.x) + ']' : 'nd1.' + r.effect.x) : idx;
+      const colK = k => (L.lang === 'R' ? 'P1[, ' + (k + 1) + ']' : L.lang === 'py' ? 'P1[:, ' + k + ']' : 'P1(:, ' + (k + 1) + ')');
+      const across = e => (r.effect.x ? e : (L.lang === 'R' ? 'rep(' + e + ', nrow(d))' : L.lang === 'py' ? 'np.repeat(' + e + ', len(d))' : 'repmat(' + e + ', height(tbl), 1)'));
+      const ys = r.effect.levels.map((l, k) => across(colK(k)));
+      const xs = r.effect.levels.map(() => xExpr);
+      const labels = strsOf(L, r.effect.levels.map(l => 'P(' + l + ')'));
+      calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, ys), listOf(L, ys), L.str(r.effect.x || 'observation'), L.str('probability'), L.str('Predicted probability of each level' + (r.effect.x ? ' against ' + r.effect.x : ' with no predictor'))], { labels }));
+      fig.push('effect');
+    }
+  } else if (r.effect && !r.effect.x) {
+    // No predictor: the one predicted mean and its band across the observations, in the order loaded.
+    const idx = L.lang === 'R' ? 'seq_len(nrow(d))' : L.lang === 'py' ? 'np.arange(1, len(d) + 1, dtype=float)' : "(1:height(tbl))'";
+    const across = e => (L.lang === 'R' ? 'rep(' + e + ', nrow(d))' : L.lang === 'py' ? 'np.repeat(' + e + ', len(d))' : 'repmat(' + e + ', height(tbl), 1)');
+    calls.push(...call(L, 'fig_effect', [listOf(L, [idx]), listOf(L, [across('linkinv_of(m, eta1)')]), listOf(L, [across('linkinv_of(m, eta1 - q_wald * se1)')]), listOf(L, [across('linkinv_of(m, eta1 + q_wald * se1)')]), L.str('observation'), L.str(yLabel), L.str('Predicted ' + yLabel + ' with no predictor')], { px: idx, py: yData }));
+    fig.push('effect');
+  } else if (r.effect) {
     const n = r.effect.series.length;
     const xs = r.effect.series.map((s, k) => (L.lang === 'R' ? 'nd' + (k + 1) + '$' + r.effect.x : L.lang === 'py' ? 'nd' + (k + 1) + '[' + L.str(r.effect.x) + ']' : 'nd' + (k + 1) + '.' + r.effect.x));
     const cont = r.data.columns.find(c => c.name === r.effect.x).type === 'continuous';
@@ -6508,8 +6592,6 @@ function predictFigures(r, L) {
       const los = r.effect.series.map((s, k) => 'linkinv_of(m, eta' + (k + 1) + ' - q_wald * se' + (k + 1) + ')');
       const his = r.effect.series.map((s, k) => 'linkinv_of(m, eta' + (k + 1) + ' + q_wald * se' + (k + 1) + ')');
       const labels = strsOf(L, r.effect.series.map(s => s.label || 'predicted mean'));
-      const yData = L.lang === 'R' ? (r.response.event != null && r.spec.family === 'binomial' ? 'as.numeric(d$' + r.spec.response + ' == ' + L.str(r.response.event) + ')' : 'd$' + r.spec.response)
-        : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.spec.response) + '], float)' : 'tbl.' + r.spec.response;
       const xData = L.lang === 'R' ? 'd$' + r.effect.x : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.effect.x) + '], float)' : 'tbl.' + r.effect.x;
       calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, los), listOf(L, his), L.str(r.effect.x), L.str(r.response.event ? 'probability of ' + r.response.event : r.spec.response), L.str('Predicted ' + (r.response.event ? 'probability of ' + r.response.event : r.spec.response) + ' against ' + r.effect.x)], { px: xData, py: yData, labels: n > 1 ? labels : undefined }));
       fig.push('effect');
@@ -7079,7 +7161,18 @@ export function diagnosticsRecipe(o) {
 export function predictRecipe(o) {
   const r = baseRecipe(Object.assign({ page: 'predict' }, o));
   const e = r.expect;
-  if (o.effect) {
+  // With no predictor, the effect plot is the one predicted mean across the
+  // observations and the calculator is that same mean; the scripts take both
+  // from the intercept rather than from new-data rows.
+  r.interceptOnly = !!((o.effect && !o.effect.x) || (o.calc && !Object.keys(o.calc.row).length));
+  if (o.effect && o.effect.ordinal) {
+    // The ordinal model: a probability per level at each reported point.
+    const s = o.effect.series[0];
+    const n = s.rows.length;
+    const at = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
+    r.effect = { x: o.effect.x, by: null, ordinal: true, levels: o.effect.levels.slice(), series: [{ label: s.label, rows: s.rows, report: at }] };
+    for (const i of at) o.effect.levels.forEach((l, k) => { e['effect P(' + l + ') point ' + (i + 1)] = s.probs[i][k]; });
+  } else if (o.effect) {
     r.effect = { x: o.effect.x, by: o.effect.by, series: o.effect.series.map(s => ({ label: s.label, rows: s.rows })) };
     o.effect.series.forEach((s, k) => {
       const n = s.rows.length;
@@ -7099,7 +7192,10 @@ export function predictRecipe(o) {
     m.means.forEach(x => { e['emm ' + x.level] = x.eta; e['emm se ' + x.level] = x.se; e['emm lower ' + x.level] = x.lo; e['emm upper ' + x.level] = x.hi; e['emm response ' + x.level] = x.fit; });
     m.pairs.forEach(p => { const k = p.a + ' - ' + p.b; e['pair ' + k] = p.diff; e['pair se ' + k] = p.se; e['pair t ' + k] = p.t; e['pair p ' + k] = p.p; e['pair lower ' + k] = p.lo; e['pair upper ' + k] = p.hi; });
   }
-  if (o.calc) {
+  if (o.calc && o.calc.ordinal) {
+    r.calc = { row: Object.assign({}, o.calc.row), ordinal: true, levels: o.calc.levels.slice() };
+    o.calc.levels.forEach((l, k) => { e['calc P(' + l + ')'] = o.calc.probs[k]; });
+  } else if (o.calc) {
     r.calc = { row: Object.assign({}, o.calc.row) };
     e['calc eta'] = o.calc.pred.eta[0]; e['calc se'] = o.calc.pred.se[0]; e['calc fit'] = o.calc.pred.fit[0]; e['calc lower'] = o.calc.pred.fitLo[0]; e['calc upper'] = o.calc.pred.fitHi[0];
   }
@@ -7664,6 +7760,12 @@ grid_rows <- function(m, d, newdata, names) {
   X <- model.matrix(tt, mf)
   X[, names, drop = FALSE]
 }
+# The ordinal model's probability of each level at the linear predictors eta (no intercept):
+# one row per eta, one column per level, from the thresholds zeta.
+ordinal_probs <- function(zeta, eta) {
+  cum <- matrix(plogis(outer(eta, zeta, function(e, z) z - e)), nrow = length(eta))
+  cbind(cum, 1) - cbind(0, cum)
+}
 # The mean on the response scale from the linear predictor.
 linkinv_of <- function(m, eta) {
   cls <- fit_class(m)
@@ -8015,6 +8117,15 @@ def grid_rows(m, d, newdata, names):
     return np.asarray(X[names], float)
 
 
+def ordinal_probs(zeta, eta):
+    """The ordinal model's probability of each level at the linear predictors eta (no intercept):
+    one row per eta, one column per level, from the thresholds zeta."""
+    eta = np.atleast_1d(np.asarray(eta, float))
+    cum = 1.0 / (1.0 + np.exp(-(np.asarray(zeta, float)[None, :] - eta[:, None])))
+    ones = np.ones((len(eta), 1))
+    return np.hstack([cum, ones]) - np.hstack([0 * ones, cum])
+
+
 def linkinv_of(m, eta):
     cls = fit_class(m)
     if cls == "mixedlm":
@@ -8093,12 +8204,14 @@ function m = fit_ordinal(tbl, formula)
 rhs = strtrim(extractAfter(formula, '~'));
 resp = strtrim(extractBefore(formula, '~'));
 terms = strtrim(strsplit(rhs, '+'));
-X = []; names = {};
+% A model with no predictor (y ~ 1) has thresholds only.
+terms = terms(~strcmp(terms, '1'));
+y = double(tbl.(resp));
+X = zeros(numel(y), 0); names = {};
 for i = 1:numel(terms)
     [cols, nm] = term_columns(tbl, terms{i});
     X = [X cols]; names = [names nm];
 end
-y = double(tbl.(resp));
 [B, ~, st] = mnrfit(X, y, 'model', 'ordinal');
 K = max(y);
 m = struct('ordinal', true, 'names', {names}, 'B', B, 'stats', st, 'K', K, 'X', X, 'y', y, 'n', numel(y));
@@ -8450,6 +8563,14 @@ end
 `;
 
 LIB.m.grid = `
+function P = ordinal_probs(zeta, eta)
+% The ordinal model's probability of each level at the linear predictors eta (no intercept):
+% one row per eta, one column per level, from the thresholds zeta.
+eta = eta(:); zeta = zeta(:)';
+cum = 1 ./ (1 + exp(-(zeta - eta)));
+P = [cum ones(numel(eta), 1)] - [zeros(numel(eta), 1) cum];
+end
+
 function X = grid_rows(m, tbl, newrows, names)
 % The design rows of new data in the columns the given coefficient names give: a name is a
 % product of pieces joined by ':', each a numeric variable or a dummy var_level.
@@ -9574,7 +9695,7 @@ export function render(root) {
     '<p class="lede">What the response holds decides which families can describe it, and how it moves with each predictor is the first look at the model to build. Nothing here is a fit; the Model page fits.</p>' +
     '<div class="sec ctrl-card"><div class="ctrl-row">' +
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-ds">Dataset</label><select id="ex-ds"></select></span>' +
-      '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-by">Descriptives by</label><select id="ex-by"></select></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-by">Group descriptives by</label><select id="ex-by"></select></span>' +
     '</div></div>' +
     '<div class="sec"><div class="sec-hd">The response</div><div id="ex-resp"></div></div>' +
     '<div class="sec"><div class="sec-hd">Descriptives</div><div id="ex-desc"></div></div>' +
@@ -10645,11 +10766,15 @@ function drawCoefficients(result) {
       : '; z tests: large-sample ' + term('Wald tests', WALD_TIP) + ', as the fitter reports them.';
   html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : zWhy) +
     (word ? ' The last two columns carry each coefficient through the exponential: the ' + esc(word) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
+  // An ordinal model has no intercept, and so with no predictor it has no coefficient at all.
+  if (!rows.length && fit.family === 'ordinal') html = '<p class="muted-line">An ordinal model has no intercept, and so this model has no coefficient. With no predictor, its thresholds alone set the probabilities of the levels, below.</p>';
   if (result.fit.family === 'ordinal') {
     const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
-    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>ζ</th><th>Std. error</th></tr></thead><tbody>' +
-      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td></tr>').join('') + '</tbody></table></div>' +
-      '<p class="muted-line">P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.</p>';
+    // With no predictor, each threshold is a cumulative probability in disguise.
+    const cum = p === 0;
+    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>Estimate</th><th>Std. error</th>' + (cum ? '<th>Cumulative probability</th>' : '') + '</tr></thead><tbody>' +
+      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td>' + (cum ? '<td>' + stat(1 / (1 + Math.exp(-z[k])), 4) + '</td>' : '') + '</tr>').join('') + '</tbody></table></div>' +
+      '<p class="muted-line">' + (cum ? 'Each threshold ζ<sub>k</sub> is the logit of the probability of being at or below level k, P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub>), and the levels’ own probabilities are the differences of those.' : 'P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.') + '</p>';
   }
   els.coef.innerHTML = html;
 }
@@ -10813,9 +10938,7 @@ export default { id, title, render, onShow };
 import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
 import { FAMILIES, LINKS, backWord } from '../stats/families.js';
-import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerateFit } from '../stats/inference.js';
-import { ordinalProbs } from '../stats/ordinal.js';
-import { newDataMatrix } from '../stats/design.js';
+import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerateFit, ordinalPredictRows } from '../stats/inference.js';
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
@@ -10878,7 +11001,9 @@ export function render(root) {
     '</div>';
   els = { note: root.querySelector('#pr-fit-note'), x: root.querySelector('#pr-x'), by: root.querySelector('#pr-by'), data: root.querySelector('#pr-data'), effect: root.querySelector('#pr-effect'),
     factor: root.querySelector('#pr-factor'), means: root.querySelector('#pr-means'), calcInputs: root.querySelector('#pr-calc-inputs'), calc: root.querySelector('#pr-calc') };
-  els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); drawEffect(); });
+  els.xPair = els.x.closest('.ctrl-pair');
+  els.byPair = els.by.closest('.ctrl-pair');
+  els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); fillBy(); drawEffect(); });
   els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); drawEffect(); });
   els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
   els.groups = root.querySelector('#pr-groups');
@@ -10901,6 +11026,19 @@ function predictorsOf(ds, result) {
   const names = [];
   for (const t of result.design.terms) for (const v of termVars(t)) if (!names.includes(v)) names.push(v);
   return names.map(n => column(ds, n).col);
+}
+
+// The predictors of the fitted model, kept for the Lines by picker.
+let curPreds = [];
+// Lines by offers the predictors other than the one on the x axis, and is
+// hidden when there is none: a model with one predictor has nothing to
+// split its lines by.
+function fillBy() {
+  const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
+  const others = curPreds.filter(c => c.name !== els.x.value);
+  const wantBy = state.getPick(id, 'by');
+  els.by.innerHTML = opt('', 'none', !others.some(c => c.name === wantBy)) + others.map(c => opt(c.name, c.name, c.name === wantBy)).join('');
+  els.byPair.hidden = !others.length;
 }
 
 function compute() {
@@ -10926,9 +11064,9 @@ function compute() {
     return;
   }
   const preds = predictorsOf(ds, result);
+  curPreds = preds;
   const cats = preds.filter(c => c.type !== 'continuous');
   const off = {};
-  if (!preds.length) { off.effect = 'The model has no predictor to plot against.'; off.calculator = 'The model has no predictor to set.'; }
   if (!cats.length) off.means = 'The model has no categorical predictor.';
   if (result.fit.family === 'ordinal') off.means = 'Marginal means are not formed for the ordinal model; the effect plot shows each level’s probability.';
   setSectionAvailable(id, off);
@@ -10936,14 +11074,18 @@ function compute() {
   const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
   const wantX = state.getPick(id, 'x');
   els.x.innerHTML = preds.map((c, i) => opt(c.name, c.name, c.name === wantX || (!preds.some(p => p.name === wantX) && i === 0))).join('');
-  const wantBy = state.getPick(id, 'by');
-  els.by.innerHTML = opt('', 'none', !wantBy) + preds.map(c => opt(c.name, c.name, c.name === wantBy)).join('');
+  // With no predictor there is nothing to put on the x axis or to split by.
+  els.xPair.hidden = !preds.length;
+  fillBy();
   els.data.checked = state.getPick(id, 'data') !== false;
+  // The ordinal effect plot draws probabilities, not the observations.
+  els.data.closest('label, .ctrl-chk, .ctrl-pair').hidden = result.fit.family === 'ordinal';
   root_.querySelector('#pr-groups-lbl').hidden = !(result.fit.mixed && result.fit.random.terms[0].kind === 'group');
   els.groups.checked = state.getPick(id, 'groups') === true;
   const wantF = state.getPick(id, 'factor');
   els.factor.innerHTML = cats.map((c, i) => opt(c.name, c.name, c.name === wantF || (!cats.some(p => p.name === wantF) && i === 0))).join('');
   buildCalcInputs(ds, result, preds);
+  if (!preds.length) els.calcInputs.innerHTML = '<span class="muted-line">The model has no predictor to set; its one prediction is the intercept.</span>';
   drawEffect();
   drawMeans();
   drawCalc();
@@ -10951,14 +11093,37 @@ function compute() {
 }
 
 // The ordinal model's predictions: a probability per level.
-function ordinalPredict(ds, result, rows) {
-  const X = newDataMatrix(ds, result.design, rows).map(r => r.slice(1));
-  const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
-  return ordinalProbs(result.fit, eta);
+const ordinalPredict = ordinalPredictRows;
+
+// The ordinal model with no predictor: one probability per level, drawn
+// across the observations in the order loaded.
+function drawOrdinalInterceptEffect(ds, result) {
+  const levels = column(ds, state.spec.response).col.levels;
+  const probs = ordinalPredict(ds, result, [{}])[0];
+  const n = result.design.keep.length;
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.effect.appendChild(box);
+  const fig = makeFigure(box, { height: 320, xLabel: 'observation', yLabel: 'probability', title: 'Predicted probability of each level with no predictor' });
+  exportButtons(box, fig, ds.name + ' ordinal probabilities');
+  fig.render(f => {
+    f.x([1, Math.max(2, n)], { pad: 0.03, nice: true });
+    f.y([0, 1]);
+    f.axes({});
+    levels.forEach((l, k) => curveBand(f, { x: [1, n], y: [probs[k], probs[k]] }, { band: false, color: LEVEL_COLORS[k % LEVEL_COLORS.length], dash: LEVEL_DASHES[k % LEVEL_DASHES.length], label: 'P(' + l + ')' }));
+  });
+  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = 'The model has no predictor, and so it predicts the same probabilities for every observation: ' + levels.map((l, k) => 'P(' + esc(l) + ') = ' + num(probs[k], 4)).join(', ') + ', which sum to 1 and are the levels’ shares of the fitted rows. The observations are drawn in the order loaded.';
+  els.effect.appendChild(p);
+  figs.push(fig);
+  last.effect = { x: null, by: null, ordinal: true, levels: levels.slice(), series: [{ label: 'probabilities', by: null, rows: [{}], probs: [probs] }] };
 }
 
 function drawOrdinalEffect(ds, result) {
   const x = els.x.value;
+  if (!x) { drawOrdinalInterceptEffect(ds, result); return; }
   const grid = effectGrid(ds, result, x, null, 60);
   const xc = column(ds, x);
   const levels = column(ds, state.spec.response).col.levels;
@@ -10969,6 +11134,7 @@ function drawOrdinalEffect(ds, result) {
   exportButtons(box, fig, ds.name + ' ordinal effect of ' + x);
   const s = grid.series[0];
   const probs = ordinalPredict(ds, result, s.rows);
+  last.effect = { x, by: null, ordinal: true, levels: levels.slice(), series: [{ label: 'probabilities', by: null, rows: s.rows, probs }] };
   fig.render(f => {
     const xs = xc.col.type === 'continuous' ? s.xs : null;
     if (xs) f.x([Math.min(...xs), Math.max(...xs)], { pad: 0.03, nice: true });
@@ -10991,13 +11157,78 @@ function drawOrdinalEffect(ds, result) {
   figs.push(fig);
 }
 
+// With no predictor, the model predicts one mean for every observation:
+// the observations in the order loaded, with the fitted mean and its band
+// across them, and each group's own mean where the model has groups.
+function drawInterceptEffect(ds, result) {
+  const level = state.settings.level;
+  const resp = column(ds, state.spec.response).col;
+  const link = LINKS[result.link];
+  const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
+  const pred = predictRows(ds, result, [{}], level);
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.effect.appendChild(box);
+  const fig = makeFigure(box, { height: 320, xLabel: 'observation', yLabel, title: 'Predicted ' + yLabel + ' with no predictor' });
+  exportButtons(box, fig, ds.name + ' predicted mean');
+  const showData = els.data.checked;
+  const yData = result.codedY || result.design.y;
+  const n = result.design.keep.length;
+  const idx = Array.from({ length: n }, (_, k) => k + 1);
+  const binary = resp && (resp.type !== 'continuous' || support(resp, valuesOf(ds, resp.name)) === 'binary');
+  const bins = showData && binary ? binnedMeans(idx, Array.from(yData), 10) : null;
+  const groupLines = els.groups.checked && result.fit.mixed && result.fit.random.terms[0].kind === 'group';
+  const legendItems = [];
+  fig.render(f => {
+    const allY = [pred.fitLo[0], pred.fitHi[0]];
+    if (showData) { if (bins) for (const b of bins) allY.push(b.y); else for (let k = 0; k < n; k++) allY.push(yData[k]); }
+    const lo = Math.min(...allY), hi = Math.max(...allY);
+    const prob = result.fit.family === 'binomial' || result.fit.family === 'beta';
+    f.x([1, Math.max(2, n)], { pad: 0.03, nice: true });
+    if (prob) f.y([Math.min(0, lo), Math.max(1, hi)]); else f.y([lo, hi], { pad: 0.06, nice: true });
+    f.axes({});
+    if (showData) {
+      if (bins) dataPoints(f, bins, { color: '--est', hollow: true, r: 4.2, label: 'binned proportion' });
+      else rawPoints(f, idx, Array.from(yData), { label: 'observation' });
+    }
+    if (groupLines) {
+      // Each group's mean, drawn across that group's own observations.
+      const re = result.fit.ranef[0], ids = result.fit.random.terms[0].ids;
+      re.levels.forEach((l, g) => {
+        let lo = Infinity, hi = -Infinity;
+        ids.forEach((gid, k) => { if (gid === g) { if (k + 1 < lo) lo = k + 1; if (k + 1 > hi) hi = k + 1; } });
+        if (lo > hi) return;
+        const yg = link.linkinv(pred.eta[0] + re.modes[g][0]);
+        curveBand(f, { x: [lo, Math.max(hi, lo + 0.5)], y: [yg, yg] }, { band: false, color: '--pair', width: 1.5, label: 'group ' + l });
+      });
+    }
+    curveBand(f, { x: [1, n], y: [pred.fit[0], pred.fit[0]], lo: [pred.fitLo[0], pred.fitLo[0]], hi: [pred.fitHi[0], pred.fitHi[0]] }, { color: '--truth', label: 'predicted mean' });
+    legendItems.length = 0;
+    legendItems.push({ swatch: 'line', color: '--truth', label: 'predicted mean with its ' + lvl(level) + ' band' });
+    if (showData) legendItems.push(bins ? { swatch: 'hollow', color: '--est', label: 'observed proportion in a bin of consecutive observations (ten bins of equal count)' } : { swatch: 'dot', color: '--est', label: 'observation' });
+    if (groupLines) legendItems.push({ swatch: 'thin', color: '--pair', label: 'one group’s mean, from its predicted random effect' });
+  });
+  legend(box.appendChild(document.createElement('div')), legendItems);
+  const p = document.createElement('p');
+  p.className = 'muted-line';
+  p.innerHTML = 'The model has no predictor, and so it predicts one mean for every observation: the intercept carried through the inverse link, with its ' + term('Wald band', WALD_TIP) + '. The observations are drawn in the order loaded. ' +
+    (result.fit.mixed ? 'The population mean is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
+    (groupLines ? 'Each thin line is one group’s mean, drawn across that group’s observations: the population mean shifted by the group’s predicted random effect. ' : '') +
+    (bins ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin.' : '');
+  els.effect.appendChild(p);
+  figs.push(fig);
+  last.effect = { x: null, by: null, series: [{ label: 'predicted mean', by: null, rows: [{}], pred }] };
+}
+
 function drawEffect() {
   const cf = currentFit();
   els.effect.innerHTML = '';
   last.effect = null;
-  if (!cf || !els.x.value) { registerResult(); return; }
+  if (!cf) { registerResult(); return; }
   const { ds, result } = cf;
   if (result.fit.family === 'ordinal') { drawOrdinalEffect(ds, result); registerResult(); return; }
+  if (!predictorsOf(ds, result).length) { drawInterceptEffect(ds, result); registerResult(); return; }
+  if (!els.x.value) { registerResult(); return; }
   const x = els.x.value, by = els.by.value && els.by.value !== x ? els.by.value : null;
   const level = state.settings.level;
   const grid = effectGrid(ds, result, x, by, 60);
@@ -11146,12 +11377,19 @@ function registerResult() {
   const title = 'Predict: ' + result.formula;
   const provenance = { dataset: ds.name, formula: result.formula, family: FAMILIES[result.fit.family].label, link: link.label, level: lvl(level) };
   const tables = [];
-  if (last.effect) {
+  if (last.effect && last.effect.ordinal) {
     const e = last.effect;
-    provenance['effect plot'] = e.x + (e.by ? ' by ' + e.by : '');
-    const headers = [e.x].concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
+    provenance['effect plot'] = e.x ? e.x : 'the thresholds alone';
+    const headers = (e.x ? [e.x] : []).concat(e.levels.map(l => 'P(' + l + ')'));
     const rows = [];
-    for (const s of e.series) s.rows.forEach((row, i) => rows.push([row[e.x]].concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
+    for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(s.probs[i])));
+    tables.push({ name: 'Effect plot', headers, rows });
+  } else if (last.effect) {
+    const e = last.effect;
+    provenance['effect plot'] = e.x ? e.x + (e.by ? ' by ' + e.by : '') : 'the intercept alone';
+    const headers = (e.x ? [e.x] : []).concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
+    const rows = [];
+    for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
     tables.push({ name: 'Effect plot', headers, rows });
   }
   if (last.means) {
@@ -11162,12 +11400,16 @@ function registerResult() {
       { name: 'Pairwise differences', headers: ['pair', 'difference', 'std_error', useT ? 't' : 'z', 'p_tukey', 'ci_lower', 'ci_upper'].concat(link.backName ? ['ratio', 'ratio_lower', 'ratio_upper'] : []),
         rows: m.pairs.map(p => [p.a + ' - ' + p.b, p.diff, p.se, p.t, p.p, p.lo, p.hi].concat(link.backName ? [p.ratio, p.ratioLo, p.ratioHi] : [])) });
   }
-  if (last.calc) {
+  if (last.calc && last.calc.ordinal) {
+    const { row, levels, probs } = last.calc;
+    provenance.calculator = Object.entries(row).map(([k, v]) => k + ' = ' + v).join(', ') || 'no predictor';
+    tables.push({ name: 'Calculator', headers: ['quantity', 'value'], rows: Object.entries(row).concat(levels.map((l, k) => ['P(' + l + ')', probs[k]])) });
+  } else if (last.calc) {
     const { row, pred } = last.calc;
     provenance.calculator = Object.entries(row).map(([k, v]) => k + ' = ' + v).join(', ');
     tables.push({ name: 'Calculator', headers: ['quantity', 'value'], rows: Object.entries(row).concat([['linear predictor', pred.eta[0]], ['std_error', pred.se[0]], ['ci_lower', pred.lo[0]], ['ci_upper', pred.hi[0]], ['prediction', pred.fit[0]], ['prediction_lower', pred.fitLo[0]], ['prediction_upper', pred.fitHi[0]]]) });
   }
-  const regen = result.fit.family === 'ordinal' ? null : {
+  const regen = {
     spec, ds,
     tooBig: () => tooBig(ds, [spec]),
     build: () => capRecipe(predictRecipe({ ds, spec, result, level, title, provenance, effect: last.effect, means: last.means, calc: last.calc }), ds, [spec])
@@ -11212,6 +11454,7 @@ function drawCalc() {
     const pr = ordinalPredict(ds, result, [row])[0];
     const levels = column(ds, state.spec.response).col.levels;
     els.calc.appendChild(cardRow(levels.map((l, k) => card('P(' + esc(l) + ')', stat(pr[k], 4)))));
+    last.calc = { row, ordinal: true, levels: levels.slice(), probs: pr };
     registerResult();
     return;
   }
@@ -14119,6 +14362,7 @@ function validMu(familyId, m) {
 import { column } from '../data/model.js';
 import { FAMILIES, LINKS } from './families.js';
 import { modelMatrix, newDataMatrix, orderedTerms, termLabel, termVars } from './design.js';
+import { ordinalProbs } from './ordinal.js';
 import { fitGlm } from './glm.js';
 import { fitNegbin } from './negbin.js';
 import { chi2Cdf, normCdf, normInv, tCdf, tQuantile, ptukey, qtukey } from './special.js';
@@ -14219,6 +14463,21 @@ export function termTests(ds, spec, result) {
     rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: Number.isFinite(reduced.deviance) ? reduced.deviance : -2 * reduced.logLik });
   });
   return { rows, scaled };
+}
+
+/**
+ * The ordinal model's predictions at new predictor values: a probability per
+ * level for each row, from the linear predictor without an intercept and
+ * the fitted thresholds.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} result fitModel's output for an ordinal fit
+ * @param {Object<string, number|string>[]} newRows
+ * @returns {number[][]} one row of probabilities per new row, in the levels' order
+ */
+export function ordinalPredictRows(ds, result, newRows) {
+  const X = newDataMatrix(ds, result.design, newRows).map(r => r.slice(1));
+  const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
+  return ordinalProbs(result.fit, eta);
 }
 
 /**
@@ -16913,7 +17172,10 @@ export function installExportRow(root, pageId, opts = {}) {
         '<button type="button" class="xp-btn" data-file="data" data-tip="The data file every script reads: the table as loaded, every column under its name, with # lines naming the response and the group." data-tip-press>Data CSV</button>' +
         (g.uniforms ? '<button type="button" class="xp-btn" data-file="uniforms" data-tip="The uniforms behind the randomized quantile residuals, one per fitted row, which the scripts read so that their residuals are the page’s." data-tip-press>Residual uniforms CSV</button>' : ''));
       // A reason that opens with the language's name is not prefixed with it again.
-      const notes = Object.entries(cap).filter(([, c]) => !c.ok).map(([k, c]) => { const label = scriptsApi.ANALYSIS_WRITERS[k].label; return c.why.startsWith(label.replace(/^(Base|Tidy) /, '')) ? c.why : label + ': ' + c.why; });
+      const offs = Object.entries(cap).filter(([, c]) => !c.ok);
+      // One reason shared by every language is said once, with no language named.
+      const notes = offs.length === Object.keys(scriptsApi.ANALYSIS_WRITERS).length && offs.every(([, c]) => c.why === offs[0][1].why) ? [offs[0][1].why]
+        : offs.map(([k, c]) => { const label = scriptsApi.ANALYSIS_WRITERS[k].label; return c.why.startsWith(label.replace(/^(Base|Tidy) /, '')) ? c.why : label + ': ' + c.why; });
       if (big) notes.push('The data run past ' + intl(scriptsApi.MAX_NUMBERS) + ' numbers, more than a script carries, and so each script reads them from the ' + (g.uniforms ? 'files the Data buttons save' : 'file the Data button saves') + '; keep ' + (g.uniforms ? 'them' : 'it') + ' in the script’s folder.');
       regenNote.textContent = notes.join(' ');
       regenNote.hidden = !notes.length;
@@ -17120,7 +17382,7 @@ function trimExp(s) {
 // state.setSpec, and so every page that reads the spec follows.
 
 import * as state from '../state.js';
-import { column, support, valuesOf, predictorColumns, groupColumns, SUPPORT_LABEL } from '../data/model.js';
+import { column, support, valuesOf, groupColumns, defaultTerms, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, FAMILY_ORDER, LINKS, familiesFor, linkOf } from '../stats/families.js';
 import { formulaOf, termLabel, orderedTerms, missingMainEffects } from '../stats/design.js';
 import { datasetSelect, spinner, levelSelect } from './widgets.js';
@@ -17157,7 +17419,7 @@ export function defaultSpec(ds) {
     response: resp ? resp.name : null,
     family: defaultFamily(sup),
     link: null,
-    terms: predictorColumns(ds).map(c => c.name),
+    terms: defaultTerms(ds, resp ? resp.name : null),
     group: groups.length ? groups[0].name : null
   });
 }
@@ -17227,13 +17489,19 @@ export function formulaBuilder(container, opts) {
     if (state.spec.dataset !== ds.id) state.setSpec(defaultSpec(ds));
   });
 
+  // A new response starts a new default model for it: every other predictor
+  // or response column as a main effect, the random part kept, and the
+  // family from the response's support. The column that was the response
+  // becomes a candidate predictor, and going back restores the original.
   el.resp.addEventListener('change', () => {
     const ds = current();
     if (!ds) return;
     const rc = column(ds, el.resp.value);
     const sup = rc ? support(rc.col, valuesOf(ds, rc.col.name)) : 'real';
     const fam = familiesFor(sup).includes(state.spec.family) ? state.spec.family : defaultFamily(sup);
-    state.setSpec({ response: el.resp.value, family: fam, link: null, terms: state.spec.terms.filter(t => !termUses(t, el.resp.value)) });
+    const s = state.spec;
+    state.setSpec({ response: el.resp.value, family: fam, link: null, terms: defaultTerms(ds, el.resp.value),
+      slope: s.slope === el.resp.value ? null : s.slope, olre: fam === 'poisson' ? s.olre : false });
   });
   // The observation-level effect is a Poisson device: the negative binomial
   // already carries its own overdispersion parameter, and the two would

@@ -35,7 +35,7 @@ export function render(root) {
     '<p class="lede">What the response holds decides which families can describe it, and how it moves with each predictor is the first look at the model to build. Nothing here is a fit; the Model page fits.</p>' +
     '<div class="sec ctrl-card"><div class="ctrl-row">' +
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-ds">Dataset</label><select id="ex-ds"></select></span>' +
-      '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-by">Descriptives by</label><select id="ex-by"></select></span>' +
+      '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-by">Group descriptives by</label><select id="ex-by"></select></span>' +
     '</div></div>' +
     '<div class="sec"><div class="sec-hd">The response</div><div id="ex-resp"></div></div>' +
     '<div class="sec"><div class="sec-hd">Descriptives</div><div id="ex-desc"></div></div>' +

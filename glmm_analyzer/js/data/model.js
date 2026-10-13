@@ -248,6 +248,20 @@ export function canModel(ds) {
 }
 
 /**
+ * The fixed terms of the default model for a response: every other column
+ * with the predictor or response role, as a main effect, in the dataset's
+ * column order. A column that was the response at import is a candidate
+ * predictor for any other response, and the group columns stay out of the
+ * fixed part.
+ * @param {Dataset} ds
+ * @param {string|null} response
+ * @returns {string[]}
+ */
+export function defaultTerms(ds, response) {
+  return ds.columns.filter(c => c.name !== response && (c.role === 'predictor' || c.role === 'response')).map(c => c.name);
+}
+
+/**
  * The transforms a derived column applies to a continuous column: the label
  * the page shows, the suffix of the default name, how the derivation is
  * written out, and the domain the source values must satisfy.

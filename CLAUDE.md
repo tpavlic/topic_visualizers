@@ -486,13 +486,28 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   ② Explore (the response's distribution
   and its relation to each predictor), ③ Model (a formula builder of chips for the fixed terms,
   powers, and interactions, a grouping factor with an optional random slope and an optional
-  observation-level random effect, REML for the normal family; the coefficient table with Wald
+  observation-level random effect, REML for the normal family; the response picker offers every
+  non-ignored column, and choosing one starts the default model for it, every other predictor or
+  response column as a main effect (`defaultTerms` in `js/data/model.js`), so that the column that
+  was the response at import becomes a candidate predictor and going back restores the original; the coefficient table with Wald
   intervals and back-transformed ratios, the variance components with a boundary-corrected
   likelihood-ratio test of the random part, the fit statistics, the checks line, the term tests as
-  `drop1` refits, and Keep for the Compare page), ④ Diagnostics (randomized quantile residuals
+  `drop1` refits, and Keep for the Compare page; an intercept-only ordinal model, which has no
+  coefficient, shows a note in place of the coefficient table and a P(Y ≤ k) column on its
+  thresholds), ④ Diagnostics (randomized quantile residuals
   against the normal, the fitted values, and each predictor, the Pearson dispersion test, Cook's
   distances, and the predicted random effects), ⑤ Predict (an effect plot with its band and the
-  data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator), ⑥
+  data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator; Lines
+  by offers only the predictors other than the one on the x axis and is hidden with one predictor;
+  a model with no predictor still plots, the observations in the order loaded under the fitted
+  mean and its band (for the ordinal family, one flat line per level at its probability, with the
+  data checkbox hidden because that plot never draws the observations), and the calculator reports
+  the intercept's prediction; the scripts take both from the intercept coefficient, with no
+  new-data rows, and draw the same figure against the observation index; the ordinal model's
+  effect plot and calculator are written out as each level's probability through an
+  `ordinal_probs(zeta, eta)` helper in every language, with a zero linear predictor when the
+  model has none, and MATLAB's `fit_ordinal` accepts an intercept-only formula; an export row
+  whose every language is off for one reason says that reason once), ⑥
   Variance explained (the fit's variance on the link scale as one stacked bar and a table: the
   fixed-effect predictor's variance, each random term's averaged over the rows, an
   observation-level effect's as dispersion, and the distribution-specific residual variance,

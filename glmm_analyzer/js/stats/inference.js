@@ -8,6 +8,7 @@
 import { column } from '../data/model.js';
 import { FAMILIES, LINKS } from './families.js';
 import { modelMatrix, newDataMatrix, orderedTerms, termLabel, termVars } from './design.js';
+import { ordinalProbs } from './ordinal.js';
 import { fitGlm } from './glm.js';
 import { fitNegbin } from './negbin.js';
 import { chi2Cdf, normCdf, normInv, tCdf, tQuantile, ptukey, qtukey } from './special.js';
@@ -108,6 +109,21 @@ export function termTests(ds, spec, result) {
     rows.push({ term: termLabel(t), df, stat: Math.max(0, stat), p: df > 0 ? 1 - chi2Cdf(Math.max(0, stat), df) : NaN, deviance: Number.isFinite(reduced.deviance) ? reduced.deviance : -2 * reduced.logLik });
   });
   return { rows, scaled };
+}
+
+/**
+ * The ordinal model's predictions at new predictor values: a probability per
+ * level for each row, from the linear predictor without an intercept and
+ * the fitted thresholds.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} result fitModel's output for an ordinal fit
+ * @param {Object<string, number|string>[]} newRows
+ * @returns {number[][]} one row of probabilities per new row, in the levels' order
+ */
+export function ordinalPredictRows(ds, result, newRows) {
+  const X = newDataMatrix(ds, result.design, newRows).map(r => r.slice(1));
+  const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
+  return ordinalProbs(result.fit, eta);
 }
 
 /**

@@ -191,7 +191,10 @@ export function installExportRow(root, pageId, opts = {}) {
         '<button type="button" class="xp-btn" data-file="data" data-tip="The data file every script reads: the table as loaded, every column under its name, with # lines naming the response and the group." data-tip-press>Data CSV</button>' +
         (g.uniforms ? '<button type="button" class="xp-btn" data-file="uniforms" data-tip="The uniforms behind the randomized quantile residuals, one per fitted row, which the scripts read so that their residuals are the page’s." data-tip-press>Residual uniforms CSV</button>' : ''));
       // A reason that opens with the language's name is not prefixed with it again.
-      const notes = Object.entries(cap).filter(([, c]) => !c.ok).map(([k, c]) => { const label = scriptsApi.ANALYSIS_WRITERS[k].label; return c.why.startsWith(label.replace(/^(Base|Tidy) /, '')) ? c.why : label + ': ' + c.why; });
+      const offs = Object.entries(cap).filter(([, c]) => !c.ok);
+      // One reason shared by every language is said once, with no language named.
+      const notes = offs.length === Object.keys(scriptsApi.ANALYSIS_WRITERS).length && offs.every(([, c]) => c.why === offs[0][1].why) ? [offs[0][1].why]
+        : offs.map(([k, c]) => { const label = scriptsApi.ANALYSIS_WRITERS[k].label; return c.why.startsWith(label.replace(/^(Base|Tidy) /, '')) ? c.why : label + ': ' + c.why; });
       if (big) notes.push('The data run past ' + intl(scriptsApi.MAX_NUMBERS) + ' numbers, more than a script carries, and so each script reads them from the ' + (g.uniforms ? 'files the Data buttons save' : 'file the Data button saves') + '; keep ' + (g.uniforms ? 'them' : 'it') + ' in the script’s folder.');
       regenNote.textContent = notes.join(' ');
       regenNote.hidden = !notes.length;

@@ -184,11 +184,15 @@ function drawCoefficients(result) {
       : '; z tests: large-sample ' + term('Wald tests', WALD_TIP) + ', as the fitter reports them.';
   html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : zWhy) +
     (word ? ' The last two columns carry each coefficient through the exponential: the ' + esc(word) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
+  // An ordinal model has no intercept, and so with no predictor it has no coefficient at all.
+  if (!rows.length && fit.family === 'ordinal') html = '<p class="muted-line">An ordinal model has no intercept, and so this model has no coefficient. With no predictor, its thresholds alone set the probabilities of the levels, below.</p>';
   if (result.fit.family === 'ordinal') {
     const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
-    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>ζ</th><th>Std. error</th></tr></thead><tbody>' +
-      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td></tr>').join('') + '</tbody></table></div>' +
-      '<p class="muted-line">P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.</p>';
+    // With no predictor, each threshold is a cumulative probability in disguise.
+    const cum = p === 0;
+    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>Estimate</th><th>Std. error</th>' + (cum ? '<th>Cumulative probability</th>' : '') + '</tr></thead><tbody>' +
+      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td>' + (cum ? '<td>' + stat(1 / (1 + Math.exp(-z[k])), 4) + '</td>' : '') + '</tr>').join('') + '</tbody></table></div>' +
+      '<p class="muted-line">' + (cum ? 'Each threshold ζ<sub>k</sub> is the logit of the probability of being at or below level k, P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub>), and the levels’ own probabilities are the differences of those.' : 'P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.') + '</p>';
   }
   els.coef.innerHTML = html;
 }

@@ -5,7 +5,7 @@
 // state.setSpec, and so every page that reads the spec follows.
 
 import * as state from '../state.js';
-import { column, support, valuesOf, predictorColumns, groupColumns, SUPPORT_LABEL } from '../data/model.js';
+import { column, support, valuesOf, groupColumns, defaultTerms, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, FAMILY_ORDER, LINKS, familiesFor, linkOf } from '../stats/families.js';
 import { formulaOf, termLabel, orderedTerms, missingMainEffects } from '../stats/design.js';
 import { datasetSelect, spinner, levelSelect } from './widgets.js';
@@ -42,7 +42,7 @@ export function defaultSpec(ds) {
     response: resp ? resp.name : null,
     family: defaultFamily(sup),
     link: null,
-    terms: predictorColumns(ds).map(c => c.name),
+    terms: defaultTerms(ds, resp ? resp.name : null),
     group: groups.length ? groups[0].name : null
   });
 }
@@ -112,13 +112,19 @@ export function formulaBuilder(container, opts) {
     if (state.spec.dataset !== ds.id) state.setSpec(defaultSpec(ds));
   });
 
+  // A new response starts a new default model for it: every other predictor
+  // or response column as a main effect, the random part kept, and the
+  // family from the response's support. The column that was the response
+  // becomes a candidate predictor, and going back restores the original.
   el.resp.addEventListener('change', () => {
     const ds = current();
     if (!ds) return;
     const rc = column(ds, el.resp.value);
     const sup = rc ? support(rc.col, valuesOf(ds, rc.col.name)) : 'real';
     const fam = familiesFor(sup).includes(state.spec.family) ? state.spec.family : defaultFamily(sup);
-    state.setSpec({ response: el.resp.value, family: fam, link: null, terms: state.spec.terms.filter(t => !termUses(t, el.resp.value)) });
+    const s = state.spec;
+    state.setSpec({ response: el.resp.value, family: fam, link: null, terms: defaultTerms(ds, el.resp.value),
+      slope: s.slope === el.resp.value ? null : s.slope, olre: fam === 'poisson' ? s.olre : false });
   });
   // The observation-level effect is a Poisson device: the negative binomial
   // already carries its own overdispersion parameter, and the two would

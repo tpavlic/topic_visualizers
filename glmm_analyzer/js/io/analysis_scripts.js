@@ -706,16 +706,44 @@ const linkinv = (L, eta) => (L.lang === 'R' ? 'linkinv_of(m, ' + eta + ')' : L.l
 function predictBody(r, L) {
   const out = [...fitLines(r, L)];
   const c = L.comment;
-  out.push(L.lang === 'm' ? 'V = vcov_at(m, names_here);' : L.lang === 'py' ? 'V = vcov_at(m, names_here)' : 'V <- vcov_at(m, coef_names)');
+  // An intercept-only ordinal model has no coefficient, and so no covariance to take.
+  if (r.names.length) out.push(L.lang === 'm' ? 'V = vcov_at(m, names_here);' : L.lang === 'py' ? 'V = vcov_at(m, names_here)' : 'V <- vcov_at(m, coef_names)');
+  const ordinal = r.spec.family === 'ordinal';
+  if (ordinal && (r.effect || r.calc)) out.push(L.assign('zeta', 'fit_thresholds(m)'));
+  // A cell of a probability matrix, one row per point and one column per level.
+  const cell = (name, i, k) => (L.lang === 'R' ? name + '[' + (i + 1) + ', ' + (k + 1) + ']' : L.lang === 'py' ? name + '[' + i + ', ' + k + ']' : name + '(' + (i + 1) + ', ' + (k + 1) + ')');
+  // The ordinal model's linear predictor with no predictor is 0 for every row.
+  const zeroEta = (eta, n) => (L.lang === 'R' ? [eta + ' <- rep(0, ' + n + ')'] : L.lang === 'py' ? [eta + ' = np.zeros(' + n + ')'] : [eta + ' = zeros(' + n + ', 1);']);
+  // With no predictor, the one prediction is the intercept: its coefficient
+  // and the root of its variance, as length-one vectors so that the report
+  // lines below read them as they read a curve's points.
+  const interceptLines = (eta, se) => L.lang === 'R' ? [eta + ' <- b[1]', se + ' <- sqrt(V[1, 1])']
+    : L.lang === 'py' ? [eta + ' = np.array([b[0]])', se + ' = np.array([np.sqrt(V[0, 0])])']
+      : [eta + ' = b(1);', se + ' = sqrt(V(1, 1));'];
   if (r.effect) {
     out.push(L.sect('Effect plot'));
-    out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held as the page held them; three points of each curve are checked.');
+    if (r.effect.ordinal) out.push(c + (r.effect.x ? 'The probability of each level along ' + ascii(r.effect.x) + ', the other predictors held as the page held them; three points are checked.' : 'The model has no predictor: the probability of each level is the same at every observation, from the thresholds alone.'));
+    else if (r.effect.x) out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held as the page held them; three points of each curve are checked.');
+    else out.push(c + 'The model has no predictor: the effect plot is the one predicted mean, the intercept, drawn across the observations in the order loaded.');
     r.effect.series.forEach((s, k) => {
       const nm = 'nd' + (k + 1);
-      out.push(...newRows(r, L, nm, s.rows));
-      out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
-      out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
-      out.push(L.assign('se' + (k + 1), rowSe(L, 'X' + (k + 1), 'V')));
+      if (r.effect.ordinal) {
+        if (r.effect.x) {
+          out.push(...newRows(r, L, nm, s.rows));
+          out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+          out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
+        } else out.push(...zeroEta('eta' + (k + 1), 1));
+        out.push(L.assign('P' + (k + 1), 'ordinal_probs(zeta, eta' + (k + 1) + ')'));
+        for (const i of s.report) r.effect.levels.forEach((l, j) => out.push(rep(L, r, 'effect P(' + l + ') point ' + (i + 1), cell('P' + (k + 1), i, j))));
+        return;
+      }
+      if (!r.effect.x) out.push(...interceptLines('eta' + (k + 1), 'se' + (k + 1)));
+      else {
+        out.push(...newRows(r, L, nm, s.rows));
+        out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+        out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
+        out.push(L.assign('se' + (k + 1), rowSe(L, 'X' + (k + 1), 'V')));
+      }
       for (const i of s.report) {
         const key = 'effect ' + (s.label || 'curve') + ' point ' + (i + 1);
         out.push(rep(L, r, key + ' eta', at(L, 'eta' + (k + 1), i)));
@@ -776,12 +804,30 @@ function predictBody(r, L) {
   }
   if (r.calc) {
     out.push(L.sect('Calculator'));
-    out.push(...newRows(r, L, 'nc', [r.calc.row]));
-    out.push(L.assign('Xc', 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', nc, ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
-    out.push(L.assign('etac', matvec(L, 'Xc', 'b')), L.assign('sec', rowSe(L, 'Xc', 'V')));
-    out.push(rep(L, r, 'calc eta', at(L, 'etac', 0)), rep(L, r, 'calc se', at(L, 'sec', 0)), rep(L, r, 'calc fit', linkinv(L, at(L, 'etac', 0))));
-    out.push(rep(L, r, 'calc lower', 'min(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
-    out.push(rep(L, r, 'calc upper', 'max(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
+    if (r.calc.ordinal) {
+      if (Object.keys(r.calc.row).length) {
+        out.push(...newRows(r, L, 'nc', [r.calc.row]));
+        out.push(L.assign('Xc', 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', nc, ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+        out.push(L.assign('etac', matvec(L, 'Xc', 'b')));
+      } else {
+        out.push(c + 'The model has no predictor to set: the probabilities come from the thresholds alone.');
+        out.push(...zeroEta('etac', 1));
+      }
+      out.push(L.assign('Pc', 'ordinal_probs(zeta, etac)'));
+      r.calc.levels.forEach((l, j) => out.push(rep(L, r, 'calc P(' + l + ')', cell('Pc', 0, j))));
+    } else if (!Object.keys(r.calc.row).length) {
+      out.push(c + 'The model has no predictor to set: the prediction is the intercept.');
+      out.push(...interceptLines('etac', 'sec'));
+    } else {
+      out.push(...newRows(r, L, 'nc', [r.calc.row]));
+      out.push(L.assign('Xc', 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', nc, ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+      out.push(L.assign('etac', matvec(L, 'Xc', 'b')), L.assign('sec', rowSe(L, 'Xc', 'V')));
+    }
+    if (!r.calc.ordinal) {
+      out.push(rep(L, r, 'calc eta', at(L, 'etac', 0)), rep(L, r, 'calc se', at(L, 'sec', 0)), rep(L, r, 'calc fit', linkinv(L, at(L, 'etac', 0))));
+      out.push(rep(L, r, 'calc lower', 'min(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
+      out.push(rep(L, r, 'calc upper', 'max(' + linkinv(L, at(L, 'etac', 0) + ' - q_wald * ' + at(L, 'sec', 0)) + ', ' + linkinv(L, at(L, 'etac', 0) + ' + q_wald * ' + at(L, 'sec', 0)) + ')'));
+    }
   }
   return { body: out, need: ['fit', 'grid'].concat(L.lang === 'm' && r.means ? ['studrange'] : []) };
 }

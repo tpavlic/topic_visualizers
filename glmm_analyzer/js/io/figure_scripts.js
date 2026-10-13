@@ -81,7 +81,31 @@ function diagnosticsFigures(r, L) {
 
 function predictFigures(r, L) {
   const calls = [], fig = [];
-  if (r.effect) {
+  const yLabel = r.response.event ? 'probability of ' + r.response.event : r.spec.response;
+  const yData = L.lang === 'R' ? (r.response.event != null && r.spec.family === 'binomial' ? 'as.numeric(d$' + r.spec.response + ' == ' + L.str(r.response.event) + ')' : 'd$' + r.spec.response)
+    : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.spec.response) + '], float)' : 'tbl.' + r.spec.response;
+  if (r.effect && r.effect.ordinal) {
+    // The ordinal model: one curve per level's probability, with no band; along a continuous
+    // predictor, or flat across the observations when the model has none.
+    const cont = r.effect.x ? r.data.columns.find(c => c.name === r.effect.x).type === 'continuous' : true;
+    if (cont) {
+      const idx = L.lang === 'R' ? 'seq_len(nrow(d))' : L.lang === 'py' ? 'np.arange(1, len(d) + 1, dtype=float)' : "(1:height(tbl))'";
+      const xExpr = r.effect.x ? (L.lang === 'R' ? 'nd1$' + r.effect.x : L.lang === 'py' ? 'nd1[' + L.str(r.effect.x) + ']' : 'nd1.' + r.effect.x) : idx;
+      const colK = k => (L.lang === 'R' ? 'P1[, ' + (k + 1) + ']' : L.lang === 'py' ? 'P1[:, ' + k + ']' : 'P1(:, ' + (k + 1) + ')');
+      const across = e => (r.effect.x ? e : (L.lang === 'R' ? 'rep(' + e + ', nrow(d))' : L.lang === 'py' ? 'np.repeat(' + e + ', len(d))' : 'repmat(' + e + ', height(tbl), 1)'));
+      const ys = r.effect.levels.map((l, k) => across(colK(k)));
+      const xs = r.effect.levels.map(() => xExpr);
+      const labels = strsOf(L, r.effect.levels.map(l => 'P(' + l + ')'));
+      calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, ys), listOf(L, ys), L.str(r.effect.x || 'observation'), L.str('probability'), L.str('Predicted probability of each level' + (r.effect.x ? ' against ' + r.effect.x : ' with no predictor'))], { labels }));
+      fig.push('effect');
+    }
+  } else if (r.effect && !r.effect.x) {
+    // No predictor: the one predicted mean and its band across the observations, in the order loaded.
+    const idx = L.lang === 'R' ? 'seq_len(nrow(d))' : L.lang === 'py' ? 'np.arange(1, len(d) + 1, dtype=float)' : "(1:height(tbl))'";
+    const across = e => (L.lang === 'R' ? 'rep(' + e + ', nrow(d))' : L.lang === 'py' ? 'np.repeat(' + e + ', len(d))' : 'repmat(' + e + ', height(tbl), 1)');
+    calls.push(...call(L, 'fig_effect', [listOf(L, [idx]), listOf(L, [across('linkinv_of(m, eta1)')]), listOf(L, [across('linkinv_of(m, eta1 - q_wald * se1)')]), listOf(L, [across('linkinv_of(m, eta1 + q_wald * se1)')]), L.str('observation'), L.str(yLabel), L.str('Predicted ' + yLabel + ' with no predictor')], { px: idx, py: yData }));
+    fig.push('effect');
+  } else if (r.effect) {
     const n = r.effect.series.length;
     const xs = r.effect.series.map((s, k) => (L.lang === 'R' ? 'nd' + (k + 1) + '$' + r.effect.x : L.lang === 'py' ? 'nd' + (k + 1) + '[' + L.str(r.effect.x) + ']' : 'nd' + (k + 1) + '.' + r.effect.x));
     const cont = r.data.columns.find(c => c.name === r.effect.x).type === 'continuous';
@@ -90,8 +114,6 @@ function predictFigures(r, L) {
       const los = r.effect.series.map((s, k) => 'linkinv_of(m, eta' + (k + 1) + ' - q_wald * se' + (k + 1) + ')');
       const his = r.effect.series.map((s, k) => 'linkinv_of(m, eta' + (k + 1) + ' + q_wald * se' + (k + 1) + ')');
       const labels = strsOf(L, r.effect.series.map(s => s.label || 'predicted mean'));
-      const yData = L.lang === 'R' ? (r.response.event != null && r.spec.family === 'binomial' ? 'as.numeric(d$' + r.spec.response + ' == ' + L.str(r.response.event) + ')' : 'd$' + r.spec.response)
-        : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.spec.response) + '], float)' : 'tbl.' + r.spec.response;
       const xData = L.lang === 'R' ? 'd$' + r.effect.x : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.effect.x) + '], float)' : 'tbl.' + r.effect.x;
       calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, los), listOf(L, his), L.str(r.effect.x), L.str(r.response.event ? 'probability of ' + r.response.event : r.spec.response), L.str('Predicted ' + (r.response.event ? 'probability of ' + r.response.event : r.spec.response) + ' against ' + r.effect.x)], { px: xData, py: yData, labels: n > 1 ? labels : undefined }));
       fig.push('effect');

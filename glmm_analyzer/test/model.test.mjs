@@ -3,7 +3,7 @@
 // expected value is the tiny input written out here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeDataset, sortLevels, support, usedRows, sameData, canModel, column, valuesOf, datasetSummary, responseColumn, deriveColumn, removeDerivedColumn, derivationText, derivedName, derivedColumns, DERIVATIONS } from '../js/data/model.js';
+import { makeDataset, sortLevels, support, usedRows, sameData, canModel, column, valuesOf, datasetSummary, responseColumn, deriveColumn, removeDerivedColumn, derivationText, derivedName, derivedColumns, DERIVATIONS, defaultTerms } from '../js/data/model.js';
 
 const cols = [
   { name: 'y', role: 'response', type: 'continuous' },
@@ -150,4 +150,16 @@ test('makeDataset keeps a column\'s derivation, as the saved session needs', () 
   assert.equal(responseColumn(kept).name, 'y');
   assert.equal(ds.columns[0].derived, null);
   assert.equal(ds.columns[2].derived, null);
+});
+
+test('defaultTerms names every other predictor or response column, never a group', () => {
+  const ds = makeDataset({ name: 'd', columns: [
+    { name: 'y', role: 'response', type: 'continuous' }, { name: 'a', role: 'predictor', type: 'categorical' },
+    { name: 'k', role: 'group', type: 'categorical' }, { name: 'x', role: 'predictor', type: 'continuous' }, { name: 'z', role: 'ignored', type: 'continuous' }
+  ], rows: [[1, 'p', 'g1', 2, 0], [2, 'q', 'g2', 3, 0]] });
+  assert.deepEqual(defaultTerms(ds, 'y'), ['a', 'x']);
+  // The column that was the response is a candidate predictor for any other response, and going back restores the original.
+  assert.deepEqual(defaultTerms(ds, 'x'), ['y', 'a']);
+  assert.deepEqual(defaultTerms(ds, 'a'), ['y', 'x']);
+  assert.deepEqual(defaultTerms(ds, null), ['y', 'a', 'x']);
 });
