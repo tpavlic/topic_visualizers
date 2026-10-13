@@ -517,3 +517,16 @@ plot(bx, br, 'o', 'MarkerFaceColor', 'white', 'MarkerEdgeColor', c.truth, 'Marke
 xlabel(xlab); ylabel(ylab); title(ttl); hold off;
 end
 `;
+
+FIG_M.bars = `
+function fig_bars(values, labels, ylab, ttl)
+% One bar per label, with the values up from zero.
+c = fig_colors();
+v = double(values(:)');
+figure; fig_size(6.5, 4.5);
+bar(1:numel(v), v, 0.7, 'FaceColor', c.est, 'FaceAlpha', 0.32, 'EdgeColor', c.est);
+set(gca, 'XTick', 1:numel(v), 'XTickLabel', cellstr(string(labels)));
+ylim([0 max(1, max(v))]);
+ylabel(ylab); title(ttl);
+end
+`;

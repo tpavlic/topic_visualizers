@@ -152,7 +152,7 @@ function compute() {
   if (why && !(result.flags || []).includes('singular')) els.flags.appendChild(notice('warn', esc(why)));
   if (result.design.dropped) els.flags.appendChild(notice('info', esc(plural(result.design.dropped, 'row was', 'rows were') + ' left out for a missing value in a column the model uses; ' + intl(result.design.X.length) + ' rows remain.')));
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
-  drawCoefficients(result);
+  drawCoefficients(ds, result);
   drawRandom(ds, result);
   drawStats(result);
   drawChecks(result);
@@ -164,7 +164,7 @@ function compute() {
 
 function waldRows(result) { return waldTable(result, state.settings.level); }
 
-function drawCoefficients(result) {
+function drawCoefficients(ds, result) {
   const rows = waldRows(result);
   const link = LINKS[result.link];
   const useT = rows.length && rows[0].useT;
@@ -185,14 +185,26 @@ function drawCoefficients(result) {
   html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : zWhy) +
     (word ? ' The last two columns carry each coefficient through the exponential: the ' + esc(word) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
   // An ordinal model has no intercept, and so with no predictor it has no coefficient at all.
-  if (!rows.length && fit.family === 'ordinal') html = '<p class="muted-line">An ordinal model has no intercept, and so this model has no coefficient. With no predictor, its thresholds alone set the probabilities of the levels, below.</p>';
-  if (result.fit.family === 'ordinal') {
+  if (result.fit.family === 'ordinal' && !rows.length) {
+    // No predictor: the fit is the levels' shares of the data, and the
+    // thresholds are the logits of the cumulative shares. The table leads
+    // with the shares and keeps the thresholds as the parameters they are.
+    const z = result.fit.zeta, V = result.fit.vcov;
+    const rc = column(ds, state.spec.response);
+    const levels = rc.col.levels;
+    const counts = levels.map(() => 0);
+    for (const i of result.design.keep) counts[levels.indexOf(ds.rows[i][rc.index])]++;
+    const n = result.design.keep.length;
+    let cum = 0;
+    html = '<p class="muted-line">An ordinal model has no intercept, and so this model has no coefficient; the 1 in its formula stands for the thresholds. With no predictor, the model’s probability of each level is that level’s share of the data, and no fitting beyond counting is needed.</p>' +
+      '<div class="ctrl-grp-lbl im-gap">Levels</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Level</th><th>Count</th><th>Probability</th><th>Cumulative probability</th><th>Threshold (logit)</th><th>Std. error</th></tr></thead><tbody>' +
+      levels.map((l, k) => { cum += counts[k]; const last = k === levels.length - 1; return '<tr><td>' + esc(l) + '</td><td>' + intl(counts[k]) + '</td><td>' + stat(counts[k] / n, 4) + '</td><td>' + stat(cum / n, 4) + '</td><td>' + (last ? '–' : stat(z[k], 5)) + '</td><td>' + (last ? '–' : stat(Math.sqrt(V[k][k]), 4)) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+      '<p class="muted-line">The probability is the level’s share of the ' + intl(n) + ' fitted rows, and the cumulative probability is the share at or below the level. Each threshold is the logit of a cumulative probability, the model’s one kind of parameter, and the scripts report the thresholds.</p>';
+  } else if (result.fit.family === 'ordinal') {
     const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
-    // With no predictor, each threshold is a cumulative probability in disguise.
-    const cum = p === 0;
-    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>Estimate</th><th>Std. error</th>' + (cum ? '<th>Cumulative probability</th>' : '') + '</tr></thead><tbody>' +
-      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td>' + (cum ? '<td>' + stat(1 / (1 + Math.exp(-z[k])), 4) + '</td>' : '') + '</tr>').join('') + '</tbody></table></div>' +
-      '<p class="muted-line">' + (cum ? 'Each threshold ζ<sub>k</sub> is the logit of the probability of being at or below level k, P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub>), and the levels’ own probabilities are the differences of those.' : 'P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.') + '</p>';
+    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>Estimate</th><th>Std. error</th></tr></thead><tbody>' +
+      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<p class="muted-line">P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.</p>';
   }
   els.coef.innerHTML = html;
 }

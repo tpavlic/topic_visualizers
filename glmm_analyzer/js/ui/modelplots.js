@@ -96,3 +96,31 @@ export function categoricalX(fig, levels) {
   fig.axes({ xTicks: k, xFormat: v => (Number.isInteger(v) && v >= 1 && v <= k ? levels[v - 1] : ''), grid: false });
   return levels.map((_, i) => i + 1);
 }
+
+/**
+ * One bar per level, for the ordinal model with no predictor: the level
+ * names along x, the probabilities up y from 0, recorded as rects for the
+ * script exports.
+ * @param {object} fig
+ * @param {string[]} labels the levels, in order
+ * @param {ArrayLike<number>} values a probability per level
+ * @param {{ color?: string, label?: string }} [o]
+ * @returns {number[]} the bars' x positions
+ */
+export function levelBars(fig, labels, values, o = {}) {
+  const pos = categoricalX(fig, labels);
+  const sy = fig.sy || fig.y([0, 1]);
+  const c = o.color ? tok(o.color) : tok('--est');
+  const rec = { kind: 'rects', x0: [], y0: [], x1: [], y1: [], color: c, label: o.label || 'probability' };
+  const g = svgEl('g', { class: 'm-bars' }, fig.inner);
+  const r1 = v => Math.round(v * 10) / 10;
+  pos.forEach((x, i) => {
+    const v = values[i];
+    rec.x0.push(x - 0.35); rec.x1.push(x + 0.35); rec.y0.push(0); rec.y1.push(v);
+    if (!(v > 0)) return;
+    const x0 = fig.sx(x - 0.35), x1 = fig.sx(x + 0.35), y = sy(v);
+    svgEl('rect', { x: r1(x0), y: r1(y), width: r1(Math.max(1, x1 - x0)), height: r1(sy(0) - y), fill: c, 'fill-opacity': 0.32, stroke: c, 'stroke-width': 1 }, g);
+  });
+  fig.series.push(rec);
+  return pos;
+}

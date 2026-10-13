@@ -10,7 +10,7 @@ import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerate
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
-import { curveBand, dataPoints, rawPoints, categoricalX, LEVEL_COLORS, LEVEL_DASHES } from '../ui/modelplots.js';
+import { curveBand, dataPoints, rawPoints, categoricalX, levelBars, LEVEL_COLORS, LEVEL_DASHES } from '../ui/modelplots.js';
 import { card, cardRow, notice, term, WALD_TIP } from '../ui/widgets.js';
 import { setSectionAvailable } from '../ui/tabs.js';
 import { installExportRow } from '../ui/exportrow.js';
@@ -163,27 +163,22 @@ function compute() {
 // The ordinal model's predictions: a probability per level.
 const ordinalPredict = ordinalPredictRows;
 
-// The ordinal model with no predictor: one probability per level, drawn
-// across the observations in the order loaded.
+// The ordinal model with no predictor: one bar per level at its probability.
 function drawOrdinalInterceptEffect(ds, result) {
   const levels = column(ds, state.spec.response).col.levels;
   const probs = ordinalPredict(ds, result, [{}])[0];
-  const n = result.design.keep.length;
   const box = document.createElement('div');
   box.className = 'fig-box';
   els.effect.appendChild(box);
-  const fig = makeFigure(box, { height: 320, xLabel: 'observation', yLabel: 'probability', title: 'Predicted probability of each level with no predictor' });
+  const fig = makeFigure(box, { height: 320, xLabel: state.spec.response, yLabel: 'probability', title: 'Predicted probability of each level with no predictor' });
   exportButtons(box, fig, ds.name + ' ordinal probabilities');
   fig.render(f => {
-    f.x([1, Math.max(2, n)], { pad: 0.03, nice: true });
     f.y([0, 1]);
-    f.axes({});
-    levels.forEach((l, k) => curveBand(f, { x: [1, n], y: [probs[k], probs[k]] }, { band: false, color: LEVEL_COLORS[k % LEVEL_COLORS.length], dash: LEVEL_DASHES[k % LEVEL_DASHES.length], label: 'P(' + l + ')' }));
+    levelBars(f, levels, probs);
   });
-  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = 'The model has no predictor, and so it predicts the same probabilities for every observation: ' + levels.map((l, k) => 'P(' + esc(l) + ') = ' + num(probs[k], 4)).join(', ') + ', which sum to 1 and are the levels’ shares of the fitted rows. The observations are drawn in the order loaded.';
+  p.innerHTML = 'The model has no predictor, and so it predicts the same probabilities for every observation: ' + levels.map((l, k) => 'P(' + esc(l) + ') = ' + num(probs[k], 4)).join(', ') + ', which sum to 1 and are the levels’ shares of the fitted rows.';
   els.effect.appendChild(p);
   figs.push(fig);
   last.effect = { x: null, by: null, ordinal: true, levels: levels.slice(), series: [{ label: 'probabilities', by: null, rows: [{}], probs: [probs] }] };

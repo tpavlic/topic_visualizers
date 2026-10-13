@@ -324,3 +324,16 @@ fig_stack <- function(values, labels, title, xlab = "Share of the total variance
   print(p)
 }
 `;
+
+FIG_TIDY.bars = `
+# One bar per label, with the values up from zero.
+fig_bars <- function(values, labels, ylab, title) {
+  d <- tibble(level = factor(as.character(labels), levels = as.character(labels)), value = as.numeric(values))
+  p <- ggplot(d, aes(x = level, y = value)) +
+    geom_col(fill = FIG_EST, alpha = 0.32, color = FIG_EST, width = 0.7) +
+    scale_y_continuous(limits = c(0, max(1, max(d$value, na.rm = TRUE)))) +
+    labs(title = title, x = NULL, y = ylab) +
+    theme_minimal()
+  print(p)
+}
+`;

@@ -500,13 +500,15 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator; Lines
   by offers only the predictors other than the one on the x axis and is hidden with one predictor;
   a model with no predictor still plots, the observations in the order loaded under the fitted
-  mean and its band (for the ordinal family, one flat line per level at its probability, with the
-  data checkbox hidden because that plot never draws the observations), and the calculator reports
+  mean and its band (for the ordinal family, one bar per level at its probability, the levels'
+  shares of the data, with the data checkbox hidden because that plot never draws the
+  observations), and the calculator reports
   the intercept's prediction; the scripts take both from the intercept coefficient, with no
   new-data rows, and draw the same figure against the observation index; the ordinal model's
   effect plot and calculator are written out as each level's probability through an
-  `ordinal_probs(zeta, eta)` helper in every language, with a zero linear predictor when the
-  model has none, and MATLAB's `fit_ordinal` accepts an intercept-only formula; an export row
+  `ordinal_probs(zeta, eta)` helper in every language, with a zero linear predictor and a
+  `fig_bars` figure when the model has none, and MATLAB's `fit_ordinal` accepts an intercept-only
+  formula; an export row
   whose every language is off for one reason says that reason once), ⑥
   Variance explained (the fit's variance on the link scale as one stacked bar and a table: the
   fixed-effect predictor's variance, each random term's averaged over the rows, an

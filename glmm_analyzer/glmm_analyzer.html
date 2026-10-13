@@ -5418,6 +5418,19 @@ plot(bx, br, 'o', 'MarkerFaceColor', 'white', 'MarkerEdgeColor', c.truth, 'Marke
 xlabel(xlab); ylabel(ylab); title(ttl); hold off;
 end
 `;
+
+FIG_M.bars = `
+function fig_bars(values, labels, ylab, ttl)
+% One bar per label, with the values up from zero.
+c = fig_colors();
+v = double(values(:)');
+figure; fig_size(6.5, 4.5);
+bar(1:numel(v), v, 0.7, 'FaceColor', c.est, 'FaceAlpha', 0.32, 'EdgeColor', c.est);
+set(gca, 'XTick', 1:numel(v), 'XTickLabel', cellstr(string(labels)));
+ylim([0 max(1, max(v))]);
+ylabel(ylab); title(ttl);
+end
+`;
 </script>
 <script type="text/plain" data-module="js/io/figure_lib_py.js">
 // Python (numpy and matplotlib) figure helpers for the regenerate scripts. Each value is the
@@ -5795,6 +5808,21 @@ def fig_resid(x, r, xlab, ylab, title):
     fig.tight_layout()
     return fig
 `;
+
+FIG_PY.bars = `
+def fig_bars(values, labels, ylab, title):
+    \"\"\"One bar per label, with the values up from zero.\"\"\"
+    import matplotlib.pyplot as plt
+    v = np.asarray(values, float).ravel()
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    ax.bar(range(len(v)), v, color=FIG_EST, alpha=0.32, edgecolor=FIG_EST, linewidth=1)
+    ax.set_xticks(range(len(v)))
+    ax.set_xticklabels([str(l) for l in labels])
+    ax.set_ylim(0, max(1.0, float(np.nanmax(v))))
+    ax.set_ylabel(ylab)
+    ax.set_title(title)
+    return fig
+`;
 </script>
 <script type="text/plain" data-module="js/io/figure_lib_r.js">
 // Figure helpers for the Base R regenerate scripts. Each value is literal R code: `common`
@@ -6146,6 +6174,16 @@ fig_stack <- function(values, labels, title, xlab = "Share of the total variance
          bty = "n", horiz = length(share) <= 3, cex = 0.85, inset = 0.02)
 }
 `;
+
+FIG_R.bars = `
+# One bar per label, with the values up from zero.
+fig_bars <- function(values, labels, ylab, title) {
+  values <- as.numeric(values)
+  barplot(values, names.arg = as.character(labels), col = adjustcolor(FIG_EST, 0.32), border = FIG_EST,
+          ylab = ylab, main = title, ylim = c(0, max(1, max(values, na.rm = TRUE))), las = 1)
+  invisible(NULL)
+}
+`;
 </script>
 <script type="text/plain" data-module="js/io/figure_lib_tidy.js">
 // Literal Tidy R code for the figures the regenerate scripts draw: one ggplot2 helper per kind
@@ -6474,6 +6512,19 @@ fig_stack <- function(values, labels, title, xlab = "Share of the total variance
   print(p)
 }
 `;
+
+FIG_TIDY.bars = `
+# One bar per label, with the values up from zero.
+fig_bars <- function(values, labels, ylab, title) {
+  d <- tibble(level = factor(as.character(labels), levels = as.character(labels)), value = as.numeric(values))
+  p <- ggplot(d, aes(x = level, y = value)) +
+    geom_col(fill = FIG_EST, alpha = 0.32, color = FIG_EST, width = 0.7) +
+    scale_y_continuous(limits = c(0, max(1, max(d$value, na.rm = TRUE)))) +
+    labs(title = title, x = NULL, y = ylab) +
+    theme_minimal()
+  print(p)
+}
+`;
 </script>
 <script type="text/plain" data-module="js/io/figure_scripts.js">
 // The figures of the regenerate scripts: every figure the page shows in
@@ -6562,19 +6613,21 @@ function predictFigures(r, L) {
   const yLabel = r.response.event ? 'probability of ' + r.response.event : r.spec.response;
   const yData = L.lang === 'R' ? (r.response.event != null && r.spec.family === 'binomial' ? 'as.numeric(d$' + r.spec.response + ' == ' + L.str(r.response.event) + ')' : 'd$' + r.spec.response)
     : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.spec.response) + '], float)' : 'tbl.' + r.spec.response;
-  if (r.effect && r.effect.ordinal) {
-    // The ordinal model: one curve per level's probability, with no band; along a continuous
-    // predictor, or flat across the observations when the model has none.
-    const cont = r.effect.x ? r.data.columns.find(c => c.name === r.effect.x).type === 'continuous' : true;
+  if (r.effect && r.effect.ordinal && !r.effect.x) {
+    // The ordinal model with no predictor: one bar per level at its probability.
+    const row = L.lang === 'R' ? 'P1[1, ]' : L.lang === 'py' ? 'P1[0, :]' : 'P1(1, :)';
+    calls.push(...call(L, 'fig_bars', [row, strsOf(L, r.effect.levels), L.str('probability'), L.str('Predicted probability of each level with no predictor')]));
+    fig.push('bars');
+  } else if (r.effect && r.effect.ordinal) {
+    // The ordinal model: one curve per level's probability, with no band, along a continuous predictor.
+    const cont = r.data.columns.find(c => c.name === r.effect.x).type === 'continuous';
     if (cont) {
-      const idx = L.lang === 'R' ? 'seq_len(nrow(d))' : L.lang === 'py' ? 'np.arange(1, len(d) + 1, dtype=float)' : "(1:height(tbl))'";
-      const xExpr = r.effect.x ? (L.lang === 'R' ? 'nd1$' + r.effect.x : L.lang === 'py' ? 'nd1[' + L.str(r.effect.x) + ']' : 'nd1.' + r.effect.x) : idx;
+      const xExpr = L.lang === 'R' ? 'nd1$' + r.effect.x : L.lang === 'py' ? 'nd1[' + L.str(r.effect.x) + ']' : 'nd1.' + r.effect.x;
       const colK = k => (L.lang === 'R' ? 'P1[, ' + (k + 1) + ']' : L.lang === 'py' ? 'P1[:, ' + k + ']' : 'P1(:, ' + (k + 1) + ')');
-      const across = e => (r.effect.x ? e : (L.lang === 'R' ? 'rep(' + e + ', nrow(d))' : L.lang === 'py' ? 'np.repeat(' + e + ', len(d))' : 'repmat(' + e + ', height(tbl), 1)'));
-      const ys = r.effect.levels.map((l, k) => across(colK(k)));
+      const ys = r.effect.levels.map((l, k) => colK(k));
       const xs = r.effect.levels.map(() => xExpr);
       const labels = strsOf(L, r.effect.levels.map(l => 'P(' + l + ')'));
-      calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, ys), listOf(L, ys), L.str(r.effect.x || 'observation'), L.str('probability'), L.str('Predicted probability of each level' + (r.effect.x ? ' against ' + r.effect.x : ' with no predictor'))], { labels }));
+      calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, ys), listOf(L, ys), L.str(r.effect.x), L.str('probability'), L.str('Predicted probability of each level against ' + r.effect.x)], { labels }));
       fig.push('effect');
     }
   } else if (r.effect && !r.effect.x) {
@@ -10734,7 +10787,7 @@ function compute() {
   if (why && !(result.flags || []).includes('singular')) els.flags.appendChild(notice('warn', esc(why)));
   if (result.design.dropped) els.flags.appendChild(notice('info', esc(plural(result.design.dropped, 'row was', 'rows were') + ' left out for a missing value in a column the model uses; ' + intl(result.design.X.length) + ' rows remain.')));
   if (result.event) els.flags.appendChild(notice('info', 'The response ' + esc(state.spec.response) + ' is modeled as the probability of <b>' + esc(result.event) + '</b>, its second level in sorted order.'));
-  drawCoefficients(result);
+  drawCoefficients(ds, result);
   drawRandom(ds, result);
   drawStats(result);
   drawChecks(result);
@@ -10746,7 +10799,7 @@ function compute() {
 
 function waldRows(result) { return waldTable(result, state.settings.level); }
 
-function drawCoefficients(result) {
+function drawCoefficients(ds, result) {
   const rows = waldRows(result);
   const link = LINKS[result.link];
   const useT = rows.length && rows[0].useT;
@@ -10767,14 +10820,26 @@ function drawCoefficients(result) {
   html += '<p class="muted-line">Estimates ' + scale + (useT ? '; t tests on ' + intl(fit.dfResidual) + ' residual degrees of freedom, because the dispersion is estimated.' : zWhy) +
     (word ? ' The last two columns carry each coefficient through the exponential: the ' + esc(word) + ' for a one-unit change in the predictor, or against the reference level.' : '') + '</p>';
   // An ordinal model has no intercept, and so with no predictor it has no coefficient at all.
-  if (!rows.length && fit.family === 'ordinal') html = '<p class="muted-line">An ordinal model has no intercept, and so this model has no coefficient. With no predictor, its thresholds alone set the probabilities of the levels, below.</p>';
-  if (result.fit.family === 'ordinal') {
+  if (result.fit.family === 'ordinal' && !rows.length) {
+    // No predictor: the fit is the levels' shares of the data, and the
+    // thresholds are the logits of the cumulative shares. The table leads
+    // with the shares and keeps the thresholds as the parameters they are.
+    const z = result.fit.zeta, V = result.fit.vcov;
+    const rc = column(ds, state.spec.response);
+    const levels = rc.col.levels;
+    const counts = levels.map(() => 0);
+    for (const i of result.design.keep) counts[levels.indexOf(ds.rows[i][rc.index])]++;
+    const n = result.design.keep.length;
+    let cum = 0;
+    html = '<p class="muted-line">An ordinal model has no intercept, and so this model has no coefficient; the 1 in its formula stands for the thresholds. With no predictor, the model’s probability of each level is that level’s share of the data, and no fitting beyond counting is needed.</p>' +
+      '<div class="ctrl-grp-lbl im-gap">Levels</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Level</th><th>Count</th><th>Probability</th><th>Cumulative probability</th><th>Threshold (logit)</th><th>Std. error</th></tr></thead><tbody>' +
+      levels.map((l, k) => { cum += counts[k]; const last = k === levels.length - 1; return '<tr><td>' + esc(l) + '</td><td>' + intl(counts[k]) + '</td><td>' + stat(counts[k] / n, 4) + '</td><td>' + stat(cum / n, 4) + '</td><td>' + (last ? '–' : stat(z[k], 5)) + '</td><td>' + (last ? '–' : stat(Math.sqrt(V[k][k]), 4)) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+      '<p class="muted-line">The probability is the level’s share of the ' + intl(n) + ' fitted rows, and the cumulative probability is the share at or below the level. Each threshold is the logit of a cumulative probability, the model’s one kind of parameter, and the scripts report the thresholds.</p>';
+  } else if (result.fit.family === 'ordinal') {
     const z = result.fit.zeta, zn = result.fit.zetaNames, p = result.fit.beta.length, V = result.fit.vcov;
-    // With no predictor, each threshold is a cumulative probability in disguise.
-    const cum = p === 0;
-    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>Estimate</th><th>Std. error</th>' + (cum ? '<th>Cumulative probability</th>' : '') + '</tr></thead><tbody>' +
-      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td>' + (cum ? '<td>' + stat(1 / (1 + Math.exp(-z[k])), 4) + '</td>' : '') + '</tr>').join('') + '</tbody></table></div>' +
-      '<p class="muted-line">' + (cum ? 'Each threshold ζ<sub>k</sub> is the logit of the probability of being at or below level k, P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub>), and the levels’ own probabilities are the differences of those.' : 'P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.') + '</p>';
+    html += '<div class="ctrl-grp-lbl im-gap">Thresholds</div><div class="scroll-box"><table class="ptab"><thead><tr><th>Between</th><th>Estimate</th><th>Std. error</th></tr></thead><tbody>' +
+      zn.map((n, k) => '<tr><td>' + esc(n) + '</td><td>' + stat(z[k], 5) + '</td><td>' + stat(Math.sqrt(V[p + k][p + k]), 4) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<p class="muted-line">P(Y ≤ k) = logit⁻¹(ζ<sub>k</sub> − x′β): a positive coefficient moves the response toward the higher levels, and exp(β) is the odds ratio of being above any threshold.</p>';
   }
   els.coef.innerHTML = html;
 }
@@ -10942,7 +11007,7 @@ import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerate
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
-import { curveBand, dataPoints, rawPoints, categoricalX, LEVEL_COLORS, LEVEL_DASHES } from '../ui/modelplots.js';
+import { curveBand, dataPoints, rawPoints, categoricalX, levelBars, LEVEL_COLORS, LEVEL_DASHES } from '../ui/modelplots.js';
 import { card, cardRow, notice, term, WALD_TIP } from '../ui/widgets.js';
 import { setSectionAvailable } from '../ui/tabs.js';
 import { installExportRow } from '../ui/exportrow.js';
@@ -11095,27 +11160,22 @@ function compute() {
 // The ordinal model's predictions: a probability per level.
 const ordinalPredict = ordinalPredictRows;
 
-// The ordinal model with no predictor: one probability per level, drawn
-// across the observations in the order loaded.
+// The ordinal model with no predictor: one bar per level at its probability.
 function drawOrdinalInterceptEffect(ds, result) {
   const levels = column(ds, state.spec.response).col.levels;
   const probs = ordinalPredict(ds, result, [{}])[0];
-  const n = result.design.keep.length;
   const box = document.createElement('div');
   box.className = 'fig-box';
   els.effect.appendChild(box);
-  const fig = makeFigure(box, { height: 320, xLabel: 'observation', yLabel: 'probability', title: 'Predicted probability of each level with no predictor' });
+  const fig = makeFigure(box, { height: 320, xLabel: state.spec.response, yLabel: 'probability', title: 'Predicted probability of each level with no predictor' });
   exportButtons(box, fig, ds.name + ' ordinal probabilities');
   fig.render(f => {
-    f.x([1, Math.max(2, n)], { pad: 0.03, nice: true });
     f.y([0, 1]);
-    f.axes({});
-    levels.forEach((l, k) => curveBand(f, { x: [1, n], y: [probs[k], probs[k]] }, { band: false, color: LEVEL_COLORS[k % LEVEL_COLORS.length], dash: LEVEL_DASHES[k % LEVEL_DASHES.length], label: 'P(' + l + ')' }));
+    levelBars(f, levels, probs);
   });
-  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = 'The model has no predictor, and so it predicts the same probabilities for every observation: ' + levels.map((l, k) => 'P(' + esc(l) + ') = ' + num(probs[k], 4)).join(', ') + ', which sum to 1 and are the levels’ shares of the fitted rows. The observations are drawn in the order loaded.';
+  p.innerHTML = 'The model has no predictor, and so it predicts the same probabilities for every observation: ' + levels.map((l, k) => 'P(' + esc(l) + ') = ' + num(probs[k], 4)).join(', ') + ', which sum to 1 and are the levels’ shares of the fitted rows.';
   els.effect.appendChild(p);
   figs.push(fig);
   last.effect = { x: null, by: null, ordinal: true, levels: levels.slice(), series: [{ label: 'probabilities', by: null, rows: [{}], probs: [probs] }] };
@@ -17727,6 +17787,34 @@ export function categoricalX(fig, levels) {
   fig.cats = { axis: 'x', labels: levels.slice() };
   fig.axes({ xTicks: k, xFormat: v => (Number.isInteger(v) && v >= 1 && v <= k ? levels[v - 1] : ''), grid: false });
   return levels.map((_, i) => i + 1);
+}
+
+/**
+ * One bar per level, for the ordinal model with no predictor: the level
+ * names along x, the probabilities up y from 0, recorded as rects for the
+ * script exports.
+ * @param {object} fig
+ * @param {string[]} labels the levels, in order
+ * @param {ArrayLike<number>} values a probability per level
+ * @param {{ color?: string, label?: string }} [o]
+ * @returns {number[]} the bars' x positions
+ */
+export function levelBars(fig, labels, values, o = {}) {
+  const pos = categoricalX(fig, labels);
+  const sy = fig.sy || fig.y([0, 1]);
+  const c = o.color ? tok(o.color) : tok('--est');
+  const rec = { kind: 'rects', x0: [], y0: [], x1: [], y1: [], color: c, label: o.label || 'probability' };
+  const g = svgEl('g', { class: 'm-bars' }, fig.inner);
+  const r1 = v => Math.round(v * 10) / 10;
+  pos.forEach((x, i) => {
+    const v = values[i];
+    rec.x0.push(x - 0.35); rec.x1.push(x + 0.35); rec.y0.push(0); rec.y1.push(v);
+    if (!(v > 0)) return;
+    const x0 = fig.sx(x - 0.35), x1 = fig.sx(x + 0.35), y = sy(v);
+    svgEl('rect', { x: r1(x0), y: r1(y), width: r1(Math.max(1, x1 - x0)), height: r1(sy(0) - y), fill: c, 'fill-opacity': 0.32, stroke: c, 'stroke-width': 1 }, g);
+  });
+  fig.series.push(rec);
+  return pos;
 }
 </script>
 <script type="text/plain" data-module="js/ui/plots.js">

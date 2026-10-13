@@ -84,19 +84,21 @@ function predictFigures(r, L) {
   const yLabel = r.response.event ? 'probability of ' + r.response.event : r.spec.response;
   const yData = L.lang === 'R' ? (r.response.event != null && r.spec.family === 'binomial' ? 'as.numeric(d$' + r.spec.response + ' == ' + L.str(r.response.event) + ')' : 'd$' + r.spec.response)
     : L.lang === 'py' ? 'np.asarray(d[' + L.str(r.spec.response) + '], float)' : 'tbl.' + r.spec.response;
-  if (r.effect && r.effect.ordinal) {
-    // The ordinal model: one curve per level's probability, with no band; along a continuous
-    // predictor, or flat across the observations when the model has none.
-    const cont = r.effect.x ? r.data.columns.find(c => c.name === r.effect.x).type === 'continuous' : true;
+  if (r.effect && r.effect.ordinal && !r.effect.x) {
+    // The ordinal model with no predictor: one bar per level at its probability.
+    const row = L.lang === 'R' ? 'P1[1, ]' : L.lang === 'py' ? 'P1[0, :]' : 'P1(1, :)';
+    calls.push(...call(L, 'fig_bars', [row, strsOf(L, r.effect.levels), L.str('probability'), L.str('Predicted probability of each level with no predictor')]));
+    fig.push('bars');
+  } else if (r.effect && r.effect.ordinal) {
+    // The ordinal model: one curve per level's probability, with no band, along a continuous predictor.
+    const cont = r.data.columns.find(c => c.name === r.effect.x).type === 'continuous';
     if (cont) {
-      const idx = L.lang === 'R' ? 'seq_len(nrow(d))' : L.lang === 'py' ? 'np.arange(1, len(d) + 1, dtype=float)' : "(1:height(tbl))'";
-      const xExpr = r.effect.x ? (L.lang === 'R' ? 'nd1$' + r.effect.x : L.lang === 'py' ? 'nd1[' + L.str(r.effect.x) + ']' : 'nd1.' + r.effect.x) : idx;
+      const xExpr = L.lang === 'R' ? 'nd1$' + r.effect.x : L.lang === 'py' ? 'nd1[' + L.str(r.effect.x) + ']' : 'nd1.' + r.effect.x;
       const colK = k => (L.lang === 'R' ? 'P1[, ' + (k + 1) + ']' : L.lang === 'py' ? 'P1[:, ' + k + ']' : 'P1(:, ' + (k + 1) + ')');
-      const across = e => (r.effect.x ? e : (L.lang === 'R' ? 'rep(' + e + ', nrow(d))' : L.lang === 'py' ? 'np.repeat(' + e + ', len(d))' : 'repmat(' + e + ', height(tbl), 1)'));
-      const ys = r.effect.levels.map((l, k) => across(colK(k)));
+      const ys = r.effect.levels.map((l, k) => colK(k));
       const xs = r.effect.levels.map(() => xExpr);
       const labels = strsOf(L, r.effect.levels.map(l => 'P(' + l + ')'));
-      calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, ys), listOf(L, ys), L.str(r.effect.x || 'observation'), L.str('probability'), L.str('Predicted probability of each level' + (r.effect.x ? ' against ' + r.effect.x : ' with no predictor'))], { labels }));
+      calls.push(...call(L, 'fig_effect', [listOf(L, xs), listOf(L, ys), listOf(L, ys), listOf(L, ys), L.str(r.effect.x), L.str('probability'), L.str('Predicted probability of each level against ' + r.effect.x)], { labels }));
       fig.push('effect');
     }
   } else if (r.effect && !r.effect.x) {

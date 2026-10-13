@@ -373,3 +373,18 @@ def fig_resid(x, r, xlab, ylab, title):
     fig.tight_layout()
     return fig
 `;
+
+FIG_PY.bars = `
+def fig_bars(values, labels, ylab, title):
+    \"\"\"One bar per label, with the values up from zero.\"\"\"
+    import matplotlib.pyplot as plt
+    v = np.asarray(values, float).ravel()
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    ax.bar(range(len(v)), v, color=FIG_EST, alpha=0.32, edgecolor=FIG_EST, linewidth=1)
+    ax.set_xticks(range(len(v)))
+    ax.set_xticklabels([str(l) for l in labels])
+    ax.set_ylim(0, max(1.0, float(np.nanmax(v))))
+    ax.set_ylabel(ylab)
+    ax.set_title(title)
+    return fig
+`;

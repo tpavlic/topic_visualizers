@@ -347,3 +347,13 @@ fig_stack <- function(values, labels, title, xlab = "Share of the total variance
          bty = "n", horiz = length(share) <= 3, cex = 0.85, inset = 0.02)
 }
 `;
+
+FIG_R.bars = `
+# One bar per label, with the values up from zero.
+fig_bars <- function(values, labels, ylab, title) {
+  values <- as.numeric(values)
+  barplot(values, names.arg = as.character(labels), col = adjustcolor(FIG_EST, 0.32), border = FIG_EST,
+          ylab = ylab, main = title, ylim = c(0, max(1, max(values, na.rm = TRUE))), las = 1)
+  invisible(NULL)
+}
+`;
