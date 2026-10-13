@@ -94,6 +94,15 @@ function pairSpan(label, rows, note) {
     '<td>' + name + ': ' + classical + '</td><td>' + name + ': ' + model + '</td>' +
     (i === 0 ? '<td rowspan="' + rows.length + '" class="muted-line">' + (note || '') + '</td>' : '') + '</tr>').join('');
 }
+// The Model page's likelihood-ratio test of a term, as three rows: the
+// statistic, its degrees of freedom, and p, with no classical counterpart.
+function lrtRows(label, row, dfNote) {
+  return [
+    pair('Likelihood-ratio chi-square for ' + label, '–', stat(row.stat, 4), 'the Model page’s term test'),
+    pair('Degrees of freedom', '–', intl(row.df), dfNote),
+    pair('p', '–', pValue(row.p), '')
+  ];
+}
 // A sentence or two directly above a small table, carrying what those rows say.
 function chunk(text, rows) {
   return '<p class="exp-note tm-chunk">' + text + '</p>' + table(rows);
@@ -168,7 +177,7 @@ function sectionAnova(root) {
       pair('p', pValue(av.p), pValue(pF), '')
     ]) +
     chunk('The Model page tests the shift term by a likelihood ratio instead, which agrees with the F test in large samples and is close here.', [
-      pair('Likelihood-ratio test of shift', '–', stat(tt.rows[0].stat, 4) + ' on ' + intl(tt.rows[0].df) + ' df, ' + pEq(tt.rows[0].p), 'the Model page’s term test')
+      ...lrtRows('shift', tt.rows[0], 'coefficients of shift')
     ]);
   root.appendChild(loadButton('anova', spec));
 }
@@ -200,7 +209,7 @@ function sectionTwoway(root) {
       pairSpan('p', names.map((nm, i) => [nm, pValue(tw.rows[i].p), pValue(1 - fCdf(F[i], tw.rows[i].df, fit.dfResidual))]), 'the GLMM matches the test')
     ]) +
     chunk('The Model page tests the interaction by a likelihood ratio instead, which agrees with the F test in large samples and is close here. While the interaction is in the model, it tests no main effect: a main effect cannot be dropped from a model that keeps its interaction.', [
-      pair('Likelihood-ratio test of temperature:catalyst', '–', stat(ia.stat, 4) + ' on ' + intl(ia.df) + ' df, ' + pEq(ia.p), 'the Model page’s term test')
+      ...lrtRows('temperature:catalyst', ia, 'coefficients of the interaction')
     ]);
   root.appendChild(loadButton('twoway', spec));
 }
@@ -250,8 +259,8 @@ function sectionAncova(root) {
   const tt = termTests(ds, spec, r);
   const row = tt.rows.find(v => v.term === 'machine');
   root.innerHTML = modelBlock(spec, 'The processing time of sixteen jobs on each of two machines (old, new), against the size of the job.', 'Analysis of covariance: the machines compared at a common job size.') +
-    '<p class="exp-note">Analysis of covariance can be realized as the GLMM above, a normal model with one factor (the machine) and one continuous covariate (the size of the job). The new machine was given the smaller jobs, and so the plain difference of the two mean times overstates its advantage. ANCOVA fits one slope on the size within each machine and compares the machines at a common size. The GLMM’s coefficient for the size is that pooled within-machine slope, and its coefficient for the machine is the adjusted difference, the gap between the two parallel lines.</p>' +
-    chunk('The unadjusted difference is the two-sample comparison of the means, which the covariate corrects.', [
+    '<p class="exp-note">ANCOVA, analysis of covariance, is ANOVA with a continuous predictor added. This ANCOVA combines a categorical machine predictor with a continuous size, which is a covariate whose effect is removed before the machine factor is assessed. An ANOVA only considers factors, a regression only considers continuous predictors, and the ANCOVA is the hybrid of the two. This hybrid can naturally be realized by the GLMM above. The ANCOVA fits one slope on the size within each machine and compares the machines at a common size, which prevents overstating the advantage of machines that happen to be given smaller jobs. The GLMM’s coefficient for the size is that pooled within-machine slope, and its coefficient for the machine is the adjusted difference (i.e., the gap between the two parallel lines).</p>' +
+    chunk('The unadjusted difference is the plain comparison of the two mean times; the common slope and the adjusted difference are what the covariate adds.', [
       pair('Unadjusted difference, new − old', stat(naive.diff, 5), '–', 'the difference of the two mean times'),
       pair('Common slope on size', stat(a.slope, 5), stat(fit.beta[ks], 5), 'the coefficient of size'),
       pair('Adjusted difference, new − old', stat(a.adjustedMeans[iNew] - a.adjustedMeans[iOld], 5), stat(est, 5), 'the coefficient of the machine')
@@ -263,7 +272,7 @@ function sectionAncova(root) {
       pair('p', pValue(a.p), pValue(1 - fCdf(F, 1, fit.dfResidual)), 'the GLMM matches the test')
     ]) +
     chunk('The Model page tests the machine by a likelihood ratio instead, which agrees with the F test in large samples and is close here.', [
-      pair('Likelihood-ratio test of machine', '–', stat(row.stat, 4) + ' on ' + intl(row.df) + ' df, ' + pEq(row.p), 'the Model page’s term test')
+      ...lrtRows('machine', row, 'the coefficient of the machine')
     ]);
   root.appendChild(loadButton('ancova', spec));
 }
