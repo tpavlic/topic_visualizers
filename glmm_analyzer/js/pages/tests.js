@@ -8,7 +8,7 @@ import { sniff, buildTable } from '../io/parse.js';
 import { column, sameData } from '../data/model.js';
 import { fitModel } from '../stats/fit.js';
 import { termTests, randomEffectTest, waldP, refitTerms } from '../stats/inference.js';
-import { oneSampleT, twoSampleT, onewayAnova, twowayAnova, correlation, ancova, pairedT, chiSquareIndependence, chiSquareGoodnessOfFit, twoProportions } from '../stats/classical.js';
+import { oneSampleT, twoSampleT, onewayAnova, twowayAnova, correlation, ranks, spearman, ancova, pairedT, chiSquareIndependence, chiSquareGoodnessOfFit, twoProportions } from '../stats/classical.js';
 import { fCdf, chi2Cdf } from '../stats/special.js';
 import { card, cardRow, notice, term, WALD_TIP } from '../ui/widgets.js';
 import { installExportRow } from '../ui/exportrow.js';
@@ -46,6 +46,21 @@ function tourDataset(which) {
   dataset.source.file = ex.file;
   datasets.set(which, { ex, ds: dataset });
   return datasets.get(which);
+}
+// The regression tour dataset with both columns replaced by their ranks,
+// built through the importer like the others and cached under its own key.
+function rankedRegressionDataset() {
+  const key = 'regression-ranks';
+  if (datasets.has(key)) return datasets.get(key);
+  const { ex, ds } = tourDataset('regression');
+  const xi = column(ds, 'distance');
+  const rx = ranks(ds.rows.map(v => v[xi.index])), ry = ranks(ds.rows.map(v => v[0]));
+  const text = 'delivery_time_rank,distance_rank\n' + ry.map((r, i) => r + ',' + rx[i]).join('\n') + '\n';
+  const mapping = { name: 'Time against distance, ranked', response: 'delivery_time_rank', columns: { delivery_time_rank: { role: 'response', type: 'continuous' }, distance_rank: { role: 'predictor', type: 'continuous' } } };
+  const { dataset } = buildTable(sniff(text, { name: mapping.name }), mapping);
+  dataset.source.file = ex.file + ', ranked';
+  datasets.set(key, { ex: null, ds: dataset });
+  return datasets.get(key);
 }
 
 // The section's facts, first and apart from the prose: the data, the
@@ -223,6 +238,12 @@ function sectionRegression(root) {
   const fit = r.fit;
   const se1 = Math.sqrt(fit.vcov[1][1]), tm = fit.beta[1] / se1, pm = waldP(tm, fit.dfResidual);
   const r2 = 1 - fit.deviance / fit.nullDeviance;
+  // Spearman: the same model on the ranked copy.
+  const rk = rankedRegressionDataset().ds;
+  const specRank = { response: 'delivery_time_rank', family: 'normal', link: 'identity', terms: ['distance_rank'], group: null, nested: null, slope: null, olre: false, reml: false };
+  const rr = fitModel(rk, specRank).fit;
+  const rhoModel = Math.sign(rr.beta[1]) * Math.sqrt(1 - rr.deviance / rr.nullDeviance);
+  const rho = spearman(ds.rows.map(x => x[xi.index]), ds.rows.map(x => x[0])).rho;
   root.innerHTML = modelBlock(spec, 'The delivery time of thirty orders against the distance driven.', 'Pearson’s correlation and its t test, with the least-squares line.') +
     '<p class="exp-note">Pearson’s correlation can be realized as the GLMM above, a normal model with one continuous predictor, which is simple linear regression. The GLMM’s coefficient is the least-squares slope, and r is that slope rescaled by the ratio of the two standard deviations, and so the test of r against 0 and the test of the slope against 0 are one test. When the predictor or the response is ordinal, it can make more sense to measure the correlation between the ranks than between the values themselves. That is Spearman’s correlation: Pearson’s r on the ranks, and so the same model fitted to the ranked columns.</p>' +
     chunk('The GLMM’s two coefficients are the line’s intercept and slope. Its r² is the share of the null deviance the line removes, and r is the square root with the slope’s sign.', [
@@ -235,8 +256,12 @@ function sectionRegression(root) {
       pair('t', stat(c.t, 5), stat(tm, 5), 'the GLMM matches the test'),
       pair('Degrees of freedom', intl(c.df), intl(fit.dfResidual), 'the GLMM matches the test'),
       pair('p', pValue(c.p), pValue(pm), 'the GLMM matches the test')
+    ]) +
+    chunk('Ranking both columns and fitting the same model gives Spearman’s ρ as that model’s r. Its test is not shown: Spearman’s p-value comes from the permutation distribution of ρ, every reordering of one column against the other, which is outside what this tool computes, and the t test the Model page shows on the ranks only approximates it.', [
+      pair('Spearman’s rho', stat(rho, 5), stat(rhoModel, 5), 'r of the same model on the ranks')
     ]);
   root.appendChild(loadButton('regression', spec));
+  root.appendChild(loadButton('regression-ranks', specRank, 'Open the ranked data and model on the Model page'));
 }
 
 function sectionAncova(root) {

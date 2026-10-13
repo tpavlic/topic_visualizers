@@ -1,5 +1,5 @@
 # Reference values for test/classical.test.mjs: R's own t.test, aov,
-# cor.test, anova on lm, chisq.test (no continuity correction), and
+# cor.test, cor(method = "spearman"), anova on lm, chisq.test (no continuity correction), and
 # prop.test (no correction) on the small fixed samples the test file carries. Run from anywhere:
 #   Rscript glmm_analyzer/test/reference/classical.R > glmm_analyzer/test/reference/classical.json
 x <- c(5.1, 4.8, 6.2, 5.5, 4.9, 5.8, 6.1, 5.0, 5.4, 4.7)
@@ -30,6 +30,9 @@ ty <- c(70.1, 72.4, 68.9, 71.5, 75.2, 77.8, 74.0, 76.9, 73.3, 71.0, 72.6, 74.9, 
 ta <- factor(rep(c("low", "high"), each = 8), levels = c("low", "high"))
 tb <- factor(rep(rep(c("A", "B"), each = 4), 2))
 tw <- anova(lm(ty ~ ta * tb))
+sx <- c(1, 2, 2, 3, 5, 5, 5, 8)
+sy <- c(2, 1, 4, 4, 6, 7, 5, 9)
+sp <- cor(sx, sy, method = "spearman")
 gc <- c(16, 9, 12, 10, 26, 8)
 gt <- chisq.test(gc)
 gG2 <- 2 * sum(gc * log(gc / gt$expected))
@@ -44,6 +47,7 @@ out <- list(
   cor = list(r = unname(ct$estimate), t = unname(ct$statistic), df = unname(ct$parameter), p = ct$p.value, slope = cl["cx", "Estimate"], seSlope = cl["cx", "Std. Error"], intercept = cl["(Intercept)", "Estimate"]),
   ancova = list(F = aa["ag", "F value"], df = aa["ag", "Df"], p = aa["ag", "Pr(>F)"], ss = aa["ag", "Sum Sq"], ssResidual = aa["Residuals", "Sum Sq"], dfResidual = aa["Residuals", "Df"], slope = unname(coef(af)["ax"]), adjustedDiff = unname(coef(af)["agnew"])),
   twoway = list(ss = tw[["Sum Sq"]], df = tw[["Df"]], F = tw[["F value"]][1:3], p = tw[["Pr(>F)"]][1:3]),
+  spearman = list(rho = sp, ranks = rank(sx)),
   gof = list(X2 = unname(gt$statistic), df = unname(gt$parameter), p = gt$p.value, G2 = gG2, pG = pchisq(gG2, gt$parameter, lower.tail = FALSE), expected = gt$expected[1])
 )
 cat(jsonlite::toJSON(out, auto_unbox = TRUE, digits = NA))

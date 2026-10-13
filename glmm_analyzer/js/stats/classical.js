@@ -1,6 +1,7 @@
 // The classical tests the Classic tests as GLMM page sets beside their
 // models: the one-sample t test, the pooled and Welch two-sample t tests,
-// one-way and balanced two-way ANOVA, Pearson's correlation with its t test,
+// one-way and balanced two-way ANOVA, Pearson's correlation with its t test
+// and Spearman's on the ranks,
 // analysis of covariance, the paired t test, the chi-square tests of
 // independence and of goodness of fit with Pearson's and the likelihood-ratio
 // statistics, and the two-proportion test as a score test.
@@ -122,6 +123,37 @@ export function correlation(x, y) {
   const slope = sxy / sxx, intercept = b.mean - slope * a.mean;
   const rss = syy - sxy * sxy / sxx;
   return { r, t, df, p: 2 * (1 - tCdf(Math.abs(t), df)), slope, intercept, seSlope: Math.sqrt(rss / df / sxx) };
+}
+
+/**
+ * The ranks of a sample, 1 for the smallest value, with ties given the
+ * average of the ranks they span, as R's rank() does by default.
+ * @param {ArrayLike<number>} a
+ * @returns {number[]}
+ */
+export function ranks(a) {
+  const n = a.length;
+  const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => a[i] - a[j]);
+  const out = new Array(n);
+  for (let k = 0; k < n;) {
+    let m = k;
+    while (m + 1 < n && a[order[m + 1]] === a[order[k]]) m++;
+    const r = (k + m) / 2 + 1;
+    for (let q = k; q <= m; q++) out[order[q]] = r;
+    k = m + 1;
+  }
+  return out;
+}
+
+/**
+ * Spearman's rank correlation: Pearson's correlation of the two columns'
+ * ranks, as cor(method = "spearman") computes it, ties averaged.
+ * @param {ArrayLike<number>} x
+ * @param {ArrayLike<number>} y
+ * @returns {{ rho: number }}
+ */
+export function spearman(x, y) {
+  return { rho: correlation(ranks(x), ranks(y)).r };
 }
 
 /**

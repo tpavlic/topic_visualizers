@@ -498,8 +498,9 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   every nested pair), ⑧ Report, ⑨ Storage, ⑩ Classic tests as GLMM (the
   one-sample t test as an intercept-only normal model, the two-sample t test, one-way ANOVA,
   two-way ANOVA with interaction on a balanced layout with its sums of squares as sequential
-  drops in deviance, Pearson's correlation as simple regression with Spearman's as one sentence
-  on ranks, ANCOVA with the adjusted difference as the factor's coefficient, the
+  drops in deviance, Pearson's correlation as simple regression, with Spearman's rho as the same model on a ranked
+  copy of the data (a second button opens that copy; its p-value is not shown because the
+  real test's permutation distribution is outside the tool), ANCOVA with the adjusted difference as the factor's coefficient, the
   paired t test, a one-sample test on repeated measures as an intercept-only mixed model by REML
   beside the t test on the group means and the too-narrow t test on every observation, the
   chi-square test of independence, the chi-square goodness-of-fit test against equal expected

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { oneSampleT, twoSampleT, onewayAnova, twowayAnova, correlation, ancova, pairedT, chiSquareIndependence, chiSquareGoodnessOfFit, twoProportions } from '../js/stats/classical.js';
+import { oneSampleT, twoSampleT, onewayAnova, twowayAnova, correlation, ranks, spearman, ancova, pairedT, chiSquareIndependence, chiSquareGoodnessOfFit, twoProportions } from '../js/stats/classical.js';
 import { refitTerms } from '../js/stats/inference.js';
 import { EXAMPLES } from '../js/data/examples.js';
 import { sniff, buildTable } from '../js/io/parse.js';
@@ -158,4 +158,22 @@ test('an intercept-only Poisson model of counts is the goodness-of-fit test', ()
   close(r0.fit.deviance, g.G2, 1e-8, 'G2 is the deviance');
   let X2 = 0; for (const v of r0.fit.pearson) X2 += v * v;
   close(X2, g.X2, 1e-8, 'X2 is the Pearson sum'); close(r0.fit.fitted[0], g.expected, 1e-8, 'expected'); assert.equal(r0.fit.dfResidual, g.df);
+});
+
+test('average ranks and Spearman’s correlation', () => {
+  const x = [1, 2, 2, 3, 5, 5, 5, 8], y = [2, 1, 4, 4, 6, 7, 5, 9];
+  assert.deepEqual(ranks(x), ref.spearman.ranks);
+  close(spearman(x, y).rho, ref.spearman.rho, 1e-12, 'rho');
+});
+
+test('the same model on the ranks gives Spearman’s rho as its r', () => {
+  const ds = tour('regression');
+  const xi = column(ds, 'distance');
+  const x = ds.rows.map(v => v[xi.index]), y = ds.rows.map(v => v[0]);
+  const rho = spearman(x, y).rho;
+  // A ranked copy of the dataset, through the importer as the page builds it.
+  const text = 'delivery_time_rank,distance_rank\n' + ranks(y).map((r, i) => r + ',' + ranks(x)[i]).join('\n') + '\n';
+  const rd = buildTable(sniff(text, { name: 'ranked' }), { name: 'ranked', response: 'delivery_time_rank', columns: { delivery_time_rank: { role: 'response', type: 'continuous' }, distance_rank: { role: 'predictor', type: 'continuous' } } }).dataset;
+  const r = fitModel(rd, { response: 'delivery_time_rank', family: 'normal', link: 'identity', terms: ['distance_rank'], group: null, nested: null, slope: null, olre: false, reml: false });
+  close(Math.sign(r.fit.beta[1]) * Math.sqrt(1 - r.fit.deviance / r.fit.nullDeviance), rho, 1e-10, 'rho');
 });
