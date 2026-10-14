@@ -476,20 +476,26 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   sidebar in four groups (Data, Analysis, Session, More information) that
   becomes a one-line tab strip and then a `<select>` as the page narrows. Ten pages: ① Import
   (bundled examples, a file, drag-and-drop, or pasted text, behind a mapping dialog that gives every
-  column a role, response, predictor, group, or ignored, and a type, continuous, categorical, or
-  ordinal, with every rejected row listed by line number; and, on each loaded dataset's row, a
+  column a role, response, outcome, predictor, group, or ignored, and a type, continuous,
+  categorical, or ordinal, with every rejected row listed by line number (an outcome is another
+  output of the same rows, which the Model page offers as the response but never as a term:
+  `outcomeColumns` and `termColumns` in `js/data/model.js`, where a dataset with any outcome
+  treats its response as one too); and, on each loaded dataset's row, a
   Derive a column control that adds the rank (ties averaged), natural log, square root, centered,
-  or standardized version of a continuous column as a predictor or as the response, stored as
+  or standardized version of a continuous column as a predictor, as the response (stepping the
+  old response back to an outcome), or as an outcome, stored as
   data with `derived: { of, transform }` on the column (`deriveColumn` and `removeDerivedColumn`
   in `js/data/model.js`), named in the Source cell, in the data files' `# derived columns` line,
   and in a comment in the scripts' data block, and removable where an original column is not),
   ② Explore (the response's distribution
-  and its relation to each predictor), ③ Model (a formula builder of chips for the fixed terms,
+  and its relation to each predictor, with a Response picker, shown only for a dataset with
+  outcomes, that puts any of them in the response's place), ③ Model (a formula builder of chips for the fixed terms,
   powers, and interactions, a grouping factor with an optional random slope and an optional
   observation-level random effect, REML for the normal family; the response picker offers every
-  non-ignored column, and choosing one starts the default model for it, every other predictor or
-  response column as a main effect (`defaultTerms` in `js/data/model.js`), so that the column that
-  was the response at import becomes a candidate predictor and going back restores the original; the coefficient table with Wald
+  non-ignored column, and choosing one starts the default model for it, every column `termColumns`
+  allows as a main effect (`defaultTerms` in `js/data/model.js`), so that in a dataset with no
+  outcome the column that was the response at import becomes a candidate predictor and going back
+  restores the original; the coefficient table with Wald
   intervals and back-transformed ratios, the variance components with a boundary-corrected
   likelihood-ratio test of the random part, the fit statistics, the checks line, the term tests as
   `drop1` refits, and Keep for the Compare page; an intercept-only ordinal model, which has no

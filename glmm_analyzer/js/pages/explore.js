@@ -1,9 +1,10 @@
 // The Explore page: what the response holds and the families that can
 // describe it, its descriptives overall and by a categorical predictor, its
-// histogram, and the response against each predictor.
+// histogram, and the response against each predictor. A dataset with
+// outcomes can show any one of them in the response's place.
 
 import * as state from '../state.js';
-import { column, support, valuesOf, SUPPORT_LABEL, predictorColumns, groupColumns } from '../data/model.js';
+import { column, support, valuesOf, SUPPORT_LABEL, predictorColumns, groupColumns, outcomeColumns } from '../data/model.js';
 import { FAMILIES, familiesFor } from '../stats/families.js';
 import { summary, histogram, boxStats } from '../stats/descriptive.js';
 import { binnedMeans } from '../stats/inference.js';
@@ -35,17 +36,20 @@ export function render(root) {
     '<p class="lede">What the response holds decides which families can describe it, and how it moves with each predictor is the first look at the model to build. Nothing here is a fit; the Model page fits.</p>' +
     '<div class="sec ctrl-card"><div class="ctrl-row">' +
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-ds">Dataset</label><select id="ex-ds"></select></span>' +
+      '<span class="ctrl-pair" id="ex-rs-pair" hidden><label class="ctrl-lbl" for="ex-rs">Response</label><select id="ex-rs"></select></span>' +
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-by">Group descriptives by</label><select id="ex-by"></select></span>' +
     '</div></div>' +
     '<div class="sec"><div class="sec-hd">The response</div><div id="ex-resp"></div></div>' +
     '<div class="sec"><div class="sec-hd">Descriptives</div><div id="ex-desc"></div></div>' +
     '<div class="sec"><div class="sec-hd">Against each predictor</div><p class="exp-note">A continuous predictor gives a scatter with the mean of the response in ten bins of equal count; a categorical one gives a box per level or, for a binary response, the proportion per level.</p><div id="ex-plots"></div></div>';
-  els = { ds: root.querySelector('#ex-ds'), by: root.querySelector('#ex-by'), resp: root.querySelector('#ex-resp'), desc: root.querySelector('#ex-desc'), plots: root.querySelector('#ex-plots') };
+  els = { ds: root.querySelector('#ex-ds'), rs: root.querySelector('#ex-rs'), rsPair: root.querySelector('#ex-rs-pair'), by: root.querySelector('#ex-by'), resp: root.querySelector('#ex-resp'), desc: root.querySelector('#ex-desc'), plots: root.querySelector('#ex-plots') };
   dsSel = datasetSelect(els.ds, { remember: { page: id, key: 'dataset' } });
-  els.ds.addEventListener('change', () => { fillBy(); compute(); });
+  els.ds.addEventListener('change', () => { fillResponse(); fillBy(); compute(); });
+  els.rs.addEventListener('change', () => { state.setPick(id, 'response', els.rs.value || null); compute(); });
   els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); compute(); });
   installExportRow(root, id);
-  state.on('datasets', () => { fillBy(); if (visible()) compute(); });
+  state.on('datasets', () => { fillResponse(); fillBy(); if (visible()) compute(); });
+  fillResponse();
   fillBy();
   compute();
 }
@@ -57,9 +61,21 @@ export function onShow() { compute(); }
 
 function current() { return state.get(els.ds.value); }
 
+// A dataset with outcomes can show any of them as the response; the picker
+// is hidden for a dataset with one response.
+function fillResponse() {
+  const ds = current();
+  const cands = ds ? outcomeColumns(ds) : [];
+  const want = state.getPick(id, 'response');
+  const resp = ds ? ds.columns.find(c => c.role === 'response') : null;
+  const chosen = cands.some(c => c.name === want) ? want : (resp ? resp.name : '');
+  els.rs.innerHTML = cands.map(c => '<option value="' + esc(c.name) + '"' + (c.name === chosen ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+  els.rsPair.hidden = cands.length < 2;
+}
+
 function fillBy() {
   const ds = current();
-  const cats = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'response' && c.type !== 'continuous') : [];
+  const cats = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'response' && c.role !== 'outcome' && c.type !== 'continuous') : [];
   const want = state.getPick(id, 'by');
   els.by.innerHTML = '<option value="">none</option>' + cats.map(c => '<option value="' + esc(c.name) + '"' + (c.name === want ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
   els.by.disabled = !cats.length;
@@ -75,7 +91,8 @@ function compute() {
     state.setResult(id, null);
     return;
   }
-  const resp = ds.columns.find(c => c.role === 'response');
+  const picked = els.rsPair.hidden ? null : column(ds, els.rs.value);
+  const resp = picked ? picked.col : ds.columns.find(c => c.role === 'response');
   if (!resp) {
     els.resp.innerHTML = '<p class="muted-line">The dataset has no response column; assign one on the Import page.</p>';
     els.desc.innerHTML = ''; els.plots.innerHTML = '';

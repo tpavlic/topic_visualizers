@@ -1,6 +1,6 @@
 // The dataset model: a table of observations, one row each, whose columns
-// carry a role (the response, a predictor, a grouping factor, or ignored)
-// and a type (continuous, categorical, or ordinal). The response's support,
+// carry a role (the response, another outcome that could be the response, a
+// predictor, a grouping factor, or ignored) and a type (continuous, categorical, or ordinal). The response's support,
 // read from its values, says which families can describe it. Pure
 // functions, no DOM.
 
@@ -8,7 +8,7 @@
 import { mean, sd, ranks } from '../stats/descriptive.js';
 
 /**
- * @typedef {{ name: string, role: 'response'|'predictor'|'group'|'ignored',
+ * @typedef {{ name: string, role: 'response'|'outcome'|'predictor'|'group'|'ignored',
  *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null,
  *   derived?: { of: string, transform: string, replaced?: string|null }|null }} Column
  *   `levels` holds a categorical or ordinal column's distinct values, sorted
@@ -30,9 +30,9 @@ import { mean, sd, ranks } from '../stats/descriptive.js';
  */
 
 /** How each column role and type is named on the page and in a data file's # lines. */
-export const ROLE_LABEL = { response: 'response', predictor: 'predictor', group: 'group', ignored: 'ignored' };
+export const ROLE_LABEL = { response: 'response', outcome: 'outcome', predictor: 'predictor', group: 'group', ignored: 'ignored' };
 export const TYPE_LABEL = { continuous: 'continuous', categorical: 'categorical', ordinal: 'ordinal' };
-export const ROLES = ['response', 'predictor', 'group', 'ignored'];
+export const ROLES = ['response', 'outcome', 'predictor', 'group', 'ignored'];
 export const TYPES = ['continuous', 'categorical', 'ordinal'];
 
 let idCounter = 0;
@@ -137,6 +137,34 @@ export function predictorColumns(ds) {
 /** The group columns, in table order. */
 export function groupColumns(ds) {
   return ds.columns.filter(c => c.role === 'group');
+}
+
+/**
+ * The columns that are only ever a response: every outcome and, once the
+ * dataset has an outcome, the response too. A dataset that measures several
+ * outputs of one experiment marks the others as outcomes, and so none of
+ * them is offered as a predictor of another, whichever is modeled.
+ * @param {Dataset} ds
+ * @returns {Column[]}
+ */
+export function outcomeColumns(ds) {
+  if (!ds.columns.some(c => c.role === 'outcome')) return [];
+  return ds.columns.filter(c => c.role === 'outcome' || c.role === 'response');
+}
+
+/**
+ * The columns a model may take as a term once `response` is the response:
+ * every predictor and, in a dataset with no outcome, the column that was the
+ * response at import, which becomes a candidate predictor when another
+ * column is modeled. Never a group, an ignored column, an outcome, or the
+ * response itself.
+ * @param {Dataset} ds
+ * @param {string|null} response
+ * @returns {Column[]}
+ */
+export function termColumns(ds, response) {
+  const only = new Set(outcomeColumns(ds).map(c => c.name));
+  return ds.columns.filter(c => c.name !== response && !only.has(c.name) && (c.role === 'predictor' || c.role === 'response'));
 }
 
 /**
@@ -248,17 +276,17 @@ export function canModel(ds) {
 }
 
 /**
- * The fixed terms of the default model for a response: every other column
- * with the predictor or response role, as a main effect, in the dataset's
- * column order. A column that was the response at import is a candidate
- * predictor for any other response, and the group columns stay out of the
- * fixed part.
+ * The fixed terms of the default model for a response: every column
+ * termColumns allows, as a main effect, in the dataset's column order. A
+ * column that was the response at import is a candidate predictor for any
+ * other response unless the dataset has outcomes, and the group columns
+ * stay out of the fixed part.
  * @param {Dataset} ds
  * @param {string|null} response
  * @returns {string[]}
  */
 export function defaultTerms(ds, response) {
-  return ds.columns.filter(c => c.name !== response && (c.role === 'predictor' || c.role === 'response')).map(c => c.name);
+  return termColumns(ds, response).map(c => c.name);
 }
 
 /**
@@ -301,11 +329,13 @@ export function derivedName(of, transform) { return of + '_' + DERIVATIONS[trans
  * ranks, natural log, square root, centered values, or standardized values,
  * stored as data like any other column, with the derivation kept on the
  * column. A missing value stays missing. A derived column made the
- * response steps the current response back to ignored and remembers it,
- * so that removing the derived column restores it. Nothing changes when
- * the request is refused.
+ * response steps the current response back to an outcome, which can be
+ * modeled again but is never a predictor of its own transform, and
+ * remembers it, so that removing the derived column restores it. A derived
+ * column can also be made an outcome. Nothing changes when the request is
+ * refused.
  * @param {Dataset} ds
- * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response' }} req
+ * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response'|'outcome' }} req
  * @returns {{ ok: boolean, reason: string|null }}
  */
 export function deriveColumn(ds, req) {
@@ -318,7 +348,7 @@ export function deriveColumn(ds, req) {
   if (!name) return { ok: false, reason: 'Name the new column.' };
   if (column(ds, name)) return { ok: false, reason: 'There is already a column named ' + name + '.' };
   const role = req.role || 'predictor';
-  if (role !== 'predictor' && role !== 'response') return { ok: false, reason: 'A derived column is a predictor or the response.' };
+  if (role !== 'predictor' && role !== 'response' && role !== 'outcome') return { ok: false, reason: 'A derived column is a predictor, the response, or an outcome.' };
   const vals = ds.rows.map(r => r[src.index]);
   if (d.domain) {
     const bad = [];
@@ -341,7 +371,7 @@ export function deriveColumn(ds, req) {
     vals.forEach((v, i) => { if (v != null) out[i] = (v - m) / s; });
   }
   let replaced = null;
-  if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'ignored'; replaced = c.name; }
+  if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'outcome'; replaced = c.name; }
   ds.columns.push({ name, role, type: 'continuous', levels: null, derived: { of: req.of, transform: req.transform, replaced } });
   ds.rows.forEach((r, i) => { r.push(out[i]); });
   return { ok: true, reason: null };
@@ -363,7 +393,8 @@ export function removeDerivedColumn(ds, name) {
   for (const r of ds.rows) r.splice(c.index, 1);
   if (c.col.role === 'response' && c.col.derived.replaced && !ds.columns.some(x => x.role === 'response')) {
     const back = column(ds, c.col.derived.replaced);
-    if (back && back.col.role === 'ignored') back.col.role = 'response';
+    // A session saved before the outcome role stepped the response back to ignored.
+    if (back && (back.col.role === 'outcome' || back.col.role === 'ignored')) back.col.role = 'response';
   }
   return true;
 }

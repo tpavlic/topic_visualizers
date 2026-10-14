@@ -22,6 +22,7 @@ export const title = 'Import';
 
 const ROLE_TIP = {
   response: 'The column the model explains: one value per row.',
+  outcome: 'Another output measured on the same rows, which the Model page offers as the response in place of the first but never as a predictor, so that one output is not used to explain another.',
   predictor: 'A column the model uses to explain the response. A continuous predictor enters as a slope, a categorical one as a contrast against its first level, and an ordinal one through polynomial contrasts.',
   group: 'A grouping factor whose rows share something the predictors do not say: a colony, a subject, a site, a replication’s random-number seed. A random intercept per group accounts for it.',
   ignored: 'Loaded but not used by any model.'
@@ -67,7 +68,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
+    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, outcome, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
     '<div class="sec">' +
       '<div class="sec-hd">Loaded datasets</div>' +
       '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page with its roles suggested from its # lines.</p>' +
@@ -349,7 +350,7 @@ function renderDialog() {
       '<div class="scroll-box"><table class="ptab im-roles-tab"><thead><tr><th>Column</th><th>Read as</th><th>Role</th><th>Type</th><th>Levels</th></tr></thead><tbody>' +
       sn.header.map((h, j) => {
         const c = m.columns[h];
-        const roleOpts = ['response', 'predictor', 'group', 'ignored'].map(r => '<option value="' + r + '"' + (c.role === r ? ' selected' : '') + '>' + r + '</option>').join('');
+        const roleOpts = ['response', 'outcome', 'predictor', 'group', 'ignored'].map(r => '<option value="' + r + '"' + (c.role === r ? ' selected' : '') + '>' + r + '</option>').join('');
         const typeOpts = ['continuous', 'categorical', 'ordinal'].map(t => '<option value="' + t + '"' + (c.type === t ? ' selected' : '') + '>' + t + '</option>').join('');
         return '<tr data-col="' + esc(h) + '"><td class="im-col-name">' + esc(h) + '</td><td>' + esc(sn.types[j]) + '</td>' +
           '<td><select class="im-role" aria-label="Role of ' + esc(h) + '">' + roleOpts + '</select></td>' +
@@ -357,7 +358,7 @@ function renderDialog() {
           '<td class="im-levels"></td></tr>';
       }).join('') +
       '</tbody></table></div>' +
-      '<p class="ctrl-note">' + ['response', 'predictor', 'group', 'ignored'].map(r => '<b>' + r + '</b>: ' + esc(ROLE_TIP[r])).join(' ') + '</p>' +
+      '<p class="ctrl-note">' + ['response', 'outcome', 'predictor', 'group', 'ignored'].map(r => '<b>' + r + '</b>: ' + esc(ROLE_TIP[r])).join(' ') + '</p>' +
       '<p class="ctrl-note">' + ['continuous', 'categorical', 'ordinal'].map(t => '<b>' + t + '</b>: ' + esc(TYPE_TIP[t])).join(' ') + '</p>';
   }
 
@@ -396,7 +397,8 @@ function renderDialog() {
     };
     role.addEventListener('change', () => {
       if (role.value === 'response') {
-        if (m.response && m.response !== h) m.columns[m.response].role = 'predictor';
+        // The old response steps back to an outcome where the table has others, and to a predictor where it has none.
+        if (m.response && m.response !== h) m.columns[m.response].role = Object.entries(m.columns).some(([k, x]) => k !== h && x.role === 'outcome') ? 'outcome' : 'predictor';
         m.response = h;
       } else if (m.response === h) m.response = null;
       c.role = role.value;
@@ -438,7 +440,9 @@ function updateDialog() {
         const sup = support(resp, ds.rows.map(r => r[ds.columns.indexOf(resp)]));
         const preds = ds.columns.filter(c => c.role === 'predictor').map(c => c.name);
         const groups = ds.columns.filter(c => c.role === 'group').map(c => c.name);
+        const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
         prevEl.textContent = 'Accepting adds ' + ds.name + ': ' + plural(ds.rows.length, 'row') + ', the response ' + resp.name + ' (' + SUPPORT_LABEL[sup] + ')' +
+          (outs.length ? ', ' + plural(outs.length, 'other outcome') + ' (' + outs.join(', ') + ')' : '') +
           (preds.length ? ', ' + plural(preds.length, 'predictor') + ' (' + preds.join(', ') + ')' : ', no predictors') +
           (groups.length ? ', and the group ' + groups.join(' nested in ') : '') + '.';
       }
@@ -518,7 +522,7 @@ function deriveBox(ds) {
       '<label>From <select class="im-dv-of" aria-label="Source column">' + sources.map(c => opt(c.name, c.name, c.name === f.of)).join('') + '</select></label>' +
       '<label>Transform <select class="im-dv-tr" aria-label="Transform">' + Object.keys(DERIVATIONS).map(k => opt(k, DERIVATIONS[k].label, k === f.transform)).join('') + '</select></label>' +
       '<label>Name <input type="text" class="txt-inp im-dv-name" aria-label="Name of the derived column"></label>' +
-      '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + '</select></label>' +
+      '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + opt('outcome', 'outcome', f.role === 'outcome') + '</select></label>' +
       '<button type="button" class="btn-run2 im-dv-add">Add the column</button>' +
     '</div>' : '<p class="exp-note">This dataset has no continuous column to derive from.</p>') +
     '<div class="im-dv-msg"></div>' +
@@ -595,10 +599,11 @@ function renderList() {
     const resp = ds.columns.find(c => c.role === 'response');
     const preds = ds.columns.filter(c => c.role === 'predictor').map(c => c.name + ' <span class="kind-badge">' + c.type + '</span>');
     const groups = ds.columns.filter(c => c.role === 'group').map(c => c.name);
+    const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
     tr.innerHTML =
       '<td><input type="text" class="txt-inp im-name" aria-label="Display name of ' + esc(ds.name) + '"></td>' +
       '<td>' + intl(ds.rows.length) + '</td>' +
-      '<td>' + (resp ? esc(resp.name) : '–') + '</td>' +
+      '<td>' + (resp ? esc(resp.name) : '–') + (outs.length ? ' <span class="im-outcomes">(other outcomes: ' + esc(outs.join(', ')) + ')</span>' : '') + '</td>' +
       '<td class="im-src">' + (preds.length ? preds.map(p => p.replace(/^([^ ]+)/, (s) => esc(s))).join(', ') : '–') + '</td>' +
       '<td>' + (groups.length ? esc(groups.join(' / ')) : '–') + '</td>' +
       '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + derivedColumns(ds).map(c => '<span class="im-derived">' + esc(derivationText(c)) + '</span>').join('') + '</td>' +

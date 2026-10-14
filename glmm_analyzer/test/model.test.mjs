@@ -3,7 +3,7 @@
 // expected value is the tiny input written out here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeDataset, sortLevels, support, usedRows, sameData, canModel, column, valuesOf, datasetSummary, responseColumn, deriveColumn, removeDerivedColumn, derivationText, derivedName, derivedColumns, DERIVATIONS, defaultTerms } from '../js/data/model.js';
+import { makeDataset, sortLevels, support, usedRows, sameData, canModel, column, valuesOf, datasetSummary, responseColumn, deriveColumn, removeDerivedColumn, derivationText, derivedName, derivedColumns, DERIVATIONS, defaultTerms, termColumns, outcomeColumns } from '../js/data/model.js';
 
 const cols = [
   { name: 'y', role: 'response', type: 'continuous' },
@@ -95,9 +95,9 @@ test('deriveColumn adds a transformed copy of a continuous column as data', () =
   assert.ok(deriveColumn(ds, { of: 'x', transform: 'sqrt', name: 'x_sqrt' }).ok);
   assert.deepEqual(ds.rows.map(r => r[6]), [2, 1, 1, 3]);
   assert.equal(derivationText(ds.columns[5]), 'x_std = (x - mean(x)) / sd(x)');
-  // A derived column made the response steps the old response back to ignored.
+  // A derived column made the response steps the old response back to an outcome.
   assert.ok(deriveColumn(ds, { of: 'y', transform: 'log', name: 'y_log', role: 'response' }).ok);
-  assert.deepEqual(ds.columns.map(c => c.name + ':' + c.role), ['y:ignored', 'x:predictor', 'g:predictor', 'x_rank:predictor', 'y_centered:predictor', 'x_std:predictor', 'x_sqrt:predictor', 'y_log:response']);
+  assert.deepEqual(ds.columns.map(c => c.name + ':' + c.role), ['y:outcome', 'x:predictor', 'g:predictor', 'x_rank:predictor', 'y_centered:predictor', 'x_std:predictor', 'x_sqrt:predictor', 'y_log:response']);
   assert.equal(responseColumn(ds).name, 'y_log');
   assert.equal(ds.columns[7].derived.replaced, 'y');
   assert.deepEqual(ds.rows.map(r => r[7]), [0, Math.log(2), null, Math.log(4)]);
@@ -162,4 +162,32 @@ test('defaultTerms names every other predictor or response column, never a group
   assert.deepEqual(defaultTerms(ds, 'x'), ['y', 'a']);
   assert.deepEqual(defaultTerms(ds, 'a'), ['y', 'x']);
   assert.deepEqual(defaultTerms(ds, null), ['y', 'a', 'x']);
+});
+
+test('outcomes can be the response but never a term', () => {
+  const ds = makeDataset({ name: 'd', columns: [
+    { name: 'wait', role: 'response', type: 'continuous' }, { name: 'busy', role: 'outcome', type: 'continuous' },
+    { name: 'a', role: 'predictor', type: 'categorical' }, { name: 'k', role: 'group', type: 'categorical' },
+    { name: 'x', role: 'predictor', type: 'continuous' }, { name: 'longest', role: 'outcome', type: 'continuous' }
+  ], rows: [[1, 0.5, 'p', 'g1', 2, 3], [2, 0.6, 'q', 'g2', 3, 4]] });
+  assert.deepEqual(outcomeColumns(ds).map(c => c.name), ['wait', 'busy', 'longest']);
+  // Whichever output is modeled, the others stay out of the terms, the response at import included.
+  assert.deepEqual(defaultTerms(ds, 'wait'), ['a', 'x']);
+  assert.deepEqual(defaultTerms(ds, 'busy'), ['a', 'x']);
+  assert.deepEqual(termColumns(ds, 'longest').map(c => c.name), ['a', 'x']);
+  // A predictor modeled as the response still leaves every output out.
+  assert.deepEqual(defaultTerms(ds, 'x'), ['a']);
+  // A dataset with no outcome has none, and its response stays a candidate predictor.
+  const plain = makeDataset({ name: 'p', columns: ds.columns.filter(c => c.role !== 'outcome').map(c => Object.assign({}, c)), rows: [[1, 'p', 'g1', 2], [2, 'q', 'g2', 3]] });
+  assert.deepEqual(outcomeColumns(plain), []);
+  assert.deepEqual(defaultTerms(plain, 'x'), ['wait', 'a']);
+  // A derived column can be an outcome, and a derived response steps the response back to one.
+  assert.ok(deriveColumn(ds, { of: 'wait', transform: 'log', name: 'wait_log', role: 'outcome' }).ok);
+  assert.deepEqual(defaultTerms(ds, 'wait_log'), ['a', 'x']);
+  assert.ok(deriveColumn(ds, { of: 'busy', transform: 'sqrt', name: 'busy_sqrt', role: 'response' }).ok);
+  assert.equal(column(ds, 'wait').col.role, 'outcome');
+  assert.deepEqual(defaultTerms(ds, 'wait'), ['a', 'x']);
+  assert.equal(removeDerivedColumn(ds, 'busy_sqrt'), true);
+  assert.equal(responseColumn(ds).name, 'wait');
+  assert.equal(makeDataset({ columns: [{ name: 'o', role: 'outcome', type: 'continuous' }], rows: [[1]] }).columns[0].role, 'outcome');
 });

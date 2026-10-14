@@ -660,6 +660,7 @@ footer a:hover { text-decoration: underline; }
 .im-dv-items { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .im-dv-items code { font-size: .8rem; }
 .im-src .im-derived { display: block; margin-top: 2px; font-size: .78rem; }
+.im-ds-tab .im-outcomes { display: block; margin-top: 2px; font-size: .78rem; color: var(--muted); white-space: normal; }
 .xp-peek { margin-top: 8px; }
 .xp-peek + .xp-peek { margin-top: 18px; }
 .xp-peek .scroll-box { max-height: none; overflow-x: auto; }
@@ -3213,8 +3214,8 @@ poor,3.29,no
 </script>
 <script type="text/plain" data-module="js/data/model.js">
 // The dataset model: a table of observations, one row each, whose columns
-// carry a role (the response, a predictor, a grouping factor, or ignored)
-// and a type (continuous, categorical, or ordinal). The response's support,
+// carry a role (the response, another outcome that could be the response, a
+// predictor, a grouping factor, or ignored) and a type (continuous, categorical, or ordinal). The response's support,
 // read from its values, says which families can describe it. Pure
 // functions, no DOM.
 
@@ -3222,7 +3223,7 @@ poor,3.29,no
 import { mean, sd, ranks } from '../stats/descriptive.js';
 
 /**
- * @typedef {{ name: string, role: 'response'|'predictor'|'group'|'ignored',
+ * @typedef {{ name: string, role: 'response'|'outcome'|'predictor'|'group'|'ignored',
  *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null,
  *   derived?: { of: string, transform: string, replaced?: string|null }|null }} Column
  *   `levels` holds a categorical or ordinal column's distinct values, sorted
@@ -3244,9 +3245,9 @@ import { mean, sd, ranks } from '../stats/descriptive.js';
  */
 
 /** How each column role and type is named on the page and in a data file's # lines. */
-export const ROLE_LABEL = { response: 'response', predictor: 'predictor', group: 'group', ignored: 'ignored' };
+export const ROLE_LABEL = { response: 'response', outcome: 'outcome', predictor: 'predictor', group: 'group', ignored: 'ignored' };
 export const TYPE_LABEL = { continuous: 'continuous', categorical: 'categorical', ordinal: 'ordinal' };
-export const ROLES = ['response', 'predictor', 'group', 'ignored'];
+export const ROLES = ['response', 'outcome', 'predictor', 'group', 'ignored'];
 export const TYPES = ['continuous', 'categorical', 'ordinal'];
 
 let idCounter = 0;
@@ -3351,6 +3352,34 @@ export function predictorColumns(ds) {
 /** The group columns, in table order. */
 export function groupColumns(ds) {
   return ds.columns.filter(c => c.role === 'group');
+}
+
+/**
+ * The columns that are only ever a response: every outcome and, once the
+ * dataset has an outcome, the response too. A dataset that measures several
+ * outputs of one experiment marks the others as outcomes, and so none of
+ * them is offered as a predictor of another, whichever is modeled.
+ * @param {Dataset} ds
+ * @returns {Column[]}
+ */
+export function outcomeColumns(ds) {
+  if (!ds.columns.some(c => c.role === 'outcome')) return [];
+  return ds.columns.filter(c => c.role === 'outcome' || c.role === 'response');
+}
+
+/**
+ * The columns a model may take as a term once `response` is the response:
+ * every predictor and, in a dataset with no outcome, the column that was the
+ * response at import, which becomes a candidate predictor when another
+ * column is modeled. Never a group, an ignored column, an outcome, or the
+ * response itself.
+ * @param {Dataset} ds
+ * @param {string|null} response
+ * @returns {Column[]}
+ */
+export function termColumns(ds, response) {
+  const only = new Set(outcomeColumns(ds).map(c => c.name));
+  return ds.columns.filter(c => c.name !== response && !only.has(c.name) && (c.role === 'predictor' || c.role === 'response'));
 }
 
 /**
@@ -3462,17 +3491,17 @@ export function canModel(ds) {
 }
 
 /**
- * The fixed terms of the default model for a response: every other column
- * with the predictor or response role, as a main effect, in the dataset's
- * column order. A column that was the response at import is a candidate
- * predictor for any other response, and the group columns stay out of the
- * fixed part.
+ * The fixed terms of the default model for a response: every column
+ * termColumns allows, as a main effect, in the dataset's column order. A
+ * column that was the response at import is a candidate predictor for any
+ * other response unless the dataset has outcomes, and the group columns
+ * stay out of the fixed part.
  * @param {Dataset} ds
  * @param {string|null} response
  * @returns {string[]}
  */
 export function defaultTerms(ds, response) {
-  return ds.columns.filter(c => c.name !== response && (c.role === 'predictor' || c.role === 'response')).map(c => c.name);
+  return termColumns(ds, response).map(c => c.name);
 }
 
 /**
@@ -3515,11 +3544,13 @@ export function derivedName(of, transform) { return of + '_' + DERIVATIONS[trans
  * ranks, natural log, square root, centered values, or standardized values,
  * stored as data like any other column, with the derivation kept on the
  * column. A missing value stays missing. A derived column made the
- * response steps the current response back to ignored and remembers it,
- * so that removing the derived column restores it. Nothing changes when
- * the request is refused.
+ * response steps the current response back to an outcome, which can be
+ * modeled again but is never a predictor of its own transform, and
+ * remembers it, so that removing the derived column restores it. A derived
+ * column can also be made an outcome. Nothing changes when the request is
+ * refused.
  * @param {Dataset} ds
- * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response' }} req
+ * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response'|'outcome' }} req
  * @returns {{ ok: boolean, reason: string|null }}
  */
 export function deriveColumn(ds, req) {
@@ -3532,7 +3563,7 @@ export function deriveColumn(ds, req) {
   if (!name) return { ok: false, reason: 'Name the new column.' };
   if (column(ds, name)) return { ok: false, reason: 'There is already a column named ' + name + '.' };
   const role = req.role || 'predictor';
-  if (role !== 'predictor' && role !== 'response') return { ok: false, reason: 'A derived column is a predictor or the response.' };
+  if (role !== 'predictor' && role !== 'response' && role !== 'outcome') return { ok: false, reason: 'A derived column is a predictor, the response, or an outcome.' };
   const vals = ds.rows.map(r => r[src.index]);
   if (d.domain) {
     const bad = [];
@@ -3555,7 +3586,7 @@ export function deriveColumn(ds, req) {
     vals.forEach((v, i) => { if (v != null) out[i] = (v - m) / s; });
   }
   let replaced = null;
-  if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'ignored'; replaced = c.name; }
+  if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'outcome'; replaced = c.name; }
   ds.columns.push({ name, role, type: 'continuous', levels: null, derived: { of: req.of, transform: req.transform, replaced } });
   ds.rows.forEach((r, i) => { r.push(out[i]); });
   return { ok: true, reason: null };
@@ -3577,7 +3608,8 @@ export function removeDerivedColumn(ds, name) {
   for (const r of ds.rows) r.splice(c.index, 1);
   if (c.col.role === 'response' && c.col.derived.replaced && !ds.columns.some(x => x.role === 'response')) {
     const back = column(ds, c.col.derived.replaced);
-    if (back && back.col.role === 'ignored') back.col.role = 'response';
+    // A session saved before the outcome role stepped the response back to ignored.
+    if (back && (back.col.role === 'outcome' || back.col.role === 'ignored')) back.col.role = 'response';
   }
   return true;
 }
@@ -4671,8 +4703,8 @@ export function stamp(d) {
 
 /**
  * The `#` lines a dataset's data file carries: what the dataset is, its
- * size, which column is the response and which the group, and where it came
- * from.
+ * size, which column is the response, which are the other outcomes, which
+ * is the group, and where it came from.
  * @param {object} ds
  * @param {Record<string, unknown>} [extra]
  * @returns {Record<string, unknown>}
@@ -4681,8 +4713,10 @@ export function dsProvenance(ds, extra) {
   const resp = ds.columns.find(c => c.role === 'response');
   const groups = ds.columns.filter(c => c.role === 'group').map(c => c.name);
   const preds = ds.columns.filter(c => c.role === 'predictor').map(c => c.name + ' (' + c.type + ')');
+  const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
   const p = { dataset: ds.name, rows: ds.rows.length, columns: ds.columns.length };
   if (resp) p.response = resp.name;
+  if (outs.length) p['other outcomes'] = outs.join(', ');
   if (preds.length) p.predictors = preds.join(', ');
   if (groups.length) p.group = groups.join(', ');
   if (ds.source && ds.source.file) p['source file'] = ds.source.file;
@@ -9823,10 +9857,11 @@ export default { id, title, render, onShow, sections };
 <script type="text/plain" data-module="js/pages/explore.js">
 // The Explore page: what the response holds and the families that can
 // describe it, its descriptives overall and by a categorical predictor, its
-// histogram, and the response against each predictor.
+// histogram, and the response against each predictor. A dataset with
+// outcomes can show any one of them in the response's place.
 
 import * as state from '../state.js';
-import { column, support, valuesOf, SUPPORT_LABEL, predictorColumns, groupColumns } from '../data/model.js';
+import { column, support, valuesOf, SUPPORT_LABEL, predictorColumns, groupColumns, outcomeColumns } from '../data/model.js';
 import { FAMILIES, familiesFor } from '../stats/families.js';
 import { summary, histogram, boxStats } from '../stats/descriptive.js';
 import { binnedMeans } from '../stats/inference.js';
@@ -9858,17 +9893,20 @@ export function render(root) {
     '<p class="lede">What the response holds decides which families can describe it, and how it moves with each predictor is the first look at the model to build. Nothing here is a fit; the Model page fits.</p>' +
     '<div class="sec ctrl-card"><div class="ctrl-row">' +
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-ds">Dataset</label><select id="ex-ds"></select></span>' +
+      '<span class="ctrl-pair" id="ex-rs-pair" hidden><label class="ctrl-lbl" for="ex-rs">Response</label><select id="ex-rs"></select></span>' +
       '<span class="ctrl-pair"><label class="ctrl-lbl" for="ex-by">Group descriptives by</label><select id="ex-by"></select></span>' +
     '</div></div>' +
     '<div class="sec"><div class="sec-hd">The response</div><div id="ex-resp"></div></div>' +
     '<div class="sec"><div class="sec-hd">Descriptives</div><div id="ex-desc"></div></div>' +
     '<div class="sec"><div class="sec-hd">Against each predictor</div><p class="exp-note">A continuous predictor gives a scatter with the mean of the response in ten bins of equal count; a categorical one gives a box per level or, for a binary response, the proportion per level.</p><div id="ex-plots"></div></div>';
-  els = { ds: root.querySelector('#ex-ds'), by: root.querySelector('#ex-by'), resp: root.querySelector('#ex-resp'), desc: root.querySelector('#ex-desc'), plots: root.querySelector('#ex-plots') };
+  els = { ds: root.querySelector('#ex-ds'), rs: root.querySelector('#ex-rs'), rsPair: root.querySelector('#ex-rs-pair'), by: root.querySelector('#ex-by'), resp: root.querySelector('#ex-resp'), desc: root.querySelector('#ex-desc'), plots: root.querySelector('#ex-plots') };
   dsSel = datasetSelect(els.ds, { remember: { page: id, key: 'dataset' } });
-  els.ds.addEventListener('change', () => { fillBy(); compute(); });
+  els.ds.addEventListener('change', () => { fillResponse(); fillBy(); compute(); });
+  els.rs.addEventListener('change', () => { state.setPick(id, 'response', els.rs.value || null); compute(); });
   els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); compute(); });
   installExportRow(root, id);
-  state.on('datasets', () => { fillBy(); if (visible()) compute(); });
+  state.on('datasets', () => { fillResponse(); fillBy(); if (visible()) compute(); });
+  fillResponse();
   fillBy();
   compute();
 }
@@ -9880,9 +9918,21 @@ export function onShow() { compute(); }
 
 function current() { return state.get(els.ds.value); }
 
+// A dataset with outcomes can show any of them as the response; the picker
+// is hidden for a dataset with one response.
+function fillResponse() {
+  const ds = current();
+  const cands = ds ? outcomeColumns(ds) : [];
+  const want = state.getPick(id, 'response');
+  const resp = ds ? ds.columns.find(c => c.role === 'response') : null;
+  const chosen = cands.some(c => c.name === want) ? want : (resp ? resp.name : '');
+  els.rs.innerHTML = cands.map(c => '<option value="' + esc(c.name) + '"' + (c.name === chosen ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+  els.rsPair.hidden = cands.length < 2;
+}
+
 function fillBy() {
   const ds = current();
-  const cats = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'response' && c.type !== 'continuous') : [];
+  const cats = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'response' && c.role !== 'outcome' && c.type !== 'continuous') : [];
   const want = state.getPick(id, 'by');
   els.by.innerHTML = '<option value="">none</option>' + cats.map(c => '<option value="' + esc(c.name) + '"' + (c.name === want ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
   els.by.disabled = !cats.length;
@@ -9898,7 +9948,8 @@ function compute() {
     state.setResult(id, null);
     return;
   }
-  const resp = ds.columns.find(c => c.role === 'response');
+  const picked = els.rsPair.hidden ? null : column(ds, els.rs.value);
+  const resp = picked ? picked.col : ds.columns.find(c => c.role === 'response');
   if (!resp) {
     els.resp.innerHTML = '<p class="muted-line">The dataset has no response column; assign one on the Import page.</p>';
     els.desc.innerHTML = ''; els.plots.innerHTML = '';
@@ -10053,6 +10104,7 @@ export const title = 'Import';
 
 const ROLE_TIP = {
   response: 'The column the model explains: one value per row.',
+  outcome: 'Another output measured on the same rows, which the Model page offers as the response in place of the first but never as a predictor, so that one output is not used to explain another.',
   predictor: 'A column the model uses to explain the response. A continuous predictor enters as a slope, a categorical one as a contrast against its first level, and an ordinal one through polynomial contrasts.',
   group: 'A grouping factor whose rows share something the predictors do not say: a colony, a subject, a site, a replication’s random-number seed. A random intercept per group accounts for it.',
   ignored: 'Loaded but not used by any model.'
@@ -10098,7 +10150,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
+    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, outcome, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
     '<div class="sec">' +
       '<div class="sec-hd">Loaded datasets</div>' +
       '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page with its roles suggested from its # lines.</p>' +
@@ -10380,7 +10432,7 @@ function renderDialog() {
       '<div class="scroll-box"><table class="ptab im-roles-tab"><thead><tr><th>Column</th><th>Read as</th><th>Role</th><th>Type</th><th>Levels</th></tr></thead><tbody>' +
       sn.header.map((h, j) => {
         const c = m.columns[h];
-        const roleOpts = ['response', 'predictor', 'group', 'ignored'].map(r => '<option value="' + r + '"' + (c.role === r ? ' selected' : '') + '>' + r + '</option>').join('');
+        const roleOpts = ['response', 'outcome', 'predictor', 'group', 'ignored'].map(r => '<option value="' + r + '"' + (c.role === r ? ' selected' : '') + '>' + r + '</option>').join('');
         const typeOpts = ['continuous', 'categorical', 'ordinal'].map(t => '<option value="' + t + '"' + (c.type === t ? ' selected' : '') + '>' + t + '</option>').join('');
         return '<tr data-col="' + esc(h) + '"><td class="im-col-name">' + esc(h) + '</td><td>' + esc(sn.types[j]) + '</td>' +
           '<td><select class="im-role" aria-label="Role of ' + esc(h) + '">' + roleOpts + '</select></td>' +
@@ -10388,7 +10440,7 @@ function renderDialog() {
           '<td class="im-levels"></td></tr>';
       }).join('') +
       '</tbody></table></div>' +
-      '<p class="ctrl-note">' + ['response', 'predictor', 'group', 'ignored'].map(r => '<b>' + r + '</b>: ' + esc(ROLE_TIP[r])).join(' ') + '</p>' +
+      '<p class="ctrl-note">' + ['response', 'outcome', 'predictor', 'group', 'ignored'].map(r => '<b>' + r + '</b>: ' + esc(ROLE_TIP[r])).join(' ') + '</p>' +
       '<p class="ctrl-note">' + ['continuous', 'categorical', 'ordinal'].map(t => '<b>' + t + '</b>: ' + esc(TYPE_TIP[t])).join(' ') + '</p>';
   }
 
@@ -10427,7 +10479,8 @@ function renderDialog() {
     };
     role.addEventListener('change', () => {
       if (role.value === 'response') {
-        if (m.response && m.response !== h) m.columns[m.response].role = 'predictor';
+        // The old response steps back to an outcome where the table has others, and to a predictor where it has none.
+        if (m.response && m.response !== h) m.columns[m.response].role = Object.entries(m.columns).some(([k, x]) => k !== h && x.role === 'outcome') ? 'outcome' : 'predictor';
         m.response = h;
       } else if (m.response === h) m.response = null;
       c.role = role.value;
@@ -10469,7 +10522,9 @@ function updateDialog() {
         const sup = support(resp, ds.rows.map(r => r[ds.columns.indexOf(resp)]));
         const preds = ds.columns.filter(c => c.role === 'predictor').map(c => c.name);
         const groups = ds.columns.filter(c => c.role === 'group').map(c => c.name);
+        const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
         prevEl.textContent = 'Accepting adds ' + ds.name + ': ' + plural(ds.rows.length, 'row') + ', the response ' + resp.name + ' (' + SUPPORT_LABEL[sup] + ')' +
+          (outs.length ? ', ' + plural(outs.length, 'other outcome') + ' (' + outs.join(', ') + ')' : '') +
           (preds.length ? ', ' + plural(preds.length, 'predictor') + ' (' + preds.join(', ') + ')' : ', no predictors') +
           (groups.length ? ', and the group ' + groups.join(' nested in ') : '') + '.';
       }
@@ -10549,7 +10604,7 @@ function deriveBox(ds) {
       '<label>From <select class="im-dv-of" aria-label="Source column">' + sources.map(c => opt(c.name, c.name, c.name === f.of)).join('') + '</select></label>' +
       '<label>Transform <select class="im-dv-tr" aria-label="Transform">' + Object.keys(DERIVATIONS).map(k => opt(k, DERIVATIONS[k].label, k === f.transform)).join('') + '</select></label>' +
       '<label>Name <input type="text" class="txt-inp im-dv-name" aria-label="Name of the derived column"></label>' +
-      '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + '</select></label>' +
+      '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + opt('outcome', 'outcome', f.role === 'outcome') + '</select></label>' +
       '<button type="button" class="btn-run2 im-dv-add">Add the column</button>' +
     '</div>' : '<p class="exp-note">This dataset has no continuous column to derive from.</p>') +
     '<div class="im-dv-msg"></div>' +
@@ -10626,10 +10681,11 @@ function renderList() {
     const resp = ds.columns.find(c => c.role === 'response');
     const preds = ds.columns.filter(c => c.role === 'predictor').map(c => c.name + ' <span class="kind-badge">' + c.type + '</span>');
     const groups = ds.columns.filter(c => c.role === 'group').map(c => c.name);
+    const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
     tr.innerHTML =
       '<td><input type="text" class="txt-inp im-name" aria-label="Display name of ' + esc(ds.name) + '"></td>' +
       '<td>' + intl(ds.rows.length) + '</td>' +
-      '<td>' + (resp ? esc(resp.name) : '–') + '</td>' +
+      '<td>' + (resp ? esc(resp.name) : '–') + (outs.length ? ' <span class="im-outcomes">(other outcomes: ' + esc(outs.join(', ')) + ')</span>' : '') + '</td>' +
       '<td class="im-src">' + (preds.length ? preds.map(p => p.replace(/^([^ ]+)/, (s) => esc(s))).join(', ') : '–') + '</td>' +
       '<td>' + (groups.length ? esc(groups.join(' / ')) : '–') + '</td>' +
       '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + derivedColumns(ds).map(c => '<span class="im-derived">' + esc(derivationText(c)) + '</span>').join('') + '</td>' +
@@ -17868,7 +17924,7 @@ function trimExp(s) {
 // state.setSpec, and so every page that reads the spec follows.
 
 import * as state from '../state.js';
-import { column, support, valuesOf, groupColumns, defaultTerms, SUPPORT_LABEL } from '../data/model.js';
+import { column, support, valuesOf, groupColumns, defaultTerms, termColumns, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, FAMILY_ORDER, LINKS, familiesFor, linkOf } from '../stats/families.js';
 import { formulaOf, termLabel, orderedTerms, missingMainEffects } from '../stats/design.js';
 import { datasetSelect, spinner, levelSelect } from './widgets.js';
@@ -18058,7 +18114,7 @@ export function formulaBuilder(container, opts) {
       }
       // The adders: each is grayed, with its tooltip saying why, once the
       // dataset has nothing left for it to add.
-      const preds = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'group' && c.name !== s.response) : [];
+      const preds = ds ? termColumns(ds, s.response) : [];
       const cont = preds.filter(c => c.type === 'continuous');
       const have = new Set(terms.map(termLabel));
       const left = preds.filter(c => !have.has(c.name));

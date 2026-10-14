@@ -5,7 +5,7 @@
 // state.setSpec, and so every page that reads the spec follows.
 
 import * as state from '../state.js';
-import { column, support, valuesOf, groupColumns, defaultTerms, SUPPORT_LABEL } from '../data/model.js';
+import { column, support, valuesOf, groupColumns, defaultTerms, termColumns, SUPPORT_LABEL } from '../data/model.js';
 import { FAMILIES, FAMILY_ORDER, LINKS, familiesFor, linkOf } from '../stats/families.js';
 import { formulaOf, termLabel, orderedTerms, missingMainEffects } from '../stats/design.js';
 import { datasetSelect, spinner, levelSelect } from './widgets.js';
@@ -195,7 +195,7 @@ export function formulaBuilder(container, opts) {
       }
       // The adders: each is grayed, with its tooltip saying why, once the
       // dataset has nothing left for it to add.
-      const preds = ds ? ds.columns.filter(c => c.role !== 'ignored' && c.role !== 'group' && c.name !== s.response) : [];
+      const preds = ds ? termColumns(ds, s.response) : [];
       const cont = preds.filter(c => c.type === 'continuous');
       const have = new Set(terms.map(termLabel));
       const left = preds.filter(c => !have.has(c.name));

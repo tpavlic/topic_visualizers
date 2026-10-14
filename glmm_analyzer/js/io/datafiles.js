@@ -25,8 +25,8 @@ export function stamp(d) {
 
 /**
  * The `#` lines a dataset's data file carries: what the dataset is, its
- * size, which column is the response and which the group, and where it came
- * from.
+ * size, which column is the response, which are the other outcomes, which
+ * is the group, and where it came from.
  * @param {object} ds
  * @param {Record<string, unknown>} [extra]
  * @returns {Record<string, unknown>}
@@ -35,8 +35,10 @@ export function dsProvenance(ds, extra) {
   const resp = ds.columns.find(c => c.role === 'response');
   const groups = ds.columns.filter(c => c.role === 'group').map(c => c.name);
   const preds = ds.columns.filter(c => c.role === 'predictor').map(c => c.name + ' (' + c.type + ')');
+  const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
   const p = { dataset: ds.name, rows: ds.rows.length, columns: ds.columns.length };
   if (resp) p.response = resp.name;
+  if (outs.length) p['other outcomes'] = outs.join(', ');
   if (preds.length) p.predictors = preds.join(', ');
   if (groups.length) p.group = groups.join(', ');
   if (ds.source && ds.source.file) p['source file'] = ds.source.file;
