@@ -161,12 +161,18 @@ function pirls(y, X, random, family, link, beta, theta, aux, b0) {
   let cur = pdevOf(b);
   let converged = false;
   let blocksL = null, w = null;
+  // Weights that overflow at an extreme trial point leave a block that will
+  // not factor; the deviance there is infinite, which the outer search steps
+  // away from, rather than an error.
+  let failed = false;
+  const failure = () => ({ b, dev: Infinity, pdev: Infinity, ldL2: Infinity, mu: cur.mu, eta: cur.eta, w, blocksL, rows, offsets, converged: false });
   for (let it = 0; it < 60; it++) {
     const sw = scoreWeight(family, link, y, cur.eta, aux);
     w = sw.w;
     const bNew = new Float64Array(nb);
     blocksL = [];
     random.blocks.forEach((bl, j) => {
+      if (failed) return;
       const c = bl.cols;
       const M = zeros(c, c), rhs = new Float64Array(c);
       for (let k = 0; k < c; k++) M[k][k] = 1;
@@ -181,10 +187,12 @@ function pirls(y, X, random, family, link, beta, theta, aux, b0) {
         }
       }
       const L = cholesky(M, 1e-300);
+      if (!L) { failed = true; return; }
       blocksL.push(L);
       const sol = cholSolve(L, rhs);
       for (let k = 0; k < c; k++) bNew[offsets[j] + k] = sol[k];
     });
+    if (failed) return failure();
     // Step halving on the penalized deviance.
     let t = 1, next = null;
     const bPrev = b;
@@ -214,9 +222,11 @@ function pirls(y, X, random, family, link, beta, theta, aux, b0) {
     for (let k = 0; k < c; k++) M[k][k] = 1;
     for (const i of bl.obs) { const zr = rows[i], wi = w[i]; for (const [ca, za] of zr) for (const [cb, zb] of zr) M[ca][cb] += za * wi * zb; }
     const L = cholesky(M, 1e-300);
+    if (!L) { failed = true; return; }
     blocksL.push(L);
     ldL2 += cholLogDet(L);
   });
+  if (failed) return failure();
   // The Laplace value's data term: for the gamma family, the conditional log-likelihood at
   // its profiled dispersion plus 2 for that parameter, as lme4 forms it through R's
   // Gamma()$aic; for the other families, the penalized deviance as it stands.
@@ -251,7 +261,9 @@ function pirlsJoint(y, X, random, family, link, theta, aux, b0) {
     const RXX = zeros(p, p), rX = new Float64Array(p);
     for (let i = 0; i < n; i++) for (let a = 0; a < p; a++) { rX[a] += X[i][a] * w[i] * z[i]; for (let c = 0; c < p; c++) RXX[a][c] += X[i][a] * w[i] * X[i][c]; }
     const blocksL = [], Cs = [], gs = [];
+    let failed = false;
     random.blocks.forEach((bl, j) => {
+      if (failed) return;
       const c = bl.cols;
       const M = zeros(c, c), C = zeros(c, p), g = new Float64Array(c);
       for (let q = 0; q < c; q++) M[q][q] = 1;
@@ -264,6 +276,7 @@ function pirlsJoint(y, X, random, family, link, theta, aux, b0) {
         }
       }
       const L = cholesky(M, 1e-300);
+      if (!L) { failed = true; return; }
       blocksL.push(L); Cs.push(C); gs.push(g);
       const Mg = cholSolve(L, g);
       for (let a = 0; a < p; a++) {
@@ -273,6 +286,7 @@ function pirlsJoint(y, X, random, family, link, theta, aux, b0) {
         let s2 = 0; for (let q = 0; q < c; q++) s2 += C[q][a] * Mg[q]; rX[a] -= s2;
       }
     });
+    if (failed) return null;
     const LX = cholesky(RXX);
     if (!LX) return null;
     const betaNew = cholSolve(LX, rX);
