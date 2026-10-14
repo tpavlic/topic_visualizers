@@ -512,7 +512,7 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   listed levels (equal weights on the link scale, as `marginalMeans` uses, so that the effect plot
   averaged over the other factors reproduces the marginal means); the scripts write one new-data
   row per combination and average each point's block of design rows (`curveRows` in
-  `js/io/analysis_scripts.js`), keeping a one-row-per-point table for the figures; one "Average
+  `js/io/analysis_scripts.js`), keeping a one-row-per-point table for the figures; one "Average factor
   levels with" setting (the `weights` pick, shown under the held values when a factor is averaged
   and beside the Marginal means picker when there are other factors) chooses equal weights or each
   combination's share of the fitted rows (`comboCounts`, emmeans's `weights = "proportional"`) for

@@ -11113,13 +11113,13 @@ export function render(root) {
       '</span>' +
       '<p class="muted-line" id="pr-by-note" hidden></p>' +
       '<div class="ctrl-row" id="pr-hold" hidden></div>' +
-      '<div class="ctrl-row" id="pr-avg-row" hidden><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-weights-e">Average levels with</label><select id="pr-weights-e">' + WEIGHT_OPTIONS + '</select></span></div>' +
+      '<div class="ctrl-row" id="pr-avg-row" hidden><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-weights-e">Average factor levels with</label><select id="pr-weights-e">' + WEIGHT_OPTIONS + '</select></span></div>' +
       '<div id="pr-effect"></div>' +
     '</div>' +
     '<div data-section="means" class="sec">' +
       '<div class="sec-hd">Marginal means</div>' +
       '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-factor">Predictor</label><select id="pr-factor"></select></span>' +
-        '<span class="ctrl-pair" id="pr-weights-m-pair" hidden><label class="ctrl-lbl" for="pr-weights-m">Average levels with</label><select id="pr-weights-m">' + WEIGHT_OPTIONS + '</select></span></div>' +
+        '<span class="ctrl-pair" id="pr-weights-m-pair" hidden><label class="ctrl-lbl" for="pr-weights-m">Average factor levels with</label><select id="pr-weights-m">' + WEIGHT_OPTIONS + '</select></span></div>' +
       '<div id="pr-means"></div>' +
     '</div>' +
     '<div data-section="calculator" class="sec">' +
@@ -11338,7 +11338,7 @@ function heldText(grid) {
   const unit = averaged > 1 ? 'combination of levels' : 'level';
   return 'Other predictors: ' + parts.join(', ') + ', as set above the plot. ' +
     (atMean ? 'For a predictor that enters the model as a slope, the prediction at its mean is the prediction averaged over its observed values on the link scale. ' : '') +
-    (averaged ? (weightMode() === 'proportional' ? 'The average weights each ' + unit + ' by its share of the fitted rows' : 'The average gives each ' + unit + ' equal weight') + ' and is taken on the link scale before the inverse link, as for the marginal means. ' : '');
+    (averaged ? (weightMode() === 'proportional' ? 'The average weights each ' + unit + ' by its share of the fitted rows' : 'The average gives each ' + unit + ' equal weight') + ' and is taken on the link scale before the inverse link, as for the marginal means' + (atMean ? '; it does not move a continuous predictor’s mean' : '') + '. ' : '');
 }
 
 function compute() {
