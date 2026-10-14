@@ -11,6 +11,10 @@
 // transform, normal draws by Box-Muller, and Poisson draws by inversion.
 //
 // Datasets (the seeds are in SEEDS below):
+//   service_speed.csv   mean time in system per replication (continuous) against the mean
+//                       service time (0.9, 0.8, 0.7, 0.6, 0.5 minutes), with the replication's
+//                       random-number seed shared by all five designs as the group; 10
+//                       replications, each the mean of 200 customers after 100 of warm-up
 //   on_time.csv         served within 2 minutes, per customer: a binary response against
 //                       the number in queue at arrival and the policy (A, mean service 0.8;
 //                       B, mean service 0.7), with the replication's random-number seed shared
@@ -40,6 +44,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 
 const SEEDS = {
+  serviceSpeed: 1084000,
   onTime: 310000,
   cycle: 420000,
   balks: 530000,
@@ -110,6 +115,20 @@ function fmt(x, d = 4) {
 
 function csv(header, rows) {
   return header.join(',') + '\n' + rows.map(r => r.join(',')).join('\n') + '\n';
+}
+
+/** service_speed.csv */
+function serviceSpeedCsv() {
+  const rows = [];
+  for (let rep = 1; rep <= 10; rep++) {
+    for (const meanService of [0.9, 0.8, 0.7, 0.6, 0.5]) {
+      // The same seed per replication for every design: common random numbers.
+      const st = { arr: mulberry32(SEEDS.serviceSpeed + rep), srv: mulberry32(SEEDS.serviceSpeed + rep + 0x9E3779B1), cls: () => 0 };
+      const kept = queue(st, 1.0, [{ name: 'only', prob: 1, meanService }], { maxCustomers: 300 }).slice(100);
+      rows.push([fmt(kept.reduce((a, c) => a + c.system, 0) / kept.length), meanService, 'r' + String(rep).padStart(2, '0')]);
+    }
+  }
+  return csv(['time_in_system', 'mean_service', 'replication'], rows);
 }
 
 /** on_time.csv */
@@ -278,6 +297,14 @@ function tourCsv(which) {
 }
 
 const EXAMPLES = [
+  {
+    id: 'service-speed',
+    title: 'Five simulated designs, ten replications each, under common random numbers',
+    file: 'service_speed.csv',
+    description: 'The mean time in system of two hundred customers, after a warm-up of one hundred, in a single-server queue with exponential interarrival times of mean 1.0 minute, under five designs that differ only in the mean service time: 0.9, 0.8, 0.7, 0.6, and 0.5 minutes. Each design was run for ten replications, and replication r of every design used the same random-number seed, and so within a replication the five designs see the same arrivals and the same service draws, scaled to their own means. These are common random numbers, and the replication is a grouping factor shared by all five designs.',
+    build: serviceSpeedCsv,
+    mapping: { name: 'Service speed', response: 'time_in_system', columns: { time_in_system: { role: 'response', type: 'continuous' }, mean_service: { role: 'predictor', type: 'categorical' }, replication: { role: 'group', type: 'categorical' } } }
+  },
   {
     id: 'on-time',
     title: 'On-time service: a binary response with a random effect',

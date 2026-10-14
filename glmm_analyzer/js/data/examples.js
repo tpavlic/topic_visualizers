@@ -8,6 +8,66 @@
  */
 export const EXAMPLES = [
   {
+    id: "service-speed",
+    title: "Five simulated designs, ten replications each, under common random numbers",
+    file: "service_speed.csv",
+    description: "The mean time in system of two hundred customers, after a warm-up of one hundred, in a single-server queue with exponential interarrival times of mean 1.0 minute, under five designs that differ only in the mean service time: 0.9, 0.8, 0.7, 0.6, and 0.5 minutes. Each design was run for ten replications, and replication r of every design used the same random-number seed, and so within a replication the five designs see the same arrivals and the same service draws, scaled to their own means. These are common random numbers, and the replication is a grouping factor shared by all five designs.",
+    mapping: {"name":"Service speed","response":"time_in_system","columns":{"time_in_system":{"role":"response","type":"continuous"},"mean_service":{"role":"predictor","type":"categorical"},"replication":{"role":"group","type":"categorical"}}},
+    tour: null,
+    text: `time_in_system,mean_service,replication
+4.192,0.9,r01
+2.9495,0.8,r01
+1.9658,0.7,r01
+1.3391,0.6,r01
+0.9099,0.5,r01
+3.2607,0.9,r02
+2.2738,0.8,r02
+1.5706,0.7,r02
+1.1295,0.6,r02
+0.822,0.5,r02
+3.5462,0.9,r03
+2.6075,0.8,r03
+1.884,0.7,r03
+1.267,0.6,r03
+0.9053,0.5,r03
+10.5589,0.9,r04
+6.9604,0.8,r04
+3.8955,0.7,r04
+2.0011,0.6,r04
+1.3583,0.5,r04
+4.4107,0.9,r05
+2.8304,0.8,r05
+2.0264,0.7,r05
+1.3822,0.6,r05
+0.9335,0.5,r05
+6.367,0.9,r06
+3.8608,0.8,r06
+2.4774,0.7,r06
+1.6715,0.6,r06
+1.1468,0.5,r06
+5.829,0.9,r07
+3.6027,0.8,r07
+2.4439,0.7,r07
+1.7142,0.6,r07
+1.1394,0.5,r07
+2.4746,0.9,r08
+1.7177,0.8,r08
+1.348,0.7,r08
+1.0422,0.6,r08
+0.79,0.5,r08
+4.6286,0.9,r09
+2.2287,0.8,r09
+1.5681,0.7,r09
+1.1508,0.6,r09
+0.8648,0.5,r09
+5.0093,0.9,r10
+3.142,0.8,r10
+2.1941,0.7,r10
+1.5734,0.6,r10
+1.0781,0.5,r10
+`
+  },
+  {
     id: "on-time",
     title: "On-time service: a binary response with a random effect",
     file: "on_time.csv",
