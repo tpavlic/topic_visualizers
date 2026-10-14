@@ -398,10 +398,15 @@ export function fitGlmm(y, X, random, o) {
     const aux = withAux ? Math.exp(x[x.length - 1]) : 1;
     return { theta, beta, aux };
   };
+  // Every evaluation of stage 2 starts the inner solve from stage 1's modes,
+  // so that the deviance is a function of x alone. A start carried over from
+  // the last evaluation makes one x give deviances that differ in the eighth
+  // digit, and where the dispersion is small (a gamma response that averages
+  // many observations), that spread exceeds the simplex's tolerance and the
+  // search runs to its cap at the optimum.
   const objective = x => {
     const { theta, beta, aux } = unpack(x);
     const r = pirls(y, X, random, o.family, link, beta, theta, aux, warm);
-    if (Number.isFinite(r.dev)) warm = r.b;
     return Number.isFinite(r.dev) ? r.dev : 1e300;
   };
   // Stage 1, as lme4's: θ alone with β profiled out by the joint PIRLS,
