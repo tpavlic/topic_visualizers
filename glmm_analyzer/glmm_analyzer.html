@@ -11003,7 +11003,7 @@ export default { id, title, render, onShow };
 import * as state from '../state.js';
 import { column, support, valuesOf } from '../data/model.js';
 import { FAMILIES, LINKS, backWord } from '../stats/families.js';
-import { predictRows, marginalMeans, effectGrid, binnedMeans, waldDf, degenerateFit, ordinalPredictRows } from '../stats/inference.js';
+import { predictRows, marginalMeans, effectGrid, referenceGrid, binnedMeans, waldDf, degenerateFit, ordinalPredictRows } from '../stats/inference.js';
 import { termVars } from '../stats/design.js';
 import { currentFit } from './model.js';
 import { makeFigure, intervals, exportButtons, legend } from '../ui/plots.js';
@@ -11041,7 +11041,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the ' + term('Wald intervals', WALD_TIP) + ' on the link scale; the other predictors are held at their means or their first levels, which the captions say.</p>' +
+    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the ' + term('Wald intervals', WALD_TIP) + ' on the link scale; the effect plot holds the other predictors at values you can set, starting from their means and first levels, and its caption says which.</p>' +
     '<div id="pr-fit-note"></div>' +
     '<div data-subnav class="subnav"></div>' +
     '<div data-section="effect" class="sec">' +
@@ -11052,6 +11052,8 @@ export function render(root) {
         '<label class="ctrl-chk"><input type="checkbox" id="pr-data" checked> show the data</label>' +
         '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> show each group</label>' +
       '</div>' +
+      '<p class="muted-line" id="pr-by-note" hidden></p>' +
+      '<div class="ctrl-row" id="pr-hold" hidden></div>' +
       '<div id="pr-effect"></div>' +
     '</div>' +
     '<div data-section="means" class="sec">' +
@@ -11068,8 +11070,19 @@ export function render(root) {
     factor: root.querySelector('#pr-factor'), means: root.querySelector('#pr-means'), calcInputs: root.querySelector('#pr-calc-inputs'), calc: root.querySelector('#pr-calc') };
   els.xPair = els.x.closest('.ctrl-pair');
   els.byPair = els.by.closest('.ctrl-pair');
-  els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); fillBy(); drawEffect(); });
-  els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); drawEffect(); });
+  els.byNote = root.querySelector('#pr-by-note');
+  els.hold = root.querySelector('#pr-hold');
+  els.x.addEventListener('change', () => { state.setPick(id, 'x', els.x.value); fillBy(); buildHold(); drawEffect(); });
+  els.by.addEventListener('change', () => { state.setPick(id, 'by', els.by.value || null); buildHold(); drawEffect(); });
+  els.hold.addEventListener('input', onHold);
+  els.hold.addEventListener('change', onHold);
+  els.hold.addEventListener('click', e => {
+    if (!e.target.closest('#pr-hold-reset')) return;
+    state.setPick(id, 'hold', {});
+    holdError = '';
+    buildHold();
+    drawEffect();
+  });
   els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
   els.groups = root.querySelector('#pr-groups');
   els.groups.addEventListener('change', () => { state.setPick(id, 'groups', els.groups.checked); drawEffect(); });
@@ -11093,17 +11106,127 @@ function predictorsOf(ds, result) {
   return names.map(n => column(ds, n).col);
 }
 
-// The predictors of the fitted model, kept for the Lines by picker.
+// The predictors of the fitted model, kept for the Lines by picker and the
+// held values.
 let curPreds = [];
+// Whether the fitted model is ordinal, whose effect plot draws a line per
+// level of the response and so has no Lines by.
+let curOrdinal = false;
+// The message for a held value that is not a number, which stops the plot.
+let holdError = '';
+
+// A factor can split the lines only when each of its levels gets a line
+// style of its own; past that, two levels would be drawn alike.
+const MAX_LINES = Math.min(LEVEL_COLORS.length, LEVEL_DASHES.length);
+const canSplit = c => c.type === 'continuous' || c.levels.length <= MAX_LINES;
+
 // Lines by offers the predictors other than the one on the x axis, and is
 // hidden when there is none: a model with one predictor has nothing to
-// split its lines by.
+// split its lines by. A factor with more levels than there are line styles
+// is listed but cannot be chosen, and a line under the controls says why.
 function fillBy() {
-  const opt = (v, l, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + '>' + esc(l) + '</option>';
-  const others = curPreds.filter(c => c.name !== els.x.value);
+  const opt = (v, l, sel, off) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + (off ? ' disabled' : '') + '>' + esc(l) + '</option>';
+  const others = curOrdinal ? [] : curPreds.filter(c => c.name !== els.x.value);
   const wantBy = state.getPick(id, 'by');
-  els.by.innerHTML = opt('', 'none', !others.some(c => c.name === wantBy)) + others.map(c => opt(c.name, c.name, c.name === wantBy)).join('');
+  const ok = others.some(c => c.name === wantBy && canSplit(c));
+  els.by.innerHTML = opt('', 'none', !ok) + others.map(c => canSplit(c) ? opt(c.name, c.name, c.name === wantBy) : opt(c.name, c.name + ' (' + c.levels.length + ' levels)', false, true)).join('');
   els.byPair.hidden = !others.length;
+  const many = others.filter(c => !canSplit(c));
+  els.byNote.hidden = !many.length;
+  els.byNote.innerHTML = many.length ? 'Lines by takes a factor only when it has at most ' + MAX_LINES + ' levels, as the plot has ' + MAX_LINES + ' line styles to tell them apart; ' +
+    many.map(c => esc(c.name) + ' has ' + c.levels.length).join(', ') + '. A factor with more levels can go on the x axis instead.' : '';
+}
+
+// The predictor the lines are split by, or null.
+function currentBy() {
+  const x = els.x.value;
+  return !curOrdinal && els.by.value && els.by.value !== x ? els.by.value : null;
+}
+
+// The predictors the effect plot holds fixed, and the value each is held at:
+// the reader's choice where one was made, and otherwise its mean over the
+// fitted rows or its first level.
+function heldPredictors() {
+  const x = els.x.value, by = currentBy();
+  return curPreds.filter(c => c.name !== x && c.name !== by);
+}
+
+// One control per held predictor: a box for a continuous one and a menu of
+// levels for a factor. Only a value the reader sets is stored; an untouched
+// box shows the mean rounded, but the plot uses the mean itself.
+function buildHold() {
+  const cf = currentFit();
+  const held = cf ? heldPredictors() : [];
+  els.hold.hidden = !held.length || !els.x.value;
+  if (els.hold.hidden) { els.hold.innerHTML = ''; return; }
+  const { ds, result } = cf;
+  const grid = referenceGrid(ds, result);
+  const saved = state.getPick(id, 'hold') || {};
+  let any = false;
+  const ctrls = held.map(c => {
+    const v = saved[c.name];
+    const inId = 'pr-hold-' + esc(c.name);
+    const lbl = '<label class="ctrl-lbl" for="' + inId + '">' + esc(c.name) + '</label>';
+    if (c.type === 'continuous') {
+      const set = typeof v === 'number' && Number.isFinite(v);
+      if (set) any = true;
+      return '<span class="ctrl-pair">' + lbl + '<input type="text" class="par-inp" id="' + inId + '" data-name="' + esc(c.name) + '" value="' + esc(String(set ? v : Number(grid.continuous[c.name].toPrecision(5)))) + '" inputmode="decimal"></span>';
+    }
+    const levels = grid.factors[c.name];
+    const sel = levels.includes(v) ? v : levels[0];
+    if (levels.includes(v) && v !== levels[0]) any = true;
+    return '<span class="ctrl-pair">' + lbl + '<select id="' + inId + '" data-name="' + esc(c.name) + '">' + levels.map(l => '<option value="' + esc(l) + '"' + (l === sel ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
+  });
+  els.hold.innerHTML = '<span class="ctrl-lbl">Other predictors at</span>' + ctrls.join('') +
+    (any ? '<button type="button" class="btn-run2" id="pr-hold-reset">Means and first levels</button>' : '');
+}
+
+// A held value changed: a number or a level is stored and the plot redrawn;
+// a box that does not hold a number stops the plot until it does.
+function onHold(e) {
+  const inp = e.target.closest('[data-name]');
+  if (!inp) return;
+  const name = inp.getAttribute('data-name');
+  const saved = Object.assign({}, state.getPick(id, 'hold') || {});
+  if (inp.tagName === 'SELECT') {
+    if (e.type !== 'change') return;
+    saved[name] = inp.value;
+  } else {
+    const v = inp.value.trim() === '' ? NaN : Number(inp.value);
+    if (!Number.isFinite(v)) {
+      holdError = 'Type a number for ' + esc(name) + ' to hold it at.';
+      drawEffect();
+      return;
+    }
+    saved[name] = v;
+  }
+  holdError = '';
+  state.setPick(id, 'hold', saved);
+  const hadReset = !!els.hold.querySelector('#pr-hold-reset');
+  drawEffect();
+  // The reset button appears with the first value set; rebuilding the row
+  // on every keystroke would take the focus from the box being typed in.
+  if (!hadReset) {
+    const focusName = name, pos = inp.selectionStart;
+    buildHold();
+    const again = els.hold.querySelector('[data-name="' + CSS.escape(focusName) + '"]');
+    if (again && again.tagName !== 'SELECT') { again.focus(); try { again.setSelectionRange(pos, pos); } catch (err) { /* not a text box */ } }
+  }
+}
+
+// The held values for effectGrid, from the stored choices.
+function holdAt() { return state.getPick(id, 'hold') || {}; }
+
+// The caption's account of the held predictors, saying which sit at their
+// defaults.
+function heldText(ds, result, grid) {
+  const ref = referenceGrid(ds, result);
+  const chosen = holdAt();
+  const parts = Object.entries(grid.held).map(([k, v]) => {
+    if (typeof v === 'number') return esc(k) + ' = ' + num(v, 4) + (typeof chosen[k] === 'number' && Number.isFinite(chosen[k]) ? '' : ' (its mean over the fitted rows)');
+    return esc(k) + ' = ' + esc(v) + (v === ref.factors[k][0] ? ' (its first level)' : '');
+  });
+  return parts.length ? 'Other predictors held at ' + parts.join(', ') + ', as set in the row above the plot. ' : '';
 }
 
 function compute() {
@@ -11130,6 +11253,7 @@ function compute() {
   }
   const preds = predictorsOf(ds, result);
   curPreds = preds;
+  curOrdinal = result.fit.family === 'ordinal';
   const cats = preds.filter(c => c.type !== 'continuous');
   const off = {};
   if (!cats.length) off.means = 'The model has no categorical predictor.';
@@ -11142,6 +11266,8 @@ function compute() {
   // With no predictor there is nothing to put on the x axis or to split by.
   els.xPair.hidden = !preds.length;
   fillBy();
+  holdError = '';
+  buildHold();
   els.data.checked = state.getPick(id, 'data') !== false;
   // The ordinal effect plot draws probabilities, not the observations.
   els.data.closest('label, .ctrl-chk, .ctrl-pair').hidden = result.fit.family === 'ordinal';
@@ -11184,7 +11310,8 @@ function drawOrdinalInterceptEffect(ds, result) {
 function drawOrdinalEffect(ds, result) {
   const x = els.x.value;
   if (!x) { drawOrdinalInterceptEffect(ds, result); return; }
-  const grid = effectGrid(ds, result, x, null, 60);
+  if (holdError) { els.effect.appendChild(notice('warn', holdError)); return; }
+  const grid = effectGrid(ds, result, x, null, 60, holdAt());
   const xc = column(ds, x);
   const levels = column(ds, state.spec.response).col.levels;
   const box = document.createElement('div');
@@ -11194,7 +11321,7 @@ function drawOrdinalEffect(ds, result) {
   exportButtons(box, fig, ds.name + ' ordinal effect of ' + x);
   const s = grid.series[0];
   const probs = ordinalPredict(ds, result, s.rows);
-  last.effect = { x, by: null, ordinal: true, levels: levels.slice(), series: [{ label: 'probabilities', by: null, rows: s.rows, probs }] };
+  last.effect = { x, by: null, ordinal: true, levels: levels.slice(), held: grid.held, series: [{ label: 'probabilities', by: null, rows: s.rows, probs }] };
   fig.render(f => {
     const xs = xc.col.type === 'continuous' ? s.xs : null;
     if (xs) f.x([Math.min(...xs), Math.max(...xs)], { pad: 0.03, nice: true });
@@ -11209,10 +11336,9 @@ function drawOrdinalEffect(ds, result) {
     });
   });
   legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
-  const held = Object.entries(grid.held).map(([k, v]) => esc(k) + ' = ' + (typeof v === 'number' ? num(v, 4) : esc(v))).join(', ');
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = (held ? 'Other predictors held at ' + held + '. ' : '') + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
+  p.innerHTML = heldText(ds, result, grid) + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
   els.effect.appendChild(p);
   figs.push(fig);
 }
@@ -11289,9 +11415,10 @@ function drawEffect() {
   if (result.fit.family === 'ordinal') { drawOrdinalEffect(ds, result); registerResult(); return; }
   if (!predictorsOf(ds, result).length) { drawInterceptEffect(ds, result); registerResult(); return; }
   if (!els.x.value) { registerResult(); return; }
-  const x = els.x.value, by = els.by.value && els.by.value !== x ? els.by.value : null;
+  if (holdError) { els.effect.appendChild(notice('warn', holdError)); registerResult(); return; }
+  const x = els.x.value, by = currentBy();
   const level = state.settings.level;
-  const grid = effectGrid(ds, result, x, by, 60);
+  const grid = effectGrid(ds, result, x, by, 60, holdAt());
   const resp = column(ds, result.design && state.spec.response).col;
   const xc = column(ds, x);
   const link = LINKS[result.link];
@@ -11372,17 +11499,16 @@ function drawEffect() {
     if (els.groups.checked && result.fit.mixed && !by) legendItems.push({ swatch: 'thin', color: '--pair', label: 'one group’s curve, from its predicted random effect' });
   });
   legend(box.appendChild(document.createElement('div')), legendItems);
-  const held = Object.entries(grid.held).map(([k, v]) => esc(k) + ' = ' + (typeof v === 'number' ? num(v, 4) : esc(v))).join(', ');
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = (held ? 'Other predictors held at ' + held + ' (a continuous one at its mean over the fitted rows, a categorical one at its first level). ' : '') +
+  p.innerHTML = heldText(ds, result, grid) +
     (result.fit.mixed ? 'The population curve is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
     (els.groups.checked && result.fit.mixed && !by ? 'Each thin line is one group’s curve: the population curve shifted by the group’s predicted random effect' + (result.fit.random.terms[0].q === 2 ? ' and slope' : '') + '. ' : '') +
     (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
     (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
   els.effect.appendChild(p);
   figs.push(fig);
-  last.effect = { x, by, series: curves.map(c => ({ label: c.label, by: c.by, rows: c.rows, pred: c.pred })) };
+  last.effect = { x, by, held: grid.held, series: curves.map(c => ({ label: c.label, by: c.by, rows: c.rows, pred: c.pred })) };
   registerResult();
 }
 
@@ -11440,6 +11566,7 @@ function registerResult() {
   if (last.effect && last.effect.ordinal) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x : 'the thresholds alone';
+    if (e.held && Object.keys(e.held).length) provenance['other predictors held at'] = heldProvenance(e.held);
     const headers = (e.x ? [e.x] : []).concat(e.levels.map(l => 'P(' + l + ')'));
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(s.probs[i])));
@@ -11447,6 +11574,7 @@ function registerResult() {
   } else if (last.effect) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x + (e.by ? ' by ' + e.by : '') : 'the intercept alone';
+    if (e.held && Object.keys(e.held).length) provenance['other predictors held at'] = heldProvenance(e.held);
     const headers = (e.x ? [e.x] : []).concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
@@ -11475,6 +11603,10 @@ function registerResult() {
     build: () => capRecipe(predictRecipe({ ds, spec, result, level, title, provenance, effect: last.effect, means: last.means, calc: last.calc }), ds, [spec])
   };
   state.setResult(id, { title, provenance, tables, regen });
+}
+
+function heldProvenance(held) {
+  return Object.entries(held).map(([k, v]) => k + ' = ' + (typeof v === 'number' ? Number(v.toPrecision(6)) : v)).join(', ');
 }
 
 function buildCalcInputs(ds, result, preds) {
@@ -14660,19 +14792,27 @@ export function marginalMeans(ds, result, factor, level) {
 /**
  * The rows of an effect plot: `x` over `n` points from its least to its
  * greatest used value (or over its levels), the `by` predictor at each of
- * its levels or at three quantiles, and every other predictor at its mean
- * or its first level.
+ * its levels or at three quantiles, and every other predictor at the value
+ * `holdAt` gives it, or else at its mean or its first level. A held value
+ * that is not a finite number for a continuous predictor, or not one of a
+ * factor's levels, is ignored.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result
  * @param {string} x
  * @param {string|null} by
  * @param {number} [n]
+ * @param {Object<string, number|string>} [holdAt]
  * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string> }}
  */
-export function effectGrid(ds, result, x, by, n = 60) {
+export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
   const grid = referenceGrid(ds, result);
   const held = {};
-  for (const name of grid.names) if (name !== x && name !== by) held[name] = name in grid.continuous ? grid.continuous[name] : grid.factors[name][0];
+  for (const name of grid.names) {
+    if (name === x || name === by) continue;
+    const want = holdAt[name];
+    if (name in grid.continuous) held[name] = typeof want === 'number' && Number.isFinite(want) ? want : grid.continuous[name];
+    else held[name] = grid.factors[name].includes(want) ? want : grid.factors[name][0];
+  }
   const cx = column(ds, x);
   let xs;
   if (cx.col.type === 'continuous') {

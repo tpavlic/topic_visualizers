@@ -246,19 +246,27 @@ export function marginalMeans(ds, result, factor, level) {
 /**
  * The rows of an effect plot: `x` over `n` points from its least to its
  * greatest used value (or over its levels), the `by` predictor at each of
- * its levels or at three quantiles, and every other predictor at its mean
- * or its first level.
+ * its levels or at three quantiles, and every other predictor at the value
+ * `holdAt` gives it, or else at its mean or its first level. A held value
+ * that is not a finite number for a continuous predictor, or not one of a
+ * factor's levels, is ignored.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result
  * @param {string} x
  * @param {string|null} by
  * @param {number} [n]
+ * @param {Object<string, number|string>} [holdAt]
  * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string> }}
  */
-export function effectGrid(ds, result, x, by, n = 60) {
+export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
   const grid = referenceGrid(ds, result);
   const held = {};
-  for (const name of grid.names) if (name !== x && name !== by) held[name] = name in grid.continuous ? grid.continuous[name] : grid.factors[name][0];
+  for (const name of grid.names) {
+    if (name === x || name === by) continue;
+    const want = holdAt[name];
+    if (name in grid.continuous) held[name] = typeof want === 'number' && Number.isFinite(want) ? want : grid.continuous[name];
+    else held[name] = grid.factors[name].includes(want) ? want : grid.factors[name][0];
+  }
   const cx = column(ds, x);
   let xs;
   if (cx.col.type === 'continuous') {

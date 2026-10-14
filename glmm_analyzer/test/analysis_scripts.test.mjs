@@ -429,19 +429,19 @@ export function diagnosticsOf(ds, spec, title) {
 }
 
 /** The Predict page's recipe: the effect plot along `x` by `by`, the means of `factor`, and the calculator at `row`. */
-export function predictOf(ds, spec, { x, by = null, factor = null, row = null, intercept = false }, title) {
+export function predictOf(ds, spec, { x, by = null, factor = null, row = null, intercept = false, hold = {} }, title) {
   const result = fitModel(ds, spec);
   let effect = null;
   if (spec.family === 'ordinal') {
     // The ordinal model: a probability per level, along x or from the thresholds alone.
     const levels = ds.columns.find(c => c.name === spec.response).levels;
-    const rows = x ? effectGrid(ds, result, x, null, 7).series[0].rows : intercept ? [{}] : null;
+    const rows = x ? effectGrid(ds, result, x, null, 7, hold).series[0].rows : intercept ? [{}] : null;
     if (rows) effect = { x: x || null, by: null, ordinal: true, levels, series: [{ label: 'probabilities', by: null, rows, probs: ordinalPredictRows(ds, result, rows) }] };
     const calc = row ? { row, ordinal: true, levels, probs: ordinalPredictRows(ds, result, [row])[0] } : null;
     return predictRecipe({ ds, spec, result, level: LEVEL, title: title || 'Predict: ' + result.formula, provenance: { dataset: ds.name, formula: result.formula }, effect, means: null, calc });
   }
   if (x) {
-    const g = effectGrid(ds, result, x, by, 7);
+    const g = effectGrid(ds, result, x, by, 7, hold);
     effect = { x, by, series: g.series.map(s => ({ label: s.label, rows: s.rows, pred: predictRows(ds, result, s.rows, LEVEL) })) };
   } else if (intercept) {
     // No predictor: the page's one predicted mean across the observations.
@@ -523,6 +523,14 @@ checkRecipe('predict, gamma effect and means', predictOf(CYCLE, specOf(CYCLE, 't
 checkRecipe('predict, binomial effect and means', predictOf(ON_TIME, specOf(ON_TIME, 'on_time', 'binomial', ['queue', 'policy']), { x: 'queue', by: null, factor: 'policy', row: { queue: 2, policy: 'B' } }), { smoke: true });
 checkRecipe('predict, Poisson means with three levels', predictOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing', 'week']), { x: 'load', factor: 'week', row: { load: 0.8, staffing: '3 servers', week: 'week03' } }));
 checkRecipe('predict, mixed Poisson effect', predictOf(COLONY, specOf(COLONY, 'recruits', 'poisson', ['temperature', 'treatment'], { group: 'colony' }), { x: 'temperature', by: 'treatment', factor: 'treatment', row: { temperature: 25, treatment: 'sugar' } }));
+checkRecipe('predict, other predictors held at chosen values', predictOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing', 'week']), { x: 'load', by: 'staffing', hold: { week: 'week03' } }), { smoke: true });
+test('a held value reaches the recipe', () => {
+  const rec = predictOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing', 'week']), { x: 'load', by: 'staffing', hold: { week: 'week03' } });
+  assert.ok(rec.effect.series.every(s => s.rows.every(row => row.week === 'week03')), 'every effect row holds week at week03');
+  const first = predictOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing', 'week']), { x: 'load', by: 'staffing' });
+  assert.notEqual(first.effect.series[0].rows[0].week, 'week03', 'the default is another level');
+});
+checkRecipe('predict, ordinal with a held value', predictOf(RATING, specOf(RATING, 'rating', 'ordinal', ['wait', 'express']), { x: 'wait', hold: { express: 'yes' } }));
 checkRecipe('predict, intercept only', predictOf(example('tour-one'), specOf(example('tour-one'), 'deviation', 'normal', []), { x: null, intercept: true, row: {} }), { smoke: true });
 checkRecipe('predict, mixed intercept only', predictOf(example('tour-repeated'), specOf(example('tour-repeated'), 'deviation', 'normal', [], { group: 'day' }), { x: null, intercept: true, row: {} }));
 checkRecipe('predict, ordinal effect', predictOf(RATING, specOf(RATING, 'rating', 'ordinal', ['wait', 'express']), { x: 'wait', row: { wait: 5, express: 'yes' } }), { smoke: true });

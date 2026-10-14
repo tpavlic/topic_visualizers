@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { makeDataset } from '../js/data/model.js';
+import { makeDataset, column } from '../js/data/model.js';
 import { fitModel } from '../js/stats/fit.js';
 import { termTests, predictRows, marginalMeans, referenceGrid, effectGrid, binnedMeans } from '../js/stats/inference.js';
 
@@ -124,6 +124,15 @@ test('effectGrid and binnedMeans', () => {
   const e2 = effectGrid(ds, r, 'f', 'x');
   assert.deepEqual(e2.xLevels, ['a', 'b', 'c']);
   assert.equal(e2.series.length, 3, 'three quantiles of a continuous by');
+  const gLevels = column(ds, 'g').col.levels;
+  const e3 = effectGrid(ds, r, 'x', 'f', 5, { g: gLevels[1] });
+  assert.ok(e3.series.every(s => s.rows.every(row => row.g === gLevels[1])), 'a chosen level holds the other factor');
+  assert.equal(e3.held.g, gLevels[1]);
+  assert.equal(effectGrid(ds, r, 'x', 'f', 5, { g: 'no such level' }).held.g, gLevels[0], 'an unknown level falls back to the first');
+  const e4 = effectGrid(ds, r, 'f', null, 5, { x: 2.5, g: gLevels[1] });
+  assert.ok(e4.series[0].rows.every(row => row.x === 2.5 && row.g === gLevels[1]), 'a chosen value holds a continuous predictor');
+  close(effectGrid(ds, r, 'f', null, 5, { x: NaN }).held.x, ref.grid_mean_x, 1e-12, 'a non-finite value falls back to the mean');
+  assert.equal(effectGrid(ds, r, 'x', 'f', 5, { x: 2.5, f: 'b' }).series[0].rows[0].f, 'a', 'x and by are not held');
   const b = binnedMeans([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [0, 0, 1, 0, 1, 1, 1, 0, 1, 1], 2);
   assert.deepEqual(b, [{ x: 3, y: 0.4, n: 5 }, { x: 8, y: 0.8, n: 5 }]);
 });

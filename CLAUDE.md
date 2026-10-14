@@ -498,7 +498,14 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   against the normal, the fitted values, and each predictor, the Pearson dispersion test, Cook's
   distances, and the predicted random effects), ⑤ Predict (an effect plot with its band and the
   data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator; Lines
-  by offers only the predictors other than the one on the x axis and is hidden with one predictor;
+  by offers only the predictors other than the one on the x axis and is hidden with one predictor
+  and for the ordinal family; a factor with more levels than the six line styles (`MAX_LINES`) is
+  listed in Lines by but disabled, with a line under the controls saying why; an "Other predictors
+  at" row sets the value each remaining predictor is held at (a box for a continuous one, a menu
+  for a factor), stored in the `hold` pick only once the reader sets it, and so an untouched
+  predictor stays at its exact mean or first level, which the caption marks; `effectGrid` takes
+  these as `holdAt`, ignoring a value that is not a finite number or not a level, and the scripts
+  follow because they take the grid rows as given;
   a model with no predictor still plots, the observations in the order loaded under the fitted
   mean and its band (for the ordinal family, one bar per level at its probability, the levels'
   shares of the data, with the data checkbox hidden because that plot never draws the
