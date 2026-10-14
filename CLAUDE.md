@@ -500,8 +500,8 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator; Lines
   by offers only the predictors other than the one on the x axis and is hidden with one predictor
   and for the ordinal family; a factor with more levels than the six line styles (`MAX_LINES`) is
-  listed in Lines by but disabled, with a line under the controls saying why; an "Other predictors
-  at" row sets the value each remaining predictor is held at (a box for a continuous one, a menu
+  listed in Lines by but disabled, with a line under the controls saying why; a "Values to hold other
+  predictors at" row sets the value each remaining predictor is held at (a box for a continuous one, a menu
   for a factor), stored in the `hold` pick only once the reader sets it, and so an untouched
   predictor stays at its exact mean or first level, which the caption marks; `effectGrid` takes
   these as `holdAt`, ignoring a value that is not a finite number or not a level, and the scripts

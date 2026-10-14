@@ -169,7 +169,7 @@ function buildHold() {
   const ctrls = held.map(c => {
     const v = saved[c.name];
     const inId = 'pr-hold-' + esc(c.name);
-    const lbl = '<label class="ctrl-lbl" for="' + inId + '">' + esc(c.name) + '</label>';
+    const lbl = '<label class="ctrl-lbl" for="' + inId + '">' + esc(c.name) + ':</label>';
     if (c.type === 'continuous') {
       const set = typeof v === 'number' && Number.isFinite(v);
       if (set) any = true;
@@ -180,7 +180,7 @@ function buildHold() {
     if (levels.includes(v) && v !== levels[0]) any = true;
     return '<span class="ctrl-pair">' + lbl + '<select id="' + inId + '" data-name="' + esc(c.name) + '">' + levels.map(l => '<option value="' + esc(l) + '"' + (l === sel ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
   });
-  els.hold.innerHTML = '<span class="ctrl-lbl">Other predictors at</span>' + ctrls.join('') +
+  els.hold.innerHTML = '<span class="ctrl-lbl">Values to hold other predictors at:</span>' + ctrls.join('') +
     (any ? '<button type="button" class="btn-run2" id="pr-hold-reset">Means and first levels</button>' : '');
 }
 
