@@ -4220,6 +4220,27 @@ function newRows(r, L, name, rows) {
   return out;
 }
 
+// The design rows of a curve's points. A point whose factor value is a list
+// of levels stands for the average over every combination of those levels:
+// the script writes one row per combination, point by point, and averages
+// each point's block of design rows, as the page does. The points' own table
+// keeps one row per point, without the averaged factors, for the figures.
+function curveRows(r, L, nm, X, rows) {
+  const avg = rows.length ? Object.keys(rows[0]).filter(k => Array.isArray(rows[0][k])) : [];
+  const data = L.lang === 'm' ? 'tbl' : 'd', names = L.lang === 'R' ? 'coef_names' : 'names_here';
+  if (!avg.length) return [...newRows(r, L, nm, rows), L.assign(X, 'grid_rows(m, ' + data + ', ' + nm + ', ' + names + ')')];
+  const set = avg.reduce((acc, f) => acc.flatMap(o => rows[0][f].map(l => Object.assign({}, o, { [f]: l }))), [{}]);
+  const K = set.length;
+  const out = [...newRows(r, L, nm, rows.map(row => Object.fromEntries(Object.entries(row).filter(([k]) => !avg.includes(k)))))];
+  out.push(L.comment + ascii(avg.join(' and ')) + ' averaged over ' + (avg.length > 1 ? 'their' : 'its') + ' levels with equal weights: each point is written once for each of the ' + K + ' combinations of levels, and the point\'s design row is the mean of those rows.');
+  out.push(...newRows(r, L, nm + 'a', rows.flatMap(row => set.map(o => Object.assign({}, row, o)))));
+  out.push(L.assign(X + 'f', 'grid_rows(m, ' + data + ', ' + nm + 'a, ' + names + ')'));
+  out.push(L.assign(X, L.lang === 'R' ? 'rowsum(' + X + 'f, rep(seq_len(nrow(' + X + 'f) / ' + K + '), each = ' + K + '), reorder = FALSE) / ' + K
+    : L.lang === 'py' ? X + 'f.reshape(-1, ' + K + ', ' + X + 'f.shape[1]).mean(axis=1)'
+      : 'reshape(mean(reshape(' + X + "f', size(" + X + 'f, 2), ' + K + ', []), 2), size(' + X + "f, 2), [])'"));
+  return out;
+}
+
 const matvec = (L, X, b) => (L.lang === 'R' ? 'as.numeric(' + X + ' %*% ' + b + ')' : L.lang === 'py' ? X + ' @ ' + b : X + ' * ' + b);
 const rowSe = (L, X, V) => (L.lang === 'R' ? 'sqrt(rowSums((' + X + ' %*% ' + V + ') * ' + X + '))' : L.lang === 'py' ? 'np.sqrt(np.sum((' + X + ' @ ' + V + ') * ' + X + ', axis=1))' : 'sqrt(sum((' + X + ' * ' + V + ') .* ' + X + ', 2))');
 const linkinv = (L, eta) => (L.lang === 'R' ? 'linkinv_of(m, ' + eta + ')' : L.lang === 'py' ? 'linkinv_of(m, ' + eta + ')' : 'linkinv_of(m, ' + eta + ')');
@@ -4243,15 +4264,14 @@ function predictBody(r, L) {
       : [eta + ' = b(1);', se + ' = sqrt(V(1, 1));'];
   if (r.effect) {
     out.push(L.sect('Effect plot'));
-    if (r.effect.ordinal) out.push(c + (r.effect.x ? 'The probability of each level along ' + ascii(r.effect.x) + ', the other predictors held as the page held them; three points are checked.' : 'The model has no predictor: the probability of each level is the same at every observation, from the thresholds alone.'));
-    else if (r.effect.x) out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held as the page held them; three points of each curve are checked.');
+    if (r.effect.ordinal) out.push(c + (r.effect.x ? 'The probability of each level along ' + ascii(r.effect.x) + ', the other predictors held or averaged as the page set them; three points are checked.' : 'The model has no predictor: the probability of each level is the same at every observation, from the thresholds alone.'));
+    else if (r.effect.x) out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held or averaged as the page set them; three points of each curve are checked.');
     else out.push(c + 'The model has no predictor: the effect plot is the one predicted mean, the intercept, drawn across the observations in the order loaded.');
     r.effect.series.forEach((s, k) => {
       const nm = 'nd' + (k + 1);
       if (r.effect.ordinal) {
         if (r.effect.x) {
-          out.push(...newRows(r, L, nm, s.rows));
-          out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+          out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows));
           out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
         } else out.push(...zeroEta('eta' + (k + 1), 1));
         out.push(L.assign('P' + (k + 1), 'ordinal_probs(zeta, eta' + (k + 1) + ')'));
@@ -4260,8 +4280,7 @@ function predictBody(r, L) {
       }
       if (!r.effect.x) out.push(...interceptLines('eta' + (k + 1), 'se' + (k + 1)));
       else {
-        out.push(...newRows(r, L, nm, s.rows));
-        out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+        out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows));
         out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
         out.push(L.assign('se' + (k + 1), rowSe(L, 'X' + (k + 1), 'V')));
       }
@@ -11041,7 +11060,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the ' + term('Wald intervals', WALD_TIP) + ' on the link scale; the effect plot holds the other predictors at values you can set, starting from their means and first levels, and its caption says which.</p>' +
+    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the ' + term('Wald intervals', WALD_TIP) + ' on the link scale; the effect plot averages over the other predictors, a continuous one at its mean and a factor over its levels with equal weights, or holds each at a value you set, and its caption says which.</p>' +
     '<div id="pr-fit-note"></div>' +
     '<div data-subnav class="subnav"></div>' +
     '<div data-section="effect" class="sec">' +
@@ -11082,6 +11101,9 @@ export function render(root) {
     holdError = '';
     buildHold();
     drawEffect();
+    // The button is gone, and so the focus moves to the row's first control.
+    const first = els.hold.querySelector('[data-name]');
+    if (first) first.focus();
   });
   els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
   els.groups = root.querySelector('#pr-groups');
@@ -11143,17 +11165,16 @@ function currentBy() {
   return !curOrdinal && els.by.value && els.by.value !== x ? els.by.value : null;
 }
 
-// The predictors the effect plot holds fixed, and the value each is held at:
-// the reader's choice where one was made, and otherwise its mean over the
-// fitted rows or its first level.
+// The predictors the effect plot holds fixed or averages over.
 function heldPredictors() {
   const x = els.x.value, by = currentBy();
   return curPreds.filter(c => c.name !== x && c.name !== by);
 }
 
-// One control per held predictor: a box for a continuous one and a menu of
-// levels for a factor. Only a value the reader sets is stored; an untouched
-// box shows the mean rounded, but the plot uses the mean itself.
+// One control per held predictor: a box for a continuous one and a menu for a
+// factor, whose first entry averages over its levels. Only a value the reader
+// sets is stored; an untouched box shows the mean rounded, but the plot uses
+// the mean itself.
 function buildHold() {
   const cf = currentFit();
   const held = cf ? heldPredictors() : [];
@@ -11173,12 +11194,14 @@ function buildHold() {
       return '<span class="ctrl-pair">' + lbl + '<input type="text" class="par-inp" id="' + inId + '" data-name="' + esc(c.name) + '" value="' + esc(String(set ? v : Number(grid.continuous[c.name].toPrecision(5)))) + '" inputmode="decimal"></span>';
     }
     const levels = grid.factors[c.name];
-    const sel = levels.includes(v) ? v : levels[0];
-    if (levels.includes(v) && v !== levels[0]) any = true;
-    return '<span class="ctrl-pair">' + lbl + '<select id="' + inId + '" data-name="' + esc(c.name) + '">' + levels.map(l => '<option value="' + esc(l) + '"' + (l === sel ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
+    const set = levels.includes(v);
+    if (set) any = true;
+    return '<span class="ctrl-pair">' + lbl + '<select id="' + inId + '" data-name="' + esc(c.name) + '">' +
+      '<option value=""' + (set ? '' : ' selected') + '>(averaged over levels)</option>' +
+      levels.map(l => '<option value="' + esc(l) + '"' + (l === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
   });
   els.hold.innerHTML = '<span class="ctrl-lbl">Values to hold other predictors at:</span>' + ctrls.join('') +
-    (any ? '<button type="button" class="btn-run2" id="pr-hold-reset">Means and first levels</button>' : '');
+    (any ? '<button type="button" class="btn-run2" id="pr-hold-reset">Reset to averages</button>' : '');
 }
 
 // A held value changed: a number or a level is stored and the plot redrawn;
@@ -11190,7 +11213,7 @@ function onHold(e) {
   const saved = Object.assign({}, state.getPick(id, 'hold') || {});
   if (inp.tagName === 'SELECT') {
     if (e.type !== 'change') return;
-    saved[name] = inp.value;
+    if (inp.value) saved[name] = inp.value; else delete saved[name];
   } else {
     const v = inp.value.trim() === '' ? NaN : Number(inp.value);
     if (!Number.isFinite(v)) {
@@ -11204,29 +11227,33 @@ function onHold(e) {
   state.setPick(id, 'hold', saved);
   const hadReset = !!els.hold.querySelector('#pr-hold-reset');
   drawEffect();
-  // The reset button appears with the first value set; rebuilding the row
-  // on every keystroke would take the focus from the box being typed in.
-  if (!hadReset) {
+  // The reset button comes and goes with the values set. A menu's row is
+  // rebuilt on every change; a box's only when the button first appears,
+  // because rebuilding on every keystroke would take the focus from it.
+  if (inp.tagName === 'SELECT' || !hadReset) {
     const focusName = name, pos = inp.selectionStart;
     buildHold();
     const again = els.hold.querySelector('[data-name="' + CSS.escape(focusName) + '"]');
-    if (again && again.tagName !== 'SELECT') { again.focus(); try { again.setSelectionRange(pos, pos); } catch (err) { /* not a text box */ } }
+    if (again) { again.focus(); if (again.tagName !== 'SELECT') again.setSelectionRange(pos, pos); }
   }
 }
 
 // The held values for effectGrid, from the stored choices.
 function holdAt() { return state.getPick(id, 'hold') || {}; }
 
-// The caption's account of the held predictors, saying which sit at their
-// defaults.
-function heldText(ds, result, grid) {
-  const ref = referenceGrid(ds, result);
+// The caption's account of the other predictors: which are averaged, and
+// the value each of the rest is held at.
+function heldText(grid) {
   const chosen = holdAt();
   const parts = Object.entries(grid.held).map(([k, v]) => {
+    if (Array.isArray(v)) return esc(k) + ' averaged over its ' + v.length + ' levels';
     if (typeof v === 'number') return esc(k) + ' = ' + num(v, 4) + (typeof chosen[k] === 'number' && Number.isFinite(chosen[k]) ? '' : ' (its mean over the fitted rows)');
-    return esc(k) + ' = ' + esc(v) + (v === ref.factors[k][0] ? ' (its first level)' : '');
+    return esc(k) + ' = ' + esc(v);
   });
-  return parts.length ? 'Other predictors held at ' + parts.join(', ') + ', as set in the row above the plot. ' : '';
+  if (!parts.length) return '';
+  const averaged = Object.values(grid.held).some(Array.isArray);
+  return 'Other predictors: ' + parts.join(', ') + ', as set in the row above the plot. ' +
+    (averaged ? 'Each average gives the factor’s levels equal weight and is taken on the link scale before the inverse link, as for the marginal means. ' : '');
 }
 
 function compute() {
@@ -11338,7 +11365,7 @@ function drawOrdinalEffect(ds, result) {
   legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', dash: LEVEL_DASHES[k % LEVEL_DASHES.length], color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = heldText(ds, result, grid) + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
+  p.innerHTML = heldText(grid) + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
   els.effect.appendChild(p);
   figs.push(fig);
 }
@@ -11501,7 +11528,7 @@ function drawEffect() {
   legend(box.appendChild(document.createElement('div')), legendItems);
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = heldText(ds, result, grid) +
+  p.innerHTML = heldText(grid) +
     (result.fit.mixed ? 'The population curve is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
     (els.groups.checked && result.fit.mixed && !by ? 'Each thin line is one group’s curve: the population curve shifted by the group’s predicted random effect' + (result.fit.random.terms[0].q === 2 ? ' and slope' : '') + '. ' : '') +
     (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
@@ -11566,7 +11593,7 @@ function registerResult() {
   if (last.effect && last.effect.ordinal) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x : 'the thresholds alone';
-    if (e.held && Object.keys(e.held).length) provenance['other predictors held at'] = heldProvenance(e.held);
+    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held);
     const headers = (e.x ? [e.x] : []).concat(e.levels.map(l => 'P(' + l + ')'));
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(s.probs[i])));
@@ -11574,7 +11601,7 @@ function registerResult() {
   } else if (last.effect) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x + (e.by ? ' by ' + e.by : '') : 'the intercept alone';
-    if (e.held && Object.keys(e.held).length) provenance['other predictors held at'] = heldProvenance(e.held);
+    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held);
     const headers = (e.x ? [e.x] : []).concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
@@ -11606,7 +11633,7 @@ function registerResult() {
 }
 
 function heldProvenance(held) {
-  return Object.entries(held).map(([k, v]) => k + ' = ' + (typeof v === 'number' ? Number(v.toPrecision(6)) : v)).join(', ');
+  return Object.entries(held).map(([k, v]) => Array.isArray(v) ? k + ' averaged over its levels' : k + ' = ' + (typeof v === 'number' ? Number(v.toPrecision(6)) : v)).join(', ');
 }
 
 function buildCalcInputs(ds, result, preds) {
@@ -14667,9 +14694,31 @@ export function termTests(ds, spec, result) {
  * @returns {number[][]} one row of probabilities per new row, in the levels' order
  */
 export function ordinalPredictRows(ds, result, newRows) {
-  const X = newDataMatrix(ds, result.design, newRows).map(r => r.slice(1));
+  const X = averagedMatrix(ds, result.design, newRows).map(r => r.slice(1));
   const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
   return ordinalProbs(result.fit, eta);
+}
+
+/**
+ * The design rows of new predictor values, where a factor's value may be a
+ * list of its levels: such a row stands for the average over every
+ * combination of the listed levels with equal weights, and its design row is
+ * the mean of theirs. A prediction from it is therefore the linear predictor
+ * averaged on the link scale, as a marginal mean is.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} design
+ * @param {Object<string, number|string|string[]>[]} rows
+ * @returns {number[][]}
+ */
+export function averagedMatrix(ds, design, rows) {
+  if (!rows.some(row => Object.values(row).some(Array.isArray))) return newDataMatrix(ds, design, rows);
+  return rows.map(row => {
+    const avg = Object.keys(row).filter(k => Array.isArray(row[k]));
+    if (!avg.length) return newDataMatrix(ds, design, [row])[0];
+    const set = combos(Object.fromEntries(avg.map(k => [k, row[k]])), avg).map(o => Object.assign({}, row, o));
+    const X = newDataMatrix(ds, design, set);
+    return X[0].map((_, j) => X.reduce((t, x) => t + x[j], 0) / X.length);
+  });
 }
 
 /**
@@ -14683,7 +14732,7 @@ export function ordinalPredictRows(ds, result, newRows) {
  * @returns {{ eta: Float64Array, se: Float64Array, lo: Float64Array, hi: Float64Array, fit: Float64Array, fitLo: Float64Array, fitHi: Float64Array, df: number, q: number }}
  */
 export function predictRows(ds, result, newRows, level) {
-  const X = newDataMatrix(ds, result.design, newRows);
+  const X = averagedMatrix(ds, result.design, newRows);
   const b = result.fit.beta, V = result.fit.vcov;
   const link = LINKS[result.link];
   const df = waldDf(result.fit), q = waldQuantile(level, df);
@@ -14793,16 +14842,18 @@ export function marginalMeans(ds, result, factor, level) {
  * The rows of an effect plot: `x` over `n` points from its least to its
  * greatest used value (or over its levels), the `by` predictor at each of
  * its levels or at three quantiles, and every other predictor at the value
- * `holdAt` gives it, or else at its mean or its first level. A held value
- * that is not a finite number for a continuous predictor, or not one of a
- * factor's levels, is ignored.
+ * `holdAt` gives it: a continuous one otherwise at its mean, and a factor
+ * otherwise averaged over its levels with equal weights, which its rows carry
+ * as the list of those levels (see averagedMatrix). A held value that is not
+ * a finite number for a continuous predictor, or not one of a factor's
+ * levels, is ignored.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result
  * @param {string} x
  * @param {string|null} by
  * @param {number} [n]
  * @param {Object<string, number|string>} [holdAt]
- * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string> }}
+ * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string|string[]> }}
  */
 export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
   const grid = referenceGrid(ds, result);
@@ -14811,7 +14862,7 @@ export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
     if (name === x || name === by) continue;
     const want = holdAt[name];
     if (name in grid.continuous) held[name] = typeof want === 'number' && Number.isFinite(want) ? want : grid.continuous[name];
-    else held[name] = grid.factors[name].includes(want) ? want : grid.factors[name][0];
+    else held[name] = grid.factors[name].includes(want) ? want : grid.factors[name].slice();
   }
   const cx = column(ds, x);
   let xs;

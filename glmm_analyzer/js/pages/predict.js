@@ -44,7 +44,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the ' + term('Wald intervals', WALD_TIP) + ' on the link scale; the effect plot holds the other predictors at values you can set, starting from their means and first levels, and its caption says which.</p>' +
+    '<p class="lede">Everything here comes from the model on the Model page. The curves and means are on the response’s scale, carried through the inverse link, with bands from the ' + term('Wald intervals', WALD_TIP) + ' on the link scale; the effect plot averages over the other predictors, a continuous one at its mean and a factor over its levels with equal weights, or holds each at a value you set, and its caption says which.</p>' +
     '<div id="pr-fit-note"></div>' +
     '<div data-subnav class="subnav"></div>' +
     '<div data-section="effect" class="sec">' +
@@ -85,6 +85,9 @@ export function render(root) {
     holdError = '';
     buildHold();
     drawEffect();
+    // The button is gone, and so the focus moves to the row's first control.
+    const first = els.hold.querySelector('[data-name]');
+    if (first) first.focus();
   });
   els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
   els.groups = root.querySelector('#pr-groups');
@@ -146,17 +149,16 @@ function currentBy() {
   return !curOrdinal && els.by.value && els.by.value !== x ? els.by.value : null;
 }
 
-// The predictors the effect plot holds fixed, and the value each is held at:
-// the reader's choice where one was made, and otherwise its mean over the
-// fitted rows or its first level.
+// The predictors the effect plot holds fixed or averages over.
 function heldPredictors() {
   const x = els.x.value, by = currentBy();
   return curPreds.filter(c => c.name !== x && c.name !== by);
 }
 
-// One control per held predictor: a box for a continuous one and a menu of
-// levels for a factor. Only a value the reader sets is stored; an untouched
-// box shows the mean rounded, but the plot uses the mean itself.
+// One control per held predictor: a box for a continuous one and a menu for a
+// factor, whose first entry averages over its levels. Only a value the reader
+// sets is stored; an untouched box shows the mean rounded, but the plot uses
+// the mean itself.
 function buildHold() {
   const cf = currentFit();
   const held = cf ? heldPredictors() : [];
@@ -176,12 +178,14 @@ function buildHold() {
       return '<span class="ctrl-pair">' + lbl + '<input type="text" class="par-inp" id="' + inId + '" data-name="' + esc(c.name) + '" value="' + esc(String(set ? v : Number(grid.continuous[c.name].toPrecision(5)))) + '" inputmode="decimal"></span>';
     }
     const levels = grid.factors[c.name];
-    const sel = levels.includes(v) ? v : levels[0];
-    if (levels.includes(v) && v !== levels[0]) any = true;
-    return '<span class="ctrl-pair">' + lbl + '<select id="' + inId + '" data-name="' + esc(c.name) + '">' + levels.map(l => '<option value="' + esc(l) + '"' + (l === sel ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
+    const set = levels.includes(v);
+    if (set) any = true;
+    return '<span class="ctrl-pair">' + lbl + '<select id="' + inId + '" data-name="' + esc(c.name) + '">' +
+      '<option value=""' + (set ? '' : ' selected') + '>(averaged over levels)</option>' +
+      levels.map(l => '<option value="' + esc(l) + '"' + (l === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
   });
   els.hold.innerHTML = '<span class="ctrl-lbl">Values to hold other predictors at:</span>' + ctrls.join('') +
-    (any ? '<button type="button" class="btn-run2" id="pr-hold-reset">Means and first levels</button>' : '');
+    (any ? '<button type="button" class="btn-run2" id="pr-hold-reset">Reset to averages</button>' : '');
 }
 
 // A held value changed: a number or a level is stored and the plot redrawn;
@@ -193,7 +197,7 @@ function onHold(e) {
   const saved = Object.assign({}, state.getPick(id, 'hold') || {});
   if (inp.tagName === 'SELECT') {
     if (e.type !== 'change') return;
-    saved[name] = inp.value;
+    if (inp.value) saved[name] = inp.value; else delete saved[name];
   } else {
     const v = inp.value.trim() === '' ? NaN : Number(inp.value);
     if (!Number.isFinite(v)) {
@@ -207,29 +211,33 @@ function onHold(e) {
   state.setPick(id, 'hold', saved);
   const hadReset = !!els.hold.querySelector('#pr-hold-reset');
   drawEffect();
-  // The reset button appears with the first value set; rebuilding the row
-  // on every keystroke would take the focus from the box being typed in.
-  if (!hadReset) {
+  // The reset button comes and goes with the values set. A menu's row is
+  // rebuilt on every change; a box's only when the button first appears,
+  // because rebuilding on every keystroke would take the focus from it.
+  if (inp.tagName === 'SELECT' || !hadReset) {
     const focusName = name, pos = inp.selectionStart;
     buildHold();
     const again = els.hold.querySelector('[data-name="' + CSS.escape(focusName) + '"]');
-    if (again && again.tagName !== 'SELECT') { again.focus(); try { again.setSelectionRange(pos, pos); } catch (err) { /* not a text box */ } }
+    if (again) { again.focus(); if (again.tagName !== 'SELECT') again.setSelectionRange(pos, pos); }
   }
 }
 
 // The held values for effectGrid, from the stored choices.
 function holdAt() { return state.getPick(id, 'hold') || {}; }
 
-// The caption's account of the held predictors, saying which sit at their
-// defaults.
-function heldText(ds, result, grid) {
-  const ref = referenceGrid(ds, result);
+// The caption's account of the other predictors: which are averaged, and
+// the value each of the rest is held at.
+function heldText(grid) {
   const chosen = holdAt();
   const parts = Object.entries(grid.held).map(([k, v]) => {
+    if (Array.isArray(v)) return esc(k) + ' averaged over its ' + v.length + ' levels';
     if (typeof v === 'number') return esc(k) + ' = ' + num(v, 4) + (typeof chosen[k] === 'number' && Number.isFinite(chosen[k]) ? '' : ' (its mean over the fitted rows)');
-    return esc(k) + ' = ' + esc(v) + (v === ref.factors[k][0] ? ' (its first level)' : '');
+    return esc(k) + ' = ' + esc(v);
   });
-  return parts.length ? 'Other predictors held at ' + parts.join(', ') + ', as set in the row above the plot. ' : '';
+  if (!parts.length) return '';
+  const averaged = Object.values(grid.held).some(Array.isArray);
+  return 'Other predictors: ' + parts.join(', ') + ', as set in the row above the plot. ' +
+    (averaged ? 'Each average gives the factor’s levels equal weight and is taken on the link scale before the inverse link, as for the marginal means. ' : '');
 }
 
 function compute() {
@@ -341,7 +349,7 @@ function drawOrdinalEffect(ds, result) {
   legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', dash: LEVEL_DASHES[k % LEVEL_DASHES.length], color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = heldText(ds, result, grid) + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
+  p.innerHTML = heldText(grid) + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
   els.effect.appendChild(p);
   figs.push(fig);
 }
@@ -504,7 +512,7 @@ function drawEffect() {
   legend(box.appendChild(document.createElement('div')), legendItems);
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = heldText(ds, result, grid) +
+  p.innerHTML = heldText(grid) +
     (result.fit.mixed ? 'The population curve is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
     (els.groups.checked && result.fit.mixed && !by ? 'Each thin line is one group’s curve: the population curve shifted by the group’s predicted random effect' + (result.fit.random.terms[0].q === 2 ? ' and slope' : '') + '. ' : '') +
     (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
@@ -569,7 +577,7 @@ function registerResult() {
   if (last.effect && last.effect.ordinal) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x : 'the thresholds alone';
-    if (e.held && Object.keys(e.held).length) provenance['other predictors held at'] = heldProvenance(e.held);
+    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held);
     const headers = (e.x ? [e.x] : []).concat(e.levels.map(l => 'P(' + l + ')'));
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(s.probs[i])));
@@ -577,7 +585,7 @@ function registerResult() {
   } else if (last.effect) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x + (e.by ? ' by ' + e.by : '') : 'the intercept alone';
-    if (e.held && Object.keys(e.held).length) provenance['other predictors held at'] = heldProvenance(e.held);
+    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held);
     const headers = (e.x ? [e.x] : []).concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
@@ -609,7 +617,7 @@ function registerResult() {
 }
 
 function heldProvenance(held) {
-  return Object.entries(held).map(([k, v]) => k + ' = ' + (typeof v === 'number' ? Number(v.toPrecision(6)) : v)).join(', ');
+  return Object.entries(held).map(([k, v]) => Array.isArray(v) ? k + ' averaged over its levels' : k + ' = ' + (typeof v === 'number' ? Number(v.toPrecision(6)) : v)).join(', ');
 }
 
 function buildCalcInputs(ds, result, preds) {

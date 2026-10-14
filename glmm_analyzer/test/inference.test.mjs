@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { makeDataset, column } from '../js/data/model.js';
 import { fitModel } from '../js/stats/fit.js';
-import { termTests, predictRows, marginalMeans, referenceGrid, effectGrid, binnedMeans } from '../js/stats/inference.js';
+import { termTests, predictRows, marginalMeans, referenceGrid, effectGrid, binnedMeans, averagedMatrix } from '../js/stats/inference.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ref = JSON.parse(fs.readFileSync(path.join(HERE, 'reference', 'inference.json'), 'utf8'));
@@ -119,7 +119,7 @@ test('effectGrid and binnedMeans', () => {
   assert.equal(e.series.length, 3);
   assert.deepEqual(e.series.map(s => s.label), ['a', 'b', 'c']);
   assert.equal(e.series[0].rows.length, 5);
-  assert.equal(e.series[0].rows[0].g, 'u', 'the other factor is held at its first level');
+  assert.deepEqual(e.series[0].rows[0].g, column(ds, 'g').col.levels, 'the other factor is averaged over its levels');
   close(e.series[0].rows[0].x, Math.min(...G.x), 1e-12, 'x from its least value');
   const e2 = effectGrid(ds, r, 'f', 'x');
   assert.deepEqual(e2.xLevels, ['a', 'b', 'c']);
@@ -128,11 +128,19 @@ test('effectGrid and binnedMeans', () => {
   const e3 = effectGrid(ds, r, 'x', 'f', 5, { g: gLevels[1] });
   assert.ok(e3.series.every(s => s.rows.every(row => row.g === gLevels[1])), 'a chosen level holds the other factor');
   assert.equal(e3.held.g, gLevels[1]);
-  assert.equal(effectGrid(ds, r, 'x', 'f', 5, { g: 'no such level' }).held.g, gLevels[0], 'an unknown level falls back to the first');
+  assert.deepEqual(effectGrid(ds, r, 'x', 'f', 5, { g: 'no such level' }).held.g, gLevels, 'an unknown level falls back to the average');
   const e4 = effectGrid(ds, r, 'f', null, 5, { x: 2.5, g: gLevels[1] });
   assert.ok(e4.series[0].rows.every(row => row.x === 2.5 && row.g === gLevels[1]), 'a chosen value holds a continuous predictor');
   close(effectGrid(ds, r, 'f', null, 5, { x: NaN }).held.x, ref.grid_mean_x, 1e-12, 'a non-finite value falls back to the mean');
   assert.equal(effectGrid(ds, r, 'x', 'f', 5, { x: 2.5, f: 'b' }).series[0].rows[0].f, 'a', 'x and by are not held');
+  // Averaged over g with x at its mean, the effect of f is its marginal means.
+  const e5 = effectGrid(ds, r, 'f', null, 5, {});
+  const avg = predictRows(ds, r, e5.series[0].rows, 0.95);
+  const mm = marginalMeans(ds, r, 'f', 0.95);
+  mm.means.forEach((m, i) => { close(avg.eta[i], m.eta, 1e-12, 'eta ' + m.level); close(avg.se[i], m.se, 1e-12, 'se ' + m.level); });
+  const X = averagedMatrix(ds, r.design, [{ x: 1, f: 'a', g: gLevels }]);
+  const parts = gLevels.map(l => averagedMatrix(ds, r.design, [{ x: 1, f: 'a', g: l }])[0]);
+  X[0].forEach((v, j) => close(v, parts.reduce((t, p) => t + p[j], 0) / parts.length, 1e-12, 'column ' + j));
   const b = binnedMeans([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [0, 0, 1, 0, 1, 1, 1, 0, 1, 1], 2);
   assert.deepEqual(b, [{ x: 3, y: 0.4, n: 5 }, { x: 8, y: 0.8, n: 5 }]);
 });

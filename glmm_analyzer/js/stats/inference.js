@@ -121,9 +121,31 @@ export function termTests(ds, spec, result) {
  * @returns {number[][]} one row of probabilities per new row, in the levels' order
  */
 export function ordinalPredictRows(ds, result, newRows) {
-  const X = newDataMatrix(ds, result.design, newRows).map(r => r.slice(1));
+  const X = averagedMatrix(ds, result.design, newRows).map(r => r.slice(1));
   const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
   return ordinalProbs(result.fit, eta);
+}
+
+/**
+ * The design rows of new predictor values, where a factor's value may be a
+ * list of its levels: such a row stands for the average over every
+ * combination of the listed levels with equal weights, and its design row is
+ * the mean of theirs. A prediction from it is therefore the linear predictor
+ * averaged on the link scale, as a marginal mean is.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} design
+ * @param {Object<string, number|string|string[]>[]} rows
+ * @returns {number[][]}
+ */
+export function averagedMatrix(ds, design, rows) {
+  if (!rows.some(row => Object.values(row).some(Array.isArray))) return newDataMatrix(ds, design, rows);
+  return rows.map(row => {
+    const avg = Object.keys(row).filter(k => Array.isArray(row[k]));
+    if (!avg.length) return newDataMatrix(ds, design, [row])[0];
+    const set = combos(Object.fromEntries(avg.map(k => [k, row[k]])), avg).map(o => Object.assign({}, row, o));
+    const X = newDataMatrix(ds, design, set);
+    return X[0].map((_, j) => X.reduce((t, x) => t + x[j], 0) / X.length);
+  });
 }
 
 /**
@@ -137,7 +159,7 @@ export function ordinalPredictRows(ds, result, newRows) {
  * @returns {{ eta: Float64Array, se: Float64Array, lo: Float64Array, hi: Float64Array, fit: Float64Array, fitLo: Float64Array, fitHi: Float64Array, df: number, q: number }}
  */
 export function predictRows(ds, result, newRows, level) {
-  const X = newDataMatrix(ds, result.design, newRows);
+  const X = averagedMatrix(ds, result.design, newRows);
   const b = result.fit.beta, V = result.fit.vcov;
   const link = LINKS[result.link];
   const df = waldDf(result.fit), q = waldQuantile(level, df);
@@ -247,16 +269,18 @@ export function marginalMeans(ds, result, factor, level) {
  * The rows of an effect plot: `x` over `n` points from its least to its
  * greatest used value (or over its levels), the `by` predictor at each of
  * its levels or at three quantiles, and every other predictor at the value
- * `holdAt` gives it, or else at its mean or its first level. A held value
- * that is not a finite number for a continuous predictor, or not one of a
- * factor's levels, is ignored.
+ * `holdAt` gives it: a continuous one otherwise at its mean, and a factor
+ * otherwise averaged over its levels with equal weights, which its rows carry
+ * as the list of those levels (see averagedMatrix). A held value that is not
+ * a finite number for a continuous predictor, or not one of a factor's
+ * levels, is ignored.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result
  * @param {string} x
  * @param {string|null} by
  * @param {number} [n]
  * @param {Object<string, number|string>} [holdAt]
- * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string> }}
+ * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string|string[]> }}
  */
 export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
   const grid = referenceGrid(ds, result);
@@ -265,7 +289,7 @@ export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
     if (name === x || name === by) continue;
     const want = holdAt[name];
     if (name in grid.continuous) held[name] = typeof want === 'number' && Number.isFinite(want) ? want : grid.continuous[name];
-    else held[name] = grid.factors[name].includes(want) ? want : grid.factors[name][0];
+    else held[name] = grid.factors[name].includes(want) ? want : grid.factors[name].slice();
   }
   const cx = column(ds, x);
   let xs;

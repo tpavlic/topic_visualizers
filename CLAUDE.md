@@ -501,11 +501,17 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   by offers only the predictors other than the one on the x axis and is hidden with one predictor
   and for the ordinal family; a factor with more levels than the six line styles (`MAX_LINES`) is
   listed in Lines by but disabled, with a line under the controls saying why; a "Values to hold other
-  predictors at" row sets the value each remaining predictor is held at (a box for a continuous one, a menu
-  for a factor), stored in the `hold` pick only once the reader sets it, and so an untouched
-  predictor stays at its exact mean or first level, which the caption marks; `effectGrid` takes
-  these as `holdAt`, ignoring a value that is not a finite number or not a level, and the scripts
-  follow because they take the grid rows as given;
+  predictors at" row sets each remaining predictor (a box for a continuous one, a menu for a
+  factor whose first entry, "(averaged over levels)", is the default), stored in the `hold` pick
+  only once the reader sets it, and so an untouched continuous predictor stays at its exact mean
+  and an untouched factor is averaged; "Reset to averages" clears the pick; `effectGrid` takes
+  these as `holdAt`, ignoring a value that is not a finite number or not a level, and carries an
+  averaged factor in each row as the list of its levels, which `averagedMatrix` in
+  `js/stats/inference.js` turns into the mean of the design rows over every combination of the
+  listed levels (equal weights on the link scale, as `marginalMeans` uses, so that the effect plot
+  averaged over the other factors reproduces the marginal means); the scripts write one new-data
+  row per combination and average each point's block of design rows (`curveRows` in
+  `js/io/analysis_scripts.js`), keeping a one-row-per-point table for the figures;
   a model with no predictor still plots, the observations in the order loaded under the fitted
   mean and its band (for the ordinal family, one bar per level at its probability, the levels'
   shares of the data, with the data checkbox hidden because that plot never draws the

@@ -699,6 +699,27 @@ function newRows(r, L, name, rows) {
   return out;
 }
 
+// The design rows of a curve's points. A point whose factor value is a list
+// of levels stands for the average over every combination of those levels:
+// the script writes one row per combination, point by point, and averages
+// each point's block of design rows, as the page does. The points' own table
+// keeps one row per point, without the averaged factors, for the figures.
+function curveRows(r, L, nm, X, rows) {
+  const avg = rows.length ? Object.keys(rows[0]).filter(k => Array.isArray(rows[0][k])) : [];
+  const data = L.lang === 'm' ? 'tbl' : 'd', names = L.lang === 'R' ? 'coef_names' : 'names_here';
+  if (!avg.length) return [...newRows(r, L, nm, rows), L.assign(X, 'grid_rows(m, ' + data + ', ' + nm + ', ' + names + ')')];
+  const set = avg.reduce((acc, f) => acc.flatMap(o => rows[0][f].map(l => Object.assign({}, o, { [f]: l }))), [{}]);
+  const K = set.length;
+  const out = [...newRows(r, L, nm, rows.map(row => Object.fromEntries(Object.entries(row).filter(([k]) => !avg.includes(k)))))];
+  out.push(L.comment + ascii(avg.join(' and ')) + ' averaged over ' + (avg.length > 1 ? 'their' : 'its') + ' levels with equal weights: each point is written once for each of the ' + K + ' combinations of levels, and the point\'s design row is the mean of those rows.');
+  out.push(...newRows(r, L, nm + 'a', rows.flatMap(row => set.map(o => Object.assign({}, row, o)))));
+  out.push(L.assign(X + 'f', 'grid_rows(m, ' + data + ', ' + nm + 'a, ' + names + ')'));
+  out.push(L.assign(X, L.lang === 'R' ? 'rowsum(' + X + 'f, rep(seq_len(nrow(' + X + 'f) / ' + K + '), each = ' + K + '), reorder = FALSE) / ' + K
+    : L.lang === 'py' ? X + 'f.reshape(-1, ' + K + ', ' + X + 'f.shape[1]).mean(axis=1)'
+      : 'reshape(mean(reshape(' + X + "f', size(" + X + 'f, 2), ' + K + ', []), 2), size(' + X + "f, 2), [])'"));
+  return out;
+}
+
 const matvec = (L, X, b) => (L.lang === 'R' ? 'as.numeric(' + X + ' %*% ' + b + ')' : L.lang === 'py' ? X + ' @ ' + b : X + ' * ' + b);
 const rowSe = (L, X, V) => (L.lang === 'R' ? 'sqrt(rowSums((' + X + ' %*% ' + V + ') * ' + X + '))' : L.lang === 'py' ? 'np.sqrt(np.sum((' + X + ' @ ' + V + ') * ' + X + ', axis=1))' : 'sqrt(sum((' + X + ' * ' + V + ') .* ' + X + ', 2))');
 const linkinv = (L, eta) => (L.lang === 'R' ? 'linkinv_of(m, ' + eta + ')' : L.lang === 'py' ? 'linkinv_of(m, ' + eta + ')' : 'linkinv_of(m, ' + eta + ')');
@@ -722,15 +743,14 @@ function predictBody(r, L) {
       : [eta + ' = b(1);', se + ' = sqrt(V(1, 1));'];
   if (r.effect) {
     out.push(L.sect('Effect plot'));
-    if (r.effect.ordinal) out.push(c + (r.effect.x ? 'The probability of each level along ' + ascii(r.effect.x) + ', the other predictors held as the page held them; three points are checked.' : 'The model has no predictor: the probability of each level is the same at every observation, from the thresholds alone.'));
-    else if (r.effect.x) out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held as the page held them; three points of each curve are checked.');
+    if (r.effect.ordinal) out.push(c + (r.effect.x ? 'The probability of each level along ' + ascii(r.effect.x) + ', the other predictors held or averaged as the page set them; three points are checked.' : 'The model has no predictor: the probability of each level is the same at every observation, from the thresholds alone.'));
+    else if (r.effect.x) out.push(c + 'The predicted mean along ' + ascii(r.effect.x) + (r.effect.by ? ' by ' + ascii(r.effect.by) : '') + ', the other predictors held or averaged as the page set them; three points of each curve are checked.');
     else out.push(c + 'The model has no predictor: the effect plot is the one predicted mean, the intercept, drawn across the observations in the order loaded.');
     r.effect.series.forEach((s, k) => {
       const nm = 'nd' + (k + 1);
       if (r.effect.ordinal) {
         if (r.effect.x) {
-          out.push(...newRows(r, L, nm, s.rows));
-          out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+          out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows));
           out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
         } else out.push(...zeroEta('eta' + (k + 1), 1));
         out.push(L.assign('P' + (k + 1), 'ordinal_probs(zeta, eta' + (k + 1) + ')'));
@@ -739,8 +759,7 @@ function predictBody(r, L) {
       }
       if (!r.effect.x) out.push(...interceptLines('eta' + (k + 1), 'se' + (k + 1)));
       else {
-        out.push(...newRows(r, L, nm, s.rows));
-        out.push(L.assign('X' + (k + 1), 'grid_rows(m, ' + (L.lang === 'm' ? 'tbl' : 'd') + ', ' + nm + ', ' + (L.lang === 'R' ? 'coef_names' : 'names_here') + ')'));
+        out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows));
         out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
         out.push(L.assign('se' + (k + 1), rowSe(L, 'X' + (k + 1), 'V')));
       }
