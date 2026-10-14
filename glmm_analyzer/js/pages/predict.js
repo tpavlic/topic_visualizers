@@ -56,7 +56,7 @@ export function render(root) {
       '<div class="sec-hd">Effect plot</div>' +
       '<div class="ctrl-row">' +
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-x">Predictor on the x axis</label><select id="pr-x"></select></span>' +
-        '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-by">Lines by</label><select id="pr-by"></select></span>' +
+        '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-by">Separate lines by</label><select id="pr-by"></select></span>' +
         '<label class="ctrl-chk"><input type="checkbox" id="pr-data" checked> show the data</label>' +
         '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> show each group</label>' +
       '</div>' +
@@ -133,11 +133,11 @@ function predictorsOf(ds, result) {
   return names.map(n => column(ds, n).col);
 }
 
-// The predictors of the fitted model, kept for the Lines by picker and the
+// The predictors of the fitted model, kept for the Separate lines by picker and the
 // held values.
 let curPreds = [];
 // Whether the fitted model is ordinal, whose effect plot draws a line per
-// level of the response and so has no Lines by.
+// level of the response and so has no Separate lines by control.
 let curOrdinal = false;
 // The message for a held value that is not a number, which stops the plot.
 let holdError = '';
@@ -147,7 +147,7 @@ let holdError = '';
 const MAX_LINES = Math.min(LEVEL_COLORS.length, LEVEL_DASHES.length);
 const canSplit = c => c.type === 'continuous' || c.levels.length <= MAX_LINES;
 
-// Lines by offers the predictors other than the one on the x axis, and is
+// Separate lines by offers the predictors other than the one on the x axis, and is
 // hidden when there is none: a model with one predictor has nothing to
 // split its lines by. A factor with more levels than there are line styles
 // is listed but cannot be chosen, and a line under the controls says why.
@@ -160,7 +160,7 @@ function fillBy() {
   els.byPair.hidden = !others.length;
   const many = others.filter(c => !canSplit(c));
   els.byNote.hidden = !many.length;
-  els.byNote.innerHTML = many.length ? 'Lines by takes a factor only when it has at most ' + MAX_LINES + ' levels, as the plot has ' + MAX_LINES + ' line styles to tell them apart; ' +
+  els.byNote.innerHTML = many.length ? 'Separate lines are drawn only for a factor with at most ' + MAX_LINES + ' levels, as the plot has ' + MAX_LINES + ' line styles to tell them apart; ' +
     many.map(c => esc(c.name) + ' has ' + c.levels.length).join(', ') + '. A factor with more levels can go on the x axis instead.' : '';
 }
 

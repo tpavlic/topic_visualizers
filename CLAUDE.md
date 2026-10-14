@@ -497,10 +497,10 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   thresholds), ④ Diagnostics (randomized quantile residuals
   against the normal, the fitted values, and each predictor, the Pearson dispersion test, Cook's
   distances, and the predicted random effects), ⑤ Predict (an effect plot with its band and the
-  data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator; Lines
-  by offers only the predictors other than the one on the x axis and is hidden with one predictor
+  data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator; Separate
+  lines by offers only the predictors other than the one on the x axis and is hidden with one predictor
   and for the ordinal family; a factor with more levels than the six line styles (`MAX_LINES`) is
-  listed in Lines by but disabled, with a line under the controls saying why; a "Values to hold other
+  listed in Separate lines by but disabled, with a line under the controls saying why; a "Values to hold other
   predictors at" row sets each remaining predictor (a box for a continuous one, a menu for a
   factor whose first entry, "(averaged over levels)", is the default), stored in the `hold` pick
   only once the reader sets it, and so an untouched continuous predictor stays at its exact mean
