@@ -82,12 +82,14 @@ const EMMS = [
   ['emm_pois_f', spec('ycount', 'poisson', 'log', ['x', 'f', { of: ['x', 'f'] }]), 'f', 0.95],
   ['emm_gam_f', spec('ypos', 'gamma', 'log', ['x', 'f']), 'f', 0.95],
   ['emm_norm_g', spec('ynorm', 'normal', 'identity', ['x', 'f', 'g']), 'g', 0.95],
-  ['emm_poly_f', spec('ynorm', 'normal', 'identity', ['x', { name: 'x', degree: 2 }, 'f']), 'f', 0.95]
+  ['emm_poly_f', spec('ynorm', 'normal', 'identity', ['x', { name: 'x', degree: 2 }, 'f']), 'f', 0.95],
+  ['emm_norm_g_prop', spec('ynorm', 'normal', 'identity', ['x', 'f', 'g']), 'g', 0.95, 'proportional'],
+  ['emm_bin_f_prop', spec('ybin', 'binomial', 'logit', ['x', 'f', 'g']), 'f', 0.90, 'proportional']
 ];
-for (const [key, s, factor, level] of EMMS) {
+for (const [key, s, factor, level, weights] of EMMS) {
   test(key + ' matches emmeans and pairs', () => {
     const r = ref[key];
-    const m = marginalMeans(ds, fit(s), factor, level);
+    const m = marginalMeans(ds, fit(s), factor, level, weights);
     assert.deepEqual(m.levels, arr(r.levels));
     assert.equal(Number.isFinite(m.df) ? m.df : 'Inf', Number.isFinite(r.df) ? r.df : 'Inf');
     vec(m.means.map(x => x.eta), r.eta, 1e-7, 'eta');

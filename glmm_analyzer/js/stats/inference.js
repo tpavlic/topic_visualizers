@@ -120,31 +120,70 @@ export function termTests(ds, spec, result) {
  * @param {Object<string, number|string>[]} newRows
  * @returns {number[][]} one row of probabilities per new row, in the levels' order
  */
-export function ordinalPredictRows(ds, result, newRows) {
-  const X = averagedMatrix(ds, result.design, newRows).map(r => r.slice(1));
+export function ordinalPredictRows(ds, result, newRows, weights = 'equal') {
+  const X = averagedMatrix(ds, result.design, newRows, weights).map(r => r.slice(1));
   const eta = X.map(x => x.reduce((s, v, j) => s + v * result.fit.beta[j], 0));
   return ordinalProbs(result.fit, eta);
 }
 
 /**
+ * How many of the fitted rows fall at each combination of the named
+ * factors' levels, for averaging with weights "proportional" (emmeans's
+ * name): each combination of the factors averaged over is weighted by its
+ * frequency in the data the model used.
+ * @param {import('../data/model.js').Dataset} ds
+ * @param {object} design
+ * @param {string[]} names
+ * @param {Object<string, string>[]} set the combinations, as objects
+ * @returns {number[]}
+ */
+export function comboCounts(ds, design, names, set) {
+  const idx = names.map(n => column(ds, n).index);
+  const key = vals => JSON.stringify(vals);
+  const at = new Map(set.map((o, i) => [key(names.map(n => o[n])), i]));
+  const counts = set.map(() => 0);
+  for (const i of design.keep) {
+    const j = at.get(key(idx.map(c => ds.rows[i][c])));
+    if (j !== undefined) counts[j]++;
+  }
+  return counts;
+}
+
+// The weights of an average over the combinations in `set`: equal, or each
+// combination's share of the fitted rows.
+function averageWeights(ds, design, names, set, weights) {
+  if (weights !== 'proportional') return set.map(() => 1 / set.length);
+  const counts = comboCounts(ds, design, names, set);
+  const total = counts.reduce((t, c) => t + c, 0);
+  return counts.map(c => c / total);
+}
+
+/**
  * The design rows of new predictor values, where a factor's value may be a
  * list of its levels: such a row stands for the average over every
- * combination of the listed levels with equal weights, and its design row is
- * the mean of theirs. A prediction from it is therefore the linear predictor
+ * combination of the listed levels, and its design row is the weighted mean
+ * of theirs, with equal weights or with each combination's share of the
+ * fitted rows. A prediction from it is therefore the linear predictor
  * averaged on the link scale, as a marginal mean is.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} design
  * @param {Object<string, number|string|string[]>[]} rows
+ * @param {'equal'|'proportional'} [weights]
  * @returns {number[][]}
  */
-export function averagedMatrix(ds, design, rows) {
+export function averagedMatrix(ds, design, rows, weights = 'equal') {
   if (!rows.some(row => Object.values(row).some(Array.isArray))) return newDataMatrix(ds, design, rows);
+  const cache = new Map();
   return rows.map(row => {
     const avg = Object.keys(row).filter(k => Array.isArray(row[k]));
     if (!avg.length) return newDataMatrix(ds, design, [row])[0];
-    const set = combos(Object.fromEntries(avg.map(k => [k, row[k]])), avg).map(o => Object.assign({}, row, o));
-    const X = newDataMatrix(ds, design, set);
-    return X[0].map((_, j) => X.reduce((t, x) => t + x[j], 0) / X.length);
+    const levels = Object.fromEntries(avg.map(k => [k, row[k]]));
+    const set = combos(levels, avg);
+    const ck = JSON.stringify(levels);
+    if (!cache.has(ck)) cache.set(ck, averageWeights(ds, design, avg, set, weights));
+    const w = cache.get(ck);
+    const X = newDataMatrix(ds, design, set.map(o => Object.assign({}, row, o)));
+    return X[0].map((_, j) => X.reduce((t, x, r) => t + w[r] * x[j], 0));
   });
 }
 
@@ -154,12 +193,13 @@ export function averagedMatrix(ds, design, rows) {
  * the interval carried through the inverse link.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result fitModel's output
- * @param {Object<string, number|string>[]} newRows
+ * @param {Object<string, number|string|string[]>[]} newRows
  * @param {number} level
+ * @param {'equal'|'proportional'} [weights] how a factor given as a list of levels is averaged
  * @returns {{ eta: Float64Array, se: Float64Array, lo: Float64Array, hi: Float64Array, fit: Float64Array, fitLo: Float64Array, fitHi: Float64Array, df: number, q: number }}
  */
-export function predictRows(ds, result, newRows, level) {
-  const X = averagedMatrix(ds, result.design, newRows);
+export function predictRows(ds, result, newRows, level, weights = 'equal') {
+  const X = averagedMatrix(ds, result.design, newRows, weights);
   const b = result.fit.beta, V = result.fit.vcov;
   const link = LINKS[result.link];
   const df = waldDf(result.fit), q = waldQuantile(level, df);
@@ -216,15 +256,19 @@ function combos(factors, names) {
  * The marginal means of a categorical predictor and their pairwise
  * comparisons, as emmeans and pairs() with Tukey's correction form them:
  * each level's mean of the linear predictor over the other factors' levels
- * with equal weights and the continuous predictors at their means, carried
- * to the response scale; the differences on the link scale, with their Tukey
- * intervals and p-values, and as ratios where the link gives one.
+ * and the continuous predictors at their means, carried to the response
+ * scale; the differences on the link scale, with their Tukey intervals and
+ * p-values, and as ratios where the link gives one. The average over the
+ * other factors' combinations gives each equal weight, or with `weights`
+ * "proportional" its count among the fitted rows (returned as `counts`), as
+ * emmeans's weights argument does.
  * @param {import('../data/model.js').Dataset} ds
  * @param {object} result
  * @param {string} factor
  * @param {number} level
+ * @param {'equal'|'proportional'} [weights]
  */
-export function marginalMeans(ds, result, factor, level) {
+export function marginalMeans(ds, result, factor, level, weights = 'equal') {
   const grid = referenceGrid(ds, result);
   const others = Object.keys(grid.factors).filter(f => f !== factor);
   const levels = grid.factors[factor];
@@ -233,11 +277,14 @@ export function marginalMeans(ds, result, factor, level) {
   const link = LINKS[result.link];
   const df = waldDf(result.fit), k = levels.length;
   const q = waldQuantile(level, df);
+  const set = combos(grid.factors, others);
+  const w = averageWeights(ds, result.design, others, set, weights);
+  const counts = weights === 'proportional' ? comboCounts(ds, result.design, others, set) : null;
   const xbars = levels.map(l => {
-    const rows = combos(grid.factors, others).map(o => Object.assign({}, grid.continuous, o, { [factor]: l }));
+    const rows = set.map(o => Object.assign({}, grid.continuous, o, { [factor]: l }));
     const X = newDataMatrix(ds, result.design, rows);
     const xb = new Float64Array(p);
-    for (const x of X) for (let a = 0; a < p; a++) xb[a] += x[a] / X.length;
+    X.forEach((x, r) => { for (let a = 0; a < p; a++) xb[a] += w[r] * x[a]; });
     return xb;
   });
   const quad = (x, z) => { let v = 0; for (let a = 0; a < p; a++) { let t = 0; for (let c = 0; c < p; c++) t += V[a][c] * z[c]; v += x[a] * t; } return v; };
@@ -262,7 +309,7 @@ export function marginalMeans(ds, result, factor, level) {
       pairs.push(pr);
     }
   }
-  return { factor, levels, means, pairs, df, k, grid };
+  return { factor, levels, means, pairs, df, k, grid, weights, counts };
 }
 
 /**

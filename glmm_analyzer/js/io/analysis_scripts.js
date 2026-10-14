@@ -702,21 +702,33 @@ function newRows(r, L, name, rows) {
 // The design rows of a curve's points. A point whose factor value is a list
 // of levels stands for the average over every combination of those levels:
 // the script writes one row per combination, point by point, and averages
-// each point's block of design rows, as the page does. The points' own table
-// keeps one row per point, without the averaged factors, for the figures.
-function curveRows(r, L, nm, X, rows) {
+// each point's block of design rows, as the page does: with equal weights,
+// or, where `counts` is given, with each combination's count among the
+// fitted rows. The points' own table keeps one row per point, without the
+// averaged factors, for the figures.
+function curveRows(r, L, nm, X, rows, counts) {
   const avg = rows.length ? Object.keys(rows[0]).filter(k => Array.isArray(rows[0][k])) : [];
   const data = L.lang === 'm' ? 'tbl' : 'd', names = L.lang === 'R' ? 'coef_names' : 'names_here';
   if (!avg.length) return [...newRows(r, L, nm, rows), L.assign(X, 'grid_rows(m, ' + data + ', ' + nm + ', ' + names + ')')];
   const set = avg.reduce((acc, f) => acc.flatMap(o => rows[0][f].map(l => Object.assign({}, o, { [f]: l }))), [{}]);
   const K = set.length;
   const out = [...newRows(r, L, nm, rows.map(row => Object.fromEntries(Object.entries(row).filter(([k]) => !avg.includes(k)))))];
-  out.push(L.comment + ascii(avg.join(' and ')) + ' averaged over ' + (avg.length > 1 ? 'their' : 'its') + ' levels with equal weights: each point is written once for each of the ' + K + ' combinations of levels, and the point\'s design row is the mean of those rows.');
+  const who = ascii(avg.join(' and ')) + ' averaged over ' + (avg.length > 1 ? 'their' : 'its') + ' levels';
+  out.push(L.comment + who + (counts ? ', each combination weighted by its count among the fitted rows' : ' with equal weights') + ': each point is written once for each of the ' + K + ' combinations of levels, and the point\'s design row is the ' + (counts ? 'weighted ' : '') + 'mean of those rows.');
   out.push(...newRows(r, L, nm + 'a', rows.flatMap(row => set.map(o => Object.assign({}, row, o)))));
   out.push(L.assign(X + 'f', 'grid_rows(m, ' + data + ', ' + nm + 'a, ' + names + ')'));
-  out.push(L.assign(X, L.lang === 'R' ? 'rowsum(' + X + 'f, rep(seq_len(nrow(' + X + 'f) / ' + K + '), each = ' + K + '), reorder = FALSE) / ' + K
-    : L.lang === 'py' ? X + 'f.reshape(-1, ' + K + ', ' + X + 'f.shape[1]).mean(axis=1)'
-      : 'reshape(mean(reshape(' + X + "f', size(" + X + 'f, 2), ' + K + ', []), 2), size(' + X + "f, 2), [])'"));
+  if (!counts) {
+    out.push(L.assign(X, L.lang === 'R' ? 'rowsum(' + X + 'f, rep(seq_len(nrow(' + X + 'f) / ' + K + '), each = ' + K + '), reorder = FALSE) / ' + K
+      : L.lang === 'py' ? X + 'f.reshape(-1, ' + K + ', ' + X + 'f.shape[1]).mean(axis=1)'
+        : 'reshape(mean(reshape(' + X + "f', size(" + X + 'f, 2), ' + K + ', []), 2), size(' + X + "f, 2), [])'"));
+    return out;
+  }
+  const w = X + 'w';
+  out.push(L.assign(w, L.vec(counts)));
+  out.push(L.assign(w, w + ' / sum(' + w + ')'));
+  out.push(L.assign(X, L.lang === 'R' ? 'rowsum(' + X + 'f * rep(' + w + ', times = nrow(' + X + 'f) / ' + K + '), rep(seq_len(nrow(' + X + 'f) / ' + K + '), each = ' + K + '), reorder = FALSE)'
+    : L.lang === 'py' ? '(' + X + 'f.reshape(-1, ' + K + ', ' + X + 'f.shape[1]) * ' + w + '[None, :, None]).sum(axis=1)'
+      : 'reshape(sum(reshape(' + X + "f', size(" + X + 'f, 2), ' + K + ', []) .* reshape(' + w + ', 1, ' + K + '), 2), size(' + X + "f, 2), [])'"));
   return out;
 }
 
@@ -750,7 +762,7 @@ function predictBody(r, L) {
       const nm = 'nd' + (k + 1);
       if (r.effect.ordinal) {
         if (r.effect.x) {
-          out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows));
+          out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows, r.effect.counts));
           out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
         } else out.push(...zeroEta('eta' + (k + 1), 1));
         out.push(L.assign('P' + (k + 1), 'ordinal_probs(zeta, eta' + (k + 1) + ')'));
@@ -759,7 +771,7 @@ function predictBody(r, L) {
       }
       if (!r.effect.x) out.push(...interceptLines('eta' + (k + 1), 'se' + (k + 1)));
       else {
-        out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows));
+        out.push(...curveRows(r, L, nm, 'X' + (k + 1), s.rows, r.effect.counts));
         out.push(L.assign('eta' + (k + 1), matvec(L, 'X' + (k + 1), 'b')));
         out.push(L.assign('se' + (k + 1), rowSe(L, 'X' + (k + 1), 'V')));
       }
@@ -775,8 +787,8 @@ function predictBody(r, L) {
     const m = r.means;
     out.push(L.sect('Marginal means'));
     if (L.lang === 'R') {
-      out.push(c + 'emmeans forms the reference grid as the page does: a continuous predictor at its mean, the other factors averaged with equal weights.');
-      out.push('em <- emmeans::emmeans(m, ' + L.str(m.factor) + ', level = level, lmer.df = "asymptotic")');
+      out.push(c + 'emmeans forms the reference grid as the page does: a continuous predictor at its mean, the other factors averaged ' + (m.counts ? 'with each combination weighted by its count among the fitted rows (weights = "proportional")' : 'with equal weights') + '.');
+      out.push('em <- emmeans::emmeans(m, ' + L.str(m.factor) + ', level = level, lmer.df = "asymptotic"' + (m.counts ? ', weights = "proportional"' : '') + ')');
       out.push('es <- as.data.frame(summary(em, type = "link"))', 'er <- as.data.frame(summary(em, type = "response"))');
       out.push('ep <- as.data.frame(summary(emmeans::contrast(em, "pairwise", adjust = "tukey"), infer = c(TRUE, TRUE), level = level))');
       m.levels.forEach((l, i) => {
@@ -789,13 +801,15 @@ function predictBody(r, L) {
         out.push(rep(L, r, 'pair ' + k, 'ep[' + p + ', 2]'), rep(L, r, 'pair se ' + k, 'ep[' + p + ', 3]'), rep(L, r, 'pair t ' + k, 'ep[' + p + ', 7]'), rep(L, r, 'pair p ' + k, 'ep[' + p + ', 8]'), rep(L, r, 'pair lower ' + k, 'ep[' + p + ', 5]'), rep(L, r, 'pair upper ' + k, 'ep[' + p + ', 6]'));
       }
     } else {
-      out.push(c + 'The reference grid by hand: each level with the other factors\' levels in every combination (equal weights) and the continuous predictors at their means over the fitted rows.');
+      out.push(c + 'The reference grid by hand: each level with the other factors\' levels in every combination (' + (m.counts ? 'each weighted by its count among the fitted rows' : 'equal weights') + ') and the continuous predictors at their means over the fitted rows.');
+      if (m.counts) { out.push(L.assign('wm', L.vec(m.counts))); out.push(L.assign('wm', 'wm / sum(wm)')); }
       const others = Object.keys(m.grid.factors).filter(f => f !== m.factor);
       const combos = others.reduce((acc, f) => acc.flatMap(o => m.grid.factors[f].map(l => Object.assign({}, o, { [f]: l }))), [{}]);
       m.levels.forEach((l, i) => {
         const rows = combos.map(o => Object.assign({}, m.grid.continuous, o, { [m.factor]: l }));
         out.push(...newRows(r, L, 'g' + (i + 1), rows));
-        out.push(L.assign('xb' + (i + 1), L.lang === 'py' ? 'np.mean(grid_rows(m, d, g' + (i + 1) + ', names_here), axis=0)' : "mean(grid_rows(m, tbl, g" + (i + 1) + ", names_here), 1)'"));
+        out.push(L.assign('xb' + (i + 1), m.counts ? (L.lang === 'py' ? 'wm @ grid_rows(m, d, g' + (i + 1) + ', names_here)' : "(wm(:)' * grid_rows(m, tbl, g" + (i + 1) + ", names_here))'")
+          : L.lang === 'py' ? 'np.mean(grid_rows(m, d, g' + (i + 1) + ', names_here), axis=0)' : "mean(grid_rows(m, tbl, g" + (i + 1) + ", names_here), 1)'"));
       });
       const kk = m.levels.length;
       const dfExpr = Number.isFinite(m.df) ? String(m.df) : (L.lang === 'py' ? 'np.inf' : 'Inf');

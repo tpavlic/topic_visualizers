@@ -13,6 +13,7 @@ import { csvFileName, uniformsFileName, MAX_NUMBERS } from './datafiles.js';
 import { FAMILIES, LINKS, linkOf } from '../stats/families.js';
 import { orderedTerms, termLabel, termVars, polyNames } from '../stats/design.js';
 import { pyName } from './analysis_scripts.js';
+import { comboCounts } from '../stats/inference.js';
 
 export { MAX_NUMBERS } from './datafiles.js';
 
@@ -244,8 +245,9 @@ export function diagnosticsRecipe(o) {
 /**
  * The Predict page's recipe.
  * @param {object} o `{ ds, spec, result, level, title, provenance, effect, means, calc }` where
- *   `effect` is `{ x, by, series: [{ label, rows, pred }] }` (pred from predictRows),
- *   `means` marginalMeans's output or null, and `calc` `{ row, pred }` or null.
+ *   `effect` is `{ x, by, weights, series: [{ label, rows, pred }] }` (pred from predictRows,
+ *   with `weights` the averaging rule it was given), `means` marginalMeans's output or null,
+ *   and `calc` `{ row, pred }` or null.
  */
 export function predictRecipe(o) {
   const r = baseRecipe(Object.assign({ page: 'predict' }, o));
@@ -254,15 +256,26 @@ export function predictRecipe(o) {
   // observations and the calculator is that same mean; the scripts take both
   // from the intercept rather than from new-data rows.
   r.interceptOnly = !!((o.effect && !o.effect.x) || (o.calc && !Object.keys(o.calc.row).length));
+  // A factor the effect plot averages over is carried in its rows as the
+  // list of its levels. Under proportional weights the scripts need each
+  // combination's count among the fitted rows, in the order the combinations
+  // are written: the first averaged factor varying slowest.
+  const effectCounts = eff => {
+    const row = eff && eff.series[0] && eff.series[0].rows[0];
+    const avg = row ? Object.keys(row).filter(k => Array.isArray(row[k])) : [];
+    if (!avg.length || eff.weights !== 'proportional') return null;
+    const set = avg.reduce((acc, f) => acc.flatMap(c => row[f].map(l => Object.assign({}, c, { [f]: l }))), [{}]);
+    return comboCounts(o.ds, o.result.design, avg, set);
+  };
   if (o.effect && o.effect.ordinal) {
     // The ordinal model: a probability per level at each reported point.
     const s = o.effect.series[0];
     const n = s.rows.length;
     const at = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
-    r.effect = { x: o.effect.x, by: null, ordinal: true, levels: o.effect.levels.slice(), series: [{ label: s.label, rows: s.rows, report: at }] };
+    r.effect = { x: o.effect.x, by: null, ordinal: true, levels: o.effect.levels.slice(), counts: effectCounts(o.effect), series: [{ label: s.label, rows: s.rows, report: at }] };
     for (const i of at) o.effect.levels.forEach((l, k) => { e['effect P(' + l + ') point ' + (i + 1)] = s.probs[i][k]; });
   } else if (o.effect) {
-    r.effect = { x: o.effect.x, by: o.effect.by, series: o.effect.series.map(s => ({ label: s.label, rows: s.rows })) };
+    r.effect = { x: o.effect.x, by: o.effect.by, counts: effectCounts(o.effect), series: o.effect.series.map(s => ({ label: s.label, rows: s.rows })) };
     o.effect.series.forEach((s, k) => {
       const n = s.rows.length;
       const at = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
@@ -277,7 +290,7 @@ export function predictRecipe(o) {
   }
   if (o.means) {
     const m = o.means;
-    r.means = { factor: m.factor, levels: m.levels.slice(), df: m.df, k: m.k, grid: { continuous: Object.assign({}, m.grid.continuous), factors: Object.assign({}, m.grid.factors) } };
+    r.means = { factor: m.factor, levels: m.levels.slice(), df: m.df, k: m.k, counts: m.counts ? m.counts.slice() : null, grid: { continuous: Object.assign({}, m.grid.continuous), factors: Object.assign({}, m.grid.factors) } };
     m.means.forEach(x => { e['emm ' + x.level] = x.eta; e['emm se ' + x.level] = x.se; e['emm lower ' + x.level] = x.lo; e['emm upper ' + x.level] = x.hi; e['emm response ' + x.level] = x.fit; });
     m.pairs.forEach(p => { const k = p.a + ' - ' + p.b; e['pair ' + k] = p.diff; e['pair se ' + k] = p.se; e['pair t ' + k] = p.t; e['pair p ' + k] = p.p; e['pair lower ' + k] = p.lo; e['pair upper ' + k] = p.hi; });
   }

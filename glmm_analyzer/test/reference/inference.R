@@ -25,8 +25,8 @@ pred <- function(m, nd) {
   p <- predict(m, newdata = nd, type = "link", se.fit = TRUE)
   list(eta = unname(p$fit), se = unname(p$se.fit), fit = unname(predict(m, newdata = nd, type = "response")))
 }
-emm <- function(m, spec, lvl = 0.95) {
-  e <- emmeans(m, spec, level = lvl)
+emm <- function(m, spec, lvl = 0.95, weights = "equal") {
+  e <- emmeans(m, spec, level = lvl, weights = weights)
   s <- as.data.frame(summary(e, type = "link"))
   r <- as.data.frame(summary(e, type = "response"))
   pr <- as.data.frame(summary(pairs(e), infer = c(TRUE, TRUE), level = lvl))
@@ -51,6 +51,7 @@ out <- list(
   pred_norm = pred(m_norm, nd), pred_bin = pred(m_bin, nd), pred_pois = pred(m_pois, nd), pred_gam = pred(m_gam, nd),
   emm_norm_f = emm(m_norm, "f"), emm_bin_f = emm(m_bin, "f", 0.90), emm_pois_f = emm(m_pois, "f"), emm_gam_f = emm(m_gam, "f"),
   emm_norm_g = emm(m_norm, "g"), emm_poly_f = emm(m_poly, "f"),
+  emm_norm_g_prop = emm(m_norm, "g", weights = "proportional"), emm_bin_f_prop = emm(m_bin, "f", 0.90, weights = "proportional"),
   grid_mean_x = mean(d$x), g = as.character(d$g)
 )
 cat(jsonlite::toJSON(out, digits = 15, auto_unbox = TRUE))

@@ -429,25 +429,25 @@ export function diagnosticsOf(ds, spec, title) {
 }
 
 /** The Predict page's recipe: the effect plot along `x` by `by`, the means of `factor`, and the calculator at `row`. */
-export function predictOf(ds, spec, { x, by = null, factor = null, row = null, intercept = false, hold = {} }, title) {
+export function predictOf(ds, spec, { x, by = null, factor = null, row = null, intercept = false, hold = {}, weights = 'equal' }, title) {
   const result = fitModel(ds, spec);
   let effect = null;
   if (spec.family === 'ordinal') {
     // The ordinal model: a probability per level, along x or from the thresholds alone.
     const levels = ds.columns.find(c => c.name === spec.response).levels;
     const rows = x ? effectGrid(ds, result, x, null, 7, hold).series[0].rows : intercept ? [{}] : null;
-    if (rows) effect = { x: x || null, by: null, ordinal: true, levels, series: [{ label: 'probabilities', by: null, rows, probs: ordinalPredictRows(ds, result, rows) }] };
+    if (rows) effect = { x: x || null, by: null, ordinal: true, levels, weights, series: [{ label: 'probabilities', by: null, rows, probs: ordinalPredictRows(ds, result, rows, weights) }] };
     const calc = row ? { row, ordinal: true, levels, probs: ordinalPredictRows(ds, result, [row])[0] } : null;
     return predictRecipe({ ds, spec, result, level: LEVEL, title: title || 'Predict: ' + result.formula, provenance: { dataset: ds.name, formula: result.formula }, effect, means: null, calc });
   }
   if (x) {
     const g = effectGrid(ds, result, x, by, 7, hold);
-    effect = { x, by, series: g.series.map(s => ({ label: s.label, rows: s.rows, pred: predictRows(ds, result, s.rows, LEVEL) })) };
+    effect = { x, by, weights, series: g.series.map(s => ({ label: s.label, rows: s.rows, pred: predictRows(ds, result, s.rows, LEVEL, weights) })) };
   } else if (intercept) {
     // No predictor: the page's one predicted mean across the observations.
     effect = { x: null, by: null, series: [{ label: 'predicted mean', by: null, rows: [{}], pred: predictRows(ds, result, [{}], LEVEL) }] };
   }
-  const means = factor ? marginalMeans(ds, result, factor, LEVEL) : null;
+  const means = factor ? marginalMeans(ds, result, factor, LEVEL, weights) : null;
   const calc = row ? { row, pred: predictRows(ds, result, [row], LEVEL) } : null;
   return predictRecipe({ ds, spec, result, level: LEVEL, title: title || 'Predict: ' + result.formula, provenance: { dataset: ds.name, formula: result.formula }, effect, means, calc });
 }
@@ -529,6 +529,15 @@ test('a held value reaches the recipe', () => {
   assert.ok(rec.effect.series.every(s => s.rows.every(row => row.week === 'week03')), 'every effect row holds week at week03');
   const first = predictOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing', 'week']), { x: 'load', by: 'staffing' });
   assert.notEqual(first.effect.series[0].rows[0].week, 'week03', 'the default is another level');
+});
+checkRecipe('predict, proportional weights', predictOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing', 'week']), { x: 'load', factor: 'week', weights: 'proportional' }), { smoke: true });
+checkRecipe('predict, ordinal with proportional weights', predictOf(RATING, specOf(RATING, 'rating', 'ordinal', ['wait', 'express']), { x: 'wait', weights: 'proportional' }));
+test('proportional weights differ from equal ones on these data', () => {
+  const p = predictOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing', 'week']), { x: 'load', factor: 'week', weights: 'proportional' });
+  assert.ok(new Set(p.effect.counts).size > 1, 'the averaged combinations are unbalanced: ' + p.effect.counts);
+  assert.ok(new Set(p.means.counts).size > 1, 'the marginal means average over unbalanced levels: ' + p.means.counts);
+  const q = predictOf(RATING, specOf(RATING, 'rating', 'ordinal', ['wait', 'express']), { x: 'wait', weights: 'proportional' });
+  assert.ok(new Set(q.effect.counts).size > 1, 'express is unbalanced: ' + q.effect.counts);
 });
 checkRecipe('predict, ordinal with a held value', predictOf(RATING, specOf(RATING, 'rating', 'ordinal', ['wait', 'express']), { x: 'wait', hold: { express: 'yes' } }));
 checkRecipe('predict, intercept only', predictOf(example('tour-one'), specOf(example('tour-one'), 'deviation', 'normal', []), { x: null, intercept: true, row: {} }), { smoke: true });

@@ -18,6 +18,11 @@ import { predictRecipe, tooBig, capRecipe } from '../io/recipes.js';
 import { esc, num, stat, pValue, intl, lvl } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
 
+// How an average over a factor's levels weights them: equally, or by each
+// combination's share of the fitted rows (emmeans's "proportional").
+const WEIGHT_OPTIONS = '<option value="equal">equal weights</option><option value="proportional">their shares of the data</option>';
+const weightMode = () => (state.getPick(id, 'weights') === 'proportional' ? 'proportional' : 'equal');
+
 /** The page's hash id. */
 export const id = 'predict';
 /** The page's title. */
@@ -57,11 +62,13 @@ export function render(root) {
       '</div>' +
       '<p class="muted-line" id="pr-by-note" hidden></p>' +
       '<div class="ctrl-row" id="pr-hold" hidden></div>' +
+      '<div class="ctrl-row" id="pr-avg-row" hidden><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-weights-e">Average levels with</label><select id="pr-weights-e">' + WEIGHT_OPTIONS + '</select></span></div>' +
       '<div id="pr-effect"></div>' +
     '</div>' +
     '<div data-section="means" class="sec">' +
       '<div class="sec-hd">Marginal means</div>' +
-      '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-factor">Predictor</label><select id="pr-factor"></select></span></div>' +
+      '<div class="ctrl-row"><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-factor">Predictor</label><select id="pr-factor"></select></span>' +
+        '<span class="ctrl-pair" id="pr-weights-m-pair" hidden><label class="ctrl-lbl" for="pr-weights-m">Average levels with</label><select id="pr-weights-m">' + WEIGHT_OPTIONS + '</select></span></div>' +
       '<div id="pr-means"></div>' +
     '</div>' +
     '<div data-section="calculator" class="sec">' +
@@ -93,6 +100,20 @@ export function render(root) {
   els.groups = root.querySelector('#pr-groups');
   els.groups.addEventListener('change', () => { state.setPick(id, 'groups', els.groups.checked); drawEffect(); });
   els.factor.addEventListener('change', () => { state.setPick(id, 'factor', els.factor.value); drawMeans(); });
+  // One averaging rule serves the effect plot and the marginal means, and so
+  // its two menus move together.
+  els.avgRow = root.querySelector('#pr-avg-row');
+  els.weightsE = root.querySelector('#pr-weights-e');
+  els.weightsM = root.querySelector('#pr-weights-m');
+  els.weightsMPair = root.querySelector('#pr-weights-m-pair');
+  for (const sel of [els.weightsE, els.weightsM]) {
+    sel.addEventListener('change', () => {
+      state.setPick(id, 'weights', sel.value);
+      els.weightsE.value = els.weightsM.value = sel.value;
+      drawEffect();
+      drawMeans();
+    });
+  }
   els.calcInputs.addEventListener('change', drawCalc);
   els.calcInputs.addEventListener('input', drawCalc);
   installExportRow(root, id);
@@ -163,7 +184,8 @@ function buildHold() {
   const cf = currentFit();
   const held = cf ? heldPredictors() : [];
   els.hold.hidden = !held.length || !els.x.value;
-  if (els.hold.hidden) { els.hold.innerHTML = ''; return; }
+  els.weightsE.value = weightMode();
+  if (els.hold.hidden) { els.hold.innerHTML = ''; els.avgRow.hidden = true; return; }
   const { ds, result } = cf;
   const grid = referenceGrid(ds, result);
   const saved = state.getPick(id, 'hold') || {};
@@ -184,6 +206,7 @@ function buildHold() {
       '<option value=""' + (set ? '' : ' selected') + '>(averaged over levels)</option>' +
       levels.map(l => '<option value="' + esc(l) + '"' + (l === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></span>';
   });
+  els.avgRow.hidden = !held.some(c => c.type !== 'continuous' && !grid.factors[c.name].includes(saved[c.name]));
   els.hold.innerHTML = '<span class="ctrl-lbl">Values to hold other predictors at:</span>' + ctrls.join('') +
     (any ? '<button type="button" class="btn-run2" id="pr-hold-reset">Reset to averages</button>' : '');
 }
@@ -235,9 +258,10 @@ function heldText(grid) {
     return esc(k) + ' = ' + esc(v);
   });
   if (!parts.length) return '';
-  const averaged = Object.values(grid.held).some(Array.isArray);
-  return 'Other predictors: ' + parts.join(', ') + ', as set in the row above the plot. ' +
-    (averaged ? 'Each average gives the factor’s levels equal weight and is taken on the link scale before the inverse link, as for the marginal means. ' : '');
+  const averaged = Object.values(grid.held).filter(Array.isArray).length;
+  const unit = averaged > 1 ? 'combination of levels' : 'level';
+  return 'Other predictors: ' + parts.join(', ') + ', as set above the plot. ' +
+    (averaged ? (weightMode() === 'proportional' ? 'The average weights each ' + unit + ' by its share of the fitted rows' : 'The average gives each ' + unit + ' equal weight') + ' and is taken on the link scale before the inverse link, as for the marginal means. ' : '');
 }
 
 function compute() {
@@ -331,8 +355,8 @@ function drawOrdinalEffect(ds, result) {
   const fig = makeFigure(box, { height: 320, xLabel: x, yLabel: 'probability', title: 'Predicted probability of each level against ' + x });
   exportButtons(box, fig, ds.name + ' ordinal effect of ' + x);
   const s = grid.series[0];
-  const probs = ordinalPredict(ds, result, s.rows);
-  last.effect = { x, by: null, ordinal: true, levels: levels.slice(), held: grid.held, series: [{ label: 'probabilities', by: null, rows: s.rows, probs }] };
+  const probs = ordinalPredict(ds, result, s.rows, weightMode());
+  last.effect = { x, by: null, ordinal: true, levels: levels.slice(), held: grid.held, weights: weightMode(), series: [{ label: 'probabilities', by: null, rows: s.rows, probs }] };
   fig.render(f => {
     const xs = xc.col.type === 'continuous' ? s.xs : null;
     if (xs) f.x([Math.min(...xs), Math.max(...xs)], { pad: 0.03, nice: true });
@@ -445,7 +469,7 @@ function drawEffect() {
   const xs = keep.map(i => ds.rows[i][xc.index]);
   const byc = by ? column(ds, by) : null;
   const legendItems = [];
-  const curves = grid.series.map(s => Object.assign({}, s, { pred: predictRows(ds, result, s.rows, level) }));
+  const curves = grid.series.map(s => Object.assign({}, s, { pred: predictRows(ds, result, s.rows, level, weightMode()) }));
   fig.render(f => {
     const allY = [];
     for (const c of curves) { for (const v of c.pred.fitLo) allY.push(v); for (const v of c.pred.fitHi) allY.push(v); }
@@ -519,7 +543,7 @@ function drawEffect() {
     (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
   els.effect.appendChild(p);
   figs.push(fig);
-  last.effect = { x, by, held: grid.held, series: curves.map(c => ({ label: c.label, by: c.by, rows: c.rows, pred: c.pred })) };
+  last.effect = { x, by, held: grid.held, weights: weightMode(), series: curves.map(c => ({ label: c.label, by: c.by, rows: c.rows, pred: c.pred })) };
   registerResult();
 }
 
@@ -527,11 +551,12 @@ function drawMeans() {
   const cf = currentFit();
   els.means.innerHTML = '';
   last.means = null;
+  els.weightsMPair.hidden = true;
   if (!cf || !els.factor.value) { registerResult(); return; }
   const { ds, result } = cf;
   const level = state.settings.level;
   let m;
-  try { m = marginalMeans(ds, result, els.factor.value, level); } catch (err) { els.means.appendChild(notice('warn', esc(err.message))); registerResult(); return; }
+  try { m = marginalMeans(ds, result, els.factor.value, level, weightMode()); } catch (err) { els.means.appendChild(notice('warn', esc(err.message))); registerResult(); return; }
   const link = LINKS[result.link];
   const useT = Number.isFinite(m.df);
   const yLabel = result.event ? 'probability of ' + result.event : state.spec.response;
@@ -553,9 +578,11 @@ function drawMeans() {
   figs.push(fig);
   const held = Object.entries(m.grid.continuous).map(([k, v]) => esc(k) + ' = ' + num(v, 4)).join(', ');
   const others = Object.keys(m.grid.factors).filter(k => k !== m.factor);
+  els.weightsMPair.hidden = !others.length;
+  els.weightsM.value = weightMode();
   const p = document.createElement('p');
   p.className = 'muted-line';
-  p.innerHTML = 'Each mean is the model’s prediction at the level' + (held ? ', with ' + held + ' (the means over the fitted rows)' : '') + (others.length ? ', averaged over the levels of ' + esc(others.join(', ')) + ' with equal weights' : '') + ', on the link scale and then carried to the response scale. ' +
+  p.innerHTML = 'Each mean is the model’s prediction at the level' + (held ? ', with ' + held + ' (the means over the fitted rows)' : '') + (others.length ? ', averaged over the levels of ' + esc(others.join(', ')) + (m.weights === 'proportional' ? ', each ' + (others.length > 1 ? 'combination of levels' : 'level') + ' weighted by its share of the fitted rows' : ' with equal weights') : '') + ', on the link scale and then carried to the response scale. ' +
     'The pairwise p-values and intervals use the studentized range over ' + intl(m.k) + ' means' + (useT ? ' on ' + intl(m.df) + ' degrees of freedom' : ', with no finite degrees of freedom' + (result.fit.mixed ? ', as a mixed model’s Wald tests use the normal reference' : result.fit.family === 'binomial' || result.fit.family === 'poisson' ? ' because the dispersion is fixed by the family' : ', as the fitter’s Wald tests are large-sample tests')) + '.';
   els.means.appendChild(p);
   last.means = m;
@@ -577,7 +604,7 @@ function registerResult() {
   if (last.effect && last.effect.ordinal) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x : 'the thresholds alone';
-    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held);
+    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held, e.weights);
     const headers = (e.x ? [e.x] : []).concat(e.levels.map(l => 'P(' + l + ')'));
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(s.probs[i])));
@@ -585,7 +612,7 @@ function registerResult() {
   } else if (last.effect) {
     const e = last.effect;
     provenance['effect plot'] = e.x ? e.x + (e.by ? ' by ' + e.by : '') : 'the intercept alone';
-    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held);
+    if (e.held && Object.keys(e.held).length) provenance['other predictors'] = heldProvenance(e.held, e.weights);
     const headers = (e.x ? [e.x] : []).concat(e.by ? [e.by] : []).concat(['eta', 'std_error', 'fit', 'fit_lower', 'fit_upper']);
     const rows = [];
     for (const s of e.series) s.rows.forEach((row, i) => rows.push((e.x ? [row[e.x]] : []).concat(e.by ? [s.by != null ? s.by : s.label] : []).concat([s.pred.eta[i], s.pred.se[i], s.pred.fit[i], s.pred.fitLo[i], s.pred.fitHi[i]])));
@@ -594,6 +621,7 @@ function registerResult() {
   if (last.means) {
     const m = last.means, useT = Number.isFinite(m.df);
     provenance['marginal means of'] = m.factor;
+    if (Object.keys(m.grid.factors).length > 1) provenance['other factors averaged with'] = WEIGHT_WORDS[m.weights];
     provenance.adjustment = 'Tukey';
     tables.push({ name: 'Marginal means', headers: [m.factor, 'mean_link', 'std_error', 'ci_lower', 'ci_upper', 'mean_response', 'response_lower', 'response_upper'], rows: m.means.map(r => [r.level, r.eta, r.se, r.lo, r.hi, r.fit, r.fitLo, r.fitHi]) },
       { name: 'Pairwise differences', headers: ['pair', 'difference', 'std_error', useT ? 't' : 'z', 'p_tukey', 'ci_lower', 'ci_upper'].concat(link.backName ? ['ratio', 'ratio_lower', 'ratio_upper'] : []),
@@ -616,8 +644,10 @@ function registerResult() {
   state.setResult(id, { title, provenance, tables, regen });
 }
 
-function heldProvenance(held) {
-  return Object.entries(held).map(([k, v]) => Array.isArray(v) ? k + ' averaged over its levels' : k + ' = ' + (typeof v === 'number' ? Number(v.toPrecision(6)) : v)).join(', ');
+const WEIGHT_WORDS = { equal: 'equal weights', proportional: 'their shares of the fitted rows' };
+
+function heldProvenance(held, weights) {
+  return Object.entries(held).map(([k, v]) => Array.isArray(v) ? k + ' averaged over its levels with ' + WEIGHT_WORDS[weights || 'equal'] : k + ' = ' + (typeof v === 'number' ? Number(v.toPrecision(6)) : v)).join(', ');
 }
 
 function buildCalcInputs(ds, result, preds) {
