@@ -258,6 +258,29 @@ function linePathD(px, py) {
 }
 function estTextWidth(s, size) { return String(s).length * size * 0.56; }
 
+/**
+ * A figure title broken at spaces into lines no wider than `maxW` at font
+ * size `size`. `width` measures a string; without it, the width is estimated
+ * at 0.5 em per character. A word wider than a line keeps a line of its own.
+ * @param {string} s
+ * @param {number} size
+ * @param {number} maxW
+ * @param {(t: string) => number} [width]
+ * @returns {string[]}
+ */
+export function wrapTitle(s, size, maxW, width) {
+  const fits = t => (width ? width(t) : t.length * size * 0.5) <= maxW;
+  const lines = [];
+  let cur = '';
+  for (const w of String(s).split(/\s+/).filter(Boolean)) {
+    const next = cur ? cur + ' ' + w : w;
+    if (!cur || fits(next)) cur = next;
+    else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
 // ── Figure registry and width watching ────────────────────────────────────
 
 const FIGS = new Set();
@@ -366,6 +389,22 @@ function targetWidth(fig, cw) { return Math.max(200, Math.min(fig.opts.width, Ma
  *   draw?: (fig: Figure) => void }} [opts]
  * @returns {Figure}
  */
+// The line height of a wrapped figure title.
+const TITLE_LINE = 16;
+
+// The rendered width of a title in the page's own font, from a canvas, or
+// null where there is no canvas to measure with.
+let titleCtx;
+function titleWidth(svg) {
+  if (titleCtx === undefined) {
+    try { titleCtx = document.createElement('canvas').getContext('2d'); } catch (e) { titleCtx = null; }
+  }
+  if (!titleCtx) return null;
+  const svgFont = getComputedStyle(svg).fontFamily || 'sans-serif';
+  titleCtx.font = '600 13px ' + svgFont;
+  return t => titleCtx.measureText(t).width;
+}
+
 export function makeFigure(container, opts = {}) {
   ensureWatch();
   hookReadoutDismiss();
@@ -402,6 +441,10 @@ export function makeFigure(container, opts = {}) {
     fig.autoHeight = hOpt === 'auto';
     fig.h = fig.autoHeight ? 200 : hOpt;
     fig.m = Object.assign({}, o.margin, fig.narrow && o.narrowMargin ? o.narrowMargin : {});
+    // A title wider than the figure wraps, and the top margin grows by a
+    // line for each line it adds.
+    fig.titleLines = o.title ? wrapTitle(o.title, 13, Math.max(60, fig.w - fig.m.l - 6), titleWidth(svg) || undefined) : [];
+    if (fig.titleLines.length > 1) fig.m.t += TITLE_LINE * (fig.titleLines.length - 1);
     layout();
   };
   function layout() {
@@ -486,7 +529,7 @@ export function makeFigure(container, opts = {}) {
       const lbl = ao.yLabel !== undefined ? ao.yLabel : o.yLabel;
       if (lbl) text(axes, 0, 0, lbl, { 'text-anchor': 'middle', 'font-size': 12, fill: cText, 'font-weight': 500, transform: 'translate(' + (14 - fig.m.l) + ',' + r1(fig.ih / 2) + ') rotate(-90)' });
     }
-    if (o.title) text(axes, 0, -fig.m.t + 17, o.title, { 'font-size': 13, 'font-weight': 600, fill: cText });
+    if (o.title) (fig.titleLines || [o.title]).forEach((line, i) => text(axes, 0, -fig.m.t + 17 + TITLE_LINE * i, line, { 'font-size': 13, 'font-weight': 600, fill: cText }));
   };
 
   fig.clear = () => {
@@ -1438,7 +1481,7 @@ export function batchPlot(fig, d) {
  * A legend in the symbol-first grid (.leg): each item a swatch drawn the
  * way the plot draws that mark, followed by its label.
  * @param {HTMLElement} container the element to fill; it gains the .leg class
- * @param {{ swatch: 'line'|'dash'|'dot'|'hollow'|'bar'|'interval'|'flagged'|'thin'|'diamond'|'shade'|'dotted', color: string, label: string }[]} items
+ * @param {{ swatch: 'line'|'dash'|'dot'|'hollow'|'bar'|'interval'|'flagged'|'thin'|'diamond'|'shade'|'dotted', color: string, label: string, dash?: string }[]} items
  *   `color` is a token name ('--est') or a CSS color; `label` is HTML. `shade` is
  *   the translucent band that marks an excluded stretch, with the muted line
  *   drawn inside it; `dotted` is a thin dotted line.
@@ -1446,15 +1489,15 @@ export function batchPlot(fig, d) {
  */
 export function legend(container, items) {
   container.classList.add('leg');
-  container.innerHTML = items.map(it => '<span>' + swatchSvg(it.swatch, col(it.color, '--est')) + '<span>' + it.label + '</span></span>').join('');
+  container.innerHTML = items.map(it => '<span>' + swatchSvg(it.swatch, col(it.color, '--est'), it.dash) + '<span>' + it.label + '</span></span>').join('');
   return container;
 }
 
-function swatchSvg(kind, c) {
+function swatchSvg(kind, c, dash) {
   const card = tok('--card') || '#fff';
   let inner;
   switch (kind) {
-    case 'dash': inner = '<line x1="1" y1="6" x2="23" y2="6" stroke="' + c + '" stroke-width="2" stroke-dasharray="5,3"/>'; break;
+    case 'dash': inner = '<line x1="1" y1="6" x2="23" y2="6" stroke="' + c + '" stroke-width="2.2" stroke-dasharray="' + (dash || '5,3') + '"/>'; break;
     case 'shade': inner = '<rect x="1" y="0" width="22" height="12" fill="' + c + '" fill-opacity="' + SHADE_OPACITY + '"/><line x1="1" y1="6" x2="23" y2="6" stroke="' + c + '" stroke-width="1.2" stroke-opacity=".8"/>'; break;
     case 'dotted': inner = '<line x1="1" y1="6" x2="23" y2="6" stroke="' + c + '" stroke-width="1.6" stroke-dasharray="1.5,3"/>'; break;
     case 'thin': inner = '<line x1="1" y1="6" x2="23" y2="6" stroke="' + c + '" stroke-width="1.2"/>'; break;

@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  niceStep, niceTicks, niceDomain, padDomain, extent, fmtTick, linearScale, decimateMinMax
+  niceStep, niceTicks, niceDomain, padDomain, extent, fmtTick, linearScale, decimateMinMax, wrapTitle
 } from '../js/ui/plots.js';
 
 const close = (a, b, tol = 1e-12) => assert.ok(Math.abs(a - b) <= tol, `${a} vs ${b}`);
@@ -123,4 +123,14 @@ test('decimateMinMax keeps each bucket\'s extremes in index order', () => {
   for (let i = 1; i < d.x.length; i++) assert.ok(d.x[i] > d.x[i - 1]);
   assert.equal(d.x[0], 0);
   assert.equal(d.x[d.x.length - 1], n - 1);
+});
+
+test('wrapTitle breaks at spaces to fit the width', () => {
+  assert.deepEqual(wrapTitle('Predicted y against x', 13, 1000), ['Predicted y against x'], 'a title that fits stays one line');
+  const lines = wrapTitle('Predicted probability of each level against wait', 13, 200);
+  assert.ok(lines.length > 1, 'a long title wraps');
+  assert.equal(lines.join(' '), 'Predicted probability of each level against wait', 'no word is lost or split');
+  for (const l of lines) assert.ok(l.length * 13 * 0.5 <= 200 || !l.includes(' '), 'each line fits unless it is one word');
+  assert.deepEqual(wrapTitle('a b c', 13, 12, t => t.length * 4), ['a b', 'c'], 'a measuring function sets the widths');
+  assert.deepEqual(wrapTitle('Supercalifragilistic word', 13, 40), ['Supercalifragilistic', 'word'], 'a word wider than the line keeps a line of its own');
 });
