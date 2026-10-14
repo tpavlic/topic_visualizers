@@ -13,7 +13,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GEN = path.join(ROOT, 'data', 'generate_examples.mjs');
 const { EXAMPLES } = await import(pathToFileURL(path.join(ROOT, 'js', 'data', 'examples.js')).href);
 const { sniff, buildTable } = await import(pathToFileURL(path.join(ROOT, 'js', 'io', 'parse.js')).href);
-const { support, responseColumn, valuesOf } = await import(pathToFileURL(path.join(ROOT, 'js', 'data', 'model.js')).href);
+const { support, responseColumn, valuesOf, column, outcomeColumns, defaultTerms } = await import(pathToFileURL(path.join(ROOT, 'js', 'data', 'model.js')).href);
 const { fitModel } = await import(pathToFileURL(path.join(ROOT, 'js', 'stats', 'fit.js')).href);
 const { marginalMeans, waldP, waldDf, randomEffectTest } = await import(pathToFileURL(path.join(ROOT, 'js', 'stats', 'inference.js')).href);
 const { onewayAnova } = await import(pathToFileURL(path.join(ROOT, 'js', 'stats', 'classical.js')).href);
@@ -52,6 +52,7 @@ test('the examples show the supports their descriptions name', () => {
     return support(r, valuesOf(dataset, r.name));
   };
   assert.equal(sup('service-speed'), 'positive');
+  assert.equal(sup('muffin-oven'), 'positive');
   assert.equal(sup('on-time'), 'binary');
   assert.equal(sup('cycle-time'), 'positive');
   assert.equal(sup('balks'), 'count');
@@ -121,4 +122,40 @@ test('the service-speed example\'s default gamma mixed fit converges', () => {
   const r = fitModel(ds, { response: 'time_in_system', family: 'gamma', link: 'log', terms: ['mean_service'], group: 'replication', nested: null, slope: null, olre: false, reml: false });
   assert.deepEqual(r.flags, []);
   assert.ok(r.fit.converged);
+});
+
+// The oven example's four outputs: each can be modeled, under the family its values call for, and
+// none is ever a term of another. The lesson it is built for is that the best loading threshold
+// rises as the oven slows: greedy loading wins at the shortest bake time and loses at the longest.
+test('the muffin-oven example carries outcomes and shows the threshold moving with the bake time', () => {
+  const ex = EXAMPLES.find(e => e.id === 'muffin-oven');
+  const ds = buildTable(sniff(ex.text, { name: ex.mapping.name }), ex.mapping).dataset;
+  assert.equal(ds.rows.length, 280);
+  const outputs = ['avg_time_in_system', 'utilization', 'max_waiting', 'unfinished'];
+  assert.deepEqual(outcomeColumns(ds).map(c => c.name), outputs);
+  // The family the Model page starts each output on, from its support.
+  const FAMILY = { positive: 'gamma', unit: 'beta', count: 'poisson' };
+  const supports = [];
+  for (const y of outputs) {
+    assert.deepEqual(defaultTerms(ds, y), ['bake_time', 'threshold'], y);
+    const sup = support(column(ds, y).col, valuesOf(ds, y));
+    supports.push(sup);
+    const family = FAMILY[sup];
+    // The page's default model for each output fits without a flag.
+    const r = fitModel(ds, { response: y, family, link: null, terms: defaultTerms(ds, y), group: 'replication', nested: null, slope: null, olre: false, reml: false });
+    assert.deepEqual(r.flags, [], y);
+  }
+  assert.deepEqual(supports, ['positive', 'unit', 'count', 'count']);
+
+  // In the data: threshold 1 against 20, averaged over the ten demand streams.
+  const meanAt = (bake, th) => { const v = ds.rows.filter(r => r[1] === bake && r[2] === th).map(r => r[3]); return v.reduce((a, b) => a + b, 0) / v.length; };
+  assert.ok(meanAt(2, 1) < meanAt(2, 20));
+  assert.ok(meanAt(5, 1) > meanAt(5, 20));
+  // In the model: a curve in the threshold whose minimum moves up with the bake time.
+  const full = fitModel(ds, { response: 'avg_time_in_system', family: 'gamma', link: 'log', terms: ['threshold', { name: 'threshold', degree: 2 }, 'bake_time', { of: ['threshold', 'bake_time'] }], group: 'replication', nested: null, slope: null, olre: false, reml: false });
+  assert.deepEqual(full.flags, []);
+  const b = Object.fromEntries(full.names.map((n, i) => [n, full.fit.beta[i]]));
+  const best = bake => -(b.threshold + b['threshold:bake_time'] * bake) / (2 * b['I(threshold^2)']);
+  assert.ok(b['I(threshold^2)'] > 0 && b['threshold:bake_time'] < 0);
+  assert.ok(best(2) < 1 && best(5) > 15, 'best thresholds ' + [2, 3, 4, 5].map(best).join(', '));
 });

@@ -487,6 +487,7 @@ const await0 = (x, d) => chi2Cdf(x, d);
 
 const ON_TIME = example('on-time'), CYCLE = example('cycle-time'), BALKS = example('balks'), UTIL = example('utilization'), COLONY = example('colony-recruits'), RATING = example('rating');
 const PAIRED = example('tour-paired');
+const OVEN = example('muffin-oven');
 
 // The Model page on every family.
 checkRecipe('model, binomial logit with an interaction', modelOf(ON_TIME, specOf(ON_TIME, 'on_time', 'binomial', ['queue', 'policy', { of: ['queue', 'policy'] }])), { smoke: true });
@@ -496,6 +497,8 @@ checkRecipe('model, Poisson log', modelOf(BALKS, specOf(BALKS, 'balks', 'poisson
 checkRecipe('model, negative binomial', modelOf(BALKS, specOf(BALKS, 'balks', 'negbin', ['load', 'staffing'])), { smoke: true });
 checkRecipe('model, beta logit', modelOf(UTIL, specOf(UTIL, 'utilization', 'beta', ['arrival_rate', 'day_type'])), { smoke: true });
 checkRecipe('model, ordinal', modelOf(RATING, specOf(RATING, 'rating', 'ordinal', ['wait', 'express'])), { smoke: true });
+// An outcome column modeled as the response, in a table whose other outputs ride along unused.
+checkRecipe('model, an outcome as the response', modelOf(OVEN, specOf(OVEN, 'max_waiting', 'poisson', ['bake_time', 'threshold'])));
 
 // CSV mode: the same scripts past the numbers cap, reading the data files.
 checkCsvMode('csv model, Poisson', () => modelOf(BALKS, specOf(BALKS, 'balks', 'poisson', ['load', 'staffing'])), BALKS, { smoke: true });

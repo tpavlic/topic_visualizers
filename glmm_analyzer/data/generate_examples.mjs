@@ -4,8 +4,11 @@
 // reproducible: re-running this script writes the same bytes. The queueing
 // examples simulate a single-server queue with exponential interarrival and
 // service times, started empty, with waiting times from the Lindley
-// recursion W[n+1] = max(0, W[n] + S[n] - A[n+1]). The colony example draws
-// from a Poisson model with a random intercept and slope per colony.
+// recursion W[n+1] = max(0, W[n] + S[n] - A[n+1]). The oven example
+// simulates a batch oven fed by calls of 2 to 12 muffins, one a minute, which
+// starts baking whenever it is empty and enough muffins wait. The colony
+// example draws from a Poisson model with a random intercept and slope per
+// colony.
 //
 // Randomness: mulberry32 streams, with exponential draws by inverse
 // transform, normal draws by Box-Muller, and Poisson draws by inversion.
@@ -15,6 +18,11 @@
 //                       service time (0.9, 0.8, 0.7, 0.6, 0.5 minutes), with the replication's
 //                       random-number seed shared by all five designs as the group; 10
 //                       replications, each the mean of 200 customers after 100 of warm-up
+//   muffin_oven.csv     four outputs of a 30-minute batch-oven run (average time in system,
+//                       utilization, most muffins waiting, muffins unfinished) against the
+//                       loading threshold (1, 5, ..., 30) and the bake time (2 to 5 minutes),
+//                       with the demand stream shared by all 28 settings as the group;
+//                       10 replications
 //   on_time.csv         served within 2 minutes, per customer: a binary response against
 //                       the number in queue at arrival and the policy (A, mean service 0.8;
 //                       B, mean service 0.7), with the replication's random-number seed shared
@@ -45,6 +53,7 @@ const ROOT = path.resolve(HERE, '..');
 
 const SEEDS = {
   serviceSpeed: 1084000,
+  oven: 1190000,
   onTime: 310000,
   cycle: 420000,
   balks: 530000,
@@ -129,6 +138,69 @@ function serviceSpeedCsv() {
     }
   }
   return csv(['time_in_system', 'mean_service', 'replication'], rows);
+}
+
+/**
+ * One run of a batch oven: a call for `sizes[k]` muffins arrives at minute k,
+ * from 0 until the end, and the oven, which holds `cap` muffins and bakes for
+ * `bake` minutes, is loaded oldest first (a call split at the capacity)
+ * whenever it is empty and at least `threshold` muffins wait. At one time an
+ * arrival is handled before a departure. Returns the average time in system
+ * of the muffins that left, the time average of the fraction of the oven in
+ * use, the most muffins ever waiting, and the muffins still in the system at
+ * the end.
+ */
+function ovenRun(threshold, sizes, bake, { cap = 30, end = 30 } = {}) {
+  let clk = 0, waiting = 0, baking = 0, used = 0, tisSum = 0, done = 0, usedArea = 0, maxWaiting = 0, next = 0;
+  // Every call still in the system, oldest first; those baking lead.
+  const line = [];
+  const events = [{ kind: 1, t: 0 }, { kind: -1, t: end }];
+  while (events.length) {
+    events.sort((a, b) => a.t - b.t || b.kind - a.kind);
+    if (events[0].t > clk || events[0].kind === -1) { usedArea += used * (events[0].t - clk); maxWaiting = Math.max(maxWaiting, waiting); }
+    const e = events.shift();
+    clk = e.t;
+    if (e.kind === -1) break;
+    if (e.kind === 1) {
+      line.push({ arrival: clk, size: sizes[next] });
+      waiting += sizes[next++];
+      if (next < sizes.length) events.push({ kind: 1, t: clk + 1 });
+    } else {
+      const c = line.shift();
+      tisSum += (clk - c.arrival) * c.size; done += c.size;
+      baking -= c.size; used = baking / cap;
+    }
+    if (baking === 0 && waiting >= threshold) {
+      for (let k = 0; k < line.length; k++) {
+        if (baking + line[k].size > cap) {
+          const part = { arrival: line[k].arrival, size: cap - baking };
+          line[k].size -= part.size;
+          line.splice(k, 0, part);
+        }
+        events.push({ kind: 0, t: clk + bake });
+        baking += line[k].size; waiting -= line[k].size; used = baking / cap;
+        if (baking === cap) break;
+      }
+    }
+  }
+  return { tis: tisSum / done, utilization: usedArea / clk, maxWaiting, unfinished: waiting + baking };
+}
+
+/** muffin_oven.csv */
+function ovenCsv() {
+  const rows = [];
+  for (let rep = 1; rep <= 10; rep++) {
+    // One demand stream per replication, run under every setting: common random numbers.
+    const u = mulberry32(SEEDS.oven + rep);
+    const sizes = Array.from({ length: 31 }, () => 2 + Math.floor(u() * 11));
+    for (const bake of [2, 3, 4, 5]) {
+      for (const threshold of [1, 5, 10, 15, 20, 25, 30]) {
+        const r = ovenRun(threshold, sizes, bake);
+        rows.push(['r' + String(rep).padStart(2, '0'), bake, threshold, fmt(r.tis), fmt(r.utilization), r.maxWaiting, r.unfinished]);
+      }
+    }
+  }
+  return csv(['replication', 'bake_time', 'threshold', 'avg_time_in_system', 'utilization', 'max_waiting', 'unfinished'], rows);
 }
 
 /** on_time.csv */
@@ -304,6 +376,14 @@ const EXAMPLES = [
     description: 'The mean time in system of two hundred customers, after a warm-up of one hundred, in a single-server queue with exponential interarrival times of mean 1.0 minute, under five designs that differ only in the mean service time: 0.9, 0.8, 0.7, 0.6, and 0.5 minutes. Each design was run for ten replications, and replication r of every design used the same random-number seed, and so within a replication the five designs see the same arrivals and the same service draws, scaled to their own means. These are common random numbers, and the replication is a grouping factor shared by all five designs.',
     build: serviceSpeedCsv,
     mapping: { name: 'Service speed', response: 'time_in_system', columns: { time_in_system: { role: 'response', type: 'continuous' }, mean_service: { role: 'predictor', type: 'categorical' }, replication: { role: 'group', type: 'categorical' } } }
+  },
+  {
+    id: 'muffin-oven',
+    title: 'Muffin oven: a loading threshold and a bake time, four outputs',
+    file: 'muffin_oven.csv',
+    description: 'Calls for 2 to 12 muffins arrive once a minute for thirty minutes at an oven that holds 30 muffins and bakes for a fixed time. The oven is loaded, oldest muffins first, whenever it is empty and at least a threshold number of muffins wait: a threshold of 1 loads greedily, and one near 30 waits for a full oven. Seven thresholds (1, 5, 10, 15, 20, 25, and 30) were run at four bake times (2, 3, 4, and 5 minutes) against each of ten random demand streams, and every run of a replication used the same stream, and so the replication is a grouping factor shared by all twenty-eight settings. Each run reports four outputs: the average time in system of the muffins that finished, the oven’s utilization (the share of its 30 places in use, averaged over the half hour), the most muffins ever waiting, and the muffins unfinished at the end. The first is the response, and the other three are outcomes, which the Model page offers as the response but never as predictors.',
+    build: ovenCsv,
+    mapping: { name: 'Muffin oven', response: 'avg_time_in_system', columns: { replication: { role: 'group', type: 'categorical' }, bake_time: { role: 'predictor', type: 'continuous' }, threshold: { role: 'predictor', type: 'continuous' }, avg_time_in_system: { role: 'response', type: 'continuous' }, utilization: { role: 'outcome', type: 'continuous' }, max_waiting: { role: 'outcome', type: 'continuous' }, unfinished: { role: 'outcome', type: 'continuous' } } }
   },
   {
     id: 'on-time',
