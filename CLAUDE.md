@@ -497,7 +497,7 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   thresholds), ④ Diagnostics (randomized quantile residuals
   against the normal, the fitted values, and each predictor, the Pearson dispersion test, Cook's
   distances, and the predicted random effects), ⑤ Predict (an effect plot with its band and the
-  data, optional per-group lines, marginal means with Tukey-adjusted pairs, and a calculator; Separate
+  data, optional per-group lines (the "show the data" and "show each group" boxes sit at the left of the figure's own toolbar, before the export buttons, which `exportButtons` groups in a `.fig-btns` span so they wrap as one), marginal means with Tukey-adjusted pairs, and a calculator; Separate
   lines by offers only the predictors other than the one on the x axis and is hidden with one predictor
   and for the ordinal family; a factor with more levels than the six line styles (`MAX_LINES`) is
   listed in Separate lines by but disabled, with a line under the controls saying why; a "Values to hold other

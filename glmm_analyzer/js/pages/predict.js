@@ -57,9 +57,13 @@ export function render(root) {
       '<div class="ctrl-row">' +
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-x">Predictor on the x axis</label><select id="pr-x"></select></span>' +
         '<span class="ctrl-pair"><label class="ctrl-lbl" for="pr-by">Separate lines by</label><select id="pr-by"></select></span>' +
+      '</div>' +
+      // What the figure shows sits in its own toolbar, at the left of the
+      // export buttons; each drawing moves this group into its new toolbar.
+      '<span class="fig-opts" id="pr-fig-opts">' +
         '<label class="ctrl-chk"><input type="checkbox" id="pr-data" checked> show the data</label>' +
         '<label class="ctrl-chk" id="pr-groups-lbl" hidden><input type="checkbox" id="pr-groups"> show each group</label>' +
-      '</div>' +
+      '</span>' +
       '<p class="muted-line" id="pr-by-note" hidden></p>' +
       '<div class="ctrl-row" id="pr-hold" hidden></div>' +
       '<div class="ctrl-row" id="pr-avg-row" hidden><span class="ctrl-pair"><label class="ctrl-lbl" for="pr-weights-e">Average levels with</label><select id="pr-weights-e">' + WEIGHT_OPTIONS + '</select></span></div>' +
@@ -98,6 +102,9 @@ export function render(root) {
   });
   els.data.addEventListener('change', () => { state.setPick(id, 'data', els.data.checked); drawEffect(); });
   els.groups = root.querySelector('#pr-groups');
+  els.groupsLbl = root.querySelector('#pr-groups-lbl');
+  els.figOpts = root.querySelector('#pr-fig-opts');
+  els.figOpts.remove();
   els.groups.addEventListener('change', () => { state.setPick(id, 'groups', els.groups.checked); drawEffect(); });
   els.factor.addEventListener('change', () => { state.setPick(id, 'factor', els.factor.value); drawMeans(); });
   // One averaging rule serves the effect plot and the marginal means, and so
@@ -306,7 +313,7 @@ function compute() {
   els.data.checked = state.getPick(id, 'data') !== false;
   // The ordinal effect plot draws probabilities, not the observations.
   els.data.closest('label, .ctrl-chk, .ctrl-pair').hidden = result.fit.family === 'ordinal';
-  root_.querySelector('#pr-groups-lbl').hidden = !(result.fit.mixed && result.fit.random.terms[0].kind === 'group');
+  els.groupsLbl.hidden = !(result.fit.mixed && result.fit.random.terms[0].kind === 'group');
   els.groups.checked = state.getPick(id, 'groups') === true;
   const wantF = state.getPick(id, 'factor');
   els.factor.innerHTML = cats.map((c, i) => opt(c.name, c.name, c.name === wantF || (!cats.some(p => p.name === wantF) && i === 0))).join('');
@@ -316,6 +323,12 @@ function compute() {
   drawMeans();
   drawCalc();
   registerTips(rootEl);
+}
+
+// Puts the figure's display options at the left of its toolbar.
+function placeFigureOptions(box) {
+  const tools = box.querySelector('.fig-tools');
+  if (tools) tools.insertBefore(els.figOpts, tools.firstChild);
 }
 
 // The ordinal model's predictions: a probability per level.
@@ -330,6 +343,7 @@ function drawOrdinalInterceptEffect(ds, result) {
   els.effect.appendChild(box);
   const fig = makeFigure(box, { height: 320, xLabel: state.spec.response, yLabel: 'probability', title: 'Predicted probability of each level with no predictor' });
   exportButtons(box, fig, ds.name + ' ordinal probabilities');
+  placeFigureOptions(box);
   fig.render(f => {
     f.y([0, 1]);
     levelBars(f, levels, probs);
@@ -354,6 +368,7 @@ function drawOrdinalEffect(ds, result) {
   els.effect.appendChild(box);
   const fig = makeFigure(box, { height: 320, xLabel: x, yLabel: 'probability', title: 'Predicted probability of each level against ' + x });
   exportButtons(box, fig, ds.name + ' ordinal effect of ' + x);
+  placeFigureOptions(box);
   const s = grid.series[0];
   const probs = ordinalPredict(ds, result, s.rows, weightMode());
   last.effect = { x, by: null, ordinal: true, levels: levels.slice(), held: grid.held, weights: weightMode(), series: [{ label: 'probabilities', by: null, rows: s.rows, probs }] };
@@ -392,6 +407,7 @@ function drawInterceptEffect(ds, result) {
   els.effect.appendChild(box);
   const fig = makeFigure(box, { height: 320, xLabel: 'observation', yLabel, title: 'Predicted ' + yLabel + ' with no predictor' });
   exportButtons(box, fig, ds.name + ' predicted mean');
+  placeFigureOptions(box);
   const showData = els.data.checked;
   const yData = result.codedY || result.design.y;
   const n = result.design.keep.length;
@@ -463,6 +479,7 @@ function drawEffect() {
   els.effect.appendChild(box);
   const fig = makeFigure(box, { height: 320, xLabel: x, yLabel, title: 'Predicted ' + yLabel + ' against ' + x + (by ? ' by ' + by : '') });
   exportButtons(box, fig, ds.name + ' effect of ' + x);
+  placeFigureOptions(box);
   const showData = els.data.checked;
   const yData = result.codedY || result.design.y;
   const keep = result.design.keep;

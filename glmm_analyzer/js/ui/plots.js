@@ -1624,13 +1624,18 @@ export function exportButtons(container, fig, baseName) {
   if (container && container.svg && container.wrap) { baseName = fig; fig = container; container = fig.container; }
   const row = document.createElement('div');
   row.className = 'fig-tools';
+  // The buttons form one group, which wraps to a line of its own as a unit
+  // when a page puts display options at the toolbar's left.
+  const btns = document.createElement('span');
+  btns.className = 'fig-btns';
+  row.appendChild(btns);
   const name = safeName(baseName);
   const mk = (label, desc, fn) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'btn-mini'; b.textContent = label;
     b.setAttribute('aria-label', desc);
     b.addEventListener('click', fn);
-    row.appendChild(b);
+    btns.appendChild(b);
   };
   mk('SVG', 'Download this figure as SVG', () => download(name + '.svg', new Blob([figureToSvgString(fig)], { type: 'image/svg+xml;charset=utf-8' })));
   mk('PNG', 'Download this figure as PNG', () => figureToPngBlob(fig).then(b => download(name + '.png', b)).catch(err => console.error(err)));
