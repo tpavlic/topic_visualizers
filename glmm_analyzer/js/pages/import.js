@@ -9,6 +9,7 @@ import { sniff, buildTable } from '../io/parse.js';
 import { sameData, support, SUPPORT_LABEL, sortLevels, DERIVATIONS, deriveColumn, removeDerivedColumn, derivedColumns, derivationText, derivedName } from '../data/model.js';
 import { orderedTerms, termVars } from '../stats/design.js';
 import { EXAMPLES } from '../data/examples.js';
+import { sections } from './tests.js';
 import { details, issueList, notice } from '../ui/widgets.js';
 import { esc, intl, plural, breakPoints } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
@@ -153,8 +154,15 @@ export function render(root) {
     enqueue('pasted data', s);
   });
 
-  // The Tests as models page's small datasets are listed after the others.
-  els.ex.innerHTML = EXAMPLES.filter(ex => !ex.tour).concat(EXAMPLES.filter(ex => ex.tour)).map(ex => '<option value="' + esc(ex.id) + '">' + esc(ex.title) + '</option>').join('');
+  // Two groups, one per page that uses them: the Model page's examples in
+  // the order the bundle lists them, and then the Classic tests page's small
+  // datasets in that page's own section order, so a reader who came from a
+  // section finds its dataset where the section sits.
+  const option = ex => '<option value="' + esc(ex.id) + '">' + esc(ex.title) + '</option>';
+  const tourOrder = sections.map(s => s.id);
+  const tours = EXAMPLES.filter(ex => ex.tour).sort((a, b) => tourOrder.indexOf(a.tour) - tourOrder.indexOf(b.tour));
+  els.ex.innerHTML = '<optgroup label="Generalized linear and mixed models">' + EXAMPLES.filter(ex => !ex.tour).map(option).join('') + '</optgroup>'
+    + '<optgroup label="Classic tests, one per section">' + tours.map(option).join('') + '</optgroup>';
   const showDesc = () => {
     const ex = EXAMPLES.find(x => x.id === els.ex.value);
     els.exDesc.textContent = ex ? ex.description : '';
