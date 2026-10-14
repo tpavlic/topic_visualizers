@@ -183,10 +183,10 @@ function heldPredictors() {
   return curPreds.filter(c => c.name !== x && c.name !== by);
 }
 
-// One control per held predictor: a box for a continuous one and a menu for a
-// factor, whose first entry averages over its levels. Only a value the reader
-// sets is stored; an untouched box shows the mean rounded, but the plot uses
-// the mean itself.
+// One menu per held predictor. A factor's first entry averages over its
+// levels; a continuous predictor's holds it at its mean, and its second entry
+// reveals a box for a value. Only a value the reader sets is stored, and so
+// an untouched predictor is at its exact mean.
 function buildHold() {
   const cf = currentFit();
   const held = cf ? heldPredictors() : [];
@@ -202,9 +202,15 @@ function buildHold() {
     const inId = 'pr-hold-' + esc(c.name);
     const lbl = '<label class="ctrl-lbl" for="' + inId + '">' + esc(c.name) + ':</label>';
     if (c.type === 'continuous') {
+      // A menu like a factor's: at its mean (its average over the data for a
+      // predictor that enters as a slope), or at a value typed in a box that
+      // the second entry reveals.
       const set = typeof v === 'number' && Number.isFinite(v);
       if (set) any = true;
-      return '<span class="ctrl-pair">' + lbl + '<input type="text" class="par-inp" id="' + inId + '" data-name="' + esc(c.name) + '" value="' + esc(String(set ? v : Number(grid.continuous[c.name].toPrecision(5)))) + '" inputmode="decimal"></span>';
+      return '<span class="ctrl-pair">' + lbl + '<select id="' + inId + '" data-name="' + esc(c.name) + '" data-kind="mode">' +
+        '<option value=""' + (set ? '' : ' selected') + '>(at its mean, ' + esc(num(grid.continuous[c.name], 4)) + ')</option>' +
+        '<option value="value"' + (set ? ' selected' : '') + '>at a value…</option></select>' +
+        (set ? '<input type="text" class="par-inp" id="' + inId + '-v" data-name="' + esc(c.name) + '" data-kind="value" aria-label="' + esc(c.name) + ' value" value="' + esc(String(v)) + '" inputmode="decimal">' : '') + '</span>';
     }
     const levels = grid.factors[c.name];
     const set = levels.includes(v);
@@ -222,12 +228,21 @@ function buildHold() {
 // a box that does not hold a number stops the plot until it does.
 function onHold(e) {
   const inp = e.target.closest('[data-name]');
-  if (!inp) return;
+  if (!inp || !inp.isConnected) return;
   const name = inp.getAttribute('data-name');
+  // A value box reports a late change as it loses focus, which can come
+  // after its menu has gone back to the mean; that change is stale.
+  if (inp.getAttribute('data-kind') === 'value') {
+    const mode = els.hold.querySelector('select[data-kind="mode"][data-name="' + CSS.escape(name) + '"]');
+    if (!mode || mode.value !== 'value') return;
+  }
   const saved = Object.assign({}, state.getPick(id, 'hold') || {});
   if (inp.tagName === 'SELECT') {
     if (e.type !== 'change') return;
-    if (inp.value) saved[name] = inp.value; else delete saved[name];
+    if (inp.getAttribute('data-kind') === 'mode') {
+      // "at a value…" starts the box at the mean, rounded for typing over.
+      if (inp.value) { const cf = currentFit(); saved[name] = Number(referenceGrid(cf.ds, cf.result).continuous[name].toPrecision(5)); } else delete saved[name];
+    } else if (inp.value) saved[name] = inp.value; else delete saved[name];
   } else {
     const v = inp.value.trim() === '' ? NaN : Number(inp.value);
     if (!Number.isFinite(v)) {
@@ -245,10 +260,16 @@ function onHold(e) {
   // rebuilt on every change; a box's only when the button first appears,
   // because rebuilding on every keystroke would take the focus from it.
   if (inp.tagName === 'SELECT' || !hadReset) {
-    const focusName = name, pos = inp.selectionStart;
+    const pos = inp.selectionStart;
+    const toBox = inp.getAttribute('data-kind') === 'mode' && inp.value;
+    const focusId = toBox ? inp.id + '-v' : inp.id;
     buildHold();
-    const again = els.hold.querySelector('[data-name="' + CSS.escape(focusName) + '"]');
-    if (again) { again.focus(); if (again.tagName !== 'SELECT') again.setSelectionRange(pos, pos); }
+    const again = els.hold.querySelector('#' + CSS.escape(focusId));
+    if (again) {
+      again.focus();
+      if (toBox) again.select();
+      else if (again.tagName !== 'SELECT') again.setSelectionRange(pos, pos);
+    }
   }
 }
 
@@ -261,13 +282,15 @@ function heldText(grid) {
   const chosen = holdAt();
   const parts = Object.entries(grid.held).map(([k, v]) => {
     if (Array.isArray(v)) return esc(k) + ' averaged over its ' + v.length + ' levels';
-    if (typeof v === 'number') return esc(k) + ' = ' + num(v, 4) + (typeof chosen[k] === 'number' && Number.isFinite(chosen[k]) ? '' : ' (its mean over the fitted rows)');
+    if (typeof v === 'number') return typeof chosen[k] === 'number' && Number.isFinite(chosen[k]) ? esc(k) + ' = ' + num(v, 4) : esc(k) + ' at its mean over the fitted rows, ' + num(v, 4);
     return esc(k) + ' = ' + esc(v);
   });
   if (!parts.length) return '';
   const averaged = Object.values(grid.held).filter(Array.isArray).length;
+  const atMean = Object.entries(grid.held).some(([k, v]) => typeof v === 'number' && !(typeof chosen[k] === 'number' && Number.isFinite(chosen[k])));
   const unit = averaged > 1 ? 'combination of levels' : 'level';
   return 'Other predictors: ' + parts.join(', ') + ', as set above the plot. ' +
+    (atMean ? 'For a predictor that enters the model as a slope, the prediction at its mean is the prediction averaged over its observed values on the link scale. ' : '') +
     (averaged ? (weightMode() === 'proportional' ? 'The average weights each ' + unit + ' by its share of the fitted rows' : 'The average gives each ' + unit + ' equal weight') + ' and is taken on the link scale before the inverse link, as for the marginal means. ' : '');
 }
 
