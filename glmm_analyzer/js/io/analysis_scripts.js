@@ -343,13 +343,16 @@ const DERIVED_EXPR = {
   log: { R: n => 'log(' + n + ')', py: n => 'np.log(' + n + ')', m: n => 'log(' + n + ')' },
   sqrt: { R: n => 'sqrt(' + n + ')', py: n => 'np.sqrt(' + n + ')', m: n => 'sqrt(' + n + ')' },
   center: { R: n => n + ' - mean(' + n + ')', py: n => n + ' - np.mean(' + n + ')', m: n => n + ' - mean(' + n + ')' },
+  centerAt: { R: (n, at) => n + ' - ' + atTerm(at), py: (n, at) => n + ' - ' + atTerm(at), m: (n, at) => n + ' - ' + atTerm(at) },
   standardize: { R: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', py: n => '(' + n + ' - np.mean(' + n + ')) / np.std(' + n + ', ddof=1)', m: n => '(' + n + ' - mean(' + n + ')) / std(' + n + ')' }
 };
 function derivedComments(recipe, L) {
   const names = new Set(recipe.data.columns.map(col => col.name));
   return (recipe.derived || []).filter(x => names.has(x.name) && DERIVED_EXPR[x.transform]).map(x =>
-    L.comment + ascii(x.name) + ' was derived on the Import page as ' + DERIVED_EXPR[x.transform][L.lang](ascii(x.of)) + (x.transform === 'rank' ? ' (ties averaged)' : '') + '; its values are ' + (recipe.csvOnly ? 'in the data file' : 'embedded above') + '.');
+    L.comment + ascii(x.name) + ' was derived on the Import page as ' + DERIVED_EXPR[x.transform][L.lang](ascii(x.of), x.at) + (x.transform === 'rank' ? ' (ties averaged)' : '') + '; its values are ' + (recipe.csvOnly ? 'in the data file' : 'embedded above') + '.');
 }
+// A value subtracted in a derivation, a negative one in parentheses.
+function atTerm(at) { return at < 0 ? '(' + String(at) + ')' : String(at); }
 
 function dataBlock(recipe, L) {
   const c = L.comment;

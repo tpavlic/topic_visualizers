@@ -131,7 +131,7 @@ function restoreDataset(o) {
   const columns = [];
   for (const c of o.columns) {
     if (!c || typeof c !== 'object' || !isStr(c.name) || !ROLES.includes(c.role) || !TYPES.includes(c.type)) return null;
-    columns.push({ name: c.name, role: c.role, type: c.type, levels: Array.isArray(c.levels) ? c.levels.filter(isStr) : null, derived: c.derived && typeof c.derived === 'object' && isStr(c.derived.of) && isStr(c.derived.transform) ? { of: c.derived.of, transform: c.derived.transform, replaced: isStr(c.derived.replaced) ? c.derived.replaced : null } : null });
+    columns.push({ name: c.name, role: c.role, type: c.type, levels: Array.isArray(c.levels) ? c.levels.filter(isStr) : null, derived: c.derived && typeof c.derived === 'object' && isStr(c.derived.of) && isStr(c.derived.transform) ? { of: c.derived.of, transform: c.derived.transform, at: c.derived.at, replaced: isStr(c.derived.replaced) ? c.derived.replaced : null } : null });
   }
   const rows = [];
   for (const r of o.rows) {

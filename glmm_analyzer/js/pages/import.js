@@ -45,6 +45,8 @@ let lastImport = null;
 const expanded = new Set();
 /** Ids of datasets whose data file is shown in the table. */
 const exportOpen = new Set();
+/** A refused rename's note, shown under that dataset's name box at the next redraw only. */
+let renameMsg = null;
 /** Ids of datasets whose data preview is open under their data file. */
 const previewOpen = new Set();
 // The datasets whose Derive a column form is open, and the form's state per dataset.
@@ -68,7 +70,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, outcome, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
+    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, outcome, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, or the column centered at a value you give, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
     '<div class="sec">' +
       '<div class="sec-hd">Loaded datasets</div>' +
       '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page with its roles suggested from its # lines.</p>' +
@@ -94,7 +96,7 @@ export function render(root) {
         '<div class="im-drop" id="im-drop">' +
           '<div class="im-drop-lbl">Drop one or more files here</div>' +
           '<label class="btn-run2 im-file">or choose a file<input type="file" id="im-file" multiple accept=".csv,.txt,.tsv,.dat,.prn,text/plain,text/csv"></label>' +
-          '<div class="ctrl-note im-drop-note">Delimited text with a header row.</div>' +
+          '<div class="ctrl-note im-drop-note">A plain-text file (.csv, .tsv, .txt, .dat, or .prn) with a header row and its columns separated by commas, tabs, semicolons, or spaces; save a spreadsheet as CSV first.</div>' +
         '</div>' +
       '</div>' +
       '<div class="im-block">' +
@@ -511,7 +513,7 @@ function deriveBox(ds) {
   const box = document.createElement('div');
   box.className = 'im-dv-box';
   const sources = ds.columns.filter(c => c.type === 'continuous');
-  const f = deriveForm.get(ds.id) || { of: sources[0] ? sources[0].name : '', transform: 'rank', name: '', edited: false, role: 'predictor', message: null };
+  const f = deriveForm.get(ds.id) || { of: sources[0] ? sources[0].name : '', transform: 'rank', name: '', edited: false, role: 'predictor', atText: '', message: null };
   deriveForm.set(ds.id, f);
   if (!sources.some(c => c.name === f.of)) { f.of = sources[0] ? sources[0].name : ''; f.edited = false; }
   if (!f.edited) f.name = f.of ? derivedName(f.of, f.transform) : '';
@@ -521,6 +523,7 @@ function deriveBox(ds) {
     (sources.length ? '<div class="ctrl-row im-dv-form">' +
       '<label>From <select class="im-dv-of" aria-label="Source column">' + sources.map(c => opt(c.name, c.name, c.name === f.of)).join('') + '</select></label>' +
       '<label>Transform <select class="im-dv-tr" aria-label="Transform">' + Object.keys(DERIVATIONS).map(k => opt(k, DERIVATIONS[k].label, k === f.transform)).join('') + '</select></label>' +
+      '<label class="im-dv-at"' + (DERIVATIONS[f.transform].takesValue ? '' : ' hidden') + '>At <input type="text" class="txt-inp im-dv-atv" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="The value to center at"></label>' +
       '<label>Name <input type="text" class="txt-inp im-dv-name" aria-label="Name of the derived column"></label>' +
       '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + opt('outcome', 'outcome', f.role === 'outcome') + '</select></label>' +
       '<button type="button" class="btn-run2 im-dv-add">Add the column</button>' +
@@ -531,12 +534,20 @@ function deriveBox(ds) {
   if (sources.length) {
     q('.im-dv-name').value = f.name;
     q('.im-dv-of').addEventListener('change', e => { f.of = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
-    q('.im-dv-tr').addEventListener('change', e => { f.transform = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
+    q('.im-dv-tr').addEventListener('change', e => {
+      f.transform = e.target.value;
+      if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; }
+      q('.im-dv-at').hidden = !DERIVATIONS[f.transform].takesValue;
+    });
+    q('.im-dv-atv').value = f.atText;
+    q('.im-dv-atv').addEventListener('input', e => { f.atText = e.target.value; });
     q('.im-dv-name').addEventListener('input', e => { f.name = e.target.value; f.edited = e.target.value.trim() !== '' && e.target.value !== derivedName(f.of, f.transform); });
     q('.im-dv-role').addEventListener('change', e => { f.role = e.target.value; });
     q('.im-dv-add').dataset.focus = 'dvadd:' + ds.id;
     q('.im-dv-add').addEventListener('click', () => {
-      const r = deriveColumn(ds, { of: f.of, transform: f.transform, name: f.name, role: f.role });
+      // A blank box is no value at all, never 0.
+      const at = f.atText.trim() === '' ? NaN : Number(f.atText);
+      const r = deriveColumn(ds, { of: f.of, transform: f.transform, name: f.name, role: f.role, at });
       if (!r.ok) { f.message = r.reason; renderList('dvadd:' + ds.id); return; }
       f.message = null; f.edited = false; f.name = '';
       state.emit('datasets', { type: 'change', id: ds.id });
@@ -591,7 +602,7 @@ function renderList() {
   wrap.className = 'tab-wrap im-ds-wrap';
   const tbl = document.createElement('table');
   tbl.className = 'ptab im-ds-tab';
-  tbl.innerHTML = '<thead><tr><th>Name</th><th>Rows</th><th>Response</th><th>Predictors</th><th>Group</th><th>Source</th><th>Flagged rows</th><th class="no-print">Export</th><th class="no-print"><span class="sr-only">Remove</span></th></tr></thead>';
+  tbl.innerHTML = '<thead><tr><th>Name</th><th>Rows</th><th>Response</th><th>Predictors</th><th>Group</th><th>Source</th><th>Flagged rows</th><th class="no-print"><span class="sr-only">Export, derive, or remove</span></th></tr></thead>';
   const tb = document.createElement('tbody');
   for (const ds of list) {
     const tr = document.createElement('tr');
@@ -608,15 +619,26 @@ function renderList() {
       '<td>' + (groups.length ? esc(groups.join(' / ')) : '–') + '</td>' +
       '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + derivedColumns(ds).map(c => '<span class="im-derived">' + esc(derivationText(c)) + '</span>').join('') + '</td>' +
       '<td class="im-rej"></td>' +
-      '<td class="no-print"><button type="button" class="im-link im-xp"></button> <button type="button" class="im-link im-dv">Derive a column</button></td>' +
-      '<td class="no-print"><button type="button" class="btn-clear im-rm">Remove</button></td>';
+      '<td class="no-print im-acts"><button type="button" class="im-link im-xp"></button><button type="button" class="im-link im-dv">Derive a column</button>' +
+      '<button type="button" class="btn-clear im-rm">Remove</button></td>';
     const inp = tr.querySelector('.im-name');
     inp.value = ds.name;
     inp.dataset.focus = 'name:' + ds.id;
+    if (renameMsg && renameMsg.id === ds.id) {
+      const n = document.createElement('span');
+      n.className = 'im-name-note';
+      n.setAttribute('role', 'status');
+      n.textContent = renameMsg.text;
+      inp.after(n);
+    }
     const commit = () => {
       const v = inp.value.trim();
       if (!v) { inp.value = ds.name; return; }
-      if (v !== ds.name) state.rename(ds.id, v);
+      if (v !== ds.name && !state.rename(ds.id, v)) {
+        inp.value = ds.name;
+        renameMsg = { id: ds.id, text: 'Another dataset is named ' + v + '; dataset names must differ.' };
+        renderList();
+      }
     };
     inp.addEventListener('change', () => setTimeout(commit, 0));
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); });
@@ -650,7 +672,7 @@ function renderList() {
       const er = document.createElement('tr');
       er.className = 'im-exp-row';
       const td = document.createElement('td');
-      td.colSpan = 9;
+      td.colSpan = 8;
       const il = issueList(ds.issues);
       if (il.tagName === 'DETAILS') il.open = true;
       td.appendChild(il);
@@ -661,7 +683,7 @@ function renderList() {
       const er = document.createElement('tr');
       er.className = 'im-exp-row no-print';
       const td = document.createElement('td');
-      td.colSpan = 9;
+      td.colSpan = 8;
       const inner = document.createElement('div');
       inner.className = 'im-xp-box';
       const files = document.createElement('div');
@@ -685,7 +707,7 @@ function renderList() {
       const er = document.createElement('tr');
       er.className = 'im-exp-row no-print';
       const td = document.createElement('td');
-      td.colSpan = 9;
+      td.colSpan = 8;
       td.appendChild(deriveBox(ds));
       er.appendChild(td);
       tb.appendChild(er);
@@ -694,6 +716,7 @@ function renderList() {
   tbl.appendChild(tb);
   wrap.appendChild(tbl);
   box.appendChild(wrap);
+  renameMsg = null;
 
   const row = document.createElement('div');
   row.className = 'ctrl-row im-rm-all no-print';

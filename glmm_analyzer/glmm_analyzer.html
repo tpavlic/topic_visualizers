@@ -630,14 +630,19 @@ footer a:hover { text-decoration: underline; }
   .im-seg .seg-btn:last-child { border-radius: 0 0 10px 10px; }
 }
 .im-ds-tab td { vertical-align: middle; }
-.im-ds-tab .im-name { width: 100%; min-width: 18ch; }
-.im-ds-tab td.im-src { font-family: 'Outfit', sans-serif; color: var(--muted); white-space: normal; min-width: 14ch; }
+.im-ds-tab .im-name { width: 100%; min-width: 14ch; }
+.im-ds-tab .im-name-note { display: block; max-width: 24ch; margin-top: 3px; font: 600 .74rem 'Outfit', sans-serif; color: var(--warn); white-space: normal; }
+.im-ds-tab td.im-src { font-family: 'Outfit', sans-serif; color: var(--muted); white-space: normal; min-width: 11ch; }
 /* A file name may break after an underscore or a dot, and the Rejected rows
    heading and link may wrap, which keeps the table, Export column included,
    inside a desktop content column. */
 .im-ds-tab th { white-space: normal; vertical-align: bottom; }
 .im-ds-tab td.im-rej { white-space: normal; }
 .im-ds-tab td.im-rej .im-link { text-align: left; }
+/* A row's Export and Derive a column links, one above the other. */
+.im-ds-tab td.im-acts { text-align: left; }
+.im-ds-tab td.im-acts .im-link { display: block; text-align: left; }
+.im-ds-tab td.im-acts .im-rm { margin-top: 4px; }
 .im-link { background: none; border: none; padding: 0 2px; min-height: 24px; font: 600 .8rem 'Outfit', sans-serif;
            color: var(--accent); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .im-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -655,6 +660,8 @@ footer a:hover { text-decoration: underline; }
 .im-dv-form { gap: 8px 14px; align-items: flex-end; flex-wrap: wrap; }
 .im-dv-form label { display: flex; flex-direction: column; gap: 3px; font-size: .8rem; color: var(--muted); }
 .im-dv-form select, .im-dv-form .txt-inp { font-size: .85rem; }
+.im-dv-form label[hidden] { display: none; }
+.im-dv-form .im-dv-atv { width: 9ch; }
 .im-dv-name { width: 22ch; }
 .im-dv-msg .notice { margin-top: 8px; }
 .im-dv-items { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -3515,11 +3522,12 @@ import { mean, sd, ranks } from '../stats/descriptive.js';
 /**
  * @typedef {{ name: string, role: 'response'|'outcome'|'predictor'|'group'|'ignored',
  *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null,
- *   derived?: { of: string, transform: string, replaced?: string|null }|null }} Column
+ *   derived?: { of: string, transform: string, at?: number, replaced?: string|null }|null }} Column
  *   `levels` holds a categorical or ordinal column's distinct values, sorted
  *   as R sorts character levels, and null for a continuous column. `derived`
  *   names the continuous column and the transform a derived column was made
- *   from (see DERIVATIONS), with `replaced` naming the column it stepped back
+ *   from (see DERIVATIONS), with `at` the value a column centered at a given
+ *   value was centered at, and `replaced` naming the column it stepped back
  *   from the response when it was made the response, and is absent or null
  *   on a column read from the data.
  */
@@ -3580,7 +3588,7 @@ export function makeDataset(fields = {}) {
     role: ROLES.includes(c.role) ? c.role : 'ignored',
     type: TYPES.includes(c.type) ? c.type : 'continuous',
     levels: null,
-    derived: c.derived && c.derived.of != null && DERIVATIONS[c.derived.transform] ? { of: String(c.derived.of), transform: String(c.derived.transform), replaced: c.derived.replaced != null ? String(c.derived.replaced) : null } : null
+    derived: normalDerived(c.derived)
   }));
   const rows = (fields.rows || []).map(r => columns.map((c, j) => {
     const v = r[j];
@@ -3797,13 +3805,18 @@ export function defaultTerms(ds, response) {
 /**
  * The transforms a derived column applies to a continuous column: the label
  * the page shows, the suffix of the default name, how the derivation is
- * written out, and the domain the source values must satisfy.
+ * written out (from the source's name and, for `centerAt`, the value it is
+ * centered at), and the domain the source values must satisfy. `centerAt`
+ * takes the value from the reader (`takesValue`): centered at a known mean,
+ * it makes the model's intercept the prediction at that mean, which is a
+ * control-variate estimate when the column is a control.
  */
 export const DERIVATIONS = {
   rank: { label: 'rank (ties averaged)', suffix: 'rank', text: n => 'rank(' + n + ')', domain: null },
   log: { label: 'natural log', suffix: 'log', text: n => 'log(' + n + ')', domain: v => v > 0, needs: 'positive values' },
   sqrt: { label: 'square root', suffix: 'sqrt', text: n => 'sqrt(' + n + ')', domain: v => v >= 0, needs: 'non-negative values' },
   center: { label: 'centered', suffix: 'centered', text: n => n + ' - mean(' + n + ')', domain: null },
+  centerAt: { label: 'centered at a value you give', suffix: 'c', text: (n, at) => n + ' - ' + atText(at), domain: null, takesValue: true },
   standardize: { label: 'standardized', suffix: 'std', text: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', domain: null }
 };
 
@@ -3819,7 +3832,24 @@ export function derivedColumns(ds) { return ds.columns.filter(c => c.derived); }
  * @param {Column} col
  * @returns {string}
  */
-export function derivationText(col) { return col.name + ' = ' + DERIVATIONS[col.derived.transform].text(col.derived.of); }
+export function derivationText(col) { return col.name + ' = ' + DERIVATIONS[col.derived.transform].text(col.derived.of, col.derived.at); }
+
+// A value subtracted from a column, written as a term of the subtraction:
+// a negative value in parentheses, so that `x - (-3)` reads as it computes.
+function atText(at) { return at < 0 ? '(' + String(at) + ')' : String(at); }
+
+// A derived column's record as a session or a caller gives it, checked: a
+// known transform from a named source, and a finite `at` where the transform
+// takes one. Anything else reads as a column of the data.
+function normalDerived(d) {
+  if (!d || d.of == null || !DERIVATIONS[d.transform]) return null;
+  const out = { of: String(d.of), transform: String(d.transform), replaced: d.replaced != null ? String(d.replaced) : null };
+  if (DERIVATIONS[d.transform].takesValue) {
+    if (typeof d.at !== 'number' || !Number.isFinite(d.at)) return null;
+    out.at = d.at;
+  }
+  return out;
+}
 
 /**
  * The default name of a derived column: the source's name and the transform's suffix.
@@ -3831,7 +3861,8 @@ export function derivedName(of, transform) { return of + '_' + DERIVATIONS[trans
 
 /**
  * Adds a derived column to a dataset, in place: a continuous column's
- * ranks, natural log, square root, centered values, or standardized values,
+ * ranks, natural log, square root, centered values, values centered at
+ * `req.at`, or standardized values,
  * stored as data like any other column, with the derivation kept on the
  * column. A missing value stays missing. A derived column made the
  * response steps the current response back to an outcome, which can be
@@ -3840,7 +3871,7 @@ export function derivedName(of, transform) { return of + '_' + DERIVATIONS[trans
  * column can also be made an outcome. Nothing changes when the request is
  * refused.
  * @param {Dataset} ds
- * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response'|'outcome' }} req
+ * @param {{ of: string, transform: string, name: string, at?: number, role?: 'predictor'|'response'|'outcome' }} req
  * @returns {{ ok: boolean, reason: string|null }}
  */
 export function deriveColumn(ds, req) {
@@ -3849,6 +3880,7 @@ export function deriveColumn(ds, req) {
   const src = column(ds, req.of);
   if (!src) return { ok: false, reason: 'There is no column named ' + req.of + '.' };
   if (src.col.type !== 'continuous') return { ok: false, reason: req.of + ' is ' + src.col.type + '; a derived column is made from a continuous one.' };
+  if (d.takesValue && (typeof req.at !== 'number' || !Number.isFinite(req.at))) return { ok: false, reason: 'Give the value to center ' + req.of + ' at, as a number.' };
   const name = String(req.name || '').trim();
   if (!name) return { ok: false, reason: 'Name the new column.' };
   if (column(ds, name)) return { ok: false, reason: 'There is already a column named ' + name + '.' };
@@ -3866,6 +3898,8 @@ export function deriveColumn(ds, req) {
     const idx = []; vals.forEach((v, i) => { if (v != null) idx.push(i); });
     const r = ranks(idx.map(i => vals[i]));
     idx.forEach((i, k) => { out[i] = r[k]; });
+  } else if (req.transform === 'centerAt') {
+    vals.forEach((v, i) => { if (v != null) out[i] = v - req.at; });
   } else if (req.transform === 'log' || req.transform === 'sqrt') {
     const f = req.transform === 'log' ? Math.log : Math.sqrt;
     vals.forEach((v, i) => { if (v != null) out[i] = f(v); });
@@ -3877,7 +3911,7 @@ export function deriveColumn(ds, req) {
   }
   let replaced = null;
   if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'outcome'; replaced = c.name; }
-  ds.columns.push({ name, role, type: 'continuous', levels: null, derived: { of: req.of, transform: req.transform, replaced } });
+  ds.columns.push({ name, role, type: 'continuous', levels: null, derived: Object.assign({ of: req.of, transform: req.transform, replaced }, d.takesValue ? { at: req.at } : {}) });
   ds.rows.forEach((r, i) => { r.push(out[i]); });
   return { ok: true, reason: null };
 }
@@ -3902,6 +3936,27 @@ export function removeDerivedColumn(ds, name) {
     if (back && (back.col.role === 'outcome' || back.col.role === 'ignored')) back.col.role = 'response';
   }
   return true;
+}
+
+/**
+ * A name no loaded dataset has: the name itself when it is free, and
+ * otherwise the name with the smallest free number, "name (2)", "name (3)",
+ * …, counting on from a number the name already ends in. The data files and
+ * the regenerate scripts take their file names from the dataset's name, and
+ * so two datasets must never share one.
+ * @param {string} name
+ * @param {Iterable<string>} taken the names already in use
+ * @returns {string}
+ */
+export function uniqueName(name, taken) {
+  const used = new Set(taken);
+  if (!used.has(name)) return name;
+  const m = /^(.*) \((\d+)\)$/.exec(name);
+  const base = m ? m[1] : name;
+  for (let k = m ? Number(m[2]) + 1 : 2; ; k++) {
+    const c = base + ' (' + k + ')';
+    if (!used.has(c)) return c;
+  }
 }
 </script>
 <script type="text/plain" data-module="js/io/analysis_scripts.js">
@@ -4250,13 +4305,16 @@ const DERIVED_EXPR = {
   log: { R: n => 'log(' + n + ')', py: n => 'np.log(' + n + ')', m: n => 'log(' + n + ')' },
   sqrt: { R: n => 'sqrt(' + n + ')', py: n => 'np.sqrt(' + n + ')', m: n => 'sqrt(' + n + ')' },
   center: { R: n => n + ' - mean(' + n + ')', py: n => n + ' - np.mean(' + n + ')', m: n => n + ' - mean(' + n + ')' },
+  centerAt: { R: (n, at) => n + ' - ' + atTerm(at), py: (n, at) => n + ' - ' + atTerm(at), m: (n, at) => n + ' - ' + atTerm(at) },
   standardize: { R: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', py: n => '(' + n + ' - np.mean(' + n + ')) / np.std(' + n + ', ddof=1)', m: n => '(' + n + ' - mean(' + n + ')) / std(' + n + ')' }
 };
 function derivedComments(recipe, L) {
   const names = new Set(recipe.data.columns.map(col => col.name));
   return (recipe.derived || []).filter(x => names.has(x.name) && DERIVED_EXPR[x.transform]).map(x =>
-    L.comment + ascii(x.name) + ' was derived on the Import page as ' + DERIVED_EXPR[x.transform][L.lang](ascii(x.of)) + (x.transform === 'rank' ? ' (ties averaged)' : '') + '; its values are ' + (recipe.csvOnly ? 'in the data file' : 'embedded above') + '.');
+    L.comment + ascii(x.name) + ' was derived on the Import page as ' + DERIVED_EXPR[x.transform][L.lang](ascii(x.of), x.at) + (x.transform === 'rank' ? ' (ties averaged)' : '') + '; its values are ' + (recipe.csvOnly ? 'in the data file' : 'embedded above') + '.');
 }
+// A value subtracted in a derivation, a negative one in parentheses.
+function atTerm(at) { return at < 0 ? '(' + String(at) + ')' : String(at); }
 
 function dataBlock(recipe, L) {
   const c = L.comment;
@@ -7502,7 +7560,7 @@ export function baseRecipe({ page, title, provenance, level, ds, spec, result })
     page, title, provenance: Object.assign({}, provenance), level,
     dataset: ds.name,
     data: dataFor(ds, [spec]),
-    derived: ds.columns.filter(c => c.derived).map(c => ({ name: c.name, of: c.derived.of, transform: c.derived.transform })),
+    derived: ds.columns.filter(c => c.derived).map(c => Object.assign({ name: c.name, of: c.derived.of, transform: c.derived.transform }, c.derived.at != null ? { at: c.derived.at } : {})),
     spec: { response: spec.response, family: spec.family, link: link.id, group: spec.group || null, nested: spec.nested || null, slope: spec.slope || null, olre: !!spec.olre, reml: !!spec.reml, mixed },
     formula: { R: f.R, py: f.py, m: f.m },
     terms: f.terms,
@@ -10417,6 +10475,8 @@ let lastImport = null;
 const expanded = new Set();
 /** Ids of datasets whose data file is shown in the table. */
 const exportOpen = new Set();
+/** A refused rename's note, shown under that dataset's name box at the next redraw only. */
+let renameMsg = null;
 /** Ids of datasets whose data preview is open under their data file. */
 const previewOpen = new Set();
 // The datasets whose Derive a column form is open, and the form's state per dataset.
@@ -10440,7 +10500,7 @@ export function render(root) {
   rootEl = root;
   root.innerHTML =
     '<h2>' + title + '</h2>' +
-    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, outcome, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
+    '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, outcome, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, or the column centered at a value you give, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
     '<div class="sec">' +
       '<div class="sec-hd">Loaded datasets</div>' +
       '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page with its roles suggested from its # lines.</p>' +
@@ -10466,7 +10526,7 @@ export function render(root) {
         '<div class="im-drop" id="im-drop">' +
           '<div class="im-drop-lbl">Drop one or more files here</div>' +
           '<label class="btn-run2 im-file">or choose a file<input type="file" id="im-file" multiple accept=".csv,.txt,.tsv,.dat,.prn,text/plain,text/csv"></label>' +
-          '<div class="ctrl-note im-drop-note">Delimited text with a header row.</div>' +
+          '<div class="ctrl-note im-drop-note">A plain-text file (.csv, .tsv, .txt, .dat, or .prn) with a header row and its columns separated by commas, tabs, semicolons, or spaces; save a spreadsheet as CSV first.</div>' +
         '</div>' +
       '</div>' +
       '<div class="im-block">' +
@@ -10883,7 +10943,7 @@ function deriveBox(ds) {
   const box = document.createElement('div');
   box.className = 'im-dv-box';
   const sources = ds.columns.filter(c => c.type === 'continuous');
-  const f = deriveForm.get(ds.id) || { of: sources[0] ? sources[0].name : '', transform: 'rank', name: '', edited: false, role: 'predictor', message: null };
+  const f = deriveForm.get(ds.id) || { of: sources[0] ? sources[0].name : '', transform: 'rank', name: '', edited: false, role: 'predictor', atText: '', message: null };
   deriveForm.set(ds.id, f);
   if (!sources.some(c => c.name === f.of)) { f.of = sources[0] ? sources[0].name : ''; f.edited = false; }
   if (!f.edited) f.name = f.of ? derivedName(f.of, f.transform) : '';
@@ -10893,6 +10953,7 @@ function deriveBox(ds) {
     (sources.length ? '<div class="ctrl-row im-dv-form">' +
       '<label>From <select class="im-dv-of" aria-label="Source column">' + sources.map(c => opt(c.name, c.name, c.name === f.of)).join('') + '</select></label>' +
       '<label>Transform <select class="im-dv-tr" aria-label="Transform">' + Object.keys(DERIVATIONS).map(k => opt(k, DERIVATIONS[k].label, k === f.transform)).join('') + '</select></label>' +
+      '<label class="im-dv-at"' + (DERIVATIONS[f.transform].takesValue ? '' : ' hidden') + '>At <input type="text" class="txt-inp im-dv-atv" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="The value to center at"></label>' +
       '<label>Name <input type="text" class="txt-inp im-dv-name" aria-label="Name of the derived column"></label>' +
       '<label>Role <select class="im-dv-role" aria-label="Role of the derived column">' + opt('predictor', 'predictor', f.role === 'predictor') + opt('response', 'response', f.role === 'response') + opt('outcome', 'outcome', f.role === 'outcome') + '</select></label>' +
       '<button type="button" class="btn-run2 im-dv-add">Add the column</button>' +
@@ -10903,12 +10964,20 @@ function deriveBox(ds) {
   if (sources.length) {
     q('.im-dv-name').value = f.name;
     q('.im-dv-of').addEventListener('change', e => { f.of = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
-    q('.im-dv-tr').addEventListener('change', e => { f.transform = e.target.value; if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; } });
+    q('.im-dv-tr').addEventListener('change', e => {
+      f.transform = e.target.value;
+      if (!f.edited) { f.name = derivedName(f.of, f.transform); q('.im-dv-name').value = f.name; }
+      q('.im-dv-at').hidden = !DERIVATIONS[f.transform].takesValue;
+    });
+    q('.im-dv-atv').value = f.atText;
+    q('.im-dv-atv').addEventListener('input', e => { f.atText = e.target.value; });
     q('.im-dv-name').addEventListener('input', e => { f.name = e.target.value; f.edited = e.target.value.trim() !== '' && e.target.value !== derivedName(f.of, f.transform); });
     q('.im-dv-role').addEventListener('change', e => { f.role = e.target.value; });
     q('.im-dv-add').dataset.focus = 'dvadd:' + ds.id;
     q('.im-dv-add').addEventListener('click', () => {
-      const r = deriveColumn(ds, { of: f.of, transform: f.transform, name: f.name, role: f.role });
+      // A blank box is no value at all, never 0.
+      const at = f.atText.trim() === '' ? NaN : Number(f.atText);
+      const r = deriveColumn(ds, { of: f.of, transform: f.transform, name: f.name, role: f.role, at });
       if (!r.ok) { f.message = r.reason; renderList('dvadd:' + ds.id); return; }
       f.message = null; f.edited = false; f.name = '';
       state.emit('datasets', { type: 'change', id: ds.id });
@@ -10963,7 +11032,7 @@ function renderList() {
   wrap.className = 'tab-wrap im-ds-wrap';
   const tbl = document.createElement('table');
   tbl.className = 'ptab im-ds-tab';
-  tbl.innerHTML = '<thead><tr><th>Name</th><th>Rows</th><th>Response</th><th>Predictors</th><th>Group</th><th>Source</th><th>Flagged rows</th><th class="no-print">Export</th><th class="no-print"><span class="sr-only">Remove</span></th></tr></thead>';
+  tbl.innerHTML = '<thead><tr><th>Name</th><th>Rows</th><th>Response</th><th>Predictors</th><th>Group</th><th>Source</th><th>Flagged rows</th><th class="no-print"><span class="sr-only">Export, derive, or remove</span></th></tr></thead>';
   const tb = document.createElement('tbody');
   for (const ds of list) {
     const tr = document.createElement('tr');
@@ -10980,15 +11049,26 @@ function renderList() {
       '<td>' + (groups.length ? esc(groups.join(' / ')) : '–') + '</td>' +
       '<td class="im-src">' + breakPoints(esc(ds.source.file || '–')) + derivedColumns(ds).map(c => '<span class="im-derived">' + esc(derivationText(c)) + '</span>').join('') + '</td>' +
       '<td class="im-rej"></td>' +
-      '<td class="no-print"><button type="button" class="im-link im-xp"></button> <button type="button" class="im-link im-dv">Derive a column</button></td>' +
-      '<td class="no-print"><button type="button" class="btn-clear im-rm">Remove</button></td>';
+      '<td class="no-print im-acts"><button type="button" class="im-link im-xp"></button><button type="button" class="im-link im-dv">Derive a column</button>' +
+      '<button type="button" class="btn-clear im-rm">Remove</button></td>';
     const inp = tr.querySelector('.im-name');
     inp.value = ds.name;
     inp.dataset.focus = 'name:' + ds.id;
+    if (renameMsg && renameMsg.id === ds.id) {
+      const n = document.createElement('span');
+      n.className = 'im-name-note';
+      n.setAttribute('role', 'status');
+      n.textContent = renameMsg.text;
+      inp.after(n);
+    }
     const commit = () => {
       const v = inp.value.trim();
       if (!v) { inp.value = ds.name; return; }
-      if (v !== ds.name) state.rename(ds.id, v);
+      if (v !== ds.name && !state.rename(ds.id, v)) {
+        inp.value = ds.name;
+        renameMsg = { id: ds.id, text: 'Another dataset is named ' + v + '; dataset names must differ.' };
+        renderList();
+      }
     };
     inp.addEventListener('change', () => setTimeout(commit, 0));
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); });
@@ -11022,7 +11102,7 @@ function renderList() {
       const er = document.createElement('tr');
       er.className = 'im-exp-row';
       const td = document.createElement('td');
-      td.colSpan = 9;
+      td.colSpan = 8;
       const il = issueList(ds.issues);
       if (il.tagName === 'DETAILS') il.open = true;
       td.appendChild(il);
@@ -11033,7 +11113,7 @@ function renderList() {
       const er = document.createElement('tr');
       er.className = 'im-exp-row no-print';
       const td = document.createElement('td');
-      td.colSpan = 9;
+      td.colSpan = 8;
       const inner = document.createElement('div');
       inner.className = 'im-xp-box';
       const files = document.createElement('div');
@@ -11057,7 +11137,7 @@ function renderList() {
       const er = document.createElement('tr');
       er.className = 'im-exp-row no-print';
       const td = document.createElement('td');
-      td.colSpan = 9;
+      td.colSpan = 8;
       td.appendChild(deriveBox(ds));
       er.appendChild(td);
       tb.appendChild(er);
@@ -11066,6 +11146,7 @@ function renderList() {
   tbl.appendChild(tb);
   wrap.appendChild(tbl);
   box.appendChild(wrap);
+  renameMsg = null;
 
   const row = document.createElement('div');
   row.className = 'ctrl-row im-rm-all no-print';
@@ -13263,6 +13344,8 @@ export default { id, title, render, onShow };
 
 /** @typedef {import('./data/model.js').Dataset} Dataset */
 
+import { uniqueName } from './data/model.js';
+
 /**
  * A model specification. `terms` lists the fixed terms: a predictor's name, a
  * polynomial `{ name, degree }`, or an interaction `{ of: [name, name] }`.
@@ -13339,12 +13422,14 @@ export function emit(event, payload) {
 
 /**
  * Adds a dataset (or replaces the one with the same id) and emits 'datasets'.
- * A dataset without an id is given one.
+ * A dataset without an id is given one, and one whose name another dataset
+ * already has is given the next free numbered name (see uniqueName).
  * @param {Dataset} ds
  * @returns {Dataset}
  */
 export function add(ds) {
   if (!ds.id) ds.id = 'ds-' + Date.now().toString(36) + '-' + (++counter);
+  ds.name = uniqueName(ds.name, datasets.filter(d => d.id !== ds.id).map(d => d.name));
   const i = datasets.findIndex(d => d.id === ds.id);
   if (i >= 0) datasets[i] = ds; else datasets.push(ds);
   emit('datasets', { type: 'add', id: ds.id });
@@ -13370,14 +13455,16 @@ export function remove(id) {
 }
 
 /**
- * Renames a dataset's display name and emits 'datasets'.
+ * Renames a dataset's display name and emits 'datasets'. A name another
+ * dataset already has is refused, and nothing changes.
  * @param {string} id
  * @param {string} name
- * @returns {boolean} whether the dataset exists
+ * @returns {boolean} whether the dataset was renamed
  */
 export function rename(id, name) {
   const ds = get(id);
   if (!ds) return false;
+  if (datasets.some(d => d.id !== id && d.name === String(name))) return false;
   ds.name = String(name);
   emit('datasets', { type: 'rename', id });
   return true;
@@ -20563,7 +20650,7 @@ function restoreDataset(o) {
   const columns = [];
   for (const c of o.columns) {
     if (!c || typeof c !== 'object' || !isStr(c.name) || !ROLES.includes(c.role) || !TYPES.includes(c.type)) return null;
-    columns.push({ name: c.name, role: c.role, type: c.type, levels: Array.isArray(c.levels) ? c.levels.filter(isStr) : null, derived: c.derived && typeof c.derived === 'object' && isStr(c.derived.of) && isStr(c.derived.transform) ? { of: c.derived.of, transform: c.derived.transform, replaced: isStr(c.derived.replaced) ? c.derived.replaced : null } : null });
+    columns.push({ name: c.name, role: c.role, type: c.type, levels: Array.isArray(c.levels) ? c.levels.filter(isStr) : null, derived: c.derived && typeof c.derived === 'object' && isStr(c.derived.of) && isStr(c.derived.transform) ? { of: c.derived.of, transform: c.derived.transform, at: c.derived.at, replaced: isStr(c.derived.replaced) ? c.derived.replaced : null } : null });
   }
   const rows = [];
   for (const r of o.rows) {

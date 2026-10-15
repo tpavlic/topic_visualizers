@@ -482,11 +482,17 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   `outcomeColumns` and `termColumns` in `js/data/model.js`, where a dataset with any outcome
   treats its response as one too); and, on each loaded dataset's row, a
   Derive a column control that adds the rank (ties averaged), natural log, square root, centered,
-  or standardized version of a continuous column as a predictor, as the response (stepping the
+  or standardized version of a continuous column, or the column centered at a value the reader
+  types (`centerAt`, the value kept as `derived.at`; centered at a control's known mean, it makes
+  the model's intercept the control-variate estimate with its correct interval), as a predictor, as the response (stepping the
   old response back to an outcome), or as an outcome, stored as
   data with `derived: { of, transform }` on the column (`deriveColumn` and `removeDerivedColumn`
   in `js/data/model.js`), named in the Source cell, in the data files' `# derived columns` line,
-  and in a comment in the scripts' data block, and removable where an original column is not),
+  and in a comment in the scripts' data block, and removable where an original column is not;
+  no two loaded datasets share a name, because the data files and the scripts are named from it:
+  `state.add` gives a new dataset a name in use the next free number, "name (2)" (`uniqueName` in
+  `js/data/model.js`), and `state.rename` refuses a name in use, the name box putting the old name
+  back with a note under it),
   ② Explore (the response's distribution
   and its relation to each predictor, with a Response picker, shown only for a dataset with
   outcomes, that puts any of them in the response's place), ③ Model (a formula builder of chips for the fixed terms,

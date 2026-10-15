@@ -3,7 +3,7 @@
 // expected value is the tiny input written out here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeDataset, sortLevels, support, usedRows, sameData, canModel, column, valuesOf, datasetSummary, responseColumn, deriveColumn, removeDerivedColumn, derivationText, derivedName, derivedColumns, DERIVATIONS, defaultTerms, termColumns, outcomeColumns } from '../js/data/model.js';
+import { makeDataset, sortLevels, support, usedRows, sameData, canModel, column, valuesOf, datasetSummary, responseColumn, deriveColumn, removeDerivedColumn, derivationText, derivedName, derivedColumns, DERIVATIONS, defaultTerms, termColumns, outcomeColumns, uniqueName } from '../js/data/model.js';
 
 const cols = [
   { name: 'y', role: 'response', type: 'continuous' },
@@ -138,7 +138,32 @@ test('deriveColumn refuses what it cannot make, and changes nothing then', () =>
   assert.match(deriveColumn(flat, { of: 'x', transform: 'standardize', name: 'x_std' }).reason, /no spread/);
   assert.ok(deriveColumn(flat, { of: 'x', transform: 'center', name: 'x_centered' }).ok);
   assert.deepEqual(flat.rows.map(r => r[3]), [0, 0]);
-  assert.deepEqual(Object.keys(DERIVATIONS), ['rank', 'log', 'sqrt', 'center', 'standardize']);
+  assert.deepEqual(Object.keys(DERIVATIONS), ['rank', 'log', 'sqrt', 'center', 'centerAt', 'standardize']);
+});
+
+test('deriveColumn centers a column at a value the reader gives', () => {
+  const ds = makeDataset({ name: 'd', columns: dcols, rows: [[1, 4, 'a'], [2, 1, 'b'], [null, null, 'a'], [4, 9, 'b']] });
+  assert.equal(derivedName('x', 'centerAt'), 'x_c');
+  assert.deepEqual(deriveColumn(ds, { of: 'x', transform: 'centerAt', at: 2.5, name: 'x_c' }), { ok: true, reason: null });
+  assert.deepEqual(ds.columns[3].derived, { of: 'x', transform: 'centerAt', replaced: null, at: 2.5 });
+  assert.deepEqual(ds.rows.map(r => r[3]), [1.5, -1.5, null, 6.5]);
+  assert.equal(derivationText(ds.columns[3]), 'x_c = x - 2.5');
+  // A negative value is written in parentheses, and a value of 0 is a value.
+  assert.ok(deriveColumn(ds, { of: 'y', transform: 'centerAt', at: -3, name: 'y_c' }).ok);
+  assert.equal(derivationText(ds.columns[4]), 'y_c = y - (-3)');
+  assert.deepEqual(ds.rows.map(r => r[4]), [4, 5, null, 7]);
+  assert.ok(deriveColumn(ds, { of: 'y', transform: 'centerAt', at: 0, name: 'y_c0' }).ok);
+  // With no value, or one that is not a finite number, nothing is added.
+  const before = JSON.stringify(ds);
+  for (const at of [undefined, NaN, Infinity, '2']) {
+    assert.match(deriveColumn(ds, { of: 'x', transform: 'centerAt', at, name: 'x_c2' }).reason, /^Give the value to center x at, as a number\.$/);
+  }
+  assert.equal(JSON.stringify(ds), before);
+  // The value travels with the column through a saved session, and a record without one is dropped.
+  const back = makeDataset(JSON.parse(JSON.stringify({ name: 'd', columns: ds.columns, rows: ds.rows })));
+  assert.equal(back.columns[3].derived.at, 2.5);
+  const lost = makeDataset({ name: 'd', columns: [{ name: 'x', role: 'predictor', type: 'continuous' }, { name: 'x_c', role: 'predictor', type: 'continuous', derived: { of: 'x', transform: 'centerAt' } }], rows: [[1, 0]] });
+  assert.equal(lost.columns[1].derived, null);
 });
 
 test('makeDataset keeps a column\'s derivation, as the saved session needs', () => {
@@ -190,4 +215,13 @@ test('outcomes can be the response but never a term', () => {
   assert.equal(removeDerivedColumn(ds, 'busy_sqrt'), true);
   assert.equal(responseColumn(ds).name, 'wait');
   assert.equal(makeDataset({ columns: [{ name: 'o', role: 'outcome', type: 'continuous' }], rows: [[1]] }).columns[0].role, 'outcome');
+});
+
+test('uniqueName numbers a name that is taken, and counts on from a number it ends in', () => {
+  assert.equal(uniqueName('A', []), 'A');
+  assert.equal(uniqueName('A', ['A']), 'A (2)');
+  assert.equal(uniqueName('A', ['A', 'A (2)', 'A (3)']), 'A (4)');
+  assert.equal(uniqueName('A', ['A', 'A (3)']), 'A (2)');
+  assert.equal(uniqueName('A (2)', ['A', 'A (2)']), 'A (3)');
+  assert.equal(uniqueName('Run 2', ['Run 2']), 'Run 2 (2)');
 });

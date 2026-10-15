@@ -10,11 +10,12 @@ import { mean, sd, ranks } from '../stats/descriptive.js';
 /**
  * @typedef {{ name: string, role: 'response'|'outcome'|'predictor'|'group'|'ignored',
  *   type: 'continuous'|'categorical'|'ordinal', levels: string[]|null,
- *   derived?: { of: string, transform: string, replaced?: string|null }|null }} Column
+ *   derived?: { of: string, transform: string, at?: number, replaced?: string|null }|null }} Column
  *   `levels` holds a categorical or ordinal column's distinct values, sorted
  *   as R sorts character levels, and null for a continuous column. `derived`
  *   names the continuous column and the transform a derived column was made
- *   from (see DERIVATIONS), with `replaced` naming the column it stepped back
+ *   from (see DERIVATIONS), with `at` the value a column centered at a given
+ *   value was centered at, and `replaced` naming the column it stepped back
  *   from the response when it was made the response, and is absent or null
  *   on a column read from the data.
  */
@@ -75,7 +76,7 @@ export function makeDataset(fields = {}) {
     role: ROLES.includes(c.role) ? c.role : 'ignored',
     type: TYPES.includes(c.type) ? c.type : 'continuous',
     levels: null,
-    derived: c.derived && c.derived.of != null && DERIVATIONS[c.derived.transform] ? { of: String(c.derived.of), transform: String(c.derived.transform), replaced: c.derived.replaced != null ? String(c.derived.replaced) : null } : null
+    derived: normalDerived(c.derived)
   }));
   const rows = (fields.rows || []).map(r => columns.map((c, j) => {
     const v = r[j];
@@ -292,13 +293,18 @@ export function defaultTerms(ds, response) {
 /**
  * The transforms a derived column applies to a continuous column: the label
  * the page shows, the suffix of the default name, how the derivation is
- * written out, and the domain the source values must satisfy.
+ * written out (from the source's name and, for `centerAt`, the value it is
+ * centered at), and the domain the source values must satisfy. `centerAt`
+ * takes the value from the reader (`takesValue`): centered at a known mean,
+ * it makes the model's intercept the prediction at that mean, which is a
+ * control-variate estimate when the column is a control.
  */
 export const DERIVATIONS = {
   rank: { label: 'rank (ties averaged)', suffix: 'rank', text: n => 'rank(' + n + ')', domain: null },
   log: { label: 'natural log', suffix: 'log', text: n => 'log(' + n + ')', domain: v => v > 0, needs: 'positive values' },
   sqrt: { label: 'square root', suffix: 'sqrt', text: n => 'sqrt(' + n + ')', domain: v => v >= 0, needs: 'non-negative values' },
   center: { label: 'centered', suffix: 'centered', text: n => n + ' - mean(' + n + ')', domain: null },
+  centerAt: { label: 'centered at a value you give', suffix: 'c', text: (n, at) => n + ' - ' + atText(at), domain: null, takesValue: true },
   standardize: { label: 'standardized', suffix: 'std', text: n => '(' + n + ' - mean(' + n + ')) / sd(' + n + ')', domain: null }
 };
 
@@ -314,7 +320,24 @@ export function derivedColumns(ds) { return ds.columns.filter(c => c.derived); }
  * @param {Column} col
  * @returns {string}
  */
-export function derivationText(col) { return col.name + ' = ' + DERIVATIONS[col.derived.transform].text(col.derived.of); }
+export function derivationText(col) { return col.name + ' = ' + DERIVATIONS[col.derived.transform].text(col.derived.of, col.derived.at); }
+
+// A value subtracted from a column, written as a term of the subtraction:
+// a negative value in parentheses, so that `x - (-3)` reads as it computes.
+function atText(at) { return at < 0 ? '(' + String(at) + ')' : String(at); }
+
+// A derived column's record as a session or a caller gives it, checked: a
+// known transform from a named source, and a finite `at` where the transform
+// takes one. Anything else reads as a column of the data.
+function normalDerived(d) {
+  if (!d || d.of == null || !DERIVATIONS[d.transform]) return null;
+  const out = { of: String(d.of), transform: String(d.transform), replaced: d.replaced != null ? String(d.replaced) : null };
+  if (DERIVATIONS[d.transform].takesValue) {
+    if (typeof d.at !== 'number' || !Number.isFinite(d.at)) return null;
+    out.at = d.at;
+  }
+  return out;
+}
 
 /**
  * The default name of a derived column: the source's name and the transform's suffix.
@@ -326,7 +349,8 @@ export function derivedName(of, transform) { return of + '_' + DERIVATIONS[trans
 
 /**
  * Adds a derived column to a dataset, in place: a continuous column's
- * ranks, natural log, square root, centered values, or standardized values,
+ * ranks, natural log, square root, centered values, values centered at
+ * `req.at`, or standardized values,
  * stored as data like any other column, with the derivation kept on the
  * column. A missing value stays missing. A derived column made the
  * response steps the current response back to an outcome, which can be
@@ -335,7 +359,7 @@ export function derivedName(of, transform) { return of + '_' + DERIVATIONS[trans
  * column can also be made an outcome. Nothing changes when the request is
  * refused.
  * @param {Dataset} ds
- * @param {{ of: string, transform: string, name: string, role?: 'predictor'|'response'|'outcome' }} req
+ * @param {{ of: string, transform: string, name: string, at?: number, role?: 'predictor'|'response'|'outcome' }} req
  * @returns {{ ok: boolean, reason: string|null }}
  */
 export function deriveColumn(ds, req) {
@@ -344,6 +368,7 @@ export function deriveColumn(ds, req) {
   const src = column(ds, req.of);
   if (!src) return { ok: false, reason: 'There is no column named ' + req.of + '.' };
   if (src.col.type !== 'continuous') return { ok: false, reason: req.of + ' is ' + src.col.type + '; a derived column is made from a continuous one.' };
+  if (d.takesValue && (typeof req.at !== 'number' || !Number.isFinite(req.at))) return { ok: false, reason: 'Give the value to center ' + req.of + ' at, as a number.' };
   const name = String(req.name || '').trim();
   if (!name) return { ok: false, reason: 'Name the new column.' };
   if (column(ds, name)) return { ok: false, reason: 'There is already a column named ' + name + '.' };
@@ -361,6 +386,8 @@ export function deriveColumn(ds, req) {
     const idx = []; vals.forEach((v, i) => { if (v != null) idx.push(i); });
     const r = ranks(idx.map(i => vals[i]));
     idx.forEach((i, k) => { out[i] = r[k]; });
+  } else if (req.transform === 'centerAt') {
+    vals.forEach((v, i) => { if (v != null) out[i] = v - req.at; });
   } else if (req.transform === 'log' || req.transform === 'sqrt') {
     const f = req.transform === 'log' ? Math.log : Math.sqrt;
     vals.forEach((v, i) => { if (v != null) out[i] = f(v); });
@@ -372,7 +399,7 @@ export function deriveColumn(ds, req) {
   }
   let replaced = null;
   if (role === 'response') for (const c of ds.columns) if (c.role === 'response') { c.role = 'outcome'; replaced = c.name; }
-  ds.columns.push({ name, role, type: 'continuous', levels: null, derived: { of: req.of, transform: req.transform, replaced } });
+  ds.columns.push({ name, role, type: 'continuous', levels: null, derived: Object.assign({ of: req.of, transform: req.transform, replaced }, d.takesValue ? { at: req.at } : {}) });
   ds.rows.forEach((r, i) => { r.push(out[i]); });
   return { ok: true, reason: null };
 }
@@ -397,4 +424,25 @@ export function removeDerivedColumn(ds, name) {
     if (back && (back.col.role === 'outcome' || back.col.role === 'ignored')) back.col.role = 'response';
   }
   return true;
+}
+
+/**
+ * A name no loaded dataset has: the name itself when it is free, and
+ * otherwise the name with the smallest free number, "name (2)", "name (3)",
+ * …, counting on from a number the name already ends in. The data files and
+ * the regenerate scripts take their file names from the dataset's name, and
+ * so two datasets must never share one.
+ * @param {string} name
+ * @param {Iterable<string>} taken the names already in use
+ * @returns {string}
+ */
+export function uniqueName(name, taken) {
+  const used = new Set(taken);
+  if (!used.has(name)) return name;
+  const m = /^(.*) \((\d+)\)$/.exec(name);
+  const base = m ? m[1] : name;
+  for (let k = m ? Number(m[2]) + 1 : 2; ; k++) {
+    const c = base + ' (' + k + ')';
+    if (!used.has(c)) return c;
+  }
 }
