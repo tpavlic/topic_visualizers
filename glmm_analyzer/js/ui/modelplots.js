@@ -4,7 +4,7 @@
 // fig.series, as the helpers in plots.js do, so that the figure's scripts
 // can redraw it.
 
-import { svgEl, tok, extent, scatter } from './plots.js';
+import { svgEl, tok, extent, scatter, xText } from './plots.js';
 import { num } from './format.js';
 
 const r1 = v => Math.round(v * 10) / 10;
@@ -67,7 +67,7 @@ export function dataPoints(fig, pts, o = {}) {
     pts.forEach((p, i) => { const d = Math.hypot(fig.sx(p.x) - px, fig.sy(p.y) - py); if (d < bd) { bd = d; best = i; } });
     if (best < 0 || bd > 16) return null;
     const p = pts[best];
-    return ['(' + num(p.x) + ', ' + num(p.y) + ')' + (p.n ? '  n = ' + p.n : '')];
+    return ['(' + xText(fig, p.x) + ', ' + num(p.y) + ')' + (p.n ? '  n = ' + p.n : '')];
   });
 }
 

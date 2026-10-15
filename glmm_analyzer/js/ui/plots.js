@@ -977,6 +977,25 @@ export function intervals(fig, items, o = {}) {
 }
 
 /**
+ * An x value as a readout names it: on a categorical x axis (see
+ * categoricalX in modelplots.js, which puts level k at position k), the
+ * level nearest the value, so that a point jittered within its level, or
+ * drawn at the level's position, reads as the level's name; elsewhere the
+ * number.
+ * @param {Figure} fig
+ * @param {number} v
+ * @returns {string}
+ */
+export function xText(fig, v) {
+  const c = fig.cats;
+  if (c && c.axis === 'x' && !c.at && Array.isArray(c.labels)) {
+    const k = Math.round(v);
+    if (k >= 1 && k <= c.labels.length) return c.labels[k - 1];
+  }
+  return num(v);
+}
+
+/**
  * A scatter plot of paired values.
  * @param {Figure} fig
  * @param {ArrayLike<number>} xs
@@ -999,7 +1018,7 @@ export function scatter(fig, xs, ys, o = {}) {
     let best = -1, bd = Infinity;
     for (let i = 0; i < n; i++) { const d = Math.hypot(sx(xs[i]) - px, sy(ys[i]) - py); if (d < bd) { bd = d; best = i; } }
     if (best < 0 || bd > 16) return null;
-    return ['(' + num(xs[best]) + ', ' + num(ys[best]) + ')'];
+    return ['(' + xText(fig, xs[best]) + ', ' + num(ys[best]) + ')'];
   });
 }
 
