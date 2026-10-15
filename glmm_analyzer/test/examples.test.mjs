@@ -15,7 +15,7 @@ const { EXAMPLES } = await import(pathToFileURL(path.join(ROOT, 'js', 'data', 'e
 const { sniff, buildTable } = await import(pathToFileURL(path.join(ROOT, 'js', 'io', 'parse.js')).href);
 const { support, responseColumn, valuesOf, column, outcomeColumns, defaultTerms } = await import(pathToFileURL(path.join(ROOT, 'js', 'data', 'model.js')).href);
 const { fitModel } = await import(pathToFileURL(path.join(ROOT, 'js', 'stats', 'fit.js')).href);
-const { marginalMeans, waldP, waldDf, randomEffectTest } = await import(pathToFileURL(path.join(ROOT, 'js', 'stats', 'inference.js')).href);
+const { marginalMeans, waldP, waldDf, randomEffectTest, effectGrid } = await import(pathToFileURL(path.join(ROOT, 'js', 'stats', 'inference.js')).href);
 const { onewayAnova } = await import(pathToFileURL(path.join(ROOT, 'js', 'stats', 'classical.js')).href);
 
 test('regenerated files match the committed ones byte for byte', () => {
@@ -158,4 +158,10 @@ test('the muffin-oven example carries outcomes and shows the threshold moving wi
   const best = bake => -(b.threshold + b['threshold:bake_time'] * bake) / (2 * b['I(threshold^2)']);
   assert.ok(b['I(threshold^2)'] > 0 && b['threshold:bake_time'] < 0);
   assert.ok(best(2) < 1 && best(5) > 15, 'best thresholds ' + [2, 3, 4, 5].map(best).join(', '));
+  // The effect plot separates its lines by each bake time the oven was run at, not by the
+  // quartiles of the 280 rows, which here are 3, 4, and 4.
+  const grid = effectGrid(ds, full, 'threshold', 'bake_time', 5);
+  assert.deepEqual(grid.series.map(s => s.by), [2, 3, 4, 5]);
+  assert.equal(grid.byAt, 'values');
+  assert.deepEqual(effectGrid(ds, full, 'threshold', 'bake_time', 5, {}, 3).series.map(s => s.by), [3, 4], 'past maxLines, the quartiles, each once');
 });

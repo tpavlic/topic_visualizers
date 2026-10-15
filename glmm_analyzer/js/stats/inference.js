@@ -315,7 +315,9 @@ export function marginalMeans(ds, result, factor, level, weights = 'equal') {
 /**
  * The rows of an effect plot: `x` over `n` points from its least to its
  * greatest used value (or over its levels), the `by` predictor at each of
- * its levels or at three quantiles, and every other predictor at the value
+ * its levels, and a continuous one at each of its used values when it has no
+ * more than `maxLines` of them (a setting run at a few values) or else at its
+ * quartiles, a repeated quartile drawn once; every other predictor at the value
  * `holdAt` gives it: a continuous one otherwise at its mean, and a factor
  * otherwise averaged over its levels with equal weights, which its rows carry
  * as the list of those levels (see averagedMatrix). A held value that is not
@@ -327,9 +329,10 @@ export function marginalMeans(ds, result, factor, level, weights = 'equal') {
  * @param {string|null} by
  * @param {number} [n]
  * @param {Object<string, number|string>} [holdAt]
- * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string|string[]> }}
+ * @param {number} [maxLines] the most values a continuous `by` is drawn at one by one
+ * @returns {{ series: { label: string|null, by: number|string|null, rows: object[], xs: (number|string)[] }[], xLevels: string[]|null, held: Object<string, number|string|string[]>, byAt: 'levels'|'values'|'quartiles'|null }}
  */
-export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
+export function effectGrid(ds, result, x, by, n = 60, holdAt = {}, maxLines = 6) {
   const grid = referenceGrid(ds, result);
   const held = {};
   for (const name of grid.names) {
@@ -345,14 +348,16 @@ export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
     for (const i of result.design.keep) { const v = ds.rows[i][cx.index]; if (v < lo) lo = v; if (v > hi) hi = v; }
     xs = Array.from({ length: n }, (_, i) => lo + (hi - lo) * i / (n - 1));
   } else xs = cx.col.levels.slice();
-  let byValues = [null];
+  let byValues = [null], byAt = null;
   if (by) {
     const cb = column(ds, by);
     if (cb.col.type === 'continuous') {
       const v = result.design.keep.map(i => ds.rows[i][cb.index]).sort((a, c) => a - c);
+      const used = [...new Set(v)];
       const at = pq => v[Math.min(v.length - 1, Math.max(0, Math.round(pq * (v.length - 1))))];
-      byValues = [at(0.25), at(0.5), at(0.75)];
-    } else byValues = cb.col.levels.slice();
+      byAt = used.length <= maxLines ? 'values' : 'quartiles';
+      byValues = byAt === 'values' ? used : [...new Set([at(0.25), at(0.5), at(0.75)])];
+    } else { byAt = 'levels'; byValues = cb.col.levels.slice(); }
   }
   const series = byValues.map(bv => ({
     label: by ? (typeof bv === 'number' ? by + ' = ' + Number(bv.toPrecision(4)) : String(bv)) : null,
@@ -360,7 +365,7 @@ export function effectGrid(ds, result, x, by, n = 60, holdAt = {}) {
     rows: xs.map(xv => Object.assign({}, held, { [x]: xv }, by ? { [by]: bv } : {})),
     xs
   }));
-  return { series, xLevels: cx.col.type === 'continuous' ? null : xs, held };
+  return { series, xLevels: cx.col.type === 'continuous' ? null : xs, held, byAt };
 }
 
 /**

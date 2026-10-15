@@ -492,7 +492,7 @@ function drawEffect() {
   if (holdError) { els.effect.appendChild(notice('warn', holdError)); registerResult(); return; }
   const x = els.x.value, by = currentBy();
   const level = state.settings.level;
-  const grid = effectGrid(ds, result, x, by, 60, holdAt());
+  const grid = effectGrid(ds, result, x, by, 60, holdAt(), MAX_LINES);
   const resp = column(ds, result.design && state.spec.response).col;
   const xc = column(ds, x);
   const link = LINKS[result.link];
@@ -579,7 +579,7 @@ function drawEffect() {
   p.innerHTML = heldText(grid) +
     (result.fit.mixed ? 'The population curve is the prediction at a random effect of zero: the typical group’s' + (result.link === 'identity' ? '' : ', not the average over groups, because the inverse link is not linear') + '. ' : '') +
     (els.groups.checked && result.fit.mixed && !by ? 'Each thin line is one group’s curve: the population curve shifted by the group’s predicted random effect' + (result.fit.random.terms[0].q === 2 ? ' and slope' : '') + '. ' : '') +
-    (by && byc.col.type === 'continuous' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
+    (grid.byAt === 'values' ? 'The lines take ' + esc(by) + ' at each value it has in the data. ' : grid.byAt === 'quartiles' ? 'The lines take ' + esc(by) + ' at its quartiles. ' : '') +
     (result.fit.family === 'binomial' ? 'Binned proportions are the share of ' + esc(result.event || '1') + ' among the observations in each bin, at the bin’s mean ' + esc(x) + '.' : '');
   els.effect.appendChild(p);
   figs.push(fig);
