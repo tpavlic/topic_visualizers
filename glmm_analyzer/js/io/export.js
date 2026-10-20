@@ -29,7 +29,10 @@ export function toCsv(rows) {
 /**
  * Provenance as `# key: value` lines, in the object's key order. Undefined
  * values are skipped. Line breaks inside a value become spaces, and so every
- * line stays a comment.
+ * line stays a comment. A spreadsheet does not know the line is a comment and
+ * splits it at every comma, and quoting it would hide the `#` from R and
+ * Python, which skip a line only when it starts with one; commas therefore
+ * become semicolons.
  * @param {Record<string, unknown>|null} [fields]
  * @returns {string[]}
  */
@@ -37,8 +40,8 @@ export function provenanceLines(fields) {
   const out = [];
   for (const [k, v] of Object.entries(fields || {})) {
     if (v === undefined) continue;
-    const text = Array.isArray(v) ? v.join(', ') : String(v);
-    out.push('# ' + k + ': ' + text.replace(/[\r\n]+/g, ' '));
+    const text = Array.isArray(v) ? v.join('; ') : String(v);
+    out.push(('# ' + k + ': ' + text.replace(/[\r\n]+/g, ' ')).replace(/,/g, ';'));
   }
   return out;
 }

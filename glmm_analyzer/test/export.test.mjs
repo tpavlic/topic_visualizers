@@ -32,6 +32,15 @@ test('provenanceLines keeps insertion order', () => {
   );
 });
 
+test('provenanceLines turns commas into semicolons and stays unquoted', () => {
+  // A spreadsheet would split a comma into a new column; quoting the line
+  // would hide its '#' from R and Python.
+  assert.deepEqual(
+    provenanceLines({ dataset: 'Queue, "A"', fit: 'maximum likelihood, Laplace approximation', flags: ['a', 'b'], 'x, y': 1 }),
+    ['# dataset: Queue; "A"', '# fit: maximum likelihood; Laplace approximation', '# flags: a; b', '# x; y: 1']
+  );
+});
+
 test('datasetCsv writes every column, a missing value as an empty field, and quotes a #', () => {
   assert.deepEqual(lines(datasetCsv(ds, { dataset: 'queue', response: 'wait' })), [
     '# dataset: queue', '# response: wait', 'wait,policy,rep', '2.5,A,1', ',"B, ""x""",1', '4,A,"run#2"'

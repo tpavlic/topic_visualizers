@@ -5064,9 +5064,9 @@ export function dsProvenance(ds, extra) {
   const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
   const p = { dataset: ds.name, rows: ds.rows.length, columns: ds.columns.length };
   if (resp) p.response = resp.name;
-  if (outs.length) p['other outcomes'] = outs.join(', ');
-  if (preds.length) p.predictors = preds.join(', ');
-  if (groups.length) p.group = groups.join(', ');
+  if (outs.length) p['other outcomes'] = outs.join('; ');
+  if (preds.length) p.predictors = preds.join('; ');
+  if (groups.length) p.group = groups.join('; ');
   if (ds.source && ds.source.file) p['source file'] = ds.source.file;
   const der = derivedColumns(ds).map(derivationText);
   if (der.length) p['derived columns'] = der.join('; ');
@@ -5144,7 +5144,10 @@ export function toCsv(rows) {
 /**
  * Provenance as `# key: value` lines, in the object's key order. Undefined
  * values are skipped. Line breaks inside a value become spaces, and so every
- * line stays a comment.
+ * line stays a comment. A spreadsheet does not know the line is a comment and
+ * splits it at every comma, and quoting it would hide the `#` from R and
+ * Python, which skip a line only when it starts with one; commas therefore
+ * become semicolons.
  * @param {Record<string, unknown>|null} [fields]
  * @returns {string[]}
  */
@@ -5152,8 +5155,8 @@ export function provenanceLines(fields) {
   const out = [];
   for (const [k, v] of Object.entries(fields || {})) {
     if (v === undefined) continue;
-    const text = Array.isArray(v) ? v.join(', ') : String(v);
-    out.push('# ' + k + ': ' + text.replace(/[\r\n]+/g, ' '));
+    const text = Array.isArray(v) ? v.join('; ') : String(v);
+    out.push(('# ' + k + ': ' + text.replace(/[\r\n]+/g, ' ')).replace(/,/g, ';'));
   }
   return out;
 }
@@ -10503,7 +10506,7 @@ export function render(root) {
     '<p class="lede">Load a bundled example or your own table from a file or from pasted text. A table has one row per observation and a header row naming its columns. Before anything loads, a dialog asks which column is the response and gives every other column a role, outcome, predictor, group, or ignored, and a type, continuous, categorical, or ordinal. Every row the reader cannot use is listed with its line number and the reason, and nothing is dropped silently. A loaded dataset can also gain a derived column, the rank, natural log, square root, centered, or standardized version of one of its continuous columns, or the column centered at a value you give, from the Derive a column control on its row; the new column is data like any other, and how it was made travels with the dataset into the exported files and the regenerated scripts.</p>' +
     '<div class="sec">' +
       '<div class="sec-hd">Loaded datasets</div>' +
-      '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page with its roles suggested from its # lines.</p>' +
+      '<p class="exp-note">Every loaded dataset can be saved as CSV from the Export control on its row. The file holds every column under its name, one row per observation, with a missing value as an empty field, and loads back in through this page, which suggests its roles from the column names as it does for any other file.</p>' +
       '<div id="im-list"></div>' +
     '</div>' +
     '<div id="im-status"></div>' +

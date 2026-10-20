@@ -38,9 +38,9 @@ export function dsProvenance(ds, extra) {
   const outs = ds.columns.filter(c => c.role === 'outcome').map(c => c.name);
   const p = { dataset: ds.name, rows: ds.rows.length, columns: ds.columns.length };
   if (resp) p.response = resp.name;
-  if (outs.length) p['other outcomes'] = outs.join(', ');
-  if (preds.length) p.predictors = preds.join(', ');
-  if (groups.length) p.group = groups.join(', ');
+  if (outs.length) p['other outcomes'] = outs.join('; ');
+  if (preds.length) p.predictors = preds.join('; ');
+  if (groups.length) p.group = groups.join('; ');
   if (ds.source && ds.source.file) p['source file'] = ds.source.file;
   const der = derivedColumns(ds).map(derivationText);
   if (der.length) p['derived columns'] = der.join('; ');
