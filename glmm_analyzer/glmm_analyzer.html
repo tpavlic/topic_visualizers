@@ -10214,11 +10214,12 @@ export default { id, title, render, onShow, sections };
 import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL, predictorColumns, groupColumns, outcomeColumns } from '../data/model.js';
 import { FAMILIES, familiesFor } from '../stats/families.js';
-import { summary, histogram, boxStats } from '../stats/descriptive.js';
+import { summary, histogram, boxStats, distinctValues, HIST_BINS_MIN, HIST_BINS_MAX } from '../stats/descriptive.js';
 import { binnedMeans } from '../stats/inference.js';
 import { makeFigure, histogram as drawHistogram, boxPlot, intervals, exportButtons, legend } from '../ui/plots.js';
 import { dataPoints, rawPoints, curveBand } from '../ui/modelplots.js';
-import { datasetSelect, card, cardRow, notice } from '../ui/widgets.js';
+import { datasetSelect, card, cardRow, notice, spinner, details } from '../ui/widgets.js';
+import { histChoice } from '../ui/rules.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { esc, num, stat, intl, plural } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
@@ -10227,6 +10228,8 @@ import { registerTips } from '../ui/tooltip.js';
 export const id = 'explore';
 /** The page's title. */
 export const title = 'Explore';
+/** The histogram lists the distinct values when there are at most this many. */
+const DISTINCT_LIST_MAX = 30;
 
 let rootEl = null;
 let els = {};
@@ -10353,15 +10356,7 @@ function compute() {
     html += '</tbody></table></div>';
   }
   els.desc.innerHTML = html;
-  if (numeric) {
-    const box = document.createElement('div');
-    box.className = 'fig-box';
-    els.desc.appendChild(box);
-    const fig = makeFigure(box, { height: 230, xLabel: resp.name, yLabel: 'Frequency', title: 'Histogram of ' + resp.name });
-    exportButtons(box, fig, ds.name + ' histogram');
-    fig.render(f => { drawHistogram(f, histogram(y, { bins: sup === 'count' || sup === 'binary' ? Math.min(30, new Set(y).size) : undefined })); });
-    figs.push(fig);
-  }
+  if (numeric) histogramBlock(ds, resp, y);
 
   // Against each predictor.
   els.plots.innerHTML = '';
@@ -10429,6 +10424,92 @@ function familyAdvice(sup) {
 }
 
 export default { id, title, render, onShow };
+
+// The response's histogram with its bins: one bar per value where the values
+// are few enough for that, the default when they look discrete (a count or a
+// binary response, or a few exact values), or k of equal width, Sturges' rule
+// unless the slider is moved. The choice is kept per dataset and response.
+function histogramBlock(ds, resp, y) {
+  const pickKey = 'hist:' + ds.id + ':' + resp.name;
+  const pick = Object.assign({}, state.getPick(id, pickKey) || {});
+  let hc = histChoice(y, pick);
+  const remember = () => state.setPick(id, pickKey, { mode: pick.mode, bins: pick.bins });
+  const row = document.createElement('div');
+  row.className = 'ctrl-row';
+  row.innerHTML = (hc.canValue
+    ? '<span class="ctrl-pair"><span class="ctrl-lbl" id="ex-hist-lbl"><span class="tip" tabindex="0" data-tip="One per value gives each distinct value its own bar, which is how a count or a binary response is read; it is the default when the values look discrete: whole numbers that repeat, or a few exact values. Equal width cuts the range into k bins of one width, as a histogram of a measurement is drawn.">Bins</span></span>' +
+      '<span class="seg" role="group" aria-labelledby="ex-hist-lbl"><button type="button" class="seg-btn" data-hist="value">One per value</button><button type="button" class="seg-btn" data-hist="width">Equal width</button></span></span>'
+    : '') +
+    '<span class="ctrl-pair ex-hist-width"><label class="ctrl-lbl" for="ex-bins">' +
+      (hc.canValue ? '' : '<span class="tip" tabindex="0" data-tip="The number of equal-width bins from the smallest value to the largest. Sturges\u2019 rule, \u2308log\u2082 n + 1\u2309, is the default, as it is in R.">Bins</span> ') + '<span class="sym">k</span></label>' +
+      '<input type="range" id="ex-bins-rng" min="' + HIST_BINS_MIN + '" max="' + HIST_BINS_MAX + '" step="1" value="' + hc.bins + '" aria-label="Bins k, as a slider">' +
+      '<input type="text" id="ex-bins" value="' + hc.bins + '">' +
+      '<span class="ctrl-note" id="ex-bins-note"></span>' +
+      '<button type="button" class="xp-btn" id="ex-bins-auto">Sturges\u2019 rule</button></span>';
+  els.desc.appendChild(row);
+  const rng = row.querySelector('#ex-bins-rng'), widthPair = row.querySelector('.ex-hist-width');
+  const note = row.querySelector('#ex-bins-note'), autoBtn = row.querySelector('#ex-bins-auto');
+
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.desc.appendChild(box);
+  const fig = makeFigure(box, { height: 230, xLabel: resp.name, yLabel: 'Frequency', title: 'Histogram of ' + resp.name });
+  exportButtons(box, fig, ds.name + ' histogram');
+  const draw = f => drawHistogram(f, histogram(y, hc.perValue ? { perValue: true } : { bins: hc.bins }));
+  fig.render(draw);
+  figs.push(fig);
+  const cap = document.createElement('p');
+  cap.className = 'ex-cap';
+  els.desc.appendChild(cap);
+  const setCap = () => {
+    cap.innerHTML = hc.perValue
+      ? 'Each bar counts the rows whose response equals its value, ' + intl(y.length) + ' in all over ' + plural(hc.nUnique, 'distinct value') + '. ' +
+        (hc.rule === 'count' ? 'The values are whole numbers that repeat, as counts do, and so each has a bar of its own; Equal width bins them as a measurement would be.'
+          : hc.rule === 'few' ? 'The values are a few exact outcomes, each seen several times, and so each has a bar of its own.'
+          : 'Each distinct value has a bar of its own, as asked; these values do not look discrete, and Equal width is the usual choice for them.')
+      : 'Each bar counts the rows whose response falls in its bin, ' + intl(y.length) + ' in all in ' + plural(hc.bins, 'equal-width bin') + ' from the smallest value to the largest' +
+        (hc.auto ? ' (Sturges\u2019 rule, \u2308log\u2082 n + 1\u2309).' : ' (set by the slider).') +
+        (hc.discrete ? ' The values look discrete, and One per value gives each its own bar.' : '');
+  };
+
+  // Every distinct value with its count and share, when there are few enough
+  // to list and the bars are one per value: what the bars show, as numbers.
+  let distinct = null;
+  if (hc.nUnique >= 1 && hc.nUnique <= DISTINCT_LIST_MAX) {
+    const dv = distinctValues(y);
+    let cum = 0;
+    const rows = Array.from(dv.values, (v, i) => { cum += dv.counts[i]; return '<tr><td>' + num(v, 8) + '</td><td>' + intl(dv.counts[i]) + '</td><td>' + num(dv.counts[i] / dv.n, 4) + '</td><td>' + num(cum / dv.n, 4) + '</td></tr>'; });
+    distinct = details('The ' + plural(hc.nUnique, 'distinct value') + ', with counts and proportions',
+      '<div class="scroll-box"><table class="ptab"><thead><tr><th>Value</th><th>Count</th><th>Proportion</th><th>Cumulative</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>');
+    els.desc.appendChild(distinct);
+  }
+
+  const sync = () => {
+    hc = histChoice(y, pick);
+    if (distinct) distinct.hidden = !hc.perValue;
+    row.querySelectorAll('[data-hist]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.hist === 'value') === hc.perValue)));
+    widthPair.hidden = hc.perValue;
+    rng.value = String(hc.bins);
+    spin.set(hc.bins, false);
+    note.textContent = hc.auto ? 'Sturges\u2019 rule for n = ' + intl(y.length) : 'Sturges\u2019 rule gives ' + intl(histChoice(y, null).bins);
+    autoBtn.hidden = hc.auto;
+    setCap();
+  };
+  const setBins = v => {
+    v = Math.min(HIST_BINS_MAX, Math.max(HIST_BINS_MIN, Math.round(v)));
+    if (!Number.isFinite(v) || v === hc.bins) { sync(); return; }
+    pick.bins = v; remember(); sync(); fig.render(draw);
+  };
+  const spin = spinner(row.querySelector('#ex-bins'), { min: HIST_BINS_MIN, max: HIST_BINS_MAX, step: 1, onChange: setBins });
+  rng.addEventListener('input', () => setBins(Number(rng.value)));
+  autoBtn.addEventListener('click', () => { pick.bins = null; remember(); sync(); fig.render(draw); });
+  row.querySelectorAll('[data-hist]').forEach(b => b.addEventListener('click', () => {
+    if (pick.mode === b.dataset.hist) return;
+    pick.mode = b.dataset.hist; remember(); sync(); fig.render(draw);
+  }));
+  sync();
+  registerTips(row);
+}
 </script>
 <script type="text/plain" data-module="js/pages/import.js">
 // The Import page: a drop zone, a file chooser, a paste box, and the bundled
@@ -14161,14 +14242,85 @@ export function ecdf(a) {
   return { x: Float64Array.from(xs), p: Float64Array.from(ps) };
 }
 
+/** The fewest and the most equal-width bins a histogram takes, the range of the page's slider. */
+export const HIST_BINS_MIN = 3;
+export const HIST_BINS_MAX = 40;
+
 /**
- * Equal-width histogram over [min, max]. Each bin is [edges[b], edges[b+1]) except the
- * last, which is closed on the right, and so the maximum is counted. A constant sample
+ * Sturges' rule for the number of equal-width bins, ceiling(log2(n) + 1) as R's
+ * nclass.Sturges gives it and hist() takes by default, kept between HIST_BINS_MIN
+ * and HIST_BINS_MAX.
+ * @param {number} n
+ * @returns {number}
+ */
+export function sturgesBins(n) {
+  const k = n > 0 ? Math.ceil(Math.log2(n) + 1) : HIST_BINS_MIN;
+  return Math.max(HIST_BINS_MIN, Math.min(HIST_BINS_MAX, k));
+}
+
+/**
+ * Each distinct value of a sample once, in ascending order, with how often it occurs.
+ * @param {ArrayLike<number>} a
+ * @returns {{values: Float64Array, counts: Float64Array, n: number}}
+ */
+export function distinctValues(a) {
+  const s = sortedCopy(a), n = s.length, vs = [], cs = [];
+  for (let i = 0; i < n; i++) {
+    if (i && s[i] === s[i - 1]) cs[cs.length - 1]++;
+    else { vs.push(s[i]); cs.push(1); }
+  }
+  return { values: Float64Array.from(vs), counts: Float64Array.from(cs), n };
+}
+
+/** The most bins a histogram draws one per value; past this the bars are too thin to read. */
+export const VALUE_BINS_MAX = 150;
+/** Whole numbers spread wider than this are not counted as counts. */
+const COUNT_SPAN_MAX = 5000;
+
+/**
+ * Whether a sample reads as discrete, by the rules the Input Analyzer applies.
+ * Counts: whole numbers, none negative, over a span of at most 5000, each distinct
+ * value seen twice on average (2 * nUnique <= n) and either at most 30 distinct
+ * values or at most 10 * sqrt(mean) of them, the room a count of that size has to
+ * vary in (a measurement recorded to whole units spreads wider, or has almost every
+ * value distinct). Few values: at most 10 distinct values, whole numbers or not,
+ * each seen at least 3 times on average, which are outcomes rather than
+ * measurements. Either way the sample needs no more than VALUE_BINS_MAX bars, one
+ * per whole number across the span or one per distinct value.
+ * @param {ArrayLike<number>} a
+ * @returns {{discrete: boolean, rule: 'count'|'few'|null, nUnique: number, bars: number}}
+ *   `bars` is how many bins a bar per value takes: one per whole number across the
+ *   span, or one per distinct value.
+ */
+export function looksDiscrete(a) {
+  const n = a.length;
+  if (!n) return { discrete: false, rule: null, nUnique: 0, bars: 0 };
+  const { values } = distinctValues(a);
+  const nUnique = values.length;
+  const min = values[0], max = values[nUnique - 1];
+  const allInt = values.every(Number.isInteger);
+  const bars = allInt ? max - min + 1 : nUnique;
+  let rule = null;
+  if (allInt && min >= 0 && max - min <= COUNT_SPAN_MAX && bars <= VALUE_BINS_MAX && 2 * nUnique <= n) {
+    if (nUnique <= 30 || nUnique <= 10 * Math.sqrt(Math.max(mean(a), 1))) rule = 'count';
+  }
+  if (!rule && nUnique <= 10 && n >= 3 * nUnique) rule = 'few';
+  return { discrete: rule !== null, rule, nUnique, bars };
+}
+
+/**
+ * Histogram of a sample. By default the bins are equal-width over [min, max], Sturges'
+ * count of them unless `bins` says otherwise. With `perValue`, one bin per value: on
+ * the half-integers across the span when every value is a whole number (a value that
+ * never occurred gets an empty bin), and otherwise one per distinct value with its
+ * edges halfway to its neighbors (the end bins mirroring the gap inside them); each
+ * bin's value is in `values`. Each bin is [edges[b], edges[b+1]) except the last,
+ * which is closed on the right, and so the maximum is counted. A constant sample
  * gives one bin of width 1 centered on its value; an empty sample gives one empty bin
  * on [0, 1]. Always edges.length === counts.length + 1.
  * @param {ArrayLike<number>} a
- * @param {{bins?: number}} [opts] bin count; default max(5, ceil(sqrt(n)))
- * @returns {{edges: Float64Array, counts: Float64Array, binWidth: number}}
+ * @param {{bins?: number, perValue?: boolean}} [opts]
+ * @returns {{edges: Float64Array, counts: Float64Array, binWidth: number, perValue?: true, values?: Float64Array}}
  */
 export function histogram(a, opts) {
   const n = a.length;
@@ -14177,8 +14329,9 @@ export function histogram(a, opts) {
   if (!(max > min)) {
     return { edges: Float64Array.of(min - 0.5, min + 0.5), counts: Float64Array.of(n), binWidth: 1 };
   }
+  if (opts && opts.perValue) return valueHistogram(a);
   const want = opts && opts.bins;
-  const bins = want > 0 ? Math.floor(want) : Math.max(5, Math.ceil(Math.sqrt(n)));
+  const bins = want > 0 ? Math.floor(want) : sturgesBins(n);
   const w = (max - min) / bins;
   const edges = new Float64Array(bins + 1);
   for (let b = 0; b <= bins; b++) edges[b] = min + b * w;
@@ -14194,6 +14347,24 @@ export function histogram(a, opts) {
     counts[b]++;
   }
   return { edges, counts, binWidth: w };
+}
+
+// One bin per value; see histogram(). The sample has at least two distinct values.
+function valueHistogram(a) {
+  const d = distinctValues(a), u = d.values, m = u.length;
+  if (u.every(Number.isInteger)) {
+    const lo = u[0], k = u[m - 1] - lo + 1;
+    const edges = new Float64Array(k + 1), counts = new Float64Array(k), values = new Float64Array(k);
+    for (let b = 0; b <= k; b++) edges[b] = lo - 0.5 + b;
+    for (let b = 0; b < k; b++) values[b] = lo + b;
+    for (let i = 0; i < m; i++) counts[u[i] - lo] = d.counts[i];
+    return { edges, counts, binWidth: 1, perValue: true, values };
+  }
+  const edges = new Float64Array(m + 1);
+  edges[0] = u[0] - (u[1] - u[0]) / 2;
+  for (let i = 1; i < m; i++) edges[i] = (u[i - 1] + u[i]) / 2;
+  edges[m] = u[m - 1] + (u[m - 1] - u[m - 2]) / 2;
+  return { edges, counts: d.counts, binWidth: NaN, perValue: true, values: u };
 }
 
 /**
@@ -19356,6 +19527,8 @@ export function histogram(fig, h, o = {}) {
   }
   if (!fig.readoutFn) fig.readout(dx => {
     for (let i = 0; i < k; i++) if (dx >= h.edges[i] && dx <= h.edges[i + 1]) {
+      // A bar per value reads out its value and share rather than its bin.
+      if (h.perValue && h.values) return ['value ' + num(h.values[i]), 'count ' + h.counts[i] + (total > 0 ? ' (' + num(100 * h.counts[i] / total, 3) + '%)' : '')];
       return ['[' + num(h.edges[i]) + ', ' + num(h.edges[i + 1]) + ')', (o.fraction ? 'fraction ' + num(ys[i], 3) : 'count ' + h.counts[i])];
     }
     return null;
@@ -20461,6 +20634,8 @@ export { esc };
 // checklist opens with and the labels the figures carry. Pure functions, no
 // DOM.
 
+import { looksDiscrete, sturgesBins, HIST_BINS_MIN, HIST_BINS_MAX, VALUE_BINS_MAX } from '../stats/descriptive.js';
+
 /**
  * The ticks a checklist opens with. A stored list stands at any length, even
  * one or none, less any id no longer offered; every offered item is ticked
@@ -20490,6 +20665,28 @@ export function shortNames(names) {
   if (parts.some(p => !p) || parts.some(p => p[0] !== parts[0][0])) return names.slice();
   const tails = parts.map(p => p[1]);
   return new Set(tails).size === tails.length ? tails : names.slice();
+}
+
+/**
+ * How the Explore page bins the response's histogram, given the reader's
+ * stored choice `pick` ({ mode: 'value' | 'width', bins }, or nothing). A bar per
+ * value is offered whenever it takes at most VALUE_BINS_MAX bars (`canValue`), and
+ * is the default when the values look discrete by `looksDiscrete`; otherwise, and
+ * on request, the bins are equal-width, `bins` of them, Sturges' rule unless the
+ * reader set a count, kept in the slider's range.
+ * @param {ArrayLike<number>} values
+ * @param {{mode?: string, bins?: number}|null|undefined} pick
+ * @returns {{perValue: boolean, bins: number, canValue: boolean, discrete: boolean,
+ *   rule: 'count'|'few'|null, nUnique: number, auto: boolean}}
+ *   `auto` says the bin count is Sturges' rather than the reader's.
+ */
+export function histChoice(values, pick) {
+  const info = looksDiscrete(values);
+  const canValue = info.nUnique >= 1 && info.bars <= VALUE_BINS_MAX;
+  const mode = pick && (pick.mode === 'width' || pick.mode === 'value') ? pick.mode : info.discrete ? 'value' : 'width';
+  const asked = pick && Number.isFinite(pick.bins) && pick.bins > 0 ? Math.round(pick.bins) : null;
+  const bins = asked ? Math.max(HIST_BINS_MIN, Math.min(HIST_BINS_MAX, asked)) : sturgesBins(values.length);
+  return { perValue: mode === 'value' && canValue, bins, canValue, discrete: info.discrete, rule: info.rule, nUnique: info.nUnique, auto: !asked };
 }
 </script>
 <script type="text/plain" data-module="js/ui/scrollhint.js">

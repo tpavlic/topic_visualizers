@@ -495,7 +495,17 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   back with a note under it),
   ② Explore (the response's distribution
   and its relation to each predictor, with a Response picker, shown only for a dataset with
-  outcomes, that puts any of them in the response's place), ③ Model (a formula builder of chips for the fixed terms,
+  outcomes, that puts any of them in the response's place; its histogram bins by `histChoice` in
+  `js/ui/rules.js`: one bar per value (`histogram(values, { perValue: true })` in
+  `js/stats/descriptive.js`, on the half-integers across the span of whole numbers and otherwise
+  halfway between neighboring distinct values) by default when the values look discrete
+  (`looksDiscrete`: whole non-negative numbers each seen twice on average with at most 30 distinct
+  values or at most 10√mean of them, or at most ten exact values each seen three times on average,
+  which takes in every count and binary response), offered as a "One per value" switch whenever it
+  takes at most 150 bars, with a table of the distinct values, their counts, and proportions under
+  the plot while it is on; otherwise k equal-width bins, Sturges' rule (`sturgesBins`,
+  ⌈log₂ n + 1⌉, kept between 3 and 40) unless the slider or spinner sets k, the choice kept per
+  dataset and response), ③ Model (a formula builder of chips for the fixed terms,
   powers, and interactions, a grouping factor with an optional random slope and an optional
   observation-level random effect, REML for the normal family; the response picker offers every
   non-ignored column, and choosing one starts the default model for it, every column `termColumns`

@@ -6,11 +6,12 @@
 import * as state from '../state.js';
 import { column, support, valuesOf, SUPPORT_LABEL, predictorColumns, groupColumns, outcomeColumns } from '../data/model.js';
 import { FAMILIES, familiesFor } from '../stats/families.js';
-import { summary, histogram, boxStats } from '../stats/descriptive.js';
+import { summary, histogram, boxStats, distinctValues, HIST_BINS_MIN, HIST_BINS_MAX } from '../stats/descriptive.js';
 import { binnedMeans } from '../stats/inference.js';
 import { makeFigure, histogram as drawHistogram, boxPlot, intervals, exportButtons, legend } from '../ui/plots.js';
 import { dataPoints, rawPoints, curveBand } from '../ui/modelplots.js';
-import { datasetSelect, card, cardRow, notice } from '../ui/widgets.js';
+import { datasetSelect, card, cardRow, notice, spinner, details } from '../ui/widgets.js';
+import { histChoice } from '../ui/rules.js';
 import { installExportRow } from '../ui/exportrow.js';
 import { esc, num, stat, intl, plural } from '../ui/format.js';
 import { registerTips } from '../ui/tooltip.js';
@@ -19,6 +20,8 @@ import { registerTips } from '../ui/tooltip.js';
 export const id = 'explore';
 /** The page's title. */
 export const title = 'Explore';
+/** The histogram lists the distinct values when there are at most this many. */
+const DISTINCT_LIST_MAX = 30;
 
 let rootEl = null;
 let els = {};
@@ -145,15 +148,7 @@ function compute() {
     html += '</tbody></table></div>';
   }
   els.desc.innerHTML = html;
-  if (numeric) {
-    const box = document.createElement('div');
-    box.className = 'fig-box';
-    els.desc.appendChild(box);
-    const fig = makeFigure(box, { height: 230, xLabel: resp.name, yLabel: 'Frequency', title: 'Histogram of ' + resp.name });
-    exportButtons(box, fig, ds.name + ' histogram');
-    fig.render(f => { drawHistogram(f, histogram(y, { bins: sup === 'count' || sup === 'binary' ? Math.min(30, new Set(y).size) : undefined })); });
-    figs.push(fig);
-  }
+  if (numeric) histogramBlock(ds, resp, y);
 
   // Against each predictor.
   els.plots.innerHTML = '';
@@ -221,3 +216,89 @@ function familyAdvice(sup) {
 }
 
 export default { id, title, render, onShow };
+
+// The response's histogram with its bins: one bar per value where the values
+// are few enough for that, the default when they look discrete (a count or a
+// binary response, or a few exact values), or k of equal width, Sturges' rule
+// unless the slider is moved. The choice is kept per dataset and response.
+function histogramBlock(ds, resp, y) {
+  const pickKey = 'hist:' + ds.id + ':' + resp.name;
+  const pick = Object.assign({}, state.getPick(id, pickKey) || {});
+  let hc = histChoice(y, pick);
+  const remember = () => state.setPick(id, pickKey, { mode: pick.mode, bins: pick.bins });
+  const row = document.createElement('div');
+  row.className = 'ctrl-row';
+  row.innerHTML = (hc.canValue
+    ? '<span class="ctrl-pair"><span class="ctrl-lbl" id="ex-hist-lbl"><span class="tip" tabindex="0" data-tip="One per value gives each distinct value its own bar, which is how a count or a binary response is read; it is the default when the values look discrete: whole numbers that repeat, or a few exact values. Equal width cuts the range into k bins of one width, as a histogram of a measurement is drawn.">Bins</span></span>' +
+      '<span class="seg" role="group" aria-labelledby="ex-hist-lbl"><button type="button" class="seg-btn" data-hist="value">One per value</button><button type="button" class="seg-btn" data-hist="width">Equal width</button></span></span>'
+    : '') +
+    '<span class="ctrl-pair ex-hist-width"><label class="ctrl-lbl" for="ex-bins">' +
+      (hc.canValue ? '' : '<span class="tip" tabindex="0" data-tip="The number of equal-width bins from the smallest value to the largest. Sturges\u2019 rule, \u2308log\u2082 n + 1\u2309, is the default, as it is in R.">Bins</span> ') + '<span class="sym">k</span></label>' +
+      '<input type="range" id="ex-bins-rng" min="' + HIST_BINS_MIN + '" max="' + HIST_BINS_MAX + '" step="1" value="' + hc.bins + '" aria-label="Bins k, as a slider">' +
+      '<input type="text" id="ex-bins" value="' + hc.bins + '">' +
+      '<span class="ctrl-note" id="ex-bins-note"></span>' +
+      '<button type="button" class="xp-btn" id="ex-bins-auto">Sturges\u2019 rule</button></span>';
+  els.desc.appendChild(row);
+  const rng = row.querySelector('#ex-bins-rng'), widthPair = row.querySelector('.ex-hist-width');
+  const note = row.querySelector('#ex-bins-note'), autoBtn = row.querySelector('#ex-bins-auto');
+
+  const box = document.createElement('div');
+  box.className = 'fig-box';
+  els.desc.appendChild(box);
+  const fig = makeFigure(box, { height: 230, xLabel: resp.name, yLabel: 'Frequency', title: 'Histogram of ' + resp.name });
+  exportButtons(box, fig, ds.name + ' histogram');
+  const draw = f => drawHistogram(f, histogram(y, hc.perValue ? { perValue: true } : { bins: hc.bins }));
+  fig.render(draw);
+  figs.push(fig);
+  const cap = document.createElement('p');
+  cap.className = 'ex-cap';
+  els.desc.appendChild(cap);
+  const setCap = () => {
+    cap.innerHTML = hc.perValue
+      ? 'Each bar counts the rows whose response equals its value, ' + intl(y.length) + ' in all over ' + plural(hc.nUnique, 'distinct value') + '. ' +
+        (hc.rule === 'count' ? 'The values are whole numbers that repeat, as counts do, and so each has a bar of its own; Equal width bins them as a measurement would be.'
+          : hc.rule === 'few' ? 'The values are a few exact outcomes, each seen several times, and so each has a bar of its own.'
+          : 'Each distinct value has a bar of its own, as asked; these values do not look discrete, and Equal width is the usual choice for them.')
+      : 'Each bar counts the rows whose response falls in its bin, ' + intl(y.length) + ' in all in ' + plural(hc.bins, 'equal-width bin') + ' from the smallest value to the largest' +
+        (hc.auto ? ' (Sturges\u2019 rule, \u2308log\u2082 n + 1\u2309).' : ' (set by the slider).') +
+        (hc.discrete ? ' The values look discrete, and One per value gives each its own bar.' : '');
+  };
+
+  // Every distinct value with its count and share, when there are few enough
+  // to list and the bars are one per value: what the bars show, as numbers.
+  let distinct = null;
+  if (hc.nUnique >= 1 && hc.nUnique <= DISTINCT_LIST_MAX) {
+    const dv = distinctValues(y);
+    let cum = 0;
+    const rows = Array.from(dv.values, (v, i) => { cum += dv.counts[i]; return '<tr><td>' + num(v, 8) + '</td><td>' + intl(dv.counts[i]) + '</td><td>' + num(dv.counts[i] / dv.n, 4) + '</td><td>' + num(cum / dv.n, 4) + '</td></tr>'; });
+    distinct = details('The ' + plural(hc.nUnique, 'distinct value') + ', with counts and proportions',
+      '<div class="scroll-box"><table class="ptab"><thead><tr><th>Value</th><th>Count</th><th>Proportion</th><th>Cumulative</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>');
+    els.desc.appendChild(distinct);
+  }
+
+  const sync = () => {
+    hc = histChoice(y, pick);
+    if (distinct) distinct.hidden = !hc.perValue;
+    row.querySelectorAll('[data-hist]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.hist === 'value') === hc.perValue)));
+    widthPair.hidden = hc.perValue;
+    rng.value = String(hc.bins);
+    spin.set(hc.bins, false);
+    note.textContent = hc.auto ? 'Sturges\u2019 rule for n = ' + intl(y.length) : 'Sturges\u2019 rule gives ' + intl(histChoice(y, null).bins);
+    autoBtn.hidden = hc.auto;
+    setCap();
+  };
+  const setBins = v => {
+    v = Math.min(HIST_BINS_MAX, Math.max(HIST_BINS_MIN, Math.round(v)));
+    if (!Number.isFinite(v) || v === hc.bins) { sync(); return; }
+    pick.bins = v; remember(); sync(); fig.render(draw);
+  };
+  const spin = spinner(row.querySelector('#ex-bins'), { min: HIST_BINS_MIN, max: HIST_BINS_MAX, step: 1, onChange: setBins });
+  rng.addEventListener('input', () => setBins(Number(rng.value)));
+  autoBtn.addEventListener('click', () => { pick.bins = null; remember(); sync(); fig.render(draw); });
+  row.querySelectorAll('[data-hist]').forEach(b => b.addEventListener('click', () => {
+    if (pick.mode === b.dataset.hist) return;
+    pick.mode = b.dataset.hist; remember(); sync(); fig.render(draw);
+  }));
+  sync();
+  registerTips(row);
+}
