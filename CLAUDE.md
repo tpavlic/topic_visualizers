@@ -498,7 +498,7 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   outcomes, that puts any of them in the response's place; its histogram bins by `histChoice` in
   `js/ui/rules.js`: one bar per value (`histogram(values, { perValue: true })` in
   `js/stats/descriptive.js`, on the half-integers across the span of whole numbers and otherwise
-  halfway between neighboring distinct values) by default when the values look discrete
+  halfway between neighboring distinct values) by default when the values look discrete by rules adapted from the Input Analyzer's
   (`looksDiscrete`: whole non-negative numbers each seen twice on average with at most 30 distinct
   values or at most 10√mean of them, or at most ten exact values each seen three times on average,
   which takes in every count and binary response), offered as a "One per value" switch whenever it
