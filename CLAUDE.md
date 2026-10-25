@@ -504,7 +504,9 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
   which takes in every count and binary response), offered as a "One per value" switch whenever it
   takes at most 150 bars, with a table of the distinct values, their counts, and proportions under
   the plot while it is on; otherwise k equal-width bins, Sturges' rule (`sturgesBins`,
-  ⌈log₂ n + 1⌉, kept between 3 and 40) unless the slider or spinner sets k, the choice kept per
+  ⌈log₂ n + 1⌉, kept between 3 and 40) unless the slider or spinner sets k, the row's note giving
+  the count and width of the bins and an Auto button, pressed while the count is Sturges', putting
+  it back, its tooltip the one place the rule is named with its formula; the choice kept per
   dataset and response), ③ Model (a formula builder of chips for the fixed terms,
   powers, and interactions, a grouping factor with an optional random slope and an optional
   observation-level random effect, REML for the normal family; the response picker offers every

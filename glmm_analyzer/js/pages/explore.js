@@ -225,6 +225,9 @@ function histogramBlock(ds, resp, y) {
   const pickKey = 'hist:' + ds.id + ':' + resp.name;
   const pick = Object.assign({}, state.getPick(id, pickKey) || {});
   let hc = histChoice(y, pick);
+  let hb = histogram(y, hc.perValue ? { perValue: true } : { bins: hc.bins });
+  const autoBins = histChoice(y, null).bins;
+  const autoTip = 'Sturges\u2019 rule: \u2308log\u2082 n + 1\u2309 bins: ' + plural(autoBins, 'bin') + ' with n = ' + intl(y.length) + '.';
   const remember = () => state.setPick(id, pickKey, { mode: pick.mode, bins: pick.bins });
   const row = document.createElement('div');
   row.className = 'ctrl-row';
@@ -233,11 +236,11 @@ function histogramBlock(ds, resp, y) {
       '<span class="seg" role="group" aria-labelledby="ex-hist-lbl"><button type="button" class="seg-btn" data-hist="value">One per value</button><button type="button" class="seg-btn" data-hist="width">Equal width</button></span></span>'
     : '') +
     '<span class="ctrl-pair ex-hist-width"><label class="ctrl-lbl" for="ex-bins">' +
-      (hc.canValue ? '' : '<span class="tip" tabindex="0" data-tip="The number of equal-width bins from the smallest value to the largest. Sturges\u2019 rule, \u2308log\u2082 n + 1\u2309, is the default, as it is in R.">Bins</span> ') + '<span class="sym">k</span></label>' +
+      (hc.canValue ? '' : '<span class="tip" tabindex="0" data-tip="The number of equal-width bins from the smallest value to the largest. Auto sets it by Sturges\u2019 rule.">Bins</span> ') + '<span class="sym">k</span></label>' +
       '<input type="range" id="ex-bins-rng" min="' + HIST_BINS_MIN + '" max="' + HIST_BINS_MAX + '" step="1" value="' + hc.bins + '" aria-label="Bins k, as a slider">' +
       '<input type="text" id="ex-bins" value="' + hc.bins + '">' +
       '<span class="ctrl-note" id="ex-bins-note"></span>' +
-      '<button type="button" class="xp-btn" id="ex-bins-auto">Sturges\u2019 rule</button></span>';
+      '<button type="button" class="xp-btn" id="ex-bins-auto" data-tip="' + autoTip + '" data-tip-press>Auto</button></span>';
   els.desc.appendChild(row);
   const rng = row.querySelector('#ex-bins-rng'), widthPair = row.querySelector('.ex-hist-width');
   const note = row.querySelector('#ex-bins-note'), autoBtn = row.querySelector('#ex-bins-auto');
@@ -247,7 +250,7 @@ function histogramBlock(ds, resp, y) {
   els.desc.appendChild(box);
   const fig = makeFigure(box, { height: 230, xLabel: resp.name, yLabel: 'Frequency', title: 'Histogram of ' + resp.name });
   exportButtons(box, fig, ds.name + ' histogram');
-  const draw = f => drawHistogram(f, histogram(y, hc.perValue ? { perValue: true } : { bins: hc.bins }));
+  const draw = f => drawHistogram(f, hb);
   fig.render(draw);
   figs.push(fig);
   const cap = document.createElement('p');
@@ -260,7 +263,7 @@ function histogramBlock(ds, resp, y) {
           : hc.rule === 'few' ? 'The values are a few exact outcomes, each seen several times, and so each has a bar of its own.'
           : 'Each distinct value has a bar of its own, as asked; these values do not look discrete, and Equal width is the usual choice for them.')
       : 'Each bar counts the rows whose response falls in its bin, ' + intl(y.length) + ' in all in ' + plural(hc.bins, 'equal-width bin') + ' from the smallest value to the largest' +
-        (hc.auto ? ' (Sturges\u2019 rule, \u2308log\u2082 n + 1\u2309).' : ' (set by the slider).') +
+        (hc.auto ? ' (Sturges\u2019 rule).' : ' (set by the slider).') +
         (hc.discrete ? ' The values look discrete, and One per value gives each its own bar.' : '');
   };
 
@@ -278,13 +281,14 @@ function histogramBlock(ds, resp, y) {
 
   const sync = () => {
     hc = histChoice(y, pick);
+    hb = histogram(y, hc.perValue ? { perValue: true } : { bins: hc.bins });
     if (distinct) distinct.hidden = !hc.perValue;
     row.querySelectorAll('[data-hist]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.hist === 'value') === hc.perValue)));
     widthPair.hidden = hc.perValue;
     rng.value = String(hc.bins);
     spin.set(hc.bins, false);
-    note.textContent = hc.auto ? 'Sturges\u2019 rule for n = ' + intl(y.length) : 'Sturges\u2019 rule gives ' + intl(histChoice(y, null).bins);
-    autoBtn.hidden = hc.auto;
+    note.textContent = hc.perValue ? '' : plural(hb.counts.length, 'bin') + ' of width ' + num(hb.binWidth, 3);
+    autoBtn.setAttribute('aria-pressed', String(hc.auto));
     setCap();
   };
   const setBins = v => {
