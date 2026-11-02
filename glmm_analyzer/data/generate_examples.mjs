@@ -371,7 +371,7 @@ function tourCsv(which) {
 const EXAMPLES = [
   {
     id: 'service-speed',
-    title: 'Five simulated designs, ten replications each, under common random numbers',
+    title: 'Blocked by common random numbers (time in system, 5 designs)',
     file: 'service_speed.csv',
     description: 'The mean time in system of two hundred customers, after a warm-up of one hundred, in a single-server queue with exponential interarrival times of mean 1.0 minute, under five designs that differ only in the mean service time: 0.9, 0.8, 0.7, 0.6, and 0.5 minutes. Each design was run for ten replications, and replication r of every design used the same random-number seed, and so within a replication the five designs see the same arrivals and the same service draws, scaled to their own means. These are common random numbers, and the replication is a grouping factor shared by all five designs.',
     build: serviceSpeedCsv,
@@ -379,7 +379,7 @@ const EXAMPLES = [
   },
   {
     id: 'muffin-oven',
-    title: 'Muffin oven: a loading threshold and a bake time, four outputs',
+    title: 'Two factors, four outputs (muffin oven, 28 settings)',
     file: 'muffin_oven.csv',
     description: 'Calls for 2 to 12 muffins arrive once a minute for thirty minutes at an oven that holds 30 muffins and bakes for a fixed time. The oven is loaded, oldest muffins first, whenever it is empty and at least a threshold number of muffins wait: a threshold of 1 loads greedily, and one near 30 waits for a full oven. Seven thresholds (1, 5, 10, 15, 20, 25, and 30) were run at four bake times (2, 3, 4, and 5 minutes) against each of ten random demand streams, and every run of a replication used the same stream, and so the replication is a grouping factor shared by all twenty-eight settings. Each run reports four outputs: the average time in system of the muffins that finished, the oven’s utilization (the share of its 30 places in use, averaged over the half hour), the most muffins ever waiting, and the muffins unfinished at the end. The first is the response, and the other three are outcomes, which the Model page offers as the response but never as predictors.',
     build: ovenCsv,
@@ -387,7 +387,7 @@ const EXAMPLES = [
   },
   {
     id: 'on-time',
-    title: 'On-time service: a binary response with a random effect',
+    title: 'Binary response with a random intercept (on-time service)',
     file: 'on_time.csv',
     description: 'Whether each of the first fifty customers of a day was served within two minutes of arriving, against the number waiting in queue when the customer arrived and the service policy (A, mean service 0.8 minutes; B, mean service 0.7), in a single-server queue with exponential interarrival times of mean 1.0 minute. Eight days were run under each policy from the same eight random-number seeds, and so the seed is a grouping factor shared by both policies. A binomial model with a logit link and a random intercept per seed.',
     build: onTimeCsv,
@@ -395,7 +395,7 @@ const EXAMPLES = [
   },
   {
     id: 'cycle-time',
-    title: 'Cycle time: a positive response against load and class',
+    title: 'Positive, skewed response (cycle time)',
     file: 'cycle_time.csv',
     description: 'The time in system of sixty jobs on each of six shifts, after a warm-up of two hundred jobs, in a single-server queue whose offered load (the arrival rate, with mean service time 1.0 for a standard job and 0.5 for an express job) differs by shift. Time in system is positive and right skewed, and its spread grows with its mean as the load rises: a gamma model with a log link, with load as a continuous predictor and class as a categorical one.',
     build: cycleTimeCsv,
@@ -403,7 +403,7 @@ const EXAMPLES = [
   },
   {
     id: 'balks',
-    title: 'Balks per shift: an overdispersed count',
+    title: 'Overdispersed count (balks per shift)',
     file: 'balks.csv',
     description: 'The number of customers who balked (arrived and left without joining) on each of sixty shifts, against the shift’s offered load and its staffing, with the week as a grouping factor. The counts vary more from shift to shift than a Poisson allows, which the Pearson dispersion on the Model page shows: compare the Poisson family with the negative binomial, and with the Poisson-lognormal that an observation-level random effect gives, on the Compare page.',
     build: balksCsv,
@@ -411,7 +411,7 @@ const EXAMPLES = [
   },
   {
     id: 'utilization',
-    title: 'Utilization: a proportion against the arrival rate',
+    title: 'Measured proportion (utilization)',
     file: 'utilization.csv',
     description: 'The fraction of an eight-hour day a single server was busy, on sixty days with different arrival rates and a shorter mean service on weekends. Utilization is a measured proportion, strictly between 0 and 1, whose spread shrinks toward both ends: the beta family with a logit link.',
     build: utilizationCsv,
@@ -419,7 +419,7 @@ const EXAMPLES = [
   },
   {
     id: 'colony-recruits',
-    title: 'Colony recruits: a count with a random slope',
+    title: 'Count with a random slope (colony recruits)',
     file: 'colony_recruits.csv',
     description: 'The number of nestmates recruited in each of eight trials at twelve colonies, against the temperature and a feeding treatment applied per colony. Colonies differ in their baseline and in how strongly temperature moves them: a Poisson model with a random intercept and a random slope on temperature by colony. The treatment varies only between colonies, and so its test leans on the colony effect being in the model.',
     build: colonyCsv,
@@ -427,74 +427,74 @@ const EXAMPLES = [
   },
   {
     id: 'rating',
-    title: 'Visit ratings: an ordered response',
+    title: 'Ordered response (visit ratings)',
     file: 'rating.csv',
     description: 'Each of two hundred customers rated the visit poor, fair, good, or great, against the minutes waited and whether the express lane was used. The levels are ordered but not spaced: the ordinal family models the cumulative probabilities with one slope and three thresholds.',
     build: ratingCsv,
     mapping: { name: 'Visit ratings', response: 'rating', columns: { rating: { role: 'response', type: 'ordinal', levels: ['poor', 'fair', 'good', 'great'] }, wait: { role: 'predictor', type: 'continuous' }, express: { role: 'predictor', type: 'categorical' } } }
   },
   {
-    id: 'tour-one', tour: 'one', title: 'Deviation from a target (for the one-sample t test)', file: 'tour_one.csv',
+    id: 'tour-one', tour: 'one', title: 'One-sample t test (deviation from a target)', file: 'tour_one.csv',
     description: 'The delivery time of twenty-five orders, each as its deviation from the thirty-minute target.',
     build: () => tourCsv('one'),
     mapping: { name: 'Deviation from target', response: 'deviation', columns: { deviation: { role: 'response', type: 'continuous' } } }
   },
   {
-    id: 'tour-t', tour: 't', title: 'Two production lines (for the t test)', file: 'tour_t.csv',
+    id: 'tour-t', tour: 't', title: 'Two-sample t test (two production lines)', file: 'tour_t.csv',
     description: 'Throughput on fifteen days of each of two production lines.',
     build: () => tourCsv('t'),
     mapping: { name: 'Two lines', response: 'throughput', columns: { throughput: { role: 'response', type: 'continuous' }, line: { role: 'predictor', type: 'categorical' } } }
   },
   {
-    id: 'tour-anova', tour: 'anova', title: 'Three shifts (for one-way ANOVA)', file: 'tour_anova.csv',
+    id: 'tour-anova', tour: 'anova', title: 'One-way ANOVA (three shifts)', file: 'tour_anova.csv',
     description: 'The defect rate on twelve days of each of three shifts.',
     build: () => tourCsv('anova'),
     mapping: { name: 'Three shifts', response: 'defect_rate', columns: { defect_rate: { role: 'response', type: 'continuous' }, shift: { role: 'predictor', type: 'categorical' } } }
   },
   {
-    id: 'tour-twoway', tour: 'twoway', title: 'Temperature and catalyst (for two-way ANOVA)', file: 'tour_twoway.csv',
+    id: 'tour-twoway', tour: 'twoway', title: 'Two-way ANOVA (temperature and catalyst)', file: 'tour_twoway.csv',
     description: 'The yield of six runs in each of the six combinations of a temperature (low, high) and a catalyst (A, B, C).',
     build: () => tourCsv('twoway'),
     mapping: { name: 'Temperature and catalyst', response: 'yield', columns: { yield: { role: 'response', type: 'continuous' }, temperature: { role: 'predictor', type: 'categorical' }, catalyst: { role: 'predictor', type: 'categorical' } } }
   },
   {
-    id: 'tour-regression', tour: 'regression', title: 'Delivery time against distance (for correlation and regression)', file: 'tour_regression.csv',
+    id: 'tour-regression', tour: 'regression', title: 'Correlation and simple regression (delivery time against distance)', file: 'tour_regression.csv',
     description: 'The delivery time of thirty orders against the distance driven.',
     build: () => tourCsv('regression'),
     mapping: { name: 'Time against distance', response: 'delivery_time', columns: { delivery_time: { role: 'response', type: 'continuous' }, distance: { role: 'predictor', type: 'continuous' } } }
   },
   {
-    id: 'tour-ancova', tour: 'ancova', title: 'Two machines and the job size (for ANCOVA)', file: 'tour_ancova.csv',
+    id: 'tour-ancova', tour: 'ancova', title: 'ANCOVA (two machines and the job size)', file: 'tour_ancova.csv',
     description: 'The processing time of sixteen jobs on each of two machines, against the size of the job.',
     build: () => tourCsv('ancova'),
     mapping: { name: 'Two machines', response: 'time', columns: { time: { role: 'response', type: 'continuous' }, machine: { role: 'predictor', type: 'categorical' }, size: { role: 'predictor', type: 'continuous' } } }
   },
   {
-    id: 'tour-paired', tour: 'paired', title: 'Before and after (for the paired t test)', file: 'tour_paired.csv',
+    id: 'tour-paired', tour: 'paired', title: 'Paired t test (before and after)', file: 'tour_paired.csv',
     description: 'The task time of fourteen operators before and after a change.',
     build: () => tourCsv('paired'),
     mapping: { name: 'Before and after', response: 'time', columns: { time: { role: 'response', type: 'continuous' }, condition: { role: 'predictor', type: 'categorical' }, subject: { role: 'group', type: 'categorical' } } }
   },
   {
-    id: 'tour-repeated', tour: 'repeated', title: 'Orders on ten days (for repeated measures)', file: 'tour_repeated.csv',
+    id: 'tour-repeated', tour: 'repeated', title: 'Repeated measures (orders on ten days)', file: 'tour_repeated.csv',
     description: 'The delivery time of twenty orders on each of ten days, each as its deviation from the thirty-minute target.',
     build: () => tourCsv('repeated'),
     mapping: { name: 'Orders on ten days', response: 'deviation', columns: { deviation: { role: 'response', type: 'continuous' }, day: { role: 'group', type: 'categorical' } } }
   },
   {
-    id: 'tour-chisq', tour: 'chisq', title: 'Delivery outcome by channel (for the chi-square test)', file: 'tour_chisq.csv',
+    id: 'tour-chisq', tour: 'chisq', title: 'Chi-square test of independence (delivery outcome by channel)', file: 'tour_chisq.csv',
     description: 'The count of orders delivered early, on time, or late, by the channel the order came through.',
     build: () => tourCsv('chisq'),
     mapping: { name: 'Outcome by channel', response: 'count', columns: { count: { role: 'response', type: 'continuous' }, outcome: { role: 'predictor', type: 'categorical' }, channel: { role: 'predictor', type: 'categorical' } } }
   },
   {
-    id: 'tour-gof', tour: 'gof', title: 'Breakdowns by weekday (for the chi-square goodness-of-fit test)', file: 'tour_gof.csv',
+    id: 'tour-gof', tour: 'gof', title: 'Chi-square goodness-of-fit test (breakdowns by weekday)', file: 'tour_gof.csv',
     description: 'The count of machine breakdowns on each of the six working days of the week over a quarter.',
     build: () => tourCsv('gof'),
     mapping: { name: 'Breakdowns by weekday', response: 'count', columns: { count: { role: 'response', type: 'continuous' }, weekday: { role: 'predictor', type: 'categorical' } } }
   },
   {
-    id: 'tour-proportion', tour: 'proportion', title: 'Two offers (for the two-proportion z test)', file: 'tour_proportion.csv',
+    id: 'tour-proportion', tour: 'proportion', title: 'Two-proportion z test (two offers)', file: 'tour_proportion.csv',
     description: 'Whether each of fifty customers shown each of two offers converted.',
     build: () => tourCsv('proportion'),
     mapping: { name: 'Two offers', response: 'converted', columns: { converted: { role: 'response', type: 'continuous' }, offer: { role: 'predictor', type: 'categorical' } } }

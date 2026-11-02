@@ -157,15 +157,30 @@ export function render(root) {
     enqueue('pasted data', s);
   });
 
-  // Two groups, one per page that uses them: the Model page's examples in
-  // the order the bundle lists them, and then the Classic tests page's small
-  // datasets in that page's own section order, so a reader who came from a
-  // section finds its dataset where the section sits.
+  // The menu's groups, each named for the page its examples are for: the
+  // Model page's in two (designed simulation experiments whose replications
+  // share their random numbers, and then responses that are not normal, from
+  // continuous to discrete), and the Classic tests page's in three that follow
+  // that page's own section order, so a reader who came from a section finds
+  // its dataset where the section sits. An example missing from every group
+  // (a new one, say) is listed at the end of its page's last group.
   const option = ex => '<option value="' + esc(ex.id) + '">' + esc(ex.title) + '</option>';
+  const tourIds = ids => ids.map(t => (EXAMPLES.find(ex => ex.tour === t) || {}).id);
+  const groups = [
+    { label: 'Models: simulation experiments on common random numbers', ids: ['service-speed', 'muffin-oven'] },
+    { label: 'Models: responses that are not normal', ids: ['cycle-time', 'utilization', 'on-time', 'balks', 'colony-recruits', 'rating'] },
+    { label: 'Classic tests: normal responses', ids: tourIds(['one', 't', 'anova', 'twoway', 'regression', 'ancova']) },
+    { label: 'Classic tests: paired and repeated measures', ids: tourIds(['paired', 'repeated']) },
+    { label: 'Classic tests: counts and proportions', ids: tourIds(['chisq', 'gof', 'proportion']) }
+  ];
+  const grouped = new Set(groups.flatMap(g => g.ids));
   const tourOrder = sections.map(s => s.id);
-  const tours = EXAMPLES.filter(ex => ex.tour).sort((a, b) => tourOrder.indexOf(a.tour) - tourOrder.indexOf(b.tour));
-  els.ex.innerHTML = '<optgroup label="Generalized linear and mixed models">' + EXAMPLES.filter(ex => !ex.tour).map(option).join('') + '</optgroup>'
-    + '<optgroup label="Classic tests, one per section">' + tours.map(option).join('') + '</optgroup>';
+  const strays = EXAMPLES.filter(ex => !grouped.has(ex.id))
+    .sort((a, b) => !!a.tour - !!b.tour || tourOrder.indexOf(a.tour) - tourOrder.indexOf(b.tour));
+  groups[1].ids.push(...strays.filter(ex => !ex.tour).map(ex => ex.id));
+  groups[4].ids.push(...strays.filter(ex => ex.tour).map(ex => ex.id));
+  els.ex.innerHTML = groups.map(g => '<optgroup label="' + esc(g.label) + '">'
+    + g.ids.map(id => EXAMPLES.find(ex => ex.id === id)).filter(Boolean).map(option).join('') + '</optgroup>').join('');
   const showDesc = () => {
     const ex = EXAMPLES.find(x => x.id === els.ex.value);
     els.exDesc.textContent = ex ? ex.description : '';
