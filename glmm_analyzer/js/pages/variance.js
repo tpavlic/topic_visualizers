@@ -141,7 +141,7 @@ function compute() {
   });
   const lg = document.createElement('div');
   box.appendChild(lg);
-  legend(lg, pieces.map(p => ({ label: p.label, color: p.color, swatch: 'bar' })));
+  legend(lg, pieces.map(p => ({ label: p.label, color: p.color, swatch: 'bar' })), fig);
 
   // The cards.
   const cards = [card('Marginal R²', SHARE(v.r2m), 'the fixed effects’ share')];

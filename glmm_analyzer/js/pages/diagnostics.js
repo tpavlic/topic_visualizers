@@ -148,7 +148,7 @@ function compute() {
     if (b.length > 1) curveBand(f, { x: b.map(p => p.x), y: b.map(p => p.y) }, { band: false, label: 'binned mean', width: 2 });
     dataPoints(f, b, { color: '--truth', hollow: true, r: 4, label: 'binned mean' });
   });
-  legend(ff.box.appendChild(document.createElement('div')), [{ swatch: 'dot', color: '--est', label: 'residual' }, { swatch: 'hollow', color: '--truth', label: 'mean residual in a bin of fitted values' }]);
+  legend(ff.box.appendChild(document.createElement('div')), [{ swatch: 'dot', color: '--est', label: 'residual' }, { swatch: 'hollow', color: '--truth', label: 'mean residual in a bin of fitted values' }], ff.fig);
   const sl = figBox(els.fitted, { height: 240, xLabel: 'Fitted value', yLabel: '√|quantile residual|', title: 'Scale–location' }, ds.name + ' scale location');
   const sq = Array.from(res.quantile, v => Math.sqrt(Math.abs(v)));
   sl.fig.render(f => {

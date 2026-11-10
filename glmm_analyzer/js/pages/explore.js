@@ -172,7 +172,7 @@ function compute() {
         if (b.length > 1) curveBand(f, { x: b.map(p => p.x), y: b.map(p => p.y) }, { band: false, label: 'binned mean', width: 2 });
         dataPoints(f, b, { color: '--truth', hollow: true, r: 4, label: 'binned mean' });
       });
-      legend(box.appendChild(document.createElement('div')), [{ swatch: 'dot', color: '--est', label: 'observation' }, { swatch: 'hollow', color: '--truth', label: 'mean of ' + yLabel + ' in a bin of ' + pc.name }]);
+      legend(box.appendChild(document.createElement('div')), [{ swatch: 'dot', color: '--est', label: 'observation' }, { swatch: 'hollow', color: '--truth', label: 'mean of ' + yLabel + ' in a bin of ' + pc.name }], fig);
       figs.push(fig);
     } else {
       const lv = pc.levels || [];

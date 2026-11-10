@@ -672,6 +672,14 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
      `js/pages/import.js`): the Model page's in two, simulation experiments on common random
      numbers and then responses that are not normal from continuous to discrete, and the Classic
      tests page's in three that follow that page's section order.
+  11. A figure's legend is HTML beside it on the page, and so the SVG, PNG, and COPY exports draw
+     it again as a strip under the plot (`legendStrip` in `js/ui/plots.js`). That needs the figure
+     passed to `legend(container, items, fig)`: a legend drawn without it is left out of the
+     exports. The export drops a trailing "(drag …)" or "(click …)" hint from a label, since a
+     saved figure has nothing to drag. The SVG file names Arial and its metric twins
+     (`SVG_FONTS`) and embeds no font, because an editor such as Inkscape ignores an embedded one,
+     and sets smaller any label that would run past the frame in Arial (`fitText`), while the PNG
+     and COPY images, drawn by the browser, embed the page's Outfit.
 
 ---
 

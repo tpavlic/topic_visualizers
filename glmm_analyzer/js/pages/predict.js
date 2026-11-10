@@ -408,7 +408,7 @@ function drawOrdinalEffect(ds, result) {
       if (!xs) dataPoints(f, pos.map((p, i) => ({ x: p, y: yk[i] })), { color: LEVEL_COLORS[k % LEVEL_COLORS.length], r: 4, label: 'P(' + l + ')' });
     });
   });
-  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', dash: LEVEL_DASHES[k % LEVEL_DASHES.length], color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })));
+  legend(box.appendChild(document.createElement('div')), levels.map((l, k) => ({ swatch: LEVEL_DASHES[k % LEVEL_DASHES.length] ? 'dash' : 'line', dash: LEVEL_DASHES[k % LEVEL_DASHES.length], color: LEVEL_COLORS[k % LEVEL_COLORS.length], label: 'P(' + esc(l) + ')' })), fig);
   const p = document.createElement('p');
   p.className = 'muted-line';
   p.innerHTML = heldText(grid) + 'The probabilities of the levels sum to 1 at every ' + esc(x) + '.';
@@ -468,7 +468,7 @@ function drawInterceptEffect(ds, result) {
     if (showData) legendItems.push(bins ? { swatch: 'hollow', color: '--est', label: 'observed proportion in a bin of consecutive observations (ten bins of equal count)' } : { swatch: 'dot', color: '--est', label: 'observation' });
     if (groupLines) legendItems.push({ swatch: 'thin', color: '--pair', label: 'one group’s mean, from its predicted random effect' });
   });
-  legend(box.appendChild(document.createElement('div')), legendItems);
+  legend(box.appendChild(document.createElement('div')), legendItems, fig);
   const p = document.createElement('p');
   p.className = 'muted-line';
   p.innerHTML = 'The model has no predictor, and so it predicts one mean for every observation: the intercept carried through the inverse link, with its ' + term('Wald band', WALD_TIP) + '. The observations are drawn in the order loaded. ' +
@@ -573,7 +573,7 @@ function drawEffect() {
     if (showData) legendItems.push(pts.length ? { swatch: 'hollow', color: '--est', label: 'observed proportion in a bin of ' + esc(x) + ' (ten bins of equal count)' } : { swatch: 'dot', color: '--est', label: 'observation' });
     if (els.groups.checked && result.fit.mixed && !by) legendItems.push({ swatch: 'thin', color: '--pair', label: 'one group’s curve, from its predicted random effect' });
   });
-  legend(box.appendChild(document.createElement('div')), legendItems);
+  legend(box.appendChild(document.createElement('div')), legendItems, fig);
   const p = document.createElement('p');
   p.className = 'muted-line';
   p.innerHTML = heldText(grid) +
