@@ -1,12 +1,14 @@
 // Generates the bundled example datasets for the GLMM Analyzer.
 //
-// Every example is drawn from a seeded simulation, and so the files are
-// reproducible: re-running this script writes the same bytes. The queueing
+// Every example but one is drawn from a seeded simulation, and so the files
+// are reproducible: re-running this script writes the same bytes. The queueing
 // examples simulate a single-server queue with exponential interarrival and
 // service times, started empty, with waiting times from the Lindley
-// recursion W[n+1] = max(0, W[n] + S[n] - A[n+1]). The oven example
-// simulates a batch oven fed by calls of 2 to 12 muffins, one a minute, which
-// starts baking whenever it is empty and enough muffins wait. The colony
+// recursion W[n+1] = max(0, W[n] + S[n] - A[n+1]). The oven example is not
+// simulated here: it holds the runs of a batch oven fed by calls of 2 to 12
+// muffins, one a minute, which starts baking whenever it is empty and enough
+// muffins wait, against a hand-simulation exercise's ten demand streams, whose
+// call sizes are not published (see OVEN_RUNS). The colony
 // example draws from a Poisson model with a random intercept and slope per
 // colony.
 //
@@ -22,7 +24,7 @@
 //                       utilization, most muffins waiting, muffins unfinished) against the
 //                       loading threshold (1, 5, ..., 30) and the bake time (2 to 5 minutes),
 //                       with the demand stream shared by all 28 settings as the group;
-//                       10 replications
+//                       10 replications, r0 to r9; written in, not simulated
 //   on_time.csv         served within 2 minutes, per customer: a binary response against
 //                       the number in queue at arrival and the policy (A, mean service 0.8;
 //                       B, mean service 0.7), with the replication's random-number seed shared
@@ -53,7 +55,6 @@ const ROOT = path.resolve(HERE, '..');
 
 const SEEDS = {
   serviceSpeed: 1084000,
-  oven: 1190000,
   onTime: 310000,
   cycle: 420000,
   balks: 530000,
@@ -141,65 +142,84 @@ function serviceSpeedCsv() {
 }
 
 /**
- * One run of a batch oven: a call for `sizes[k]` muffins arrives at minute k,
- * from 0 until the end, and the oven, which holds `cap` muffins and bakes for
- * `bake` minutes, is loaded oldest first (a call split at the capacity)
- * whenever it is empty and at least `threshold` muffins wait. At one time an
- * arrival is handled before a departure. Returns the average time in system
- * of the muffins that left, the time average of the fraction of the oven in
- * use, the most muffins ever waiting, and the muffins still in the system at
- * the end.
+ * The batch oven's runs, one block per demand stream (0 to 9): within it, one row per bake time
+ * (2, 3, 4, and 5 minutes), and in a row one run per threshold (1, 5, 10, 15, 20, 25, and 30),
+ * each giving the average time in system of the muffins that left, the time average of the
+ * fraction of the oven in use, the most muffins ever waiting, and the muffins still in the system
+ * at the end. The oven holds 30 muffins, and a run ends at minute 30.
  */
-function ovenRun(threshold, sizes, bake, { cap = 30, end = 30 } = {}) {
-  let clk = 0, waiting = 0, baking = 0, used = 0, tisSum = 0, done = 0, usedArea = 0, maxWaiting = 0, next = 0;
-  // Every call still in the system, oldest first; those baking lead.
-  const line = [];
-  const events = [{ kind: 1, t: 0 }, { kind: -1, t: end }];
-  while (events.length) {
-    events.sort((a, b) => a.t - b.t || b.kind - a.kind);
-    if (events[0].t > clk || events[0].kind === -1) { usedArea += used * (events[0].t - clk); maxWaiting = Math.max(maxWaiting, waiting); }
-    const e = events.shift();
-    clk = e.t;
-    if (e.kind === -1) break;
-    if (e.kind === 1) {
-      line.push({ arrival: clk, size: sizes[next] });
-      waiting += sizes[next++];
-      if (next < sizes.length) events.push({ kind: 1, t: clk + 1 });
-    } else {
-      const c = line.shift();
-      tisSum += (clk - c.arrival) * c.size; done += c.size;
-      baking -= c.size; used = baking / cap;
-    }
-    if (baking === 0 && waiting >= threshold) {
-      for (let k = 0; k < line.length; k++) {
-        if (baking + line[k].size > cap) {
-          const part = { arrival: line[k].arrival, size: cap - baking };
-          line[k].size -= part.size;
-          line.splice(k, 0, part);
-        }
-        events.push({ kind: 0, t: clk + bake });
-        baking += line[k].size; waiting -= line[k].size; used = baking / cap;
-        if (baking === cap) break;
-      }
-    }
-  }
-  return { tis: tisSum / done, utilization: usedArea / clk, maxWaiting, unfinished: waiting + baking };
-}
+const OVEN_RUNS = [
+  [
+    [[2.4951, 0.4533, 12, 8], [2.4951, 0.4533, 12, 8], [2.5196, 0.4533, 12, 8], [2.7843, 0.4533, 14, 8], [3.1568, 0.4389, 19, 27], [3.4175, 0.4311, 23, 18], [4.1222, 0.4333, 29, 32]],
+    [[3.9278, 0.6467, 19, 18], [3.9278, 0.6467, 19, 18], [3.8811, 0.6444, 19, 27], [3.9227, 0.6467, 19, 18], [4.1546, 0.6467, 22, 18], [4.4175, 0.6467, 23, 18], [5.1222, 0.6333, 29, 32]],
+    [[5.5723, 0.8044, 28, 46], [5.5723, 0.8044, 28, 46], [5.6304, 0.8178, 31, 28], [5.6304, 0.8178, 31, 28], [5.9063, 0.8111, 32, 52], [5.8439, 0.8022, 31, 39], [6.1222, 0.8, 30, 32]],
+    [[8.2903, 0.8611, 55, 57], [8.2903, 0.8611, 55, 57], [8.2963, 0.85, 50, 77], [8.2963, 0.85, 50, 77], [7.869, 0.8722, 49, 67], [7.869, 0.8722, 49, 67], [8.14, 0.8667, 54, 62]]
+  ],
+  [
+    [[2.4096, 0.4178, 10, 14], [2.4096, 0.4178, 10, 14], [2.648, 0.4189, 12, 23], [2.8971, 0.4144, 14, 27], [3.1714, 0.4144, 18, 27], [3.5621, 0.4078, 24, 33], [4.3389, 0.4, 29, 22]],
+    [[3.9665, 0.5967, 20, 23], [3.9665, 0.5967, 20, 23], [4.0343, 0.6089, 18, 27], [4.1173, 0.5967, 20, 23], [4.257, 0.5967, 20, 23], [4.5621, 0.5956, 24, 33], [5.3267, 0.5667, 29, 52]],
+    [[5.2065, 0.7556, 27, 47], [5.2065, 0.7556, 27, 47], [5.4356, 0.7578, 25, 39], [5.5263, 0.76, 27, 31], [5.5161, 0.7556, 24, 47], [5.5621, 0.7511, 29, 33], [6.3267, 0.7333, 29, 52]],
+    [[7.4295, 0.8667, 42, 46], [7.4295, 0.8667, 42, 46], [7.8828, 0.8444, 44, 74], [7.5, 0.8556, 39, 66], [7.5, 0.8556, 39, 66], [7.5267, 0.8667, 38, 52], [7.5267, 0.8667, 38, 52]]
+  ],
+  [
+    [[2.3918, 0.4311, 12, 19], [2.3918, 0.4311, 12, 19], [2.5, 0.44, 10, 23], [2.8263, 0.44, 14, 23], [3.1784, 0.4344, 19, 28], [3.4595, 0.4111, 24, 28], [4.1944, 0.4, 28, 33]],
+    [[3.9211, 0.6333, 19, 23], [3.9211, 0.6333, 19, 23], [3.9838, 0.64, 19, 28], [3.9842, 0.6333, 19, 23], [4.1784, 0.64, 19, 28], [4.4595, 0.6167, 24, 28], [5.1944, 0.6, 28, 33]],
+    [[5.4195, 0.8178, 22, 39], [5.4195, 0.8178, 22, 39], [5.5946, 0.8222, 27, 28], [5.5946, 0.8222, 27, 28], [5.7333, 0.8167, 27, 48], [5.7803, 0.8022, 27, 40], [6.1944, 0.8, 28, 33]],
+    [[9.2323, 0.8611, 51, 58], [9.2323, 0.8611, 51, 58], [8.7464, 0.8667, 49, 75], [8.7464, 0.8667, 49, 75], [8.7448, 0.8722, 45, 68], [8.7448, 0.8722, 45, 68], [9.0533, 0.8667, 50, 63]]
+  ],
+  [
+    [[2.4893, 0.5178, 12, 18], [2.4893, 0.5178, 12, 18], [2.4888, 0.5133, 12, 28], [2.6309, 0.5178, 14, 18], [2.9641, 0.4956, 19, 28], [3.3734, 0.5178, 24, 18], [3.7095, 0.4667, 29, 41]],
+    [[3.9596, 0.7433, 18, 28], [3.9596, 0.7433, 18, 28], [3.9612, 0.7467, 23, 45], [3.9612, 0.7467, 23, 45], [4.1505, 0.7467, 23, 45], [4.4417, 0.7467, 24, 45], [4.7095, 0.7, 29, 41]],
+    [[6.8441, 0.8933, 38, 65], [6.8441, 0.8933, 38, 65], [6.4898, 0.9044, 37, 55], [6.4898, 0.9044, 37, 55], [6.5813, 0.9022, 37, 48], [6.6889, 0.9, 41, 71], [6.6889, 0.9, 41, 71]],
+    [[10.6603, 0.8667, 83, 95], [10.6603, 0.8667, 83, 95], [9.5294, 0.8889, 85, 115], [9.5294, 0.8889, 85, 115], [9.5594, 0.8944, 78, 108], [9.6267, 0.9, 73, 101], [9.6267, 0.9, 73, 101]]
+  ],
+  [
+    [[2.5714, 0.4511, 12, 10], [2.3958, 0.4456, 11, 21], [2.5813, 0.4511, 12, 10], [2.7833, 0.4511, 14, 10], [3.0443, 0.4511, 19, 10], [3.5417, 0.4267, 23, 21], [4.0444, 0.4, 29, 33]],
+    [[4.0521, 0.64, 21, 21], [4, 0.6489, 21, 35], [3.9341, 0.6367, 22, 31], [3.8802, 0.64, 22, 21], [4.1629, 0.6489, 21, 35], [4.5417, 0.64, 23, 21], [5.0444, 0.6, 29, 33]],
+    [[5.6867, 0.8044, 29, 47], [5.6517, 0.8244, 31, 35], [5.8122, 0.8044, 33, 32], [5.8122, 0.8044, 33, 32], [5.5641, 0.7933, 27, 57], [5.6061, 0.8, 27, 48], [6.2111, 0.8, 31, 33]],
+    [[9.3553, 0.8444, 57, 61], [9.252, 0.8389, 56, 86], [8.8162, 0.8556, 47, 77], [8.8162, 0.8556, 47, 77], [8, 0.8889, 44, 65], [8, 0.8889, 44, 65], [8.7133, 0.8667, 53, 63]]
+  ],
+  [
+    [[2.5333, 0.4667, 11, 13], [2.5333, 0.4667, 11, 13], [2.56, 0.4633, 11, 23], [2.7762, 0.4667, 14, 13], [3.019, 0.4667, 18, 13], [3.5211, 0.4522, 24, 33], [4.0095, 0.4667, 29, 13]],
+    [[3.945, 0.6667, 18, 23], [3.945, 0.6667, 18, 23], [3.8656, 0.6733, 19, 37], [4.07, 0.6667, 19, 23], [4.0538, 0.6733, 18, 37], [4.5211, 0.6633, 24, 33], [5.1444, 0.6667, 29, 43]],
+    [[5.848, 0.8267, 29, 52], [5.848, 0.8267, 29, 52], [5.6, 0.8333, 30, 43], [5.6105, 0.8444, 30, 33], [5.6667, 0.8333, 28, 58], [6.0391, 0.8289, 31, 44], [6.1444, 0.8333, 30, 43]],
+    [[8.7949, 0.8667, 61, 67], [8.7949, 0.8667, 61, 67], [8.5455, 0.8667, 61, 91], [8.6087, 0.8667, 55, 85], [8.6944, 0.8667, 56, 79], [8.8267, 0.8667, 60, 73], [8.8267, 0.8667, 60, 73]]
+  ],
+  [
+    [[2.4856, 0.4622, 12, 12], [2.4856, 0.4622, 12, 12], [2.522, 0.4556, 12, 15], [2.6974, 0.45, 14, 25], [3.0927, 0.4556, 19, 15], [3.1474, 0.4222, 23, 30], [4.0611, 0.4333, 29, 40]],
+    [[3.922, 0.6833, 23, 15], [3.922, 0.6833, 23, 15], [3.922, 0.6833, 23, 15], [4.0821, 0.6667, 23, 25], [4.0927, 0.6833, 19, 15], [4.1474, 0.6333, 23, 30], [5.0611, 0.6333, 29, 40]],
+    [[5.457, 0.8756, 26, 34], [5.457, 0.8756, 26, 34], [5.457, 0.8756, 26, 34], [5.8158, 0.8667, 31, 30], [5.5888, 0.8756, 28, 23], [5.6, 0.8778, 28, 45], [6.3944, 0.8333, 33, 40]],
+    [[8.8827, 0.9, 59, 58], [8.8827, 0.9, 59, 58], [8.8827, 0.9, 59, 58], [9.0519, 0.8833, 60, 85], [8.2653, 0.9167, 50, 73], [8.2653, 0.9167, 50, 73], [8.84, 0.9, 55, 70]]
+  ],
+  [
+    [[2.5637, 0.4533, 12, 13], [2.5637, 0.4533, 12, 13], [2.4307, 0.4622, 11, 15], [2.6823, 0.4511, 14, 25], [3.0269, 0.4444, 19, 31], [3.4478, 0.4467, 22, 16], [4.15, 0.4333, 28, 37]],
+    [[3.8762, 0.6733, 17, 15], [3.8762, 0.6733, 17, 15], [4.0484, 0.66, 20, 31], [4.0484, 0.66, 20, 31], [4.0269, 0.6511, 19, 31], [4.4478, 0.67, 22, 16], [5.15, 0.6333, 28, 37]],
+    [[5.6879, 0.8356, 29, 44], [5.6879, 0.8356, 29, 44], [5.4837, 0.8511, 23, 33], [5.4837, 0.8511, 23, 33], [5.5156, 0.8533, 26, 25], [5.5205, 0.86, 28, 46], [6.15, 0.8333, 28, 37]],
+    [[8.4114, 0.8778, 56, 59], [8.4114, 0.8778, 56, 59], [7.8889, 0.8833, 52, 82], [7.8889, 0.8833, 52, 82], [8, 0.8833, 51, 76], [8.4207, 0.8722, 57, 72], [8.7133, 0.8667, 54, 67]]
+  ],
+  [
+    [[2.4978, 0.5, 12, 14], [2.4955, 0.5044, 12, 17], [2.4955, 0.5044, 12, 17], [2.7594, 0.4933, 14, 27], [2.9198, 0.4933, 19, 27], [3.2667, 0.5, 24, 14], [3.6095, 0.4667, 29, 29]],
+    [[4.1126, 0.74, 27, 17], [3.9353, 0.7233, 21, 38], [3.9353, 0.7233, 21, 38], [3.9717, 0.7289, 21, 27], [4.1351, 0.74, 27, 17], [4.4478, 0.7033, 27, 38], [4.7524, 0.7, 30, 29]],
+    [[6.4505, 0.8756, 40, 57], [6.1458, 0.8867, 42, 47], [6.1458, 0.8867, 42, 47], [6.115, 0.8889, 36, 39], [6.115, 0.8889, 36, 39], [5.8701, 0.8867, 41, 62], [6.2222, 0.8667, 42, 59]],
+    [[10.1316, 0.8444, 80, 87], [8.9015, 0.8667, 77, 107], [8.9015, 0.8667, 77, 107], [8.6312, 0.8833, 71, 98], [8.6312, 0.8833, 71, 98], [8.4533, 0.9, 72, 89], [8.4533, 0.9, 72, 89]]
+  ],
+  [
+    [[2.4541, 0.4111, 12, 20], [2.4541, 0.4111, 12, 20], [2.4863, 0.4222, 11, 22], [2.8256, 0.41, 14, 33], [3.1386, 0.4022, 19, 39], [3.6687, 0.3956, 24, 42], [4.1944, 0.4, 27, 25]],
+    [[3.8962, 0.61, 18, 22], [3.8962, 0.61, 18, 22], [3.8962, 0.61, 18, 22], [3.9759, 0.5956, 20, 39], [4.1386, 0.5867, 19, 39], [4.6687, 0.5767, 24, 42], [5.1944, 0.6, 27, 25]],
+    [[5.5541, 0.76, 26, 48], [5.5541, 0.76, 26, 48], [5.5541, 0.76, 26, 48], [5.2733, 0.7644, 25, 33], [5.5099, 0.7711, 24, 54], [5.689, 0.7622, 26, 41], [6.3267, 0.7667, 27, 55]],
+    [[7.6234, 0.8556, 43, 51], [7.6234, 0.8556, 43, 51], [7.6234, 0.8556, 43, 51], [7.3235, 0.8556, 39, 69], [7.3235, 0.8556, 39, 69], [7.5674, 0.85, 42, 64], [8.3267, 0.8333, 47, 55]]
+  ]
+];
 
 /** muffin_oven.csv */
 function ovenCsv() {
   const rows = [];
-  for (let rep = 1; rep <= 10; rep++) {
+  OVEN_RUNS.forEach((stream, rep) => {
     // One demand stream per replication, run under every setting: common random numbers.
-    const u = mulberry32(SEEDS.oven + rep);
-    const sizes = Array.from({ length: 31 }, () => 2 + Math.floor(u() * 11));
-    for (const bake of [2, 3, 4, 5]) {
-      for (const threshold of [1, 5, 10, 15, 20, 25, 30]) {
-        const r = ovenRun(threshold, sizes, bake);
-        rows.push(['r' + String(rep).padStart(2, '0'), bake, threshold, fmt(r.tis), fmt(r.utilization), r.maxWaiting, r.unfinished]);
-      }
-    }
-  }
+    [2, 3, 4, 5].forEach((bake, b) => {
+      [1, 5, 10, 15, 20, 25, 30].forEach((threshold, t) => rows.push(['r' + rep, bake, threshold, ...stream[b][t]]));
+    });
+  });
   return csv(['replication', 'bake_time', 'threshold', 'avg_time_in_system', 'utilization', 'max_waiting', 'unfinished'], rows);
 }
 
