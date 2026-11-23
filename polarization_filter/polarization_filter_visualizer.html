@@ -71,8 +71,8 @@
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px;min-width:0}
   .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin:0;font-weight:600}
   .card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin:0 0 8px;min-height:24px}
-  /* Each panel card spans five rows of the parent grid and shares them through a subgrid, so the
-     titles, tool rows, figures, legends, and readouts line up across the three panels. */
+  /* Each panel card spans five rows of the parent grid and shares them through a subgrid so that
+     the titles, tool rows, figures, legends, and readouts line up across the three panels. */
   .panels{grid-auto-rows:auto}
   .panels>.card{display:grid;grid-template-rows:subgrid;grid-row:span 5;row-gap:8px;align-content:start}
   .panels>.card>*{margin-top:0;margin-bottom:0}
@@ -84,8 +84,9 @@
   svg#dial{cursor:grab;touch-action:none;border-radius:50%}
   svg#dial.dragging{cursor:grabbing}
   svg#dial:focus{outline:none}
-  /* An HTML target over panel 3's frame mark: touch-action is honored on HTML elements, not reliably
-     inside an SVG, so a drag that starts here turns the filter, whereas the rest of the panel scrolls. */
+  /* An HTML target over panel 3's frame mark. Browsers honor touch-action on HTML elements but not
+     reliably inside an SVG, and so a drag that starts here turns the filter, whereas a drag anywhere
+     else on the panel scrolls the page. */
   .figwrap{position:relative;width:100%;max-width:340px;margin:0 auto}
   .grip{position:absolute;width:15%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);
     cursor:grab;touch-action:none}
@@ -187,7 +188,7 @@
 <div class="wrap">
   <header>
     <h1>Polarization Filter Visualizer</h1>
-    <p class="sub">What a linear polarizer does to the polarized skylight overhead, and what an animal under the filter receives. Drag the filter or pick a preset angle, then compare the e‑vector and brightness beneath it.</p>
+    <p class="sub">What a linear polarizer does to the polarized skylight overhead and what an animal under the filter receives. Drag the filter or pick a preset angle, and then compare the e‑vector and brightness beneath it.</p>
     <p class="credit">&copy; 2026 Theodore P. Pavlic (<a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT License</a>)</p>
   </header>
 
@@ -269,12 +270,12 @@
   <section class="card settings" aria-label="Settings">
     <div class="slider">
       <div class="lab"><label class="chk" style="min-height:0"><input type="checkbox" id="compass" checked> Polarized sky (a sky compass)</label></div>
-      <div class="hint">On, the skylight overhead is polarized along one e&#8209;vector set by the sun's position, which an animal can use as a compass. Off, the skylight has no preferred e&#8209;vector orientation, as in a world without a sky compass. The band around the edge of panel 1 shows how the sky's e&#8209;vector orientations are distributed.</div>
+      <div class="hint">When it is on, the skylight overhead is polarized along one e&#8209;vector, whose orientation is set by the sun's position and can serve an animal as a compass. When it is off, the skylight has no preferred e&#8209;vector orientation, as in a world without a sky compass. The band around the edge of panel 1 shows how the sky's e&#8209;vector orientations are distributed.</div>
     </div>
     <div class="slider">
       <div class="lab"><label class="chk" style="min-height:0"><input type="checkbox" id="anim" checked> Animate the oscillation</label><span class="vl" id="rateV">0.40 Hz</span></div>
       <input type="range" id="rate" min="0.05" max="1.5" step="0.05" value="0.4" aria-label="Oscillation rate">
-      <div class="hint">Light oscillates near 10<sup>15</sup>&nbsp;Hz, so this is slowed enormously. With animation off, each vector is drawn at its peak.</div>
+      <div class="hint">Light oscillates near 10<sup>15</sup>&nbsp;Hz, and so the animation is slowed enormously. With animation off, each vector is drawn at its peak.</div>
     </div>
   </section>
 
@@ -286,12 +287,12 @@
         <thead><tr><th>Pair</th><th>Filter &theta;</th><th>Under filter</th><th>e‑vector</th><th>I/I<sub>0</sub></th></tr></thead>
       </table>
     </div>
-    <p class="cap">Tap a row to select that setting. The under-filter column shows the transmitted e‑vector axis, the brightness (shading), and where the frame mark sits.</p>
+    <p class="cap">Selecting a row switches the filter to that setting. The under-filter column shows the transmitted e‑vector axis, the brightness (shading), and where the frame mark sits.</p>
     <div class="keypoint" id="keypoint">
       <ul>
         <li><b>Within a pair</b> (for example, 45° and &minus;135°), the light under the filter is identical in e‑vector and brightness; only the physical filter is turned around. If the animals steer by polarization alone, their paths should agree. A difference points to some other cue, such as a mark, edge, scratch, reflection, or shadow on the filter or its mount.</li>
-        <li><b>45° against &minus;45°</b> (and 135° against &minus;135°) matches brightness exactly, at <span id="kpHalf">0.50</span> of the open sky for any degree of polarization, and mirrors the e‑vector. This tests the e‑vector's direction without a brightness confound.</li>
-        <li><b>0° against 90°</b> rotates the e‑vector by 90° but also changes brightness, from <span id="kp0">1.00</span> to <span id="kp90">0.00</span> under the current sky, and so confounds e‑vector direction with brightness.</li>
+        <li><b>45° against &minus;45°</b> (and 135° against &minus;135°) mirrors the e‑vector and matches brightness exactly, at 0.50 of the open sky for any degree of polarization. This tests the e‑vector's direction without a brightness confound.</li>
+        <li><b>0° against 90°</b> rotates the e‑vector by 90°, but under a polarized sky it also changes the brightness (from 1.00 to 0.00 under a fully polarized one). This comparison therefore confounds e‑vector direction with brightness.</li>
       </ul>
     </div>
   </section>
@@ -307,19 +308,19 @@
       <p>The electric field oscillates back and forth along a line, and so an e‑vector at 45° and one at &minus;135° describe the same light. For the same reason, a filter turned through 180° delivers exactly the same light as before. The animation draws each field as an arrow sweeping both ways along a gray line to make this plain; a single static arrow would suggest a direction that the light does not have.</p>
 
       <h3>Why add 135°, &minus;135°, 180°, and &minus;90°</h3>
-      <p>Each of these settings repeats the light of a setting already in use (&minus;45°, 45°, 0°, and 90°, respectively), but with the filter physically reversed. Any visible asymmetry of the filter or its mount rotates by 180° between the two members of a pair, whereas the polarization does not change. The amber tab stands in for such a feature. Running both members of a pair is therefore a control for cues other than polarization: polarization predicts the same result within each pair, and a landmark-like cue predicts different ones.</p>
+      <p>Each of these settings repeats the light of a setting already in use (&minus;45°, 45°, 0°, and 90°, respectively) with the filter physically reversed. Any visible asymmetry of the filter or its mount rotates by 180° between the two members of a pair, whereas the polarization does not change. The amber tab stands in for such a feature. Running both members of a pair is therefore a control for cues other than polarization: polarization predicts the same result within each pair, and a landmark-like cue predicts different ones.</p>
 
       <h3>With and without a sky compass</h3>
-      <p>The sky-compass switch in the settings shows two extremes. With it on, all of the skylight is polarized along one e&#8209;vector, and the band around the edge of panel 1 is concentrated at that orientation. With it off, the skylight is unpolarized: its e&#8209;vector has no preferred orientation and wanders at random far faster than any photoreceptor can follow, and so the band spreads evenly around the circle and the sun's direction no longer appears. A filter then passes half of the light at every angle, polarized along the filter's own axis. The e&#8209;vector under the filter therefore still turns with the filter, but the brightness no longer changes with its angle.</p>
+      <p>The sky-compass switch in the settings shows two extremes. With it on, all of the skylight is polarized along one e&#8209;vector, and the band around the edge of panel 1 is concentrated at that orientation. With it off, the skylight is unpolarized: its e&#8209;vector has no preferred orientation and wanders at random far faster than any photoreceptor can follow. The band then spreads evenly around the circle, and the sun no longer appears. A filter then passes half of the light at every angle, polarized along the filter's own axis. The e&#8209;vector under the filter therefore still turns with the filter, but the brightness no longer changes with its angle.</p>
 
       <h3>A real sky is only partially polarized</h3>
-      <p>A real sky lies between these extremes. If p is the fraction of its intensity that is polarized, its degree of polarization, the brightness under an ideal filter is <span class="eqn">I/I<sub>0</sub> = p cos<sup>2</sup>&theta; + (1 &minus; p)/2</span>. Three consequences follow. An animal under a crossed filter (90°) is not in the dark: it sees dimmer light that is fully polarized at 90° to the sky's e‑vector. At ±45° and ±135°, the brightness is exactly one half for every p, because cos<sup>2</sup>&theta; = 1/2 there. Finally, even the aligned 0° setting is not a sham treatment: it dims the light to (1 + p)/2 of the open sky and raises its degree of polarization to essentially 100%.</p>
+      <p>A real sky lies between these extremes. Its degree of polarization, p, is the fraction of its intensity that is polarized, and the brightness under an ideal filter is <span class="eqn">I/I<sub>0</sub> = p cos<sup>2</sup>&theta; + (1 &minus; p)/2</span>. Three consequences follow. An animal under a crossed filter (90°) is not in the dark: it sees dimmer light that is fully polarized at 90° to the sky's e‑vector. At ±45° and ±135°, the brightness is exactly one half for every p because cos<sup>2</sup>&theta; = 1/2 there. Finally, even the aligned 0° setting is not a sham treatment: it dims the light to (1 + p)/2 of the open sky and raises its degree of polarization to essentially 100%.</p>
 
       <h3>Viewpoint and sign of rotation</h3>
-      <p>Angles here increase counterclockwise as drawn, which is the experimenter's view looking down on the filter. An animal looking up through the filter sees the same axes with the sense of rotation reversed, and so a counterclockwise turn seen from above is clockwise seen from below. Keep the viewpoint fixed when converting a filter rotation into a predicted change of heading. Also, the e‑vector alone cannot distinguish a rotation of &theta; from one of &theta; &minus; 180°; animals normally resolve that ambiguity with other cues in the sky, such as the sun or the gradients of intensity and color across it.</p>
+      <p>Angles here increase counterclockwise as seen by an experimenter looking down on the filter. An animal looking up through the filter sees the same axes with the sense of rotation reversed, and so a counterclockwise turn seen from above is clockwise seen from below. Converting a filter rotation into a predicted change of heading therefore requires one fixed viewpoint. Also, the e‑vector alone cannot distinguish a rotation of &theta; from one of &theta; &minus; 180°; animals normally resolve that ambiguity with other cues in the sky, such as the sun or the gradients of intensity and color across it.</p>
 
       <h3>What the model leaves out</h3>
-      <p>The filter here is ideal: it passes the aligned component completely and blocks the crossed component completely. A real sheet polarizer loses some light along its axis, leaks a little across it, and performs differently at different wavelengths. Many common sheet polarizers transmit little ultraviolet light, which matters for insects such as desert ants and honeybees, whose sky-compass photoreceptors in the dorsal rim of the eye are ultraviolet sensitive. The filter's specified transmission at the wavelengths that the study species uses is worth checking.</p>
+      <p>The filter here is ideal: it passes the aligned component completely and blocks the crossed component completely. A real sheet polarizer loses some light along its axis, leaks a little across it, and performs differently at different wavelengths. Many common sheet polarizers transmit little ultraviolet light, which matters for insects such as desert ants and honey bees, whose sky-compass photoreceptors in the dorsal rim of the eye are ultraviolet sensitive. The filter's specified transmission at the wavelengths that the study species uses is worth checking.</p>
     </div>
   </details>
 
@@ -359,7 +360,7 @@
     a = ((a + 180) % 360 + 360) % 360 - 180;
     return a === -180 ? 180 : a;
   }
-  function axisOf(a) {              // e‑vector axis, to (-90, 90]
+  function axisOf(a) {              // e-vector axis, to (-90, 90]
     a = ((a + 90) % 180 + 180) % 180 - 90;
     return a === -90 ? 90 : a;
   }
@@ -421,7 +422,7 @@
   const src = document.getElementById('src');
   el('circle', { cx: C, cy: C, r: 140, fill: '#e3edf5', stroke: '#c9d6e0', 'stroke-width': 1 }, src);
   el('circle', { cx: C, cy: C, r: R, fill: 'none', stroke: '#9fb0bd', 'stroke-width': 1, 'stroke-dasharray': '2 4' }, src);
-  // the sun lies along the solar meridian, perpendicular to the overhead e‑vector
+  // the sun lies along the solar meridian, perpendicular to the overhead e-vector
   // the distribution of e-vector orientations, drawn as a band around the edge
   const band = el('path', { fill: COL.ink, 'fill-opacity': .35, 'fill-rule': 'evenodd' }, src);
   const sunG = el('g', {}, src);
@@ -457,12 +458,12 @@
     const t = el('text', { x, y: y + 4, 'text-anchor': 'middle', 'font-size': 11.5, 'font-family': 'IBM Plex Mono, monospace', fill: '#3d5a4b' }, dial);
     t.textContent = fmtDeg(a);
   }
-  // the fixed reference: the sky's e‑vector
+  // the fixed reference: the sky's e-vector
   el('line', { x1: C - 126, y1: C, x2: C + 126, y2: C, stroke: COL.ink, 'stroke-width': 1.5, 'stroke-dasharray': '7 5', opacity: .7 }, dial);
   const filt = el('g', {}, dial);
   el('circle', { cx: C, cy: C, r: 110, fill: '#7d8794', 'fill-opacity': .2, stroke: '#5f6873', 'stroke-width': 1.6 }, filt);
   el('circle', { cx: C, cy: C, r: 101, fill: 'none', stroke: '#5f6873', 'stroke-width': .8, opacity: .5 }, filt);
-  // a double-headed transmission axis, because the axis has no preferred end
+  // a double-headed transmission axis because the axis has no preferred end
   el('line', { x1: C - 86, y1: C, x2: C + 86, y2: C, stroke: COL.pass, 'stroke-width': 3.2 }, filt);
   el('polygon', { points: [C + 98, C, C + 84, C - 7, C + 84, C + 7].join(' '), fill: COL.pass }, filt);
   el('polygon', { points: [C - 98, C, C - 84, C - 7, C - 84, C + 7].join(' '), fill: COL.pass }, filt);
@@ -551,8 +552,6 @@
     const bu = document.getElementById('barU');
     bu.style.left = (100 * p * c * c) + '%'; bu.style.width = (100 * (1 - p) / 2) + '%';
     document.getElementById('unpolBarLab').style.visibility = p < 1 ? '' : 'hidden';
-    document.getElementById('kp0').textContent = intensity(0, p).toFixed(2);
-    document.getElementById('kp90').textContent = intensity(90, p).toFixed(2);
 
     dial.setAttribute('aria-valuenow', th);
     dial.setAttribute('aria-valuetext', th + ' degrees; e‑vector under the filter at ' + axisOf(th) + ' degrees; brightness ' + I.toFixed(2));
@@ -566,7 +565,7 @@
     darkTxt.textContent = I < 1e-6 ? 'dark: all light blocked' : '';
     setSeg(axPar, 136, th); setSeg(axPerp, 136, th + 90);
 
-    // the angle arc between the sky e‑vector and the filter axis
+    // the angle arc between the sky e-vector and the filter axis
     if (Math.abs(th) < 0.5) { arcG.setAttribute('visibility', 'hidden'); }
     else {
       arcG.setAttribute('visibility', 'visible');
