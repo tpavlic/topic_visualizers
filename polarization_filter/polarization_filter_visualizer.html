@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polarization Filter Visualizer – interactive primer</title>
+<meta name="description" content="Rotate a linear polarizer under polarized skylight to see which component of the electric field it passes, what e-vector and brightness an animal beneath it receives, and why filter settings 180° apart deliver identical light.">
+
+<!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Polarization Filter Visualizer – interactive primer">
+<meta property="og:description" content="Rotate a linear polarizer under polarized skylight to see which component of the electric field it passes, what e-vector and brightness an animal beneath it receives, and why filter settings 180° apart deliver identical light.">
+<meta property="og:image" content="https://tpavlic.github.io/topic_visualizers/polarization_filter/polarization_filter_visualizer-preview.png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1200">
+<meta property="og:url" content="https://tpavlic.github.io/topic_visualizers/polarization_filter/polarization_filter_visualizer.html">
+<meta property="fb:app_id" content="2385695445236853">
+
+<!-- Twitter/X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Polarization Filter Visualizer – interactive primer">
+<meta name="twitter:description" content="Rotate a linear polarizer under polarized skylight to see which component of the electric field it passes, what e-vector and brightness an animal beneath it receives, and why filter settings 180° apart deliver identical light.">
+<meta name="twitter:image" content="https://tpavlic.github.io/topic_visualizers/polarization_filter/polarization_filter_visualizer-preview.png">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-P0S68QRGVP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-P0S68QRGVP');
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+  :root{
+    --cream:#f5eee1;
+    --cream-2:#efe6d6;
+    --panel:#fbf6ec;
+    --ink:#20402f;
+    --ink-soft:#3d5a4b;
+    --line:#cdbfa8;
+    --line-soft:#e0d4bf;
+    --accent:#6b4fa0;       /* links, active controls */
+    --accent-soft:#a58fcf;
+    --pass:#1f5fa8;         /* component along the transmission axis (passed) */
+    --block:#a8341f;        /* component across the transmission axis (blocked) */
+    --mark:#d08a1e;         /* the visible mark on the filter frame */
+    --shadow:0 1px 0 #fff inset, 0 2px 10px rgba(31,64,53,.08);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--cream);color:var(--ink);
+    font-family:'Outfit',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 6px}
+
+  header h1{font-weight:700;font-size:clamp(20px,3.2vw,30px);margin:0 0 4px;letter-spacing:-.01em}
+  header p.sub{margin:0 0 6px;color:var(--ink-soft);max-width:80ch}
+  .credit{font-size:12px;color:var(--ink-soft);margin:0 0 14px}
+
+  /* the three panels: source, filter, and the light under it */
+  .panels{display:grid;gap:16px;align-items:stretch;grid-template-columns:repeat(3,minmax(0,1fr))}
+  @media (max-width:760px){ .panels{grid-template-columns:1fr} }
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px;min-width:0}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin:0;font-weight:600}
+  .card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin:0 0 8px;min-height:24px}
+  /* Each panel card spans five rows of the parent grid and shares them through a subgrid, so the
+     titles, tool rows, figures, legends, and readouts line up across the three panels. */
+  .panels{grid-auto-rows:auto}
+  .panels>.card{display:grid;grid-template-rows:subgrid;grid-row:span 5;row-gap:8px;align-content:start}
+  .panels>.card>*{margin-top:0;margin-bottom:0}
+  .card .tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;min-height:34px}
+  .card .step{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--cream);
+    font-size:11.5px;text-align:center;line-height:20px;margin-right:7px;letter-spacing:0;vertical-align:1px}
+
+  svg.fig{display:block;width:100%;max-width:340px;height:auto;margin:0 auto;user-select:none;-webkit-user-select:none}
+  svg#dial{cursor:grab;touch-action:none;border-radius:50%}
+  svg#dial.dragging{cursor:grabbing}
+  svg#dial:focus{outline:none}
+  svg#dial:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+  .chk{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink-soft);cursor:pointer;user-select:none;min-height:30px}
+  .chk input{accent-color:var(--accent);width:17px;height:17px;margin:0}
+
+  .readout{font-size:13px;color:var(--ink-soft);margin-top:8px}
+  .readout .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dotted var(--line-soft)}
+  .readout .row:last-child{border-bottom:none}
+  .readout .v{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--ink);font-weight:600;white-space:nowrap}
+
+  .legend{display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px 14px;font-size:12px;color:var(--ink-soft);margin-top:8px}
+  .sw{display:inline-flex;align-items:center;gap:6px}
+  .sw i{width:18px;height:4px;border-radius:2px;display:inline-block}
+  .sw i.dash{height:0;border-top:2px dashed;border-radius:0;background:none}
+  .sw i.disc{width:12px;height:12px;border-radius:50%}
+  .sw i.tab{width:12px;height:9px;border-radius:2px}
+
+  /* angle display and presets */
+  .angle-big{font-size:14px;color:var(--ink);display:flex;align-items:center;gap:6px}
+  .angle-big .sym{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:15px}
+  .angle-big input{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:600;color:var(--accent);width:4.6em;
+    padding:3px 6px;border:1px solid var(--line);border-radius:7px;background:var(--cream);text-align:right}
+  .presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
+  .pbtn{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-weight:600;font-size:14px;min-height:40px;
+    background:var(--cream-2);border:1px solid var(--line);color:var(--ink);border-radius:9px;cursor:pointer;
+    transition:background .12s,border-color .12s,color .12s;touch-action:manipulation}
+  .pbtn:hover{border-color:var(--accent)}
+  .pbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pbtn.partner{border:2px dashed var(--accent-soft)}
+  .cap{font-size:12px;color:var(--ink-soft);margin:6px 0 0}
+  .btnrow{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:10px;align-items:center}
+  .btn{font-family:'Outfit',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-weight:600;font-size:13px;min-height:38px;
+    background:var(--cream-2);border:1px solid var(--line);color:var(--ink);
+    border-radius:9px;padding:6px 12px;cursor:pointer;transition:.12s;touch-action:manipulation}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* brightness bar */
+  .bar{position:relative;height:14px;border-radius:7px;background:var(--cream);border:1px solid var(--line);overflow:hidden;margin:4px 0 2px}
+  .bar span{position:absolute;top:0;bottom:0}
+  .bar .bp{background:var(--pass);left:0}
+  .bar .bu{background:#9aa3ab}
+  .barlab{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft)}
+
+  /* settings row */
+  .settings{margin-top:16px;display:grid;gap:10px 26px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));align-items:start}
+  .slider .lab{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;margin-bottom:2px}
+  .slider .vl{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--accent);font-weight:600}
+  .slider .hint{font-size:12px;color:var(--ink-soft);margin-top:2px}
+  input[type=range]{width:100%;accent-color:var(--accent);height:28px;margin:0}
+
+  /* treatment table */
+  .tcard{margin-top:16px}
+  .tcard .lead{font-size:13.5px;color:var(--ink-soft);margin:0 0 8px}
+  .tablewrap{overflow-x:auto}
+  table.treat{width:100%;border-collapse:collapse;font-size:13px;min-width:330px}
+  table.treat th{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);
+    text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.treat td{padding:4px 8px;vertical-align:middle}
+  table.treat tbody{border-bottom:1px solid var(--line)}
+  table.treat tbody:last-child{border-bottom:none}
+  table.treat tr.setting{cursor:pointer}
+  table.treat tr.setting:hover td.c{background:#a58fcf22}
+  table.treat tr.cur td.c{background:#6b4fa026}
+  table.treat tr.cur td.th{color:var(--accent)}
+  table.treat td.pair{font-size:12px;color:var(--ink-soft);width:28%;border-right:1px solid var(--line-soft)}
+  table.treat td.pair b{color:var(--ink);font-weight:600}
+  table.treat td.th,table.treat td.ax,table.treat td.in{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
+  table.treat td.th{font-weight:600}
+  table.treat svg{display:block;width:40px;height:40px}
+  .keypoint{margin:12px 0 2px;padding:9px 11px;border-radius:8px;background:#a58fcf22;border-left:3px solid var(--accent);font-size:13px;color:var(--ink-soft);line-height:1.5}
+  .keypoint ul{margin:4px 0 0;padding-left:18px}
+  .keypoint li{margin:4px 0}
+  .keypoint b{color:var(--ink)}
+
+  /* notes */
+  details.notes{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 16px;box-shadow:var(--shadow)}
+  details.notes>summary{cursor:pointer;font-weight:600;padding:12px 0;list-style:none;color:var(--ink)}
+  details.notes>summary::-webkit-details-marker{display:none}
+  details.notes>summary::before{content:'▸ ';color:var(--accent)}
+  details.notes[open]>summary::before{content:'▾ '}
+  .notes-body{padding:0 0 14px;max-width:82ch}
+  .notes-body h3{font-size:14.5px;margin:16px 0 4px;color:var(--ink)}
+  .notes-body h3:first-child{margin-top:2px}
+  .notes-body p{margin:.5em 0;color:var(--ink-soft);font-size:14px}
+  .eqn{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--cream-2);padding:1px 5px;border-radius:5px;color:var(--ink);white-space:nowrap}
+
+  sub,sup{font-size:.72em;line-height:0;position:relative;vertical-align:baseline}
+  sub{bottom:-.28em}
+  sup{top:-.45em}
+
+  .foot{margin-top:16px;text-align:center;font-size:12px;color:var(--ink-soft);padding-bottom:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Polarization Filter Visualizer</h1>
+    <p class="sub">What a linear polarizer does to the polarized skylight overhead, and what an animal under the filter receives. Drag the filter or pick a preset angle, then compare the e‑vector and brightness beneath it.</p>
+    <p class="credit">&copy; 2026 Theodore P. Pavlic (<a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT License</a>)</p>
+  </header>
+
+  <div class="panels">
+    <section class="card" aria-labelledby="h-src">
+      <div class="card-head">
+        <h2 id="h-src"><span class="step">1</span>Skylight above the filter</h2>
+      </div>
+      <div class="tools">
+        <label class="chk"><input type="checkbox" id="showProj" checked> Show projections onto the filter axes</label>
+      </div>
+      <svg id="src" class="fig" viewBox="0 0 300 300" role="img" aria-label="Sky e‑vector, with its components along and across the filter's transmission axis"></svg>
+      <div class="legend">
+        <span class="sw"><i style="background:var(--ink)"></i>polarized sky e‑vector</span>
+        <span class="sw proj-only"><i style="background:var(--pass)"></i>along filter axis (passed)</span>
+        <span class="sw proj-only"><i style="background:var(--block)"></i>across filter axis (blocked)</span>
+        <span class="sw proj-only"><i class="dash" style="border-color:var(--accent)"></i>amplitude passed at each filter angle</span>
+      </div>
+      <div class="rest">
+      <div class="readout">
+        <div class="row"><span>Sky e‑vector (reference)</span><span class="v">0°</span></div>
+        <div class="row"><span>Passed share of polarized light, cos<sup>2</sup>&theta;</span><span class="v" id="rCos">1.00</span></div>
+        <div class="row"><span>Blocked share of polarized light, sin<sup>2</sup>&theta;</span><span class="v" id="rSin">0.00</span></div>
+      </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-dial">
+      <div class="card-head">
+        <h2 id="h-dial"><span class="step">2</span>Polarizing filter</h2>
+      </div>
+      <div class="tools">
+        <label class="angle-big" for="thetaIn">Filter angle <span class="sym">&theta; =</span> <input id="thetaIn" type="number" inputmode="numeric" min="-180" max="180" step="1" value="0">°</label>
+      </div>
+      <svg id="dial" class="fig" viewBox="-14 -14 328 328" tabindex="0" role="slider" aria-label="Filter angle relative to the sky e‑vector"
+           aria-valuemin="-180" aria-valuemax="180" aria-valuenow="0" aria-valuetext="0 degrees"></svg>
+      <div class="legend">
+        <span class="sw"><i style="background:var(--pass)"></i>transmission axis</span>
+        <span class="sw"><i class="dash" style="border-color:var(--ink)"></i>sky e‑vector, 0°</span>
+        <span class="sw"><i class="tab" style="background:var(--mark)"></i>mark on the filter frame</span>
+      </div>
+      <div class="rest">
+      <div class="presets" id="presets" role="group" aria-label="Preset filter angles"></div>
+      <p class="cap">Each column pairs two settings 180° apart, which deliver identical light. The dashed outline marks the current setting's partner.</p>
+      <div class="btnrow">
+        <button class="btn" id="flipBtn" type="button" title="Go to the setting 180° away: same light, filter turned around">Turn filter 180°</button>
+        <button class="btn" id="mirrorBtn" type="button" title="Go to −θ: same brightness, mirrored e‑vector">Mirror (&theta; &rarr; &minus;&theta;)</button>
+        <label class="chk"><input type="checkbox" id="snap" checked> Snap to 45° stops</label>
+      </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-out">
+      <div class="card-head">
+        <h2 id="h-out"><span class="step">3</span>Under the filter</h2>
+      </div>
+      <div class="tools" aria-hidden="true"></div>
+      <svg id="out" class="fig" viewBox="0 0 300 300" role="img" aria-label="Transmitted e‑vector seen by an animal under the filter"></svg>
+      <div class="legend">
+        <span class="sw"><i style="background:var(--pass)"></i>transmitted e‑vector</span>
+        <span class="sw"><i class="dash" style="border-color:#20402f88"></i>sky e‑vector, for reference</span>
+        <span class="sw"><i class="tab" style="background:var(--mark)"></i>frame mark (a non-polarization cue)</span>
+      </div>
+      <div class="rest">
+      <div class="readout">
+        <div class="row"><span>e‑vector axis under the filter</span><span class="v" id="rAxis">0°</span></div>
+        <div class="row"><span>Degree of polarization under the filter</span><span class="v" id="rDop">100%</span></div>
+        <div class="row"><span>Brightness relative to open sky, I/I<sub>0</sub></span><span class="v" id="rInt">1.00</span></div>
+      </div>
+      <div class="bar" aria-hidden="true"><span class="bp" id="barP"></span><span class="bu" id="barU"></span></div>
+      <div class="barlab"><span><span style="color:var(--pass)">&#9632;</span> from polarized skylight <span id="unpolBarLab"><span style="color:#9aa3ab">&#9632;</span> from unpolarized skylight</span></span><span>1.0</span></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card settings" aria-label="Settings">
+    <div class="slider">
+      <div class="lab"><label for="dop">Degree of polarization of the skylight, p</label><span class="vl" id="dopV">100%</span></div>
+      <input type="range" id="dop" min="0" max="100" step="1" value="100">
+      <div class="hint">The fraction of the skylight's intensity that is polarized along one e&#8209;vector; the rest has no preferred orientation. Start at 100% for the textbook case. A clear sky overhead is only partially polarized.</div>
+    </div>
+    <div class="slider">
+      <div class="lab"><label class="chk" style="min-height:0"><input type="checkbox" id="anim" checked> Animate the oscillation</label><span class="vl" id="rateV">0.40 Hz</span></div>
+      <input type="range" id="rate" min="0.05" max="1.5" step="0.05" value="0.4" aria-label="Oscillation rate">
+      <div class="hint">Light oscillates near 10<sup>15</sup>&nbsp;Hz, so this is slowed enormously. With animation off, each vector is drawn at its peak.</div>
+    </div>
+  </section>
+
+  <section class="card tcard" aria-labelledby="h-tab">
+    <div class="card-head"><h2 id="h-tab">The preset settings compared</h2></div>
+    <p class="lead">The eight preset settings fall into four pairs 180° apart. Both settings in a pair put the same light under the filter, with the same e&#8209;vector and the same brightness, and they differ only in which way the physical filter faces.</p>
+    <div class="tablewrap">
+      <table class="treat" id="treat">
+        <thead><tr><th>Pair</th><th>Filter &theta;</th><th>Under filter</th><th>e‑vector</th><th>I/I<sub>0</sub></th></tr></thead>
+      </table>
+    </div>
+    <p class="cap">Tap a row to select that setting. The under-filter column shows the transmitted e‑vector axis, the brightness (shading), and where the frame mark sits.</p>
+    <div class="keypoint" id="keypoint">
+      <ul>
+        <li><b>Within a pair</b> (for example, 45° and &minus;135°), the light under the filter is identical in e‑vector and brightness; only the physical filter is turned around. If the animals steer by polarization alone, their paths should agree. A difference points to some other cue, such as a mark, edge, scratch, reflection, or shadow on the filter or its mount.</li>
+        <li><b>45° against &minus;45°</b> (and 135° against &minus;135°) matches brightness exactly, at <span id="kpHalf">0.50</span> of the open sky for any degree of polarization, and mirrors the e‑vector. This tests the e‑vector's direction without a brightness confound.</li>
+        <li><b>0° against 90°</b> rotates the e‑vector by 90° but also changes brightness, from <span id="kp0">1.00</span> to <span id="kp90">0.00</span> at the current p, and so confounds e‑vector direction with brightness.</li>
+      </ul>
+    </div>
+  </section>
+
+  <details class="notes">
+    <summary>How it works, and what to keep in mind</summary>
+    <div class="notes-body">
+      <h3>What a linear polarizer does</h3>
+      <p>An ideal linear polarizer passes the component of the electric field that lies along its transmission axis and blocks the component across it. In panel 1, the sky's e‑vector is split into those two components: the blue one along the filter's axis is passed, and the red one across it is blocked. The blue component is what reappears in panel 3. For fully polarized light at angle &theta; to the axis, the passed field amplitude scales as cos&nbsp;&theta;, and the passed intensity follows Malus's law, <span class="eqn">I = I<sub>0</sub> cos<sup>2</sup>&theta;</span>.</p>
+      <p>Whatever the orientation of the light that enters, the light that leaves is polarized along the filter's own axis. The e‑vector under the filter therefore turns with the filter, and the sky's e‑vector sets only how bright that light is.</p>
+
+      <h3>An e‑vector is an axis, not an arrow</h3>
+      <p>The electric field oscillates back and forth along a line, and so an e‑vector at 45° and one at &minus;135° describe the same light. For the same reason, a filter turned through 180° delivers exactly the same light as before. The animation draws each field as an arrow sweeping both ways along a gray line to make this plain; a single static arrow would suggest a direction that the light does not have.</p>
+
+      <h3>Why add 135°, &minus;135°, 180°, and &minus;90°</h3>
+      <p>Each of these settings repeats the light of a setting already in use (&minus;45°, 45°, 0°, and 90°, respectively), but with the filter physically reversed. Any visible asymmetry of the filter or its mount rotates by 180° between the two members of a pair, whereas the polarization does not change. The amber tab stands in for such a feature. Running both members of a pair is therefore a control for cues other than polarization: polarization predicts the same result within each pair, and a landmark-like cue predicts different ones.</p>
+
+      <h3>A real sky is only partially polarized</h3>
+      <p>Skylight is a mixture of polarized and unpolarized light, and the degree of polarization p is the fraction of its intensity that is polarized. The polarized part keeps one e&#8209;vector orientation, whereas the unpolarized part has no preferred orientation: its e&#8209;vector wanders at random, far faster than any photoreceptor can follow. Panel 1 animates only the polarized part, whose amplitude shrinks as p falls. An ideal polarizer passes, on average, half of the unpolarized light whatever its angle, and it polarizes that light along its own axis as well, giving a brightness of <span class="eqn">I/I<sub>0</sub> = p cos<sup>2</sup>&theta; + (1 &minus; p)/2</span>. The dashed purple curve in panel 1 plots the corresponding amplitude, the square root of that brightness, for every filter angle. At p = 100%, it is a pair of circles, which the tip of the blue component traces as the filter turns. As p falls, it rounds out toward a single circle, because unpolarized light passes equally at every angle. Where the filter's axis meets the curve (the purple dots) is the amplitude of the light under the filter in panel 3. Three consequences follow. Under a crossed filter (90°), an animal is not in the dark: they see dimmer light that is fully polarized at 90° to the sky's e‑vector. At ±45° and ±135°, the brightness is exactly one half for every p, because cos<sup>2</sup>&theta; = 1/2 there. Finally, even the aligned 0° setting is not a sham treatment: it dims the light to (1 + p)/2 of the open sky and raises its degree of polarization to essentially 100%.</p>
+
+      <h3>Viewpoint and sign of rotation</h3>
+      <p>Angles here increase counterclockwise as drawn, which is the experimenter's view looking down on the filter. An animal looking up through the filter sees the same axes with the sense of rotation reversed, and so a counterclockwise turn seen from above is clockwise seen from below. Keep the viewpoint fixed when converting a filter rotation into a predicted change of heading. Also, the e‑vector alone cannot distinguish a rotation of &theta; from one of &theta; &minus; 180°; animals normally resolve that ambiguity with other cues in the sky, such as the sun or the gradients of intensity and color across it.</p>
+
+      <h3>What the model leaves out</h3>
+      <p>The filter here is ideal: it passes the aligned component completely and blocks the crossed component completely. A real sheet polarizer loses some light along its axis, leaks a little across it, and performs differently at different wavelengths. Many common sheet polarizers transmit little ultraviolet light, which matters for insects such as desert ants and honeybees, whose sky-compass photoreceptors in the dorsal rim of the eye are ultraviolet sensitive. The filter's specified transmission at the wavelengths that the study species uses is worth checking.</p>
+    </div>
+  </details>
+
+  <footer class="foot">&copy; 2026 Theodore P. Pavlic (<a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT License</a>)</footer>
+</div>
+
+<script>
+"use strict";
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+  const C = 150;            // center of every figure, in viewBox units
+  const R = 108;            // display amplitude of a fully polarized, unit-intensity field
+  const STOPS = [0, 45, 90, 135, 180, -135, -90, -45];   // preset grid order: columns are 180° pairs
+  const PAIRS = [[0, 180], [45, -135], [90, -90], [135, -45]];
+  const PAIR_NAMES = ['A', 'B', 'C', 'D'];
+  const COL = { ink:'#20402f', pass:'#1f5fa8', block:'#a8341f', mark:'#d08a1e', path:'#c7bda9' };
+
+  const state = {
+    theta: 0,               // filter angle in degrees, (-180, 180]
+    p: 1,                   // degree of polarization of skylight
+    proj: true,
+    animate: !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+    rate: 0.4,              // Hz
+    snap: true,
+    phase: 0              // oscillation phase, radians
+  };
+
+  // ---------- helpers ----------
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  const rad = d => d * Math.PI / 180;
+  function normAngle(a) {           // to (-180, 180]
+    a = ((a + 180) % 360 + 360) % 360 - 180;
+    return a === -180 ? 180 : a;
+  }
+  function axisOf(a) {              // e‑vector axis, to (-90, 90]
+    a = ((a + 90) % 180 + 180) % 180 - 90;
+    return a === -90 ? 90 : a;
+  }
+  function fmtDeg(a) {
+    a = Math.round(a * 10) / 10;
+    if (Object.is(a, -0)) a = 0;
+    return (a < 0 ? '−' + Math.abs(a) : String(a)) + '°';
+  }
+  const pt = (r, deg) => [C + r * Math.cos(rad(deg)), C - r * Math.sin(rad(deg))];
+  function intensity(theta, p) {
+    const c = Math.cos(rad(theta));
+    return p * c * c + (1 - p) / 2;
+  }
+  function shadeRgb(I) {            // background of the "under the filter" view, darker when dimmer
+    const lo = [150, 160, 172], hi = [236, 243, 249];
+    const t = Math.sqrt(Math.max(0, Math.min(1, I)));
+    return lo.map((v, i) => Math.round(v + (hi[i] - v) * t));
+  }
+  const shade = I => 'rgb(' + shadeRgb(I).join(',') + ')';
+
+  // An arrow is a shaft plus a head; it is drawn from the center to (x, y).
+  function makeArrow(parent, color, width) {
+    const g = el('g', {}, parent);
+    const shaft = el('line', { stroke: color, 'stroke-width': width, 'stroke-linecap': 'round' }, g);
+    const head = el('polygon', { fill: color }, g);
+    return { g, shaft, head, width };
+  }
+  function setArrow(a, x0, y0, x1, y1) {
+    const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy);
+    if (L < 1.5) { a.g.setAttribute('visibility', 'hidden'); return; }
+    a.g.setAttribute('visibility', 'visible');
+    const hl = Math.min(13, L * 0.55), hw = Math.min(6.5, hl * 0.55) + a.width * 0.3;
+    const ux = dx / L, uy = dy / L;
+    const bx = x1 - ux * hl, by = y1 - uy * hl;
+    a.shaft.setAttribute('x1', x0); a.shaft.setAttribute('y1', y0);
+    a.shaft.setAttribute('x2', bx + ux * 1.5); a.shaft.setAttribute('y2', by + uy * 1.5);
+    a.head.setAttribute('points', [x1, y1, bx - uy * hw, by + ux * hw, bx + uy * hw, by - ux * hw].join(' '));
+  }
+  function setSeg(line, half, deg) {   // a segment through the center along deg, of half-length `half`
+    const [x1, y1] = pt(half, deg), [x2, y2] = pt(-half, deg);
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('visibility', half > 0.5 ? 'visible' : 'hidden');
+  }
+  function frameMark(parent, r) {     // the amber tab on the filter's rim, drawn at angle 0
+    const g = el('g', {}, parent);
+    el('rect', { x: C + r - 2, y: C - 9, width: 16, height: 18, rx: 3.5, fill: COL.mark, stroke: '#8a5a10', 'stroke-width': 1 }, g);
+    for (const dy of [-4, 0, 4]) el('line', { x1: C + r + 2.5, x2: C + r + 9.5, y1: C + dy, y2: C + dy, stroke: '#fff7e6', 'stroke-width': 1.3, 'stroke-linecap': 'round' }, g);
+    return g;
+  }
+
+
+  // ---------- panel 1: skylight ----------
+  const src = document.getElementById('src');
+  el('circle', { cx: C, cy: C, r: 140, fill: '#e3edf5', stroke: '#c9d6e0', 'stroke-width': 1 }, src);
+  el('circle', { cx: C, cy: C, r: R, fill: 'none', stroke: '#9fb0bd', 'stroke-width': 1, 'stroke-dasharray': '2 4' }, src);
+  // the sun lies along the solar meridian, perpendicular to the overhead e‑vector
+  el('line', { x1: C, y1: 24, x2: C, y2: 276, stroke: '#d9a63a', 'stroke-width': 1, 'stroke-dasharray': '1 5', opacity: .8 }, src);
+  el('circle', { cx: C, cy: 26, r: 7, fill: '#f2b632', stroke: '#c98d12', 'stroke-width': 1 }, src);
+  const sunTxt = el('text', { x: C + 12, y: 30, 'font-size': 10.5, fill: '#8a6a1a', 'font-family': 'Outfit, sans-serif' }, src);
+  sunTxt.textContent = 'toward sun';
+  const projG = el('g', {}, src);
+  const axPar = el('line', { stroke: COL.pass, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
+  const axPerp = el('line', { stroke: COL.block, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
+  const pathPar = el('line', { stroke: COL.pass, 'stroke-width': 7, 'stroke-linecap': 'round', opacity: .22 }, projG);
+  const pathPerp = el('line', { stroke: COL.block, 'stroke-width': 7, 'stroke-linecap': 'round', opacity: .22 }, projG);
+  const srcPath = el('line', { stroke: COL.path, 'stroke-width': 8, 'stroke-linecap': 'round' }, src);
+  // the amplitude an ideal filter passes at every angle; drawn above the paths, below the arrows
+  const curveG = el('g', {}, src);
+  const curve = el('path', { fill: 'none', stroke: '#6b4fa0', 'stroke-width': 1.6, 'stroke-dasharray': '5 3' }, curveG);
+  const curveDots = [0, 1].map(() => el('circle', { r: 4, fill: '#6b4fa0', stroke: '#fff', 'stroke-width': 1 }, curveG));
+  const projG2 = el('g', {}, src);
+  const conPar = el('line', { stroke: '#6f6f6f', 'stroke-width': 1, 'stroke-dasharray': '3 3' }, projG2);
+  const conPerp = el('line', { stroke: '#6f6f6f', 'stroke-width': 1, 'stroke-dasharray': '3 3' }, projG2);
+  const srcArrow = makeArrow(src, COL.ink, 4);
+  const blueArrow = makeArrow(projG2, COL.pass, 3);
+  const redArrow = makeArrow(projG2, COL.block, 3);
+  el('circle', { cx: C, cy: C, r: 3, fill: COL.ink }, src);
+
+  // ---------- panel 2: the dial ----------
+  const dial = document.getElementById('dial');
+  el('circle', { cx: C, cy: C, r: 150, fill: 'transparent' }, dial);     // full hit area
+  el('circle', { cx: C, cy: C, r: 128, fill: '#efe6d6', stroke: '#cdbfa8', 'stroke-width': 1.2 }, dial);
+  for (let a = 0; a < 360; a += 15) {
+    const major = a % 45 === 0;
+    const [x1, y1] = pt(128, a), [x2, y2] = pt(major ? 114 : 120, a);
+    el('line', { x1, y1, x2, y2, stroke: major ? '#3d5a4b' : '#a79b86', 'stroke-width': major ? 1.6 : 1 }, dial);
+  }
+  for (const a of STOPS) {
+    const [x, y] = pt(141, a);
+    const t = el('text', { x, y: y + 4, 'text-anchor': 'middle', 'font-size': 11.5, 'font-family': 'IBM Plex Mono, monospace', fill: '#3d5a4b' }, dial);
+    t.textContent = fmtDeg(a);
+  }
+  // the fixed reference: the sky's e‑vector
+  el('line', { x1: C - 126, y1: C, x2: C + 126, y2: C, stroke: COL.ink, 'stroke-width': 1.5, 'stroke-dasharray': '7 5', opacity: .7 }, dial);
+  const filt = el('g', {}, dial);
+  el('circle', { cx: C, cy: C, r: 110, fill: '#7d8794', 'fill-opacity': .2, stroke: '#5f6873', 'stroke-width': 1.6 }, filt);
+  el('circle', { cx: C, cy: C, r: 101, fill: 'none', stroke: '#5f6873', 'stroke-width': .8, opacity: .5 }, filt);
+  // a double-headed transmission axis, because the axis has no preferred end
+  el('line', { x1: C - 86, y1: C, x2: C + 86, y2: C, stroke: COL.pass, 'stroke-width': 3.2 }, filt);
+  el('polygon', { points: [C + 98, C, C + 84, C - 7, C + 84, C + 7].join(' '), fill: COL.pass }, filt);
+  el('polygon', { points: [C - 98, C, C - 84, C - 7, C - 84, C + 7].join(' '), fill: COL.pass }, filt);
+  frameMark(filt, 110);
+  const arcG = el('g', {}, dial);
+  const arc = el('path', { fill: 'none', stroke: '#6b4fa0', 'stroke-width': 2.2 }, arcG);
+  const arcTxt = el('text', { 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 600, 'font-family': 'IBM Plex Mono, monospace', fill: '#6b4fa0' }, arcG);
+  el('circle', { cx: C, cy: C, r: 4, fill: '#5f6873' }, dial);
+
+  // ---------- panel 3: under the filter ----------
+  const out = document.getElementById('out');
+  const outBg = el('circle', { cx: C, cy: C, r: 140, fill: shade(1), stroke: '#9aa6b0', 'stroke-width': 1 }, out);
+  el('circle', { cx: C, cy: C, r: R, fill: 'none', stroke: '#8597a5', 'stroke-width': 1, 'stroke-dasharray': '2 4' }, out);
+  el('line', { x1: C - 130, y1: C, x2: C + 130, y2: C, stroke: COL.ink, 'stroke-width': 1.2, 'stroke-dasharray': '7 5', opacity: .45 }, out);
+  const outMark = el('g', {}, out);
+  frameMark(outMark, 124);
+  const outPath = el('line', { stroke: COL.pass, 'stroke-width': 8, 'stroke-linecap': 'round', opacity: .25 }, out);
+  const outArrow = makeArrow(out, COL.pass, 4);
+  el('circle', { cx: C, cy: C, r: 3, fill: COL.ink }, out);
+  const darkTxt = el('text', { x: C, y: C + 34, 'text-anchor': 'middle', 'font-size': 12, 'font-family': 'Outfit, sans-serif', fill: '#2b3540' }, out);
+
+  // ---------- presets and table ----------
+  const presetBox = document.getElementById('presets');
+  const presetBtns = {};
+  for (const a of STOPS) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pbtn'; b.textContent = fmtDeg(a);
+    b.setAttribute('aria-label', 'Set filter to ' + a + ' degrees');
+    b.addEventListener('click', () => setTheta(a));
+    presetBox.appendChild(b); presetBtns[a] = b;
+  }
+
+  const table = document.getElementById('treat');
+  const rowsByAngle = {};
+  PAIRS.forEach((pair, i) => {
+    const tb = document.createElement('tbody');
+    pair.forEach((a, j) => {
+      const tr = document.createElement('tr');
+      tr.className = 'setting';
+      tr.tabIndex = 0;
+      if (j === 0) {
+        const td = document.createElement('td');
+        td.className = 'pair'; td.rowSpan = 2;
+        td.innerHTML = '<b>' + PAIR_NAMES[i] + '</b><br>e‑vector ' + fmtDeg(axisOf(a));
+        tr.appendChild(td);
+      }
+      const tdT = document.createElement('td'); tdT.className = 'c th'; tdT.textContent = fmtDeg(a);
+      const tdG = document.createElement('td'); tdG.className = 'c';
+      const g = el('svg', { viewBox: '0 0 40 40', 'aria-hidden': 'true' }, tdG);
+      const bg = el('circle', { cx: 20, cy: 20, r: 17, stroke: '#9aa6b0', 'stroke-width': 1 }, g);
+      const ln = el('line', { stroke: COL.pass, 'stroke-width': 2.6, 'stroke-linecap': 'round' }, g);
+      const [mx, my] = [20 + 17 * Math.cos(rad(a)), 20 - 17 * Math.sin(rad(a))];
+      el('circle', { cx: mx, cy: my, r: 3.6, fill: COL.mark, stroke: '#8a5a10', 'stroke-width': .8 }, g);
+      const tdA = document.createElement('td'); tdA.className = 'c ax'; tdA.textContent = fmtDeg(axisOf(a));
+      const tdI = document.createElement('td'); tdI.className = 'c in';
+      tr.append(tdT, tdG, tdA, tdI);
+      tr.addEventListener('click', () => setTheta(a));
+      tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTheta(a); } });
+      tb.appendChild(tr);
+      rowsByAngle[a] = { tr, bg, ln, tdI, a };
+    });
+    table.appendChild(tb);
+  });
+
+  // ---------- state updates ----------
+  const thetaIn = document.getElementById('thetaIn');
+  function setTheta(a, fromInput) {
+    state.theta = normAngle(Math.round(a));
+    if (!fromInput) thetaIn.value = state.theta;
+    refresh();
+  }
+
+  function refresh() {
+    const th = state.theta, p = state.p;
+    const c = Math.cos(rad(th)), s = Math.sin(rad(th));
+    const I = intensity(th, p);
+
+    document.getElementById('rCos').textContent = (c * c).toFixed(2);
+    document.getElementById('rSin').textContent = (s * s).toFixed(2);
+    document.getElementById('rAxis').textContent = fmtDeg(axisOf(th));
+    document.getElementById('rDop').textContent = I < 1e-6 ? 'no light' : '100%';
+    document.getElementById('rInt').textContent = I.toFixed(2);
+    document.getElementById('barP').style.width = (100 * p * c * c) + '%';
+    const bu = document.getElementById('barU');
+    bu.style.left = (100 * p * c * c) + '%'; bu.style.width = (100 * (1 - p) / 2) + '%';
+    document.getElementById('unpolBarLab').style.visibility = p < 1 ? '' : 'hidden';
+    document.getElementById('kp0').textContent = intensity(0, p).toFixed(2);
+    document.getElementById('kp90').textContent = intensity(90, p).toFixed(2);
+
+    dial.setAttribute('aria-valuenow', th);
+    dial.setAttribute('aria-valuetext', th + ' degrees; e‑vector under the filter at ' + axisOf(th) + ' degrees; brightness ' + I.toFixed(2));
+
+    // static geometry
+    filt.setAttribute('transform', 'rotate(' + (-th) + ' ' + C + ' ' + C + ')');
+    outMark.setAttribute('transform', 'rotate(' + (-th) + ' ' + C + ' ' + C + ')');
+    outBg.setAttribute('fill', shade(I));
+    darkTxt.textContent = I < 1e-6 ? 'dark: all light blocked' : '';
+    setSeg(axPar, 136, th); setSeg(axPerp, 136, th + 90);
+
+    // the angle arc between the sky e‑vector and the filter axis
+    if (Math.abs(th) < 0.5) { arcG.setAttribute('visibility', 'hidden'); }
+    else {
+      arcG.setAttribute('visibility', 'visible');
+      const r = 58, [x1, y1] = pt(r, 0), [x2, y2] = pt(r, th);
+      const sweep = th > 0 ? 0 : 1;
+      if (Math.abs(th) >= 179.5) {
+        const [xm, ym] = pt(r, th / 2);
+        arc.setAttribute('d', 'M' + x1 + ' ' + y1 + ' A' + r + ' ' + r + ' 0 0 ' + sweep + ' ' + xm + ' ' + ym + ' A' + r + ' ' + r + ' 0 0 ' + sweep + ' ' + x2 + ' ' + y2);
+      } else {
+        arc.setAttribute('d', 'M' + x1 + ' ' + y1 + ' A' + r + ' ' + r + ' 0 0 ' + sweep + ' ' + x2 + ' ' + y2);
+      }
+      const [tx, ty] = pt(76, th / 2);
+      arcTxt.setAttribute('x', tx); arcTxt.setAttribute('y', ty + 4);
+      arcTxt.textContent = 'θ';
+    }
+
+    // presets: current and its 180° partner
+    const partner = normAngle(th + 180);
+    for (const a of STOPS) {
+      presetBtns[a].classList.toggle('active', a === th);
+      presetBtns[a].classList.toggle('partner', a === partner && a !== th);
+      presetBtns[a].setAttribute('aria-pressed', a === th ? 'true' : 'false');
+    }
+    for (const a of STOPS) {
+      const r = rowsByAngle[a], Ia = intensity(a, p);
+      r.tdI.textContent = Ia.toFixed(2);
+      r.bg.setAttribute('fill', shade(Ia));
+      const h = 15 * Math.sqrt(Ia);
+      r.ln.setAttribute('x1', 20 + h * Math.cos(rad(a))); r.ln.setAttribute('y1', 20 - h * Math.sin(rad(a)));
+      r.ln.setAttribute('x2', 20 - h * Math.cos(rad(a))); r.ln.setAttribute('y2', 20 + h * Math.sin(rad(a)));
+      r.ln.setAttribute('visibility', h > 0.4 ? 'visible' : 'hidden');
+      r.tr.classList.toggle('cur', a === th);
+    }
+
+    // Legend entries keep their space when hidden. The figure groups use display rather than the
+    // visibility attribute, which the per-frame code sets on their children and would override.
+    document.querySelectorAll('.proj-only').forEach(n => { n.style.visibility = state.proj ? '' : 'hidden'; });
+    projG.style.display = state.proj ? '' : 'none';
+    projG2.style.display = state.proj ? '' : 'none';
+
+    // the passed-amplitude curve r(phi) = R sqrt(p cos^2 phi + (1 - p)/2) and its crossings with the filter axis
+    let d = '';
+    for (let a = 0; a <= 360; a += 2) {
+      const [x, y] = pt(R * Math.sqrt(intensity(a, p)), a);
+      d += (a ? 'L' : 'M') + x.toFixed(2) + ' ' + y.toFixed(2);
+    }
+    curve.setAttribute('d', d + 'Z');
+    const rTh = R * Math.sqrt(I);
+    curveDots.forEach((dt, k) => {
+      const [x, y] = pt(rTh, th + 180 * k);
+      dt.setAttribute('cx', x); dt.setAttribute('cy', y);
+      dt.setAttribute('visibility', rTh > 0.5 ? 'visible' : 'hidden');
+    });
+    curveG.style.display = state.proj ? '' : 'none';
+    if (!state.animate) draw(1);
+  }
+
+
+  // the moving parts, for an oscillation value osc = cos(phase) in [-1, 1]
+  function draw(osc) {
+    const th = state.theta, p = state.p, sp = Math.sqrt(p);
+    const c = Math.cos(rad(th)), s = Math.sin(rad(th));
+    // panel 1 animates the polarized part of the sky field, which lies along 0°
+    setSeg(srcPath, R * sp, 0);
+    const ex = R * sp * osc;
+    setArrow(srcArrow, C, C, C + ex, C);
+    // its components along u = (cos th, sin th) and v = (-sin th, cos th)
+    const aPar = R * sp * osc * c, aPerp = -R * sp * osc * s;
+    const [bx, by] = pt(aPar, th), [rx, ry] = pt(aPerp, th + 90);
+    setSeg(pathPar, R * sp * Math.abs(c), th);
+    setSeg(pathPerp, R * sp * Math.abs(s), th + 90);
+    setArrow(blueArrow, C, C, bx, by);
+    setArrow(redArrow, C, C, rx, ry);
+    for (const [ln, x, y] of [[conPar, bx, by], [conPerp, rx, ry]]) {
+      ln.setAttribute('x1', C + ex); ln.setAttribute('y1', C);
+      ln.setAttribute('x2', x); ln.setAttribute('y2', y);
+      ln.setAttribute('visibility', Math.abs(ex) > 1 ? 'visible' : 'hidden');
+    }
+    // under the filter: along the filter axis, with the amplitude of the average brightness
+    // (polarized and unpolarized skylight together); its sign follows the blue component
+    const A = R * Math.sqrt(intensity(th, p));
+    setSeg(outPath, A, th);
+    const [ox, oy] = pt(A * osc * (c >= 0 ? 1 : -1), th);
+    setArrow(outArrow, C, C, ox, oy);
+  }
+
+  let last = null, rafId = null;
+  function tick(t) {
+    if (!state.animate) { rafId = null; return; }
+    if (last !== null) state.phase = (state.phase + 2 * Math.PI * state.rate * (t - last) / 1000) % (2 * Math.PI);
+    last = t;
+    draw(Math.cos(state.phase));
+    rafId = requestAnimationFrame(tick);
+  }
+  function startAnim() { if (rafId === null) { last = null; rafId = requestAnimationFrame(tick); } }
+
+  // ---------- dial interaction (mouse, pen, and touch) ----------
+  function ptrAngle(e) {
+    const r = dial.getBoundingClientRect();
+    const x = -14 + (e.clientX - r.left) / r.width * 328, y = -14 + (e.clientY - r.top) / r.height * 328;
+    return { a: Math.atan2(-(y - C), x - C) * 180 / Math.PI, d: Math.hypot(x - C, y - C) };
+  }
+  let drag = null;
+  function snapped(raw) {
+    let a = normAngle(raw);
+    if (state.snap) {
+      for (const sA of STOPS) {
+        if (Math.abs(normAngle(a - sA)) <= 6) { a = sA; break; }
+      }
+    }
+    return a;
+  }
+  dial.addEventListener('pointerdown', e => {
+    const q = ptrAngle(e);
+    if (q.d < 12) return;
+    drag = { id: e.pointerId, lastA: q.a, raw: state.theta };
+    dial.setPointerCapture(e.pointerId);
+    dial.classList.add('dragging');
+    e.preventDefault();
+  });
+  dial.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const q = ptrAngle(e);
+    if (q.d < 12) return;                  // near the center the angle is ill defined
+    drag.raw += normAngle(q.a - drag.lastA);
+    drag.lastA = q.a;
+    const a = snapped(drag.raw);
+    if (a !== state.theta) setTheta(a);
+  });
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag = null; dial.classList.remove('dragging');
+  }
+  dial.addEventListener('pointerup', endDrag);
+  dial.addEventListener('pointercancel', endDrag);
+  dial.addEventListener('keydown', e => {
+    const th = state.theta;
+    let a = null;
+    const big = e.shiftKey ? 15 : 1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') a = th + big;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') a = th - big;
+    else if (e.key === 'PageUp') a = (Math.floor(th / 45) + 1) * 45;
+    else if (e.key === 'PageDown') a = (Math.ceil(th / 45) - 1) * 45;
+    else if (e.key === 'Home') a = 0;
+    if (a !== null) { e.preventDefault(); setTheta(a); }
+  });
+
+  // ---------- other controls ----------
+  thetaIn.addEventListener('input', () => {
+    const v = parseFloat(thetaIn.value);
+    if (isFinite(v)) setTheta(v, true);
+  });
+  thetaIn.addEventListener('change', () => { thetaIn.value = state.theta; });
+  document.getElementById('flipBtn').addEventListener('click', () => setTheta(state.theta + 180));
+  document.getElementById('mirrorBtn').addEventListener('click', () => setTheta(-state.theta));
+  document.getElementById('snap').addEventListener('change', e => { state.snap = e.target.checked; });
+  document.getElementById('showProj').addEventListener('change', e => { state.proj = e.target.checked; refresh(); });
+  const dop = document.getElementById('dop');
+  dop.addEventListener('input', () => {
+    state.p = dop.value / 100;
+    document.getElementById('dopV').textContent = dop.value + '%';
+    refresh();
+  });
+  const anim = document.getElementById('anim');
+  anim.checked = state.animate;
+  anim.addEventListener('change', () => {
+    state.animate = anim.checked;
+    if (state.animate) startAnim(); else draw(1);
+  });
+  const rate = document.getElementById('rate');
+  rate.addEventListener('input', () => {
+    state.rate = parseFloat(rate.value);
+    document.getElementById('rateV').textContent = state.rate.toFixed(2) + ' Hz';
+  });
+
+  refresh();
+  draw(1);
+  if (state.animate) startAnim();
+})();
+</script>
+
+<footer id="back-link-footer" style="max-width:1180px;margin:0 auto;padding:0 18px 1.5rem;">
+  <div style="padding-top:0.35rem;font-size:0.8rem;color:#888;">
+    <a href="../" style="color:#6b4fa0;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><span style="font-family:sans-serif">&larr;</span> All visualizations</a>
+  </div>
+</footer>
+<script>
+if (window.self !== window.top) {
+  var f = document.getElementById('back-link-footer'); if (f) { f.style.display = 'none'; }
+  // A min-height tied to the viewport (the "fill the window" idiom) would track the frame's
+  // own height and keep the frame from ever shrinking, so neutralize such rules here, where
+  // the frame is sized to the content. Cross-origin sheets (web fonts) throw and are skipped.
+  (function () {
+    function drop(rules) {
+      for (var i = 0; i < rules.length; i++) {
+        var r = rules[i];
+        if (r.style && /vh\b/.test(r.style.minHeight)) { r.style.minHeight = '0'; }
+        if (r.cssRules) { drop(r.cssRules); }
+      }
+    }
+    for (var s = 0; s < document.styleSheets.length; s++) { try { drop(document.styleSheets[s].cssRules); } catch (e) {} }
+  })();
+  // Embedded in another page: report the content height to the host so the iframe can
+  // grow and shrink with the active tab instead of scrolling inside itself. Canvas LMS
+  // listens for this message on every page and resizes whichever iframe sent it. It is
+  // never sent on a direct visit, and it never leaves the browser.
+  (function () {
+    var last = 0;
+    function report(force) {
+      var h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+      if (h > 0 && (force || h !== last)) { last = h; window.parent.postMessage({ subject: 'lti.frameResize', height: h }, '*'); }
+    }
+    if (window.ResizeObserver) { new ResizeObserver(function () { report(false); }).observe(document.documentElement); }
+    window.addEventListener('load', function () { report(true); });
+    // The host's listener may attach after this page has loaded (Canvas boots a large
+    // bundle after its HTML arrives), so repeat the current height a few times.
+    [500, 1500, 3000, 6000, 12000].forEach(function (ms) { setTimeout(function () { report(true); }, ms); });
+    report(true);
+  })();
+}
+</script>
+</body>
+</html>

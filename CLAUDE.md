@@ -681,6 +681,15 @@ carry both tags (`chaos, lyapunov: …`), though splitting it is usually better.
      and sets smaller any label that would run past the frame in Arial (`fitText`), while the PNG
      and COPY images, drawn by the browser, embed the page's Outfit.
 
+### Physics Demonstrations
+
+Smaller, single-concept demonstrations of well-understood physics.
+
+- **Polarization Filter Visualizer** — `polarization_filter/polarization_filter_visualizer.html`
+  Interactive primer on what a rotated linear polarizer does to polarized skylight: the components it passes and blocks, the e-vector and
+  brightness under the filter (including partially polarized skies), and why settings 180° apart deliver identical light, which makes
+  such pairs a control for non-polarization cues in animal sky-compass experiments. Drawn in SVG. Commit tag `pfilter`.
+
 ---
 
 ## Shared conventions
