@@ -226,10 +226,10 @@
         <h2 id="h-dial"><span class="step">2</span>Polarizing filter</h2>
       </div>
       <div class="tools">
-        <label class="angle-big" for="thetaIn">Filter angle <span class="sym">&theta; =</span> <input id="thetaIn" type="number" inputmode="numeric" min="-180" max="180" step="1" value="0">°</label>
+        <label class="angle-big" for="thetaIn">Filter angle <span class="sym">&theta; =</span> <input id="thetaIn" type="number" inputmode="numeric" min="-180" max="180" step="1" value="20">°</label>
       </div>
       <svg id="dial" class="fig" viewBox="-14 -14 328 328" tabindex="0" role="slider" aria-label="Filter angle relative to the sky e‑vector"
-           aria-valuemin="-180" aria-valuemax="180" aria-valuenow="0" aria-valuetext="0 degrees"></svg>
+           aria-valuemin="-180" aria-valuemax="180" aria-valuenow="20" aria-valuetext="20 degrees"></svg>
       <div class="legend">
         <span class="sw"><i style="background:var(--pass)"></i>transmission axis</span>
         <span class="sw"><i class="dash" style="border-color:var(--ink)"></i>sky e‑vector, 0°</span>
@@ -350,7 +350,8 @@
   const COL = { ink:'#20402f', pass:'#1f5fa8', block:'#a8341f', mark:'#d08a1e', path:'#c7bda9' };
 
   const state = {
-    theta: 0,               // filter angle in degrees, (-180, 180]
+    theta: 20,              // filter angle in degrees, (-180, 180]; starts off a preset so that the
+                            // passed component clearly dominates the blocked one
     p: 1,                   // degree of polarization of skylight
     proj: true,
     animate: !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
