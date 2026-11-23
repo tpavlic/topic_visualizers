@@ -84,6 +84,12 @@
   svg#dial{cursor:grab;touch-action:none;border-radius:50%}
   svg#dial.dragging{cursor:grabbing}
   svg#dial:focus{outline:none}
+  /* An HTML target over panel 3's frame mark: touch-action is honored on HTML elements, not reliably
+     inside an SVG, so a drag that starts here turns the filter, whereas the rest of the panel scrolls. */
+  .figwrap{position:relative;width:100%;max-width:340px;margin:0 auto}
+  .grip{position:absolute;width:15%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);
+    cursor:grab;touch-action:none}
+  .grip.dragging{cursor:grabbing}
   svg#dial:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 
   .chk{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink-soft);cursor:pointer;user-select:none;min-height:30px}
@@ -195,14 +201,14 @@
       </div>
       <svg id="src" class="fig" viewBox="0 0 300 300" role="img" aria-label="Sky e‑vector, with its components along and across the filter's transmission axis"></svg>
       <div class="legend">
-        <span class="sw"><i style="background:var(--ink)"></i>polarized sky e‑vector</span>
-        <span class="sw proj-only"><i style="background:var(--pass)"></i>along filter axis (passed)</span>
-        <span class="sw proj-only"><i style="background:var(--block)"></i>across filter axis (blocked)</span>
-        <span class="sw proj-only"><i class="dash" style="border-color:var(--accent)"></i>amplitude passed at each filter angle</span>
+        <span class="sw"><i style="background:var(--ink);height:6px;border-radius:3px"></i>polarized sky e‑vector</span>
+        <span class="sw proj-only"><i style="background:var(--pass);height:3px"></i>along filter axis (passed)</span>
+        <span class="sw proj-only"><i style="background:var(--block);height:3px"></i>across filter axis (blocked)</span>
+        <span class="sw"><i style="background:#20402f59;height:8px"></i>e&#8209;vector orientations in the sky</span>
       </div>
       <div class="rest">
       <div class="readout">
-        <div class="row"><span>Sky e‑vector (reference)</span><span class="v">0°</span></div>
+        <div class="row"><span>Sky e‑vector (reference)</span><span class="v" id="rSky">0°</span></div>
         <div class="row"><span>Passed share of polarized light, cos<sup>2</sup>&theta;</span><span class="v" id="rCos">1.00</span></div>
         <div class="row"><span>Blocked share of polarized light, sin<sup>2</sup>&theta;</span><span class="v" id="rSin">0.00</span></div>
       </div>
@@ -239,11 +245,14 @@
         <h2 id="h-out"><span class="step">3</span>Under the filter</h2>
       </div>
       <div class="tools" aria-hidden="true"></div>
-      <svg id="out" class="fig" viewBox="0 0 300 300" role="img" aria-label="Transmitted e‑vector seen by an animal under the filter"></svg>
+      <div class="figwrap">
+        <svg id="out" class="fig" viewBox="0 0 300 300" role="img" aria-label="Transmitted e‑vector seen by an animal under the filter"></svg>
+        <div class="grip" id="outGrip" title="Drag to turn the filter" aria-hidden="true"></div>
+      </div>
       <div class="legend">
         <span class="sw"><i style="background:var(--pass)"></i>transmitted e‑vector</span>
         <span class="sw"><i class="dash" style="border-color:#20402f88"></i>sky e‑vector, for reference</span>
-        <span class="sw"><i class="tab" style="background:var(--mark)"></i>frame mark (a non-polarization cue)</span>
+        <span class="sw"><i class="tab" style="background:var(--mark)"></i>frame mark, a non-polarization cue (drag to turn)</span>
       </div>
       <div class="rest">
       <div class="readout">
@@ -259,9 +268,8 @@
 
   <section class="card settings" aria-label="Settings">
     <div class="slider">
-      <div class="lab"><label for="dop">Degree of polarization of the skylight, p</label><span class="vl" id="dopV">100%</span></div>
-      <input type="range" id="dop" min="0" max="100" step="1" value="100">
-      <div class="hint">The fraction of the skylight's intensity that is polarized along one e&#8209;vector; the rest has no preferred orientation. Start at 100% for the textbook case. A clear sky overhead is only partially polarized.</div>
+      <div class="lab"><label class="chk" style="min-height:0"><input type="checkbox" id="compass" checked> Polarized sky (a sky compass)</label></div>
+      <div class="hint">On, the skylight overhead is polarized along one e&#8209;vector set by the sun's position, which an animal can use as a compass. Off, the skylight has no preferred e&#8209;vector orientation, as in a world without a sky compass. The band around the edge of panel 1 shows how the sky's e&#8209;vector orientations are distributed.</div>
     </div>
     <div class="slider">
       <div class="lab"><label class="chk" style="min-height:0"><input type="checkbox" id="anim" checked> Animate the oscillation</label><span class="vl" id="rateV">0.40 Hz</span></div>
@@ -283,7 +291,7 @@
       <ul>
         <li><b>Within a pair</b> (for example, 45° and &minus;135°), the light under the filter is identical in e‑vector and brightness; only the physical filter is turned around. If the animals steer by polarization alone, their paths should agree. A difference points to some other cue, such as a mark, edge, scratch, reflection, or shadow on the filter or its mount.</li>
         <li><b>45° against &minus;45°</b> (and 135° against &minus;135°) matches brightness exactly, at <span id="kpHalf">0.50</span> of the open sky for any degree of polarization, and mirrors the e‑vector. This tests the e‑vector's direction without a brightness confound.</li>
-        <li><b>0° against 90°</b> rotates the e‑vector by 90° but also changes brightness, from <span id="kp0">1.00</span> to <span id="kp90">0.00</span> at the current p, and so confounds e‑vector direction with brightness.</li>
+        <li><b>0° against 90°</b> rotates the e‑vector by 90° but also changes brightness, from <span id="kp0">1.00</span> to <span id="kp90">0.00</span> under the current sky, and so confounds e‑vector direction with brightness.</li>
       </ul>
     </div>
   </section>
@@ -301,8 +309,11 @@
       <h3>Why add 135°, &minus;135°, 180°, and &minus;90°</h3>
       <p>Each of these settings repeats the light of a setting already in use (&minus;45°, 45°, 0°, and 90°, respectively), but with the filter physically reversed. Any visible asymmetry of the filter or its mount rotates by 180° between the two members of a pair, whereas the polarization does not change. The amber tab stands in for such a feature. Running both members of a pair is therefore a control for cues other than polarization: polarization predicts the same result within each pair, and a landmark-like cue predicts different ones.</p>
 
+      <h3>With and without a sky compass</h3>
+      <p>The sky-compass switch in the settings shows two extremes. With it on, all of the skylight is polarized along one e&#8209;vector, and the band around the edge of panel 1 is concentrated at that orientation. With it off, the skylight is unpolarized: its e&#8209;vector has no preferred orientation and wanders at random far faster than any photoreceptor can follow, and so the band spreads evenly around the circle and the sun's direction no longer appears. A filter then passes half of the light at every angle, polarized along the filter's own axis. The e&#8209;vector under the filter therefore still turns with the filter, but the brightness no longer changes with its angle.</p>
+
       <h3>A real sky is only partially polarized</h3>
-      <p>Skylight is a mixture of polarized and unpolarized light, and the degree of polarization p is the fraction of its intensity that is polarized. The polarized part keeps one e&#8209;vector orientation, whereas the unpolarized part has no preferred orientation: its e&#8209;vector wanders at random, far faster than any photoreceptor can follow. Panel 1 animates only the polarized part, whose amplitude shrinks as p falls. An ideal polarizer passes, on average, half of the unpolarized light whatever its angle, and it polarizes that light along its own axis as well, giving a brightness of <span class="eqn">I/I<sub>0</sub> = p cos<sup>2</sup>&theta; + (1 &minus; p)/2</span>. The dashed purple curve in panel 1 plots the corresponding amplitude, the square root of that brightness, for every filter angle. At p = 100%, it is a pair of circles, which the tip of the blue component traces as the filter turns. As p falls, it rounds out toward a single circle, because unpolarized light passes equally at every angle. Where the filter's axis meets the curve (the purple dots) is the amplitude of the light under the filter in panel 3. Three consequences follow. Under a crossed filter (90°), an animal is not in the dark: they see dimmer light that is fully polarized at 90° to the sky's e‑vector. At ±45° and ±135°, the brightness is exactly one half for every p, because cos<sup>2</sup>&theta; = 1/2 there. Finally, even the aligned 0° setting is not a sham treatment: it dims the light to (1 + p)/2 of the open sky and raises its degree of polarization to essentially 100%.</p>
+      <p>A real sky lies between these extremes. If p is the fraction of its intensity that is polarized, its degree of polarization, the brightness under an ideal filter is <span class="eqn">I/I<sub>0</sub> = p cos<sup>2</sup>&theta; + (1 &minus; p)/2</span>. Three consequences follow. An animal under a crossed filter (90°) is not in the dark: it sees dimmer light that is fully polarized at 90° to the sky's e‑vector. At ±45° and ±135°, the brightness is exactly one half for every p, because cos<sup>2</sup>&theta; = 1/2 there. Finally, even the aligned 0° setting is not a sham treatment: it dims the light to (1 + p)/2 of the open sky and raises its degree of polarization to essentially 100%.</p>
 
       <h3>Viewpoint and sign of rotation</h3>
       <p>Angles here increase counterclockwise as drawn, which is the experimenter's view looking down on the filter. An animal looking up through the filter sees the same axes with the sense of rotation reversed, and so a counterclockwise turn seen from above is clockwise seen from below. Keep the viewpoint fixed when converting a filter rotation into a predicted change of heading. Also, the e‑vector alone cannot distinguish a rotation of &theta; from one of &theta; &minus; 180°; animals normally resolve that ambiguity with other cues in the sky, such as the sun or the gradients of intensity and color across it.</p>
@@ -358,6 +369,11 @@
     return (a < 0 ? '−' + Math.abs(a) : String(a)) + '°';
   }
   const pt = (r, deg) => [C + r * Math.cos(rad(deg)), C - r * Math.sin(rad(deg))];
+  function besselI0(x) {            // modified Bessel function of order 0, by its power series
+    let sum = 1, term = 1;
+    for (let k = 1; k < 30; k++) { term *= (x / (2 * k)) * (x / (2 * k)); sum += term; }
+    return sum;
+  }
   function intensity(theta, p) {
     const c = Math.cos(rad(theta));
     return p * c * c + (1 - p) / 2;
@@ -406,26 +422,25 @@
   el('circle', { cx: C, cy: C, r: 140, fill: '#e3edf5', stroke: '#c9d6e0', 'stroke-width': 1 }, src);
   el('circle', { cx: C, cy: C, r: R, fill: 'none', stroke: '#9fb0bd', 'stroke-width': 1, 'stroke-dasharray': '2 4' }, src);
   // the sun lies along the solar meridian, perpendicular to the overhead e‑vector
-  el('line', { x1: C, y1: 24, x2: C, y2: 276, stroke: '#d9a63a', 'stroke-width': 1, 'stroke-dasharray': '1 5', opacity: .8 }, src);
-  el('circle', { cx: C, cy: 26, r: 7, fill: '#f2b632', stroke: '#c98d12', 'stroke-width': 1 }, src);
-  const sunTxt = el('text', { x: C + 12, y: 30, 'font-size': 10.5, fill: '#8a6a1a', 'font-family': 'Outfit, sans-serif' }, src);
+  // the distribution of e-vector orientations, drawn as a band around the edge
+  const band = el('path', { fill: COL.ink, 'fill-opacity': .35, 'fill-rule': 'evenodd' }, src);
+  const sunG = el('g', {}, src);
+  el('line', { x1: C, y1: 24, x2: C, y2: 276, stroke: '#d9a63a', 'stroke-width': 1, 'stroke-dasharray': '1 5', opacity: .8 }, sunG);
+  el('circle', { cx: C, cy: 26, r: 7, fill: '#f2b632', stroke: '#c98d12', 'stroke-width': 1 }, sunG);
+  const sunTxt = el('text', { x: C + 12, y: 30, 'font-size': 10.5, fill: '#8a6a1a', 'font-family': 'Outfit, sans-serif' }, sunG);
   sunTxt.textContent = 'toward sun';
   const projG = el('g', {}, src);
   const axPar = el('line', { stroke: COL.pass, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
   const axPerp = el('line', { stroke: COL.block, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
-  const pathPar = el('line', { stroke: COL.pass, 'stroke-width': 7, 'stroke-linecap': 'round', opacity: .22 }, projG);
-  const pathPerp = el('line', { stroke: COL.block, 'stroke-width': 7, 'stroke-linecap': 'round', opacity: .22 }, projG);
+  const pathPar = el('line', { stroke: COL.pass, 'stroke-width': 5, 'stroke-linecap': 'round', opacity: .2 }, projG);
+  const pathPerp = el('line', { stroke: COL.block, 'stroke-width': 5, 'stroke-linecap': 'round', opacity: .2 }, projG);
   const srcPath = el('line', { stroke: COL.path, 'stroke-width': 8, 'stroke-linecap': 'round' }, src);
-  // the amplitude an ideal filter passes at every angle; drawn above the paths, below the arrows
-  const curveG = el('g', {}, src);
-  const curve = el('path', { fill: 'none', stroke: '#6b4fa0', 'stroke-width': 1.6, 'stroke-dasharray': '5 3' }, curveG);
-  const curveDots = [0, 1].map(() => el('circle', { r: 4, fill: '#6b4fa0', stroke: '#fff', 'stroke-width': 1 }, curveG));
   const projG2 = el('g', {}, src);
   const conPar = el('line', { stroke: '#6f6f6f', 'stroke-width': 1, 'stroke-dasharray': '3 3' }, projG2);
   const conPerp = el('line', { stroke: '#6f6f6f', 'stroke-width': 1, 'stroke-dasharray': '3 3' }, projG2);
-  const srcArrow = makeArrow(src, COL.ink, 4);
-  const blueArrow = makeArrow(projG2, COL.pass, 3);
-  const redArrow = makeArrow(projG2, COL.block, 3);
+  const srcArrow = makeArrow(src, COL.ink, 5.5);
+  const blueArrow = makeArrow(projG2, COL.pass, 2.2);
+  const redArrow = makeArrow(projG2, COL.block, 2.2);
   el('circle', { cx: C, cy: C, r: 3, fill: COL.ink }, src);
 
   // ---------- panel 2: the dial ----------
@@ -464,6 +479,7 @@
   el('line', { x1: C - 130, y1: C, x2: C + 130, y2: C, stroke: COL.ink, 'stroke-width': 1.2, 'stroke-dasharray': '7 5', opacity: .45 }, out);
   const outMark = el('g', {}, out);
   frameMark(outMark, 124);
+  const outGrip = document.getElementById('outGrip');
   const outPath = el('line', { stroke: COL.pass, 'stroke-width': 8, 'stroke-linecap': 'round', opacity: .25 }, out);
   const outArrow = makeArrow(out, COL.pass, 4);
   el('circle', { cx: C, cy: C, r: 3, fill: COL.ink }, out);
@@ -525,8 +541,9 @@
     const c = Math.cos(rad(th)), s = Math.sin(rad(th));
     const I = intensity(th, p);
 
-    document.getElementById('rCos').textContent = (c * c).toFixed(2);
-    document.getElementById('rSin').textContent = (s * s).toFixed(2);
+    document.getElementById('rSky').textContent = p > 0 ? '0\u00b0' : '\u2013';
+    document.getElementById('rCos').textContent = p > 0 ? (c * c).toFixed(2) : '\u2013';
+    document.getElementById('rSin').textContent = p > 0 ? (s * s).toFixed(2) : '\u2013';
     document.getElementById('rAxis').textContent = fmtDeg(axisOf(th));
     document.getElementById('rDop').textContent = I < 1e-6 ? 'no light' : '100%';
     document.getElementById('rInt').textContent = I.toFixed(2);
@@ -543,6 +560,8 @@
     // static geometry
     filt.setAttribute('transform', 'rotate(' + (-th) + ' ' + C + ' ' + C + ')');
     outMark.setAttribute('transform', 'rotate(' + (-th) + ' ' + C + ' ' + C + ')');
+    const [gx, gy] = pt(131, th);
+    outGrip.style.left = (gx / 3) + '%'; outGrip.style.top = (gy / 3) + '%';
     outBg.setAttribute('fill', shade(I));
     darkTxt.textContent = I < 1e-6 ? 'dark: all light blocked' : '';
     setSeg(axPar, 136, th); setSeg(axPerp, 136, th + 90);
@@ -588,20 +607,20 @@
     projG.style.display = state.proj ? '' : 'none';
     projG2.style.display = state.proj ? '' : 'none';
 
-    // the passed-amplitude curve r(phi) = R sqrt(p cos^2 phi + (1 - p)/2) and its crossings with the filter axis
-    let d = '';
+
+    // the band: with the sky compass on, e-vector orientations concentrate around 0° and 180°
+    // (an axial von Mises shape, widened for visibility); with it off, the same total amount
+    // spreads evenly. Its height is that density, from a base just outside the amplitude ring.
+    const B0 = 113, H = 24, K = 6, flat = H * Math.exp(-K) * besselI0(K);
+    let bd = '';
     for (let a = 0; a <= 360; a += 2) {
-      const [x, y] = pt(R * Math.sqrt(intensity(a, p)), a);
-      d += (a ? 'L' : 'M') + x.toFixed(2) + ' ' + y.toFixed(2);
+      const h = p > 0 ? H * Math.exp(K * (Math.cos(rad(2 * a)) - 1)) : flat;
+      const [x, y] = pt(B0 + h, a);
+      bd += (a ? 'L' : 'M') + x.toFixed(2) + ' ' + y.toFixed(2);
     }
-    curve.setAttribute('d', d + 'Z');
-    const rTh = R * Math.sqrt(I);
-    curveDots.forEach((dt, k) => {
-      const [x, y] = pt(rTh, th + 180 * k);
-      dt.setAttribute('cx', x); dt.setAttribute('cy', y);
-      dt.setAttribute('visibility', rTh > 0.5 ? 'visible' : 'hidden');
-    });
-    curveG.style.display = state.proj ? '' : 'none';
+    bd += 'Z M' + (C + B0) + ' ' + C + ' A' + B0 + ' ' + B0 + ' 0 1 0 ' + (C - B0) + ' ' + C + ' A' + B0 + ' ' + B0 + ' 0 1 0 ' + (C + B0) + ' ' + C + 'Z';
+    band.setAttribute('d', bd);
+    sunG.style.display = p > 0 ? '' : 'none';
     if (!state.animate) draw(1);
   }
 
@@ -645,9 +664,10 @@
   function startAnim() { if (rafId === null) { last = null; rafId = requestAnimationFrame(tick); } }
 
   // ---------- dial interaction (mouse, pen, and touch) ----------
-  function ptrAngle(e) {
-    const r = dial.getBoundingClientRect();
-    const x = -14 + (e.clientX - r.left) / r.width * 328, y = -14 + (e.clientY - r.top) / r.height * 328;
+  // angle of the pointer about the figure's center, for an svg whose viewBox starts at v0 and spans vs
+  function ptrAngle(svg, v0, vs, e) {
+    const r = svg.getBoundingClientRect();
+    const x = v0 + (e.clientX - r.left) / r.width * vs, y = v0 + (e.clientY - r.top) / r.height * vs;
     return { a: Math.atan2(-(y - C), x - C) * 180 / Math.PI, d: Math.hypot(x - C, y - C) };
   }
   let drag = null;
@@ -660,29 +680,34 @@
     }
     return a;
   }
-  dial.addEventListener('pointerdown', e => {
-    const q = ptrAngle(e);
-    if (q.d < 12) return;
-    drag = { id: e.pointerId, lastA: q.a, raw: state.theta };
-    dial.setPointerCapture(e.pointerId);
-    dial.classList.add('dragging');
-    e.preventDefault();
-  });
-  dial.addEventListener('pointermove', e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const q = ptrAngle(e);
-    if (q.d < 12) return;                  // near the center the angle is ill defined
-    drag.raw += normAngle(q.a - drag.lastA);
-    drag.lastA = q.a;
-    const a = snapped(drag.raw);
-    if (a !== state.theta) setTheta(a);
-  });
-  function endDrag(e) {
-    if (!drag || e.pointerId !== drag.id) return;
-    drag = null; dial.classList.remove('dragging');
+  // Either the whole dial or the grip on panel 3's frame mark starts a drag; both turn the filter.
+  function makeDraggable(target, svg, v0, vs) {
+    target.addEventListener('pointerdown', e => {
+      const q = ptrAngle(svg, v0, vs, e);
+      if (q.d < 12) return;
+      drag = { id: e.pointerId, lastA: q.a, raw: state.theta, svg, v0, vs, target };
+      target.setPointerCapture(e.pointerId);
+      svg.classList.add('dragging'); target.classList.add('dragging');
+      e.preventDefault();
+    });
+    target.addEventListener('pointermove', e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const q = ptrAngle(drag.svg, drag.v0, drag.vs, e);
+      if (q.d < 12) return;                  // near the center the angle is ill defined
+      drag.raw += normAngle(q.a - drag.lastA);
+      drag.lastA = q.a;
+      const a = snapped(drag.raw);
+      if (a !== state.theta) setTheta(a);
+    });
+    const end = e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      drag.svg.classList.remove('dragging'); drag.target.classList.remove('dragging'); drag = null;
+    };
+    target.addEventListener('pointerup', end);
+    target.addEventListener('pointercancel', end);
   }
-  dial.addEventListener('pointerup', endDrag);
-  dial.addEventListener('pointercancel', endDrag);
+  makeDraggable(dial, dial, -14, 328);
+  makeDraggable(outGrip, out, 0, 300);
   dial.addEventListener('keydown', e => {
     const th = state.theta;
     let a = null;
@@ -705,12 +730,8 @@
   document.getElementById('mirrorBtn').addEventListener('click', () => setTheta(-state.theta));
   document.getElementById('snap').addEventListener('change', e => { state.snap = e.target.checked; });
   document.getElementById('showProj').addEventListener('change', e => { state.proj = e.target.checked; refresh(); });
-  const dop = document.getElementById('dop');
-  dop.addEventListener('input', () => {
-    state.p = dop.value / 100;
-    document.getElementById('dopV').textContent = dop.value + '%';
-    refresh();
-  });
+  // The model keeps a general degree of polarization p; the switch sets its two extremes.
+  document.getElementById('compass').addEventListener('change', e => { state.p = e.target.checked ? 1 : 0; refresh(); });
   const anim = document.getElementById('anim');
   anim.checked = state.animate;
   anim.addEventListener('change', () => {
