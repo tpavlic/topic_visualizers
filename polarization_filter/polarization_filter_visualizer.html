@@ -121,6 +121,10 @@
   .pbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
   .pbtn.partner{border:2px dashed var(--accent-soft)}
   .cap{font-size:12px;color:var(--ink-soft);margin:6px 0 0}
+  /* panel 3's four captions share one cell, so it is as tall as the longest and nothing shifts */
+  .capstack{display:grid;width:100%}
+  .capstack>.cap{grid-area:1/1;margin:0;visibility:hidden}
+  .capstack>.cap.shown{visibility:visible}
   .btnrow{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:10px;align-items:center}
   .btn{font-family:'Outfit',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-weight:600;font-size:13px;min-height:38px;
     background:var(--cream-2);border:1px solid var(--line);color:var(--ink);
@@ -206,12 +210,13 @@
         <span class="sw proj-only"><i style="background:var(--pass);height:3px"></i>along filter axis (passed)</span>
         <span class="sw proj-only"><i style="background:var(--block);height:3px"></i>across filter axis (blocked)</span>
         <span class="sw"><i style="background:#20402f59;height:8px"></i>e&#8209;vector orientations in the sky</span>
+        <span class="sw proj-only"><i style="background:#1f5fa899;height:8px"></i>share the filter passes</span>
       </div>
       <div class="rest">
       <div class="readout">
         <div class="row"><span>Sky e‑vector (reference)</span><span class="v" id="rSky">0°</span></div>
-        <div class="row"><span>Passed share of polarized light, cos<sup>2</sup>&theta;</span><span class="v" id="rCos">1.00</span></div>
-        <div class="row"><span>Blocked share of polarized light, sin<sup>2</sup>&theta;</span><span class="v" id="rSin">0.00</span></div>
+        <div class="row"><span>Passed share of polarized light, cos<sup>2</sup>&thinsp;&theta;</span><span class="v" id="rCos">1.00</span></div>
+        <div class="row"><span>Blocked share of polarized light, sin<sup>2</sup>&thinsp;&theta;</span><span class="v" id="rSin">0.00</span></div>
       </div>
       </div>
     </section>
@@ -245,7 +250,12 @@
       <div class="card-head">
         <h2 id="h-out"><span class="step">3</span>Under the filter</h2>
       </div>
-      <div class="tools" aria-hidden="true"></div>
+      <div class="tools"><div class="capstack" id="outCap">
+        <p class="cap" data-k="on-proj">Only the share shaded blue in panel 1 gets through: the component of the sky's e&#8209;vector that lies along the filter's axis.</p>
+        <p class="cap" data-k="on-plain">Only the component of the sky's e&#8209;vector that lies along the filter's axis gets through.</p>
+        <p class="cap" data-k="off-proj">The sky has no single e&#8209;vector, and so the same share, shaded blue in panel 1, gets through at every filter angle.</p>
+        <p class="cap" data-k="off-plain">The sky has no single e&#8209;vector, and so the same share of its light gets through at every filter angle, always along the filter's axis.</p>
+      </div></div>
       <div class="figwrap">
         <svg id="out" class="fig" viewBox="0 0 300 300" role="img" aria-label="Transmitted e‑vector seen by an animal under the filter"></svg>
         <div class="grip" id="outGrip" title="Drag to turn the filter" aria-hidden="true"></div>
@@ -301,7 +311,7 @@
     <summary>How it works, and what to keep in mind</summary>
     <div class="notes-body">
       <h3>What a linear polarizer does</h3>
-      <p>An ideal linear polarizer passes the component of the electric field that lies along its transmission axis and blocks the component across it. In panel 1, the sky's e‑vector is split into those two components: the blue one along the filter's axis is passed, and the red one across it is blocked. The blue component is what reappears in panel 3. For fully polarized light at angle &theta; to the axis, the passed field amplitude scales as cos&nbsp;&theta;, and the passed intensity follows Malus's law, <span class="eqn">I = I<sub>0</sub> cos<sup>2</sup>&theta;</span>.</p>
+      <p>An ideal linear polarizer passes the component of the electric field that lies along its transmission axis and blocks the component across it. In panel 1, the sky's e‑vector is split into those two components: the blue one along the filter's axis is passed, and the red one across it is blocked. The blue component is what reappears in panel 3. For fully polarized light at angle &theta; to the axis, the passed field amplitude scales as cos&nbsp;&theta;, and the passed intensity follows Malus's law, <span class="eqn">I = I<sub>0</sub> cos<sup>2</sup>&thinsp;&theta;</span>.</p>
       <p>Whatever the orientation of the light that enters, the light that leaves is polarized along the filter's own axis. The e‑vector under the filter therefore turns with the filter, and the sky's e‑vector sets only how bright that light is.</p>
 
       <h3>An e‑vector is an axis, not an arrow</h3>
@@ -312,9 +322,10 @@
 
       <h3>With and without a sky compass</h3>
       <p>The sky-compass switch in the settings shows two extremes. With it on, all of the skylight is polarized along one e&#8209;vector, and the band around the edge of panel 1 is concentrated at that orientation. With it off, the skylight is unpolarized: its e&#8209;vector has no preferred orientation and wanders at random far faster than any photoreceptor can follow. The band then spreads evenly around the circle, and the sun no longer appears. A filter then passes half of the light at every angle, polarized along the filter's own axis. The e&#8209;vector under the filter therefore still turns with the filter, but the brightness no longer changes with its angle.</p>
+      <p>With the projections shown, the band in panel 1 is shaded blue by the share of each orientation that the filter passes, which is cos<sup>2</sup> of that orientation's angle to the filter's axis. Only the share shaded blue reaches panel 3, and the more blue there is, the brighter the light under the filter. With the sky compass on, the blue shading on the two peaks shrinks as the filter turns away from the sky's e&#8209;vector and vanishes at 90°. With it off, blue lobes centered on the filter's axis turn with the filter, but their total never changes.</p>
 
       <h3>A real sky is only partially polarized</h3>
-      <p>A real sky lies between these extremes. Its degree of polarization, p, is the fraction of its intensity that is polarized, and the brightness under an ideal filter is <span class="eqn">I/I<sub>0</sub> = p cos<sup>2</sup>&theta; + (1 &minus; p)/2</span>. Three consequences follow. An animal under a crossed filter (90°) is not in the dark: it sees dimmer light that is fully polarized at 90° to the sky's e‑vector. At ±45° and ±135°, the brightness is exactly one half for every p because cos<sup>2</sup>&theta; = 1/2 there. Finally, even the aligned 0° setting is not a sham treatment: it dims the light to (1 + p)/2 of the open sky and raises its degree of polarization to essentially 100%.</p>
+      <p>A real sky lies between these extremes. Its degree of polarization, p, is the fraction of its intensity that is polarized, and the brightness under an ideal filter is <span class="eqn">I/I<sub>0</sub> = p cos<sup>2</sup>&thinsp;&theta; + (1 &minus; p)/2</span>. Three consequences follow. An animal under a crossed filter (90°) is not in the dark: it sees dimmer light that is fully polarized at 90° to the sky's e‑vector. At ±45° and ±135°, the brightness is exactly one half for every p because cos<sup>2</sup>&thinsp;&theta; = 1/2 there. Finally, even the aligned 0° setting is not a sham treatment: it dims the light to (1 + p)/2 of the open sky and raises its degree of polarization to essentially 100%.</p>
 
       <h3>Viewpoint and sign of rotation</h3>
       <p>Angles here increase counterclockwise as seen by an experimenter looking down on the filter. An animal looking up through the filter sees the same axes with the sense of rotation reversed, and so a counterclockwise turn seen from above is clockwise seen from below. Converting a filter rotation into a predicted change of heading therefore requires one fixed viewpoint. Also, the e‑vector alone cannot distinguish a rotation of &theta; from one of &theta; &minus; 180°; animals normally resolve that ambiguity with other cues in the sky, such as the sun or the gradients of intensity and color across it.</p>
@@ -370,11 +381,6 @@
     return (a < 0 ? '−' + Math.abs(a) : String(a)) + '°';
   }
   const pt = (r, deg) => [C + r * Math.cos(rad(deg)), C - r * Math.sin(rad(deg))];
-  function besselI0(x) {            // modified Bessel function of order 0, by its power series
-    let sum = 1, term = 1;
-    for (let k = 1; k < 30; k++) { term *= (x / (2 * k)) * (x / (2 * k)); sum += term; }
-    return sum;
-  }
   function intensity(theta, p) {
     const c = Math.cos(rad(theta));
     return p * c * c + (1 - p) / 2;
@@ -425,6 +431,7 @@
   // the sun lies along the solar meridian, perpendicular to the overhead e-vector
   // the distribution of e-vector orientations, drawn as a band around the edge
   const band = el('path', { fill: COL.ink, 'fill-opacity': .35, 'fill-rule': 'evenodd' }, src);
+  const bandPass = el('path', { fill: COL.pass, 'fill-opacity': .6, 'fill-rule': 'evenodd' }, src);
   const sunG = el('g', {}, src);
   el('line', { x1: C, y1: 24, x2: C, y2: 276, stroke: '#d9a63a', 'stroke-width': 1, 'stroke-dasharray': '1 5', opacity: .8 }, sunG);
   el('circle', { cx: C, cy: 26, r: 7, fill: '#f2b632', stroke: '#c98d12', 'stroke-width': 1 }, sunG);
@@ -608,17 +615,24 @@
 
 
     // the band: with the sky compass on, e-vector orientations concentrate around 0° and 180°
-    // (an axial von Mises shape, widened for visibility); with it off, the same total amount
-    // spreads evenly. Its height is that density, from a base just outside the amplitude ring.
-    const B0 = 113, H = 24, K = 6, flat = H * Math.exp(-K) * besselI0(K);
-    let bd = '';
+    // (an axial von Mises shape, widened for visibility); with it off, they spread evenly. The
+    // even ring is drawn thicker than an area-matched one would be, so that its blue shading reads.
+    const B0 = 113, H = 24, K = 6, flat = 12;
+    const inner = 'Z M' + (C + B0) + ' ' + C + ' A' + B0 + ' ' + B0 + ' 0 1 0 ' + (C - B0) + ' ' + C + ' A' + B0 + ' ' + B0 + ' 0 1 0 ' + (C + B0) + ' ' + C + 'Z';
+    let bd = '', bp = '';
     for (let a = 0; a <= 360; a += 2) {
       const h = p > 0 ? H * Math.exp(K * (Math.cos(rad(2 * a)) - 1)) : flat;
-      const [x, y] = pt(B0 + h, a);
+      const share = Math.cos(rad(a - th)) ** 2;          // the part of this orientation that the filter passes
+      const [x, y] = pt(B0 + h, a), [xp, yp] = pt(B0 + h * share, a);
       bd += (a ? 'L' : 'M') + x.toFixed(2) + ' ' + y.toFixed(2);
+      bp += (a ? 'L' : 'M') + xp.toFixed(2) + ' ' + yp.toFixed(2);
     }
-    bd += 'Z M' + (C + B0) + ' ' + C + ' A' + B0 + ' ' + B0 + ' 0 1 0 ' + (C - B0) + ' ' + C + ' A' + B0 + ' ' + B0 + ' 0 1 0 ' + (C + B0) + ' ' + C + 'Z';
-    band.setAttribute('d', bd);
+    band.setAttribute('d', bd + inner);
+    bandPass.setAttribute('d', bp + inner);
+    bandPass.style.display = state.proj ? '' : 'none';
+    // The caption names where the light under the filter comes from, with the filter as a passive part.
+    const capKey = (p > 0 ? 'on' : 'off') + '-' + (state.proj ? 'proj' : 'plain');
+    document.querySelectorAll('#outCap > .cap').forEach(n => n.classList.toggle('shown', n.dataset.k === capKey));
     sunG.style.display = p > 0 ? '' : 'none';
     if (!state.animate) draw(1);
   }
