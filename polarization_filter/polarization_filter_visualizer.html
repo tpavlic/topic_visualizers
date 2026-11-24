@@ -96,6 +96,7 @@
   .axgrip{position:absolute;width:40%;height:26px;cursor:grab;touch-action:none}
   .axgrip.dragging{cursor:grabbing}
   #src.axhot .ax,#src.dragging .ax{stroke-width:2;opacity:.9}
+  #out.axhot .ax,#out.dragging .ax{opacity:.45}
   svg#dial:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 
   .chk{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink-soft);cursor:pointer;user-select:none;min-height:30px}
@@ -286,9 +287,11 @@
       <div class="figwrap">
         <svg id="out" class="fig" viewBox="0 0 300 300" role="img" aria-label="Transmitted e‑vector seen by an animal under the filter"></svg>
         <div class="grip" id="outGrip" title="Drag to turn the filter" aria-hidden="true"></div>
+        <div class="axgrip" id="outAxGrip1" data-side="1" title="Drag to turn the filter" aria-hidden="true"></div>
+        <div class="axgrip" id="outAxGrip2" data-side="-1" title="Drag to turn the filter" aria-hidden="true"></div>
       </div>
       <div class="legend">
-        <span class="sw"><i style="background:var(--pass)"></i>transmitted e‑vector</span>
+        <span class="sw"><i style="background:var(--pass)"></i>transmitted e‑vector (drag to turn)</span>
         <span class="sw" id="outRefLab"><i class="dash" style="border-color:#20402f88"></i>sky e‑vector, for reference</span>
         <span class="sw"><i class="tab" style="background:var(--mark)"></i>frame mark, a non-polarization cue (drag to turn)</span>
       </div>
@@ -520,7 +523,8 @@
   frameMark(outMark, 124);
   const outGrip = document.getElementById('outGrip');
   const axGrips = document.querySelectorAll('#srcWrap .axgrip');
-  const outPath = el('line', { stroke: COL.pass, 'stroke-width': 8, 'stroke-linecap': 'round', opacity: .25 }, out);
+  const outAxGrips = [document.getElementById('outAxGrip1'), document.getElementById('outAxGrip2')];
+  const outPath = el('line', { class: 'ax', stroke: COL.pass, 'stroke-width': 8, 'stroke-linecap': 'round', opacity: .25 }, out);
   const outArrow = makeArrow(out, COL.pass, 4);
   el('circle', { cx: C, cy: C, r: 3, fill: COL.ink }, out);
   const darkTxt = el('text', { x: C, y: C + 34, 'text-anchor': 'middle', 'font-size': 12, 'font-family': 'Outfit, sans-serif', fill: '#2b3540' }, out);
@@ -607,6 +611,16 @@
       const a = th + +g.dataset.ax, [mx, my] = pt(76 * +g.dataset.side, a);
       g.style.left = (mx / 3) + '%'; g.style.top = (my / 3) + '%';
       g.style.transform = 'translate(-50%,-50%) rotate(' + (-a) + 'deg)';
+    }
+    // Panel 3's band along the transmitted e-vector is a target only as far as it is drawn, whose
+    // half-length tracks the brightness; when it shrinks into the center, the frame mark remains.
+    const A = R * Math.sqrt(I);
+    for (const g of outAxGrips) {
+      const [mx, my] = pt((16 + A) / 2 * +g.dataset.side, th);
+      g.style.display = A > 28 ? '' : 'none';
+      g.style.width = ((A - 16) / 3) + '%';
+      g.style.left = (mx / 3) + '%'; g.style.top = (my / 3) + '%';
+      g.style.transform = 'translate(-50%,-50%) rotate(' + (-th) + 'deg)';
     }
 
     // the angle arc between the sky e-vector and the filter axis
@@ -794,6 +808,11 @@
     makeDraggable(g, src, 0, 300);
     g.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') src.classList.add('axhot'); });
     g.addEventListener('pointerleave', () => src.classList.remove('axhot'));
+  }
+  for (const g of outAxGrips) {
+    makeDraggable(g, out, 0, 300);
+    g.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') out.classList.add('axhot'); });
+    g.addEventListener('pointerleave', () => out.classList.remove('axhot'));
   }
   dial.addEventListener('keydown', e => {
     const th = state.theta;
