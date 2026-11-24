@@ -91,6 +91,11 @@
   .grip{position:absolute;width:15%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);
     cursor:grab;touch-action:none}
   .grip.dragging{cursor:grabbing}
+  /* Panel 1's targets: invisible bands along the outer part of each filter axis, which turn with the
+     filter. They leave out the center, where the angle of the pointer is ill defined. */
+  .axgrip{position:absolute;width:40%;height:26px;cursor:grab;touch-action:none}
+  .axgrip.dragging{cursor:grabbing}
+  #src.axhot .ax,#src.dragging .ax{stroke-width:2;opacity:.9}
   svg#dial:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 
   .chk{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink-soft);cursor:pointer;user-select:none;min-height:30px}
@@ -219,13 +224,20 @@
           <label><input type="radio" name="proj" value="tail" checked><span>Tail to tip</span></label>
         </div>
       </div>
-      <svg id="src" class="fig" viewBox="0 0 300 300" role="img" aria-label="Sky e‑vector, with its components along and across the filter's transmission axis"></svg>
+      <div class="figwrap" id="srcWrap">
+        <svg id="src" class="fig" viewBox="0 0 300 300" role="img" aria-label="Sky e‑vector, with its components along and across the filter's transmission axis"></svg>
+        <div class="axgrip" data-ax="0" data-side="1" title="Drag to turn the filter" aria-hidden="true"></div>
+        <div class="axgrip" data-ax="0" data-side="-1" title="Drag to turn the filter" aria-hidden="true"></div>
+        <div class="axgrip" data-ax="90" data-side="1" title="Drag to turn the filter" aria-hidden="true"></div>
+        <div class="axgrip" data-ax="90" data-side="-1" title="Drag to turn the filter" aria-hidden="true"></div>
+      </div>
       <div class="legend">
         <span class="sw pol-only"><i style="background:var(--ink);height:6px;border-radius:3px"></i>polarized sky e‑vector</span>
         <span class="sw proj-only pol-only"><i style="background:var(--pass);height:3px"></i>along filter axis (passed)</span>
         <span class="sw proj-only pol-only"><i style="background:var(--block);height:3px"></i>across filter axis (blocked)</span>
         <span class="sw"><i style="background:#20402f59;height:8px"></i>e&#8209;vector orientations in the sky</span>
         <span class="sw proj-only"><i style="background:#1f5fa899;height:8px"></i>share the filter passes</span>
+        <span class="sw proj-only"><i class="dash" style="border-color:var(--pass)"></i>filter's transmission axis (drag to turn)</span>
       </div>
       <div class="rest">
       <div class="readout">
@@ -454,8 +466,8 @@
   const sunTxt = el('text', { x: C + 12, y: 30, 'font-size': 10.5, fill: '#8a6a1a', 'font-family': 'Outfit, sans-serif' }, sunG);
   sunTxt.textContent = 'toward sun';
   const projG = el('g', {}, src);
-  const axPar = el('line', { stroke: COL.pass, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
-  const axPerp = el('line', { stroke: COL.block, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
+  const axPar = el('line', { class: 'ax', stroke: COL.pass, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
+  const axPerp = el('line', { class: 'ax', stroke: COL.block, 'stroke-width': 1, 'stroke-dasharray': '5 4', opacity: .55 }, projG);
   const pathPar = el('line', { stroke: COL.pass, 'stroke-width': 5, 'stroke-linecap': 'round', opacity: .2 }, projG);
   const pathPerp = el('line', { stroke: COL.block, 'stroke-width': 5, 'stroke-linecap': 'round', opacity: .2 }, projG);
   const srcPath = el('line', { stroke: COL.path, 'stroke-width': 8, 'stroke-linecap': 'round' }, src);
@@ -507,6 +519,7 @@
   const outMark = el('g', {}, out);
   frameMark(outMark, 124);
   const outGrip = document.getElementById('outGrip');
+  const axGrips = document.querySelectorAll('#srcWrap .axgrip');
   const outPath = el('line', { stroke: COL.pass, 'stroke-width': 8, 'stroke-linecap': 'round', opacity: .25 }, out);
   const outArrow = makeArrow(out, COL.pass, 4);
   el('circle', { cx: C, cy: C, r: 3, fill: COL.ink }, out);
@@ -590,6 +603,11 @@
     outBg.setAttribute('fill', shade(I));
     darkTxt.textContent = I < 1e-6 ? 'dark: all light blocked' : '';
     setSeg(axPar, 136, th); setSeg(axPerp, 136, th + 90);
+    for (const g of axGrips) {
+      const a = th + +g.dataset.ax, [mx, my] = pt(76 * +g.dataset.side, a);
+      g.style.left = (mx / 3) + '%'; g.style.top = (my / 3) + '%';
+      g.style.transform = 'translate(-50%,-50%) rotate(' + (-a) + 'deg)';
+    }
 
     // the angle arc between the sky e-vector and the filter axis
     if (Math.abs(th) < 0.5) { arcG.setAttribute('visibility', 'hidden'); }
@@ -630,7 +648,7 @@
     // visibility attribute, which the per-frame code sets on their children and would override.
     const projOn = state.proj !== 'off', tail = state.proj === 'tail';
     // Without a sky compass the polarized field, and so each arrow drawn from it, has zero length.
-    document.querySelectorAll('#src ~ .legend .sw').forEach(n => {
+    document.querySelectorAll('#srcWrap ~ .legend .sw').forEach(n => {
       const shown = (!n.classList.contains('proj-only') || projOn) && (!n.classList.contains('pol-only') || p > 0);
       n.style.visibility = shown ? '' : 'hidden';
     });
@@ -640,6 +658,8 @@
     // the filter, and so that axis, its band, and the gray connectors give way to a right-angle mark.
     for (const n of [axPerp, pathPerp, conPar, conPerp]) n.style.display = tail ? 'none' : '';
     rightAng.style.display = tail ? '' : 'none';
+    // only an axis that is drawn can be dragged
+    for (const g of axGrips) g.style.display = projOn && !(tail && g.dataset.ax === '90') ? '' : 'none';
 
 
     // the band: with the sky compass on, e-vector orientations concentrate around 0° and 180°
@@ -769,6 +789,12 @@
   }
   makeDraggable(dial, dial, -14, 328);
   makeDraggable(outGrip, out, 0, 300);
+  // Panel 1's filter axes turn the filter too, and they brighten under a mouse to show that they can.
+  for (const g of axGrips) {
+    makeDraggable(g, src, 0, 300);
+    g.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') src.classList.add('axhot'); });
+    g.addEventListener('pointerleave', () => src.classList.remove('axhot'));
+  }
   dial.addEventListener('keydown', e => {
     const th = state.theta;
     let a = null;
